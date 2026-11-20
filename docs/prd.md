@@ -7,7 +7,7 @@
 | Versão | 0.1 |
 | Data | 20/11/2026 |
 | Status | Rascunho — sujeito a revisão humana |
-| Classificação | Confidencial — P&D |
+| Classificação | Público |
 | Elaboração | Elaborado com apoio de IA (Lean Inception solo, método de Paulo Caroli, traduzido para SAFe) |
 | PO, revisor e aprovador | Leandro Alves |
 
