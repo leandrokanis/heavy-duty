@@ -15,6 +15,7 @@
 - [ ] Os testes novos seguem `docs/convencoes/testes.md` e passam com `pnpm test`.
 - [ ] `pnpm lint` e `pnpm typecheck` passam.
 - [ ] Os comentários seguem `docs/convencoes/comentarios.md`.
+- [ ] A tela ou o componente novo segue o roteiro de revisão de `DESIGN.md`, Seção 20.
 - [ ] A decisão de arquitetura nova, se houver, tem ADR em `docs/adr/`.
 - [ ] O PR não tem segredo, credencial, backup nem dado pessoal novo.
 - [ ] As dependências novas têm licença compatível com MIT.

@@ -14,6 +14,16 @@ src/
 
 Organize por feature, não por tipo de arquivo. Um componente usado só por uma feature fica dentro da feature.
 
+## Interface
+
+Siga `DESIGN.md` em toda tela e todo componente. Regras que mais erram:
+
+- Área de toque de 44 × 44 px ou mais; 56 px nos controles da tela de treino.
+- Vidro (`backdrop-filter`) só na camada de controles e navegação, com versão opaca para `prefers-reduced-transparency` e `prefers-contrast: more`.
+- Cor, espaço, raio e duração vêm de tokens CSS (`--color-*`, `--space-*`, `--radius-*`).
+- Não use fontes SF nem SF Symbols. Use a pilha `system-ui` e o conjunto de ícones único do projeto.
+- Meça alinhamento e espaçamento com `getBoundingClientRect()` antes de afirmar que estão corretos.
+
 ## Regras de produto que o código segue
 
 1. Cada passo do fluxo da academia pede um toque (meta O5 do PRD). Não peça confirmação extra no fluxo de treino.

@@ -18,6 +18,7 @@ Estado atual: só a documentação e a estrutura de pastas existem. Os apps aind
 | `apps/ui/` | PWA em React e Vite. Regras em `apps/ui/CLAUDE.md` |
 | `apps/api/` | API em Node e Hono, servidor MCP e SQLite. Regras em `apps/api/CLAUDE.md` |
 | `e2e/` | Testes ponta a ponta com Playwright e playwright-bdd |
+| `DESIGN.md` | Diretrizes de interface (HIG), com referência no iOS 27 e no macOS 27 |
 | `docs/prd.md` | Requisitos de produto: features, stories e cenários de aceite |
 | `docs/arquitetura.md` | Componentes, fluxos e decisões pendentes |
 | `docs/adr/` | Registros de decisão de arquitetura (ADR) |
@@ -56,6 +57,7 @@ Enquanto os apps não têm `package.json`, os scripts terminam sem executar nada
 |---|---|
 | Implementar uma story | a story em `docs/prd.md` e a pasta da story em `docs/specs/` |
 | Criar módulo, rota ou ferramenta MCP | `docs/arquitetura.md` e `docs/convencoes/codigo.md` |
+| Criar ou alterar tela ou componente de UI | `DESIGN.md` |
 | Escrever teste | `docs/convencoes/testes.md` |
 | Escrever ou revisar comentário | `docs/convencoes/comentarios.md` |
 | Escrever ou revisar documentação | `docs/convencoes/escrita-tecnica.md` |
