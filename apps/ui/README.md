@@ -1,6 +1,6 @@
 # UI do app de treino
 
-PWA que o atleta usa no celular, na academia: mostra o treino do dia, registra cada série com um toque e conta o descanso. A administração não passa pela UI; passa pelo MCP da API.
+PWA que o atleta usa no celular, na academia: mostra o treino do dia, registra cada série com um toque e conta o descanso. No MVP, a administração não passa pela UI; passa pelo MCP da API. As telas de administração no Mac entram depois do MVP (PRD, D22).
 
 Estado: sem código. O scaffold faz parte da onda 1 do PRD.
 

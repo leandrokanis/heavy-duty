@@ -48,7 +48,7 @@ As regras valem para toda tela e todo componente de `apps/ui`.
 |---|---|---|
 | PWA instalada no iPhone, na academia (persona Atleta, P1) | iOS 27 | Principal |
 | PWA instalada em Android (Q02 do PRD está em aberto) | iOS 27, com o mesmo layout | Mesma do iPhone |
-| Telas de administração no Mac (persona Planejador, P2) | macOS 27 | [a confirmar: onda de entrada] |
+| Telas de administração no Mac (persona Planejador, P2) | macOS 27 | Depois do MVP (PRD, D22); onda em aberto (Q10) |
 | PWA aberta no navegador do Mac, em janela larga | macOS 27 | Secundária |
 
 A referência do macOS 27 vale para as telas de administração e para a adaptação do layout a telas largas (Seção 5.5).

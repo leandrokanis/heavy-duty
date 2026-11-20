@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 0.1 |
+| Versão | 0.2 |
 | Data | 20/11/2026 |
 | Status | Rascunho — sujeito a revisão humana |
 | Classificação | Público |
@@ -96,7 +96,7 @@ Equilíbrio: white hat 15 contra black hat 14. Ponto fraco: o lado esquerdo do o
 
 | É | Não é |
 |---|---|
-| Um app web pessoal: no celular, voltado para a academia; a administração passa pelo Claude, via MCP | Uma rede social ou comunidade de treino |
+| Um app web pessoal: no celular, voltado para a academia; a administração passa pelo Claude, via MCP, e depois do MVP também por telas no Mac (D22) | Uma rede social ou comunidade de treino |
 | Um registro de musculação com gamificação leve | Um personal trainer que monta treino ou prescreve carga |
 | Uma ferramenta própria, rodando no kasparov | Um app de saúde geral (sono, dieta, cardio, BJJ) |
 
@@ -471,6 +471,7 @@ Funcionalidade: Histórico
 - **Q07:** como calcular o volume de um exercício por tempo?
 - **Q08:** um músculo ativado de forma secundária conta o volume inteiro para o grupo, ou só uma parte?
 - **Q09:** a academia tem sinal de celular e Wi-Fi confiáveis?
+- **Q10:** em que onda entram as telas de administração no Mac (D22)?
 - **Resolvidas:** Q03 (a F13 foi removida) e Q05 (MVP sem gamificação, D18).
 
 ### Hipóteses e validações pendentes (o PO é o único papel)
@@ -509,13 +510,14 @@ Funcionalidade: Histórico
 | D12 | Meta do O4: +20% no volume semanal por grupo |
 | D13 | Meta do O5: um toque por passo, com ajuste por arrasto |
 | D14 | Importação do app atual removida do produto |
-| D15 | O MCP substitui as telas de administração |
+| D15 | No MVP, o MCP substitui as telas de administração (revisada por D22) |
 | D16 | O descanso vem do programa, cadastrado junto com séries e repetições |
 | D17 | Exercício de repetição ou tempo, que ativa músculos; cada músculo pertence a um grupo |
 | D18 | MVP: ondas 1 a 4, acompanhamento do treino mais administração via MCP |
 | D19 | F15 dividida em F15a (volume) e F15b (janelas) |
 | D20 | Sequenciador mantido; o próximo ciclo é marco do MVP |
 | D21 | Criticidade no tempo: 8 para o MVP, 5 para a cadeia do período, 2 para o resto |
+| D22 | Telas de administração no Mac, com referência visual no macOS 27, entram depois do MVP e convivem com o MCP; a onda está em aberto (Q10) |
 
 ---
 

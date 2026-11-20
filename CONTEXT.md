@@ -54,6 +54,6 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 |---|---|---|---|
 | PO | Dono do produto e único usuário | — | cliente |
 | Atleta (P1) | Persona do PO na academia, usando o celular | — | usuário |
-| Planejador (P2) | Persona do PO administrando o app pelo Claude | — | admin |
+| Planejador (P2) | Persona do PO administrando o app pelo Claude e, depois do MVP, pelas telas de administração no Mac | — | admin |
 | MCP | Model Context Protocol. Canal de administração do app pelo Claude | `mcp` | — |
 | Onda | Grupo de features entregue em sequência, conforme o roadmap do PRD | — | sprint, release |

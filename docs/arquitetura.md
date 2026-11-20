@@ -87,6 +87,7 @@ Os nomes das entidades estão em `CONTEXT.md`.
 | Estratégia de sincronização sem sinal | H10, Q09 | Antes da onda 3 |
 | Geração do ID no cliente (UUID v7 ou outro) | Fila local, idempotência | Antes da onda 3 |
 | Avisos por Web Push | Q02, R01 | Antes da onda 7 |
+| Lugar das telas de administração: a mesma PWA (`apps/ui`) ou um app separado | D22, Q10, `DESIGN.md` Seção 5.5 | Antes da onda das telas de administração |
 | Ferramentas de lint e formatação | `docs/convencoes/codigo.md` | Scaffold da onda 1 |
 
 Cada decisão vira uma ADR quando for tomada.
