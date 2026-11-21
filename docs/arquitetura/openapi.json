@@ -1385,6 +1385,73 @@
           "loadG",
           "performedAt"
         ]
+      },
+      "Workout": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "0193a1b2-0000-7000-8000-000000000601"
+          },
+          "programId": {
+            "type": "string",
+            "example": "0193a1b2-0000-7000-8000-000000000301"
+          },
+          "letter": {
+            "type": "string",
+            "example": "A"
+          },
+          "startedAt": {
+            "type": "string",
+            "example": "2026-11-21T18:30:00.000Z"
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-11-21T19:20:00.000Z"
+          },
+          "endReason": {
+            "$ref": "#/components/schemas/WorkoutEndReason"
+          }
+        },
+        "required": [
+          "id",
+          "programId",
+          "letter",
+          "startedAt",
+          "finishedAt",
+          "endReason"
+        ]
+      },
+      "WorkoutEndReason": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "completed",
+          "ended_early",
+          null
+        ]
+      },
+      "FinishWorkoutBody": {
+        "type": "object",
+        "properties": {
+          "finishedAt": {
+            "type": "string",
+            "example": "2026-11-21T19:20:00.000Z"
+          },
+          "endReason": {
+            "type": "string",
+            "example": "ended_early"
+          }
+        },
+        "required": [
+          "finishedAt",
+          "endReason"
+        ]
       }
     },
     "parameters": {}
@@ -3456,6 +3523,108 @@
           },
           "422": {
             "description": "No such program (program_not_found), no such letter in the program (program_day_not_found) or no such planned exercise in the letter (planned_exercise_not_found)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workouts/{workoutId}/finish": {
+      "post": {
+        "tags": [
+          "workouts"
+        ],
+        "summary": "Record how and when a workout ended. Sending the same instant and reason again changes nothing",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193a1b2-0000-7000-8000-000000000601"
+            },
+            "required": true,
+            "name": "workoutId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinishWorkoutBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The workout with its end, recorded now or by an earlier identical request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Workout"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Body outside the schema (invalid_request), reason other than completed or ended_early (workout_end_reason_invalid), instant that is not UTC ISO 8601 (workout_finished_at_invalid) or instant before the start (workout_finished_before_start)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin other than the app origin (forbidden_origin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such workout (workout_not_found)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The workout already ended with another instant or reason (workout_already_finished)",
             "content": {
               "application/json": {
                 "schema": {

@@ -36,7 +36,12 @@ describe('Given an active workout saved with the last step 3 hours ago and a set
     it('Then should return null, delete the active workout and keep the queued set', async () => {
       const { db, store } = freshStore()
       const queue = createDexieQueueStore(db)
-      await queue.add({ workoutId: SAVED.session.workoutId, body: pendingSetBody(), queuedAt: T0 })
+      await queue.add({
+        kind: 'set',
+        workoutId: SAVED.session.workoutId,
+        body: pendingSetBody(),
+        queuedAt: T0,
+      })
       await store.save(SAVED, T0)
 
       const loaded = await store.load(T0 + 3 * HOUR_MS)

@@ -759,7 +759,7 @@ Regras do cálculo:
 
 ## Séries do treino
 
-A rota desta seção vem da US-F03-02. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem dos métodos que mudam estado. A gravação da série não tem ferramenta MCP: o registro é do atleta, e as ferramentas de treino do planejador são da F06 (`mcp.md` não muda). O service fica em `apps/api/src/modules/workouts/workout-set.service.ts`.
+A rota desta seção vem da US-F03-02. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem dos métodos que mudam estado. A gravação da série não tem ferramenta MCP: o registro é do atleta, e as ferramentas de treino do planejador são da F06 (`mcp.md` não muda). O service fica em `apps/api/src/modules/workouts/workout-set.service.ts`. O fim do treino chega depois das séries, por outra rota (seção "Fim do treino").
 
 ### POST /api/workouts/{workoutId}/sets
 
@@ -824,6 +824,56 @@ Ordem da conferência, na mesma transação:
 8. Gravação da série.
 
 O programa que deixou de ser o ativo depois do "Começar" não impede a série: o treino guarda o programa treinado (`apps/api/CLAUDE.md`, regra 7). O número da série maior que o número de séries do programa é aceito.
+
+## Fim do treino
+
+A rota desta seção vem da US-F03-04. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem. O fim não tem ferramenta MCP: a leitura e a correção do fim pelo planejador são das stories US-F06-01 e US-F06-02 (`mcp.md` não muda). O service fica em `apps/api/src/modules/workouts/workout-finish.service.ts`.
+
+O app não chama a rota direto da tela. O fim entra na fila local de envio depois das séries do treino e segue as regras da ADR-022.
+
+### POST /api/workouts/{workoutId}/finish
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Gravar quando e como o treino terminou: na última série (`completed`) ou pelo botão "Encerrar" (`ended_early`) |
+| Story | US-F03-04 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) e `Origin` igual a `APP_ORIGIN` quando o navegador manda o cabeçalho |
+| Caminho | `workoutId`: ID do treino em UUID, o mesmo das séries |
+| Corpo | `{ "finishedAt", "endReason" }`. `finishedAt` é ISO 8601 em UTC, com `Z`. `endReason` é `completed` ou `ended_early`. O schema aceita as duas como texto, e o service recusa os valores com `code` próprio |
+| Efeito colateral | Grava `finished_at`, normalizado com `toISOString()`, e `end_reason` na linha do treino. A recusa não grava nada: a conferência e a gravação ficam numa transação só |
+| Idempotência | Idempotente pelo par instante e motivo. O reenvio com o mesmo `finishedAt` (comparado depois da normalização) e o mesmo `endReason` responde 200 com o treino gravado, sem mudar nada. Outro instante ou outro motivo num treino terminado responde 409 |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `Workout` | Fim gravado agora ou fim idêntico já gravado |
+| 400 | `{ "code": "invalid_request", "message": "requisição inválida" }` | Corpo fora do schema: campo ausente ou de outro tipo, ID do caminho que não é UUID |
+| 400 | `{ "code": "workout_end_reason_invalid", "message": "motivo do fim inválido" }` | `endReason` fora de `completed` e `ended_early` |
+| 400 | `{ "code": "workout_finished_at_invalid", "message": "instante do fim inválido" }` | `finishedAt` vazio, sem `Z`, com deslocamento diferente de `Z` ou que não é data |
+| 400 | `{ "code": "workout_finished_before_start", "message": "o fim do treino é anterior ao início" }` | `finishedAt` anterior a `started_at`. O instante igual ao início é aceito |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida. O corpo não tem dado de treino |
+| 403 | `{ "code": "forbidden_origin", "message": "origem não permitida" }` | `Origin` diferente de `APP_ORIGIN` |
+| 404 | `{ "code": "workout_not_found", "message": "treino não encontrado" }` | Nenhum treino com o `workoutId` |
+| 409 | `{ "code": "workout_already_finished", "message": "treino já encerrado com outros dados" }` | O treino já terminou com outro instante ou outro motivo |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+O objeto `Workout` tem a forma `{ "id", "programId", "letter", "startedAt", "finishedAt", "endReason" }`. `finishedAt` e `endReason` ficam `null` no treino em andamento; a rota sempre responde com os dois preenchidos.
+
+Exemplo do encerramento antes da última série:
+
+```json
+{ "finishedAt": "2026-11-21T19:20:00.000Z", "endReason": "ended_early" }
+```
+
+Ordem da conferência, na mesma transação:
+
+1. Formato, pelo schema (`invalid_request`).
+2. Motivo (`workout_end_reason_invalid`) e formato do instante (`workout_finished_at_invalid`), nessa ordem, ainda sem ler o banco.
+3. Treino existente: 404 `workout_not_found`.
+4. Treino já terminado: 200 se o par bate, 409 `workout_already_finished` se não. O reenvio responde antes da regra de tempo.
+5. Instante anterior ao início: 400 `workout_finished_before_start`.
+6. Gravação do fim.
+
+A API não limita o instante no futuro nem recusa série nova para um treino terminado [fora de escopo da US-F03-04].
 
 ## Situação do app
 

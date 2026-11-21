@@ -10,8 +10,10 @@ export function pendingSetsLabel(count: number): string {
 // Quiet by design: no button, because the queue sends by itself (FR-004, FR-007).
 export function PendingSetsIndicator() {
   const { pending } = useSyncSnapshot()
-  if (pending.length === 0) return null
-  const label = pendingSetsLabel(pending.length)
+  // The finish waiting in the queue is not a set (FR-022).
+  const setCount = pending.filter(({ kind }) => kind === 'set').length
+  if (setCount === 0) return null
+  const label = pendingSetsLabel(setCount)
   return (
     <div
       role="status"

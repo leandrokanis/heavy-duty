@@ -30,10 +30,10 @@ Siga `DESIGN.md` em toda tela e todo componente. Regras que mais erram:
 
 ## Regras de produto que o código segue
 
-1. Cada passo do fluxo da academia pede um toque (meta O5 do PRD). Só começar e encerrar o treino pedem confirmação (D25).
+1. Cada passo do fluxo da academia pede um toque (meta O5 do PRD). Só começar e encerrar o treino pedem confirmação (D25). A folha da sequência do treino e a folha de encerrar seguram a passagem à série seguinte: com uma aberta, o descanso conta, mas a série seguinte só aparece quando a folha fecha.
 2. O fluxo de treino não abre teclado. Carga, repetições e tempo mudam por arrasto, em passos fixos (F04).
 3. Toque duplo em "Próximo" tem efeito uma vez só: o reducer de `src/features/workout/workout-flow.ts` ignora novo toque por `DOUBLE_TAP_GUARD_MS` (0,8 s, em `workout.config.ts`) depois de toda troca de tela, seja registro, fim do descanso ou pulo do descanso (`lastStepAtMs`). Cada série e cada treino levam o ID gerado no cliente com `createClientId()` (`src/features/workout/client-id.ts`, UUID v7, ADR-014), que é a chave de idempotência.
-4. O registro funciona sem rede. A série entra na fila local (`src/sync/`, Dexie) antes de qualquer envio e segue para a API, em ordem, quando a conexão volta (F03, H10, ADR-021). A API recusa por regra de domínio com 400, 409 ou 422: a série sai da fila e vira aviso, sem reenvio. Não envie a série direto da tela.
+4. O registro funciona sem rede. A série entra na fila local (`src/sync/`, Dexie) antes de qualquer envio e segue para a API, em ordem, quando a conexão volta (F03, H10, ADR-021). A API recusa por regra de domínio com 400, 409 ou 422: a série sai da fila e vira aviso, sem reenvio. O fim do treino (`completed` ou `ended_early`) também segue pela fila, depois das séries, e a recusa do fim é silenciosa (ADR-022). Não envie a série nem o fim direto da tela.
 5. A carga não fica negativa.
 6. O texto exibido ao usuário é em português do Brasil. Nome de componente, prop e identificador são em inglês.
 7. O `AuthGate` (`src/features/auth/auth-gate.tsx`) envolve toda tela no layout raiz e mostra a tela de entrada quando não há sessão de acesso. Só `/cadastro` e `/~offline` passam direto; não acrescente caminho sem ADR (ADR-019). Sem conexão, `/` abre se o aparelho tem a cópia do treino do dia (ADR-021). A tela de autorização do MCP, `/autorizar`, fica atrás do `AuthGate` (ADR-020).

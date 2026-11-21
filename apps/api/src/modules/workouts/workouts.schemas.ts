@@ -95,5 +95,31 @@ export const WorkoutIdParamsSchema = z.object({
   }),
 })
 
+export const WorkoutEndReasonSchema = z
+  .enum(['completed', 'ended_early'])
+  .openapi('WorkoutEndReason')
+
+// Both fields stay plain strings so the service refuses them with their own code.
+export const FinishWorkoutBodySchema = z
+  .object({
+    finishedAt: z.string().openapi({ example: '2026-11-21T19:20:00.000Z' }),
+    endReason: z.string().openapi({ example: 'ended_early' }),
+  })
+  .openapi('FinishWorkoutBody')
+
+export const WorkoutSchema = z
+  .object({
+    id: z.string().openapi({ example: '0193a1b2-0000-7000-8000-000000000601' }),
+    programId: z.string().openapi({ example: '0193a1b2-0000-7000-8000-000000000301' }),
+    letter: z.string().openapi({ example: 'A' }),
+    startedAt: z.string().openapi({ example: '2026-11-21T18:30:00.000Z' }),
+    finishedAt: z.string().nullable().openapi({ example: '2026-11-21T19:20:00.000Z' }),
+    endReason: WorkoutEndReasonSchema.nullable(),
+  })
+  .openapi('Workout')
+
 export type RecordWorkoutSetBody = z.infer<typeof RecordWorkoutSetBodySchema>
 export type WorkoutSet = z.infer<typeof WorkoutSetSchema>
+export type FinishWorkoutBody = z.infer<typeof FinishWorkoutBodySchema>
+export type WorkoutEndReason = z.infer<typeof WorkoutEndReasonSchema>
+export type Workout = z.infer<typeof WorkoutSchema>

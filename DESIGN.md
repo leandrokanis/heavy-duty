@@ -64,7 +64,8 @@ Os princípios vêm das personas e das metas do PRD. Em conflito entre uma regra
 1. **Um toque por passo.** Cada passo do fluxo da academia DEVE pedir um toque (PRD, O5). A tela NÃO DEVE pedir confirmação extra no fluxo de treino, com duas exceções (PRD, D25):
    - Começar o treino DEVE pedir confirmação numa folha com o resumo da letra: exercícios, séries e duração estimada.
    - Encerrar o treino pelo botão "Encerrar", na folha da sequência do treino (Seção 9.4), DEVE pedir confirmação numa folha com as séries feitas e as que faltam. O treino que termina na última série NÃO DEVE pedir confirmação.
-   - Na folha de encerrar, "Continuar" mantém o treino. Com a folha aberta, o descanso continua contando, mas a próxima série espera a folha fechar.
+   - Na folha de encerrar, "Continuar" mantém o treino.
+   - Com qualquer folha aberta, a da sequência do treino ou a de encerrar, o descanso continua contando, mas a próxima série espera a folha fechar. A série seguinte aparece quando a folha fecha, e o toque em "Próximo" espera 0,8 s depois dessa passagem.
 2. **Leitura de relance.** O atleta olha o celular apoiado no banco, entre séries. Carga, repetições e descanso DEVEM ser os maiores elementos da tela de treino.
 3. **Sem teclado no treino.** O fluxo de treino NÃO DEVE abrir teclado. Valores mudam por arrasto ou por toque (PRD, F04; Seção 16.3).
 4. **Estado de rede visível.** Quando a série fica na fila local, a tela DEVE mostrar que o envio está pendente, sem bloquear o treino (PRD, US-F03-03).
@@ -183,6 +184,7 @@ O HIG não especifica botão de ação central sobre a barra de abas. Se o app a
 - O topo da tela de treino DEVE ter um controle com a letra e a barra de exercícios. Um toque nele abre a folha da sequência do treino (PRD, US-F03-04).
 - A folha DEVE listar os exercícios da letra com o estado de cada um: feito, com as séries registradas (US-F03-06); atual; pulado; ou por fazer.
 - Um toque num exercício que falta DEVE levar a ele. Durante o descanso, o exercício escolhido vira o próximo, e o descanso continua.
+- Com a folha da sequência aberta, o descanso continua contando, mas a passagem à série seguinte espera a folha fechar (Seção 3, princípio 1).
 - O exercício atual DEVE ter a ação "Pular" (US-F03-05). O exercício pulado continua na lista e PODE ser feito depois.
 - O botão de encerrar o treino DEVE ficar na folha da sequência, não no topo da tela de treino (PRD, D26). O canto superior é o lugar onde se espera o voltar e fica longe do polegar, o que facilita o toque acidental.
 

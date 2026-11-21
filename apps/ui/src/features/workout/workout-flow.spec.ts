@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayDay } from './test-today'
+import { CRUCIFIXO, PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayDay } from './test-today'
 import {
   announcementOf,
   createWorkoutFlow,
+  currentExercise,
+  exerciseProgressOf,
   restoreWorkoutFlow,
+  sequenceOf,
   upcomingExercise,
   type WorkoutFlowState,
   type WorkoutSession,
@@ -253,9 +256,10 @@ describe('Given set 1 of an exercise with 3 sets and restSeconds 0', () => {
   })
 })
 
-// Sets 1 and 2 of triceps-polia already recorded and set 3, the last of the day, on screen.
+// The 3 sets of supino-reto and sets 1 and 2 of triceps-polia already recorded and set 3, the last
+// of the day, on screen.
 function tricepsSet3(t: number): WorkoutFlowState {
-  const onTriceps = { ...createWorkoutFlow(sessionOf(LETTER_A)), exerciseIndex: 1 }
+  const onTriceps = recordSets(createWorkoutFlow(sessionOf(LETTER_A)), 3, t - 400_000).state
   return restEnd(next(restEnd(next(onTriceps, t - 122_000), t - 62_000), t - 61_000), t - 1000)
 }
 
@@ -421,6 +425,544 @@ describe('Given a saved state resting on supino-reto set 1 for 90 s', () => {
   describe('When restoreWorkoutFlow runs exactly when the rest ends', () => {
     it('Then the phase should be set on set 2', () => {
       expect(restoreWorkoutFlow(saved, T0 + 90_000)).toMatchObject({ phase: 'set', setNumber: 2 })
+    })
+  })
+})
+
+// Letter 'A' of the US-F03-04 fixture: supino-reto, crucifixo and triceps-polia, 3 sets each.
+const THREE_EXERCISES = [SUPINO_RETO, CRUCIFIXO, TRICEPS_POLIA]
+
+const STEP_MS = 1000
+
+// Records the given number of sets of the current exercise the athlete is on, skipping each rest
+// with next, one second apart. Returns the state and the clock after the last tap.
+function recordSets(state: WorkoutFlowState, count: number, fromMs: number) {
+  let current = state
+  let clock = fromMs
+  for (let index = 0; index < count; index++) {
+    current = next(current, clock)
+    clock += STEP_MS
+    if (current.phase === 'rest') {
+      current = next(current, clock)
+      clock += STEP_MS
+    }
+  }
+  return { state: current, clock }
+}
+
+describe('Given the 3 sets of supino-reto recorded and the athlete on set 1 of crucifixo', () => {
+  describe('When the sequence and the progress of the exercises are read', () => {
+    it('Then should list supino-reto as done 3 of 3, crucifixo as current 0 of 3 and triceps-polia as to do 0 of 3, with the progress at 2', () => {
+      const { state } = recordSets(createWorkoutFlow(sessionOf(THREE_EXERCISES)), 3, T0)
+
+      expect({ sequence: sequenceOf(state), progress: exerciseProgressOf(state) }).toEqual({
+        sequence: [
+          { exerciseIndex: 0, name: 'Supino reto', status: 'done', setsDone: 3, setsTotal: 3 },
+          { exerciseIndex: 1, name: 'Crucifixo', status: 'current', setsDone: 0, setsTotal: 3 },
+          { exerciseIndex: 2, name: 'Tríceps na polia', status: 'todo', setsDone: 0, setsTotal: 3 },
+        ],
+        progress: 2,
+      })
+    })
+  })
+})
+
+describe('Given the rest right after the 3rd set of supino-reto, with crucifixo coming next', () => {
+  describe('When the sequence and the progress of the exercises are read', () => {
+    it('Then the current exercise should be crucifixo, the one that shows when the rest ends', () => {
+      const flow = createWorkoutFlow(sessionOf(THREE_EXERCISES))
+      const resting = next(recordSets(flow, 2, T0).state, T0 + 10_000)
+
+      expect({
+        phase: resting.phase,
+        statuses: sequenceOf(resting).map(({ status }) => status),
+        progress: exerciseProgressOf(resting),
+      }).toEqual({ phase: 'rest', statuses: ['done', 'current', 'todo'], progress: 2 })
+    })
+  })
+})
+
+describe('Given the workout finished after the last set of the letter', () => {
+  describe('When the progress of the exercises is read', () => {
+    it('Then should be the total of 2 exercises, with every exercise done and none current', () => {
+      const finished = next(tricepsSet3(T0), T0)
+
+      expect({
+        phase: finished.phase,
+        statuses: sequenceOf(finished).map(({ status }) => status),
+        progress: exerciseProgressOf(finished),
+      }).toEqual({ phase: 'finished', statuses: ['done', 'done'], progress: 2 })
+    })
+  })
+})
+
+function goTo(state: WorkoutFlowState, exerciseIndex: number, nowMs: number): WorkoutFlowState {
+  return workoutFlowReducer(state, { type: 'goTo', exerciseIndex, nowMs })
+}
+
+describe('Given 1 set of supino-reto recorded and the rest over, with the letter supino-reto, crucifixo and triceps-polia', () => {
+  const afterRest = recordSets(createWorkoutFlow(sessionOf(THREE_EXERCISES)), 1, T0)
+  const goToMs = afterRest.clock + 5000
+
+  describe('When goTo arrives for triceps-polia', () => {
+    it('Then should show set 1 of triceps-polia with 20 kg and 12 reps, announce it and take the step at nowMs', () => {
+      const state = goTo(afterRest.state, 2, goToMs)
+
+      expect({
+        exerciseIndex: state.exerciseIndex,
+        setNumber: state.setNumber,
+        phase: state.phase,
+        loadG: currentExercise(state).loadG,
+        targetReps: currentExercise(state).targetReps,
+        lastStep: state.lastStep,
+        lastStepAtMs: state.lastStepAtMs,
+        announcement: announcementOf(state),
+      }).toEqual({
+        exerciseIndex: 2,
+        setNumber: 1,
+        phase: 'set',
+        loadG: 20000,
+        targetReps: 12,
+        lastStep: 'goTo',
+        lastStepAtMs: goToMs,
+        announcement: 'Tríceps na polia, série 1 de 3',
+      })
+    })
+  })
+
+  describe.each([
+    { elapsedMs: 799, recordedCount: 1 },
+    { elapsedMs: 800, recordedCount: 2 },
+  ])('When next arrives $elapsedMs ms after the goTo', ({ elapsedMs, recordedCount }) => {
+    it(`Then should leave ${recordedCount} set recorded`, () => {
+      const state = next(goTo(afterRest.state, 2, goToMs), goToMs + elapsedMs)
+
+      expect(state.recorded.length).toBe(recordedCount)
+    })
+  })
+})
+
+describe('Given the 3 sets of supino-reto recorded and set 1 of crucifixo on screen', () => {
+  const onCrucifixo = recordSets(createWorkoutFlow(sessionOf(THREE_EXERCISES)), 3, T0)
+
+  describe.each([
+    { target: 'the exercise done', exerciseIndex: 0 },
+    { target: 'the exercise on screen', exerciseIndex: 1 },
+    { target: 'an index outside the letter', exerciseIndex: 7 },
+    { target: 'a negative index', exerciseIndex: -1 },
+  ])('When goTo arrives for $target', ({ exerciseIndex }) => {
+    it('Then the state should not change', () => {
+      expect(goTo(onCrucifixo.state, exerciseIndex, onCrucifixo.clock + 5000)).toEqual(
+        onCrucifixo.state,
+      )
+    })
+  })
+})
+
+describe('Given 1 set of supino-reto recorded and the athlete moved to triceps-polia', () => {
+  const moved = (() => {
+    const afterRest = recordSets(createWorkoutFlow(sessionOf(THREE_EXERCISES)), 1, T0)
+    return goTo(afterRest.state, 2, afterRest.clock + 5000)
+  })()
+
+  describe('When goTo arrives for supino-reto, which has 2 sets left', () => {
+    it('Then should show set 2 of supino-reto, the recorded sets plus 1', () => {
+      const state = goTo(moved, 0, (moved.lastStepAtMs as number) + 5000)
+
+      expect({
+        exerciseIndex: state.exerciseIndex,
+        setNumber: state.setNumber,
+        announcement: announcementOf(state),
+      }).toEqual({ exerciseIndex: 0, setNumber: 2, announcement: 'Supino reto, série 2 de 3' })
+    })
+  })
+})
+
+describe('Given 1 set of supino-reto recorded and the athlete moved to triceps-polia with 2 of its sets recorded', () => {
+  const afterRest = recordSets(createWorkoutFlow(sessionOf(THREE_EXERCISES)), 1, T0)
+  const moved = goTo(afterRest.state, 2, afterRest.clock + 5000)
+  const onLastTricepsSet = recordSets(moved, 2, (moved.lastStepAtMs as number) + 1000)
+
+  describe('When the 3rd set of triceps-polia is recorded', () => {
+    it('Then should rest for 60 s with supino-reto as upcoming, and after restEnd show set 2 of supino-reto announced with its name', () => {
+      const recordedAtMs = onLastTricepsSet.clock + 1000
+      const resting = next(onLastTricepsSet.state, recordedAtMs)
+      const back = restEnd(resting, recordedAtMs + 60_000)
+
+      expect({
+        restEndsAtMs: resting.restEndsAtMs,
+        upcoming: upcomingExercise(resting)?.exercise.name,
+        exerciseIndex: back.exerciseIndex,
+        setNumber: back.setNumber,
+        announcement: announcementOf(back),
+      }).toEqual({
+        restEndsAtMs: recordedAtMs + 60_000,
+        upcoming: 'Supino reto',
+        exerciseIndex: 0,
+        setNumber: 2,
+        announcement: 'Supino reto, série 2 de 3',
+      })
+    })
+  })
+})
+
+describe('Given the 90 s rest after set 1 of supino-reto, with the letter supino-reto, crucifixo and triceps-polia', () => {
+  const flow = createWorkoutFlow(sessionOf(THREE_EXERCISES))
+  const resting = next(flow, T0)
+  const restEndsAtMs = T0 + 90_000
+
+  describe('When goTo arrives for triceps-polia', () => {
+    it('Then should keep the rest end and the announcement, and show triceps-polia as upcoming', () => {
+      const state = goTo(resting, 2, T0 + 10_000)
+
+      expect({
+        phase: state.phase,
+        restEndsAtMs: state.restEndsAtMs,
+        lastStepAtMs: state.lastStepAtMs,
+        announcement: announcementOf(state),
+        upcoming: upcomingExercise(state)?.exercise.name,
+      }).toEqual({
+        phase: 'rest',
+        restEndsAtMs,
+        lastStepAtMs: resting.lastStepAtMs,
+        announcement: announcementOf(resting),
+        upcoming: 'Tríceps na polia',
+      })
+    })
+  })
+
+  describe.each([
+    { how: 'the rest ends', step: (state: WorkoutFlowState) => restEnd(state, restEndsAtMs) },
+    { how: 'next skips the rest', step: (state: WorkoutFlowState) => next(state, T0 + 20_000) },
+  ])('When goTo arrives for triceps-polia and then $how', ({ step }) => {
+    it('Then should show set 1 of triceps-polia with 20 kg and 12 reps', () => {
+      const state = step(goTo(resting, 2, T0 + 10_000))
+
+      expect({
+        phase: state.phase,
+        exerciseIndex: state.exerciseIndex,
+        setNumber: state.setNumber,
+        loadG: currentExercise(state).loadG,
+        recorded: state.recorded.length,
+        announcement: announcementOf(state),
+      }).toEqual({
+        phase: 'set',
+        exerciseIndex: 2,
+        setNumber: 1,
+        loadG: 20000,
+        recorded: 1,
+        announcement: 'Tríceps na polia, série 1 de 3',
+      })
+    })
+  })
+
+  describe('When goTo arrives for crucifixo and then for triceps-polia', () => {
+    it('Then the last pick should win', () => {
+      const state = restEnd(goTo(goTo(resting, 1, T0 + 10_000), 2, T0 + 11_000), restEndsAtMs)
+
+      expect(state.exerciseIndex).toBe(2)
+    })
+  })
+
+  describe('When goTo arrives for triceps-polia and then for supino-reto again', () => {
+    it('Then should undo the pick and leave the state as it was', () => {
+      const state = goTo(goTo(resting, 2, T0 + 10_000), 0, T0 + 11_000)
+
+      expect(state).toEqual(resting)
+    })
+  })
+
+  describe.each([
+    { target: 'supino-reto, the one the order brings', exerciseIndex: 0 },
+    { target: 'an index outside the letter', exerciseIndex: 9 },
+  ])('When goTo arrives for $target with no pick before', ({ exerciseIndex }) => {
+    it('Then the state should not change', () => {
+      expect(goTo(resting, exerciseIndex, T0 + 10_000)).toEqual(resting)
+    })
+  })
+})
+
+describe('Given the rest after the 3rd set of supino-reto, which finished the exercise', () => {
+  const afterThird = next(
+    recordSets(createWorkoutFlow(sessionOf(THREE_EXERCISES)), 2, T0).state,
+    T0 + 10_000,
+  )
+
+  describe.each([{ action: 'goTo the exercise done', exerciseIndex: 0 }])(
+    'When $action arrives',
+    ({ exerciseIndex }) => {
+      it('Then the state should not change', () => {
+        expect(goTo(afterThird, exerciseIndex, T0 + 11_000)).toEqual(afterThird)
+      })
+    },
+  )
+
+  describe('When goTo arrives for triceps-polia', () => {
+    it('Then should keep the rest of supino-reto and show triceps-polia as upcoming', () => {
+      const state = goTo(afterThird, 2, T0 + 11_000)
+
+      expect({
+        restEndsAtMs: state.restEndsAtMs,
+        upcoming: upcomingExercise(state)?.exercise.name,
+      }).toEqual({ restEndsAtMs: afterThird.restEndsAtMs, upcoming: 'Tríceps na polia' })
+    })
+  })
+})
+
+function openSheet(state: WorkoutFlowState, sheet: 'sequence' | 'confirmEnd'): WorkoutFlowState {
+  return workoutFlowReducer(state, { type: 'openSheet', sheet })
+}
+
+function closeSheet(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
+  return workoutFlowReducer(state, { type: 'closeSheet', nowMs })
+}
+
+describe.each([
+  { sheet: 'confirmEnd' as const, name: 'the end confirmation' },
+  { sheet: 'sequence' as const, name: 'the sequence sheet' },
+])('Given $name open during the 90 s rest after set 1 of supino-reto', ({ sheet }) => {
+  const resting = next(createWorkoutFlow(sessionOf(THREE_EXERCISES)), T0)
+  const open = openSheet(resting, sheet)
+  const restEndsAtMs = T0 + 90_000
+
+  describe('When the clock passes the rest end and restEnd is dispatched', () => {
+    it('Then the phase should stay rest', () => {
+      expect(restEnd(open, restEndsAtMs + 5000).phase).toBe('rest')
+    })
+  })
+
+  describe('When next arrives with the sheet open', () => {
+    it('Then the rest should not be skipped and no set recorded', () => {
+      const state = next(open, T0 + 10_000)
+
+      expect({ phase: state.phase, recorded: state.recorded.length }).toEqual({
+        phase: 'rest',
+        recorded: 1,
+      })
+    })
+  })
+
+  describe('When closeSheet arrives after the rest end', () => {
+    it('Then the next set should show with the step at the close and no set recorded', () => {
+      const closeMs = restEndsAtMs + 5000
+      const state = closeSheet(restEnd(open, restEndsAtMs + 2000), closeMs)
+
+      expect({
+        sheet: state.sheet,
+        phase: state.phase,
+        setNumber: state.setNumber,
+        lastStepAtMs: state.lastStepAtMs,
+        recorded: state.recorded.length,
+      }).toEqual({ sheet: 'none', phase: 'set', setNumber: 2, lastStepAtMs: closeMs, recorded: 1 })
+    })
+  })
+
+  describe('When closeSheet arrives before the rest end', () => {
+    it('Then the rest should go on with the same end', () => {
+      const state = closeSheet(open, T0 + 30_000)
+
+      expect({ sheet: state.sheet, phase: state.phase, restEndsAtMs: state.restEndsAtMs }).toEqual({
+        sheet: 'none',
+        phase: 'rest',
+        restEndsAtMs,
+      })
+    })
+  })
+
+  describe.each([
+    { elapsedMs: 799, recordedCount: 1 },
+    { elapsedMs: 800, recordedCount: 2 },
+  ])(
+    'When next arrives $elapsedMs ms after closeSheet passed to the set',
+    ({ elapsedMs, recordedCount }) => {
+      it(`Then should leave ${recordedCount} set recorded`, () => {
+        const closeMs = restEndsAtMs + 5000
+        const passed = closeSheet(open, closeMs)
+
+        expect(next(passed, closeMs + elapsedMs).recorded.length).toBe(recordedCount)
+      })
+    },
+  )
+})
+
+describe('Given set 2 of supino-reto on screen', () => {
+  const onSet = recordSets(createWorkoutFlow(sessionOf(THREE_EXERCISES)), 1, T0)
+
+  describe('When the sequence sheet opens', () => {
+    it('Then the phase, the set and the clock of the step should stay as they were', () => {
+      const state = openSheet(onSet.state, 'sequence')
+
+      expect({ ...state, sheet: 'none' }).toEqual(onSet.state)
+    })
+  })
+})
+
+describe('Given the workout finished', () => {
+  const finished = next(tricepsSet3(T0), T0)
+
+  describe('When the sequence sheet opens and closes', () => {
+    it('Then should end on the finished phase with the sheet closed', () => {
+      const state = closeSheet(openSheet(finished, 'sequence'), T0 + 5000)
+
+      expect({ phase: state.phase, sheet: state.sheet }).toEqual({
+        phase: 'finished',
+        sheet: 'none',
+      })
+    })
+  })
+})
+
+function end(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
+  return workoutFlowReducer(state, { type: 'end', nowMs })
+}
+
+// 4 of the 9 sets recorded: the 3 of supino-reto and set 1 of crucifixo, which is on screen.
+const FOUR_OF_NINE = recordSets(createWorkoutFlow(sessionOf(THREE_EXERCISES)), 4, T0)
+
+describe('Given 4 of 9 sets recorded', () => {
+  describe('When end arrives at the instant of the tap', () => {
+    it('Then the phase should be ended and finish should be ended_early at that instant', () => {
+      const tapMs = FOUR_OF_NINE.clock + 7000
+      const state = end(FOUR_OF_NINE.state, tapMs)
+
+      expect({ phase: state.phase, finish: state.finish }).toEqual({
+        phase: 'ended',
+        finish: { finishedAt: new Date(tapMs).toISOString(), endReason: 'ended_early' },
+      })
+    })
+  })
+
+  describe('When end arrives during the rest after the 5th set', () => {
+    it('Then the rest should stop and the phase should be ended', () => {
+      const resting = next(FOUR_OF_NINE.state, FOUR_OF_NINE.clock)
+      const state = end(resting, FOUR_OF_NINE.clock + 5000)
+
+      expect({
+        phase: state.phase,
+        restEndsAtMs: state.restEndsAtMs,
+        sets: state.recorded.length,
+      }).toEqual({
+        phase: 'ended',
+        restEndsAtMs: null,
+        sets: 5,
+      })
+    })
+  })
+})
+
+describe('Given the flow with no set recorded', () => {
+  describe('When end arrives', () => {
+    it('Then the phase should be ended with no finish', () => {
+      const state = end(createWorkoutFlow(sessionOf(THREE_EXERCISES)), T0)
+
+      expect({ phase: state.phase, finish: state.finish }).toEqual({ phase: 'ended', finish: null })
+    })
+  })
+})
+
+describe('Given the last missing set of the letter, reached out of the order', () => {
+  describe('When it is recorded', () => {
+    it('Then the workout should be finished with no rest and finish completed at the performedAt of that set', () => {
+      const afterSupino = recordSets(createWorkoutFlow(sessionOf(THREE_EXERCISES)), 3, T0)
+      const onTriceps = goTo(afterSupino.state, 2, afterSupino.clock + 1000)
+      const afterTriceps = recordSets(onTriceps, 3, afterSupino.clock + 3000)
+      const onLastSets = recordSets(afterTriceps.state, 2, afterTriceps.clock)
+      const state = next(onLastSets.state, onLastSets.clock + 1000)
+
+      expect({
+        phase: state.phase,
+        restEndsAtMs: state.restEndsAtMs,
+        finish: state.finish,
+        lastPerformedAt: state.recorded.at(-1)?.performedAt,
+      }).toEqual({
+        phase: 'finished',
+        restEndsAtMs: null,
+        finish: { finishedAt: state.recorded.at(-1)?.performedAt, endReason: 'completed' },
+        lastPerformedAt: new Date(onLastSets.clock + 1000).toISOString(),
+      })
+    })
+  })
+})
+
+describe('Given the workout finished on its last set', () => {
+  describe('When end arrives', () => {
+    it('Then finish should stay completed', () => {
+      const finished = next(tricepsSet3(T0), T0)
+
+      expect(end(finished, T0 + 5000)).toEqual(finished)
+    })
+  })
+})
+
+describe('Given a state saved by the previous version, with no pick, sheet or finish fields', () => {
+  const {
+    nextExerciseIndex: _pick,
+    sheet: _sheet,
+    finish: _finish,
+    ...legacy
+  } = next(createWorkoutFlow(sessionOf(THREE_EXERCISES)), T0)
+
+  describe('When restoreWorkoutFlow runs with the rest still counting', () => {
+    it('Then should come back with nextExerciseIndex null, sheet none and finish null', () => {
+      const state = restoreWorkoutFlow(legacy as unknown as WorkoutFlowState, T0 + 10_000)
+
+      expect({
+        nextExerciseIndex: state.nextExerciseIndex,
+        sheet: state.sheet,
+        finish: state.finish,
+        phase: state.phase,
+      }).toEqual({ nextExerciseIndex: null, sheet: 'none', finish: null, phase: 'rest' })
+    })
+  })
+})
+
+describe('Given a state saved with a pick of triceps-polia and the end confirmation open', () => {
+  const saved = openSheet(
+    goTo(next(createWorkoutFlow(sessionOf(THREE_EXERCISES)), T0), 2, T0 + 5000),
+    'confirmEnd',
+  )
+
+  describe('When restoreWorkoutFlow runs with the rest still counting', () => {
+    it('Then should keep the pick and close the sheet', () => {
+      const state = restoreWorkoutFlow(saved, T0 + 10_000)
+
+      expect({ nextExerciseIndex: state.nextExerciseIndex, sheet: state.sheet }).toEqual({
+        nextExerciseIndex: 2,
+        sheet: 'none',
+      })
+    })
+  })
+
+  describe('When restoreWorkoutFlow runs after the rest ended with the app closed', () => {
+    it('Then should show set 1 of triceps-polia on the set phase with the sheet closed', () => {
+      const state = restoreWorkoutFlow(saved, T0 + 120_000)
+
+      expect({
+        phase: state.phase,
+        exerciseIndex: state.exerciseIndex,
+        sheet: state.sheet,
+      }).toEqual({
+        phase: 'set',
+        exerciseIndex: 2,
+        sheet: 'none',
+      })
+    })
+  })
+})
+
+describe.each([
+  { moment: 'ended', state: () => end(FOUR_OF_NINE.state, T0 + 60_000) },
+  { moment: 'finished', state: () => next(tricepsSet3(T0), T0) },
+])('Given a state saved in the $moment phase', ({ state }) => {
+  describe('When restoreWorkoutFlow runs', () => {
+    it('Then should come back in the same phase with the same finish', () => {
+      const saved = state()
+      const restored = restoreWorkoutFlow(saved, T0 + 120_000)
+
+      expect({ phase: restored.phase, finish: restored.finish }).toEqual({
+        phase: saved.phase,
+        finish: saved.finish,
+      })
     })
   })
 })

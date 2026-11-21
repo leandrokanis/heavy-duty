@@ -33,6 +33,9 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Treino | Sessão realizada de uma letra, com data e séries registradas. Guarda a letra treinada, que continua no treino mesmo se a letra sair do programa | `Workout` | sessão, sessão de treino, sessão de acesso |
 | Treino do dia | Tela inicial do atleta: as letras do programa ativo, com a letra sugerida para hoje (a seguinte à do último treino do programa) e os valores preenchidos de cada exercício (carga do último treino ou do programa, alvo do programa) | `Today`, `today` | treino de hoje, rotina do dia |
 | Série | Execução registrada de um exercício, com carga e repetições ou tempo | `WorkoutSet` | set |
+| Sequência do treino | Lista dos exercícios da letra em andamento, na ordem do programa, com o estado de cada um (feito, atual ou por fazer). O toque no controle do topo da tela de treino abre a lista, e o toque num exercício por fazer leva a ele | `SequenceSheet`, `sequenceOf` | roteiro, fila de exercícios |
+| Encerrar | Ação do atleta que termina o treino antes da última série, pelo botão da sequência do treino e com confirmação. Grava o motivo "encerrado antes" | `endReason: 'ended_early'` | abandonar, sair do treino |
+| Fim do treino | Instante e motivo com que o treino terminou: na última série (`completed`) ou encerrado antes (`ended_early`). Segue para a API pela fila local, depois das séries | `finish`, `finishedAt`, `endReason` | conclusão, término |
 | Passo | Ação do atleta no fluxo da academia que pede um toque: registrar a série, pular o descanso | — | etapa |
 | Ajuste por arrasto | Mudança de carga, repetições ou tempo por arrasto, em passos fixos, sem teclado | `dragAdjust` | slider |
 | Histórico | Conjunto dos treinos registrados | `history` | log |

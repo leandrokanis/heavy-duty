@@ -162,3 +162,16 @@ export function readWorkoutSetInstants(workoutId: string): string[] {
     ).map(({ performedAt }) => performedAt),
   )
 }
+
+export type RecordedWorkoutEnd = { finishedAt: string | null; endReason: string | null }
+
+export function readWorkoutEnd(workoutId: string): RecordedWorkoutEnd | undefined {
+  return withDatabase(
+    (db) =>
+      db
+        .prepare(
+          'SELECT finished_at AS finishedAt, end_reason AS endReason FROM workouts WHERE id = ?',
+        )
+        .get(workoutId) as RecordedWorkoutEnd | undefined,
+  )
+}

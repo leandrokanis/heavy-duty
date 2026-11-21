@@ -3,15 +3,14 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { clearActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
 import { createMemoryQueueStore } from '@/sync/queue-store'
-import { SyncProvider } from '@/sync/sync-context'
-import { createSyncQueue, type SendSet, type SyncQueue } from '@/sync/sync-queue'
+import { SyncProvider, sendPendingItem } from '@/sync/sync-context'
+import { createSyncQueue, type SendItem, type SyncQueue } from '@/sync/sync-queue'
 import { pendingSetBody } from '@/sync/test-sets'
 import { clearCachedToday, loadToday } from '@/sync/today-cache'
 import { NO_PROGRAM, PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayBody, todayDay } from './test-today'
 import type { TodayDay } from './today.types'
 import { TodayScreen } from './today-screen'
 import { createWorkoutFlow, workoutFlowReducer } from './workout-flow'
-import { postWorkoutSet } from './workout-set-client'
 
 vi.mock('@simplewebauthn/browser', () => ({
   browserSupportsWebAuthn: () => true,
@@ -35,7 +34,7 @@ function json(status: number, body: unknown = {}) {
 }
 
 // The queue sends through fetch by default, so the stubs of fetch still drive the sends.
-function renderToday(send: SendSet = postWorkoutSet, queue?: SyncQueue) {
+function renderToday(send: SendItem = sendPendingItem, queue?: SyncQueue) {
   const ownQueue = queue ?? createSyncQueue({ store: createMemoryQueueStore(), send })
   render(
     <SyncProvider queue={ownQueue}>
@@ -330,6 +329,7 @@ describe("Given letter 'A' with triceps-polia of one set", () => {
       const fetchMock = stubFetch(
         json(200, todayBody([todayDay('A', 'Superior', [{ ...TRICEPS_POLIA, sets: 1 }])], 'A')),
         json(201),
+        json(200), // the finish of the workout, queued after its only set
         json(200, todayBody([todayDay('B', 'Inferior', [PRANCHA])], 'B')),
       )
       await startLetterFromLoadedMock(/^A/)
@@ -405,7 +405,7 @@ describe('Given a set that is still in the queue after failed sends', () => {
   describe('When the workout of the day answers 200', () => {
     it('Then the queue should send again and the indicator should be gone', async () => {
       const send = vi
-        .fn<SendSet>()
+        .fn<SendItem>()
         .mockResolvedValueOnce({ status: 'retry' }) // the enqueue
         .mockResolvedValueOnce({ status: 'retry' }) // the flush on mount
         .mockResolvedValue({ status: 'confirmed' })
@@ -428,8 +428,8 @@ describe('Given a set rejected by the API and a pending set in the queue', () =>
     it('Then the letters screen should carry the rejected notice and the pending indicator', async () => {
       const queue = createSyncQueue({
         store: createMemoryQueueStore(),
-        send: async (_workoutId, body) =>
-          body.id === 'refused'
+        send: async ({ id }) =>
+          id === 'refused'
             ? {
                 status: 'rejected',
                 code: 'planned_exercise_not_found',
@@ -458,7 +458,7 @@ describe('Given a set that is still in the queue and an expired session', () => 
     it('Then the queue should send the set right after the sign-in', async () => {
       vi.mocked(startAuthentication).mockResolvedValue({ id: 'credential' } as never)
       const send = vi
-        .fn<SendSet>()
+        .fn<SendItem>()
         .mockResolvedValueOnce({ status: 'retry' }) // the enqueue
         .mockResolvedValueOnce({ status: 'retry' }) // the flush on mount
         .mockResolvedValue({ status: 'confirmed' })
@@ -476,6 +476,44 @@ describe('Given a set that is still in the queue and an expired session', () => 
       fireEvent.click(await screen.findByRole('button', { name: 'Entrar' }))
 
       await waitFor(() => expect(queue.getSnapshot().pending).toEqual([]))
+    })
+  })
+})
+
+describe('Given 1 of 2 sets recorded in letter A and the sequence sheet open', () => {
+  describe('When the athlete confirms Encerrar', () => {
+    it('Then the letters should show again with the workout of the day requested a second time and the new answer', async () => {
+      const calls: string[] = []
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string) => {
+          calls.push(url)
+          if (url !== '/api/today') return json(200)
+          const letter = calls.filter((call) => call === '/api/today').length === 1 ? 'A' : 'B'
+          return json(
+            200,
+            todayBody(
+              [todayDay(letter, 'Dia', [letter === 'A' ? { ...TRICEPS_POLIA, sets: 2 } : PRANCHA])],
+              letter,
+            ),
+          )
+        }),
+      )
+      await startLetterFromLoadedMock(/^A/)
+      fireEvent.click(screen.getByRole('button', { name: 'Próximo' }))
+      fireEvent.click(await screen.findByRole('button', { name: /^Sequência do treino/ }))
+      const sequence = await screen.findByRole('dialog')
+      fireEvent.click(within(sequence).getByRole('button', { name: 'Encerrar' }))
+      fireEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Encerrar' }),
+      )
+
+      await screen.findByRole('button', { name: /^B/ })
+
+      expect({
+        today: calls.filter((url) => url === '/api/today').length,
+        finishes: calls.filter((url) => url.endsWith('/finish')).length,
+      }).toEqual({ today: 2, finishes: 1 })
     })
   })
 })

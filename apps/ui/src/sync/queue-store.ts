@@ -1,12 +1,22 @@
 import type { LocalDb } from './local-db'
 import type {
-  NewPendingSet,
+  NewPendingItem,
+  PendingItem,
   PendingSet,
   QueueContents,
   QueueStore,
   RejectedSet,
   RejectionReason,
 } from './sync.types'
+
+export function itemIdOf(item: NewPendingItem): string {
+  return item.kind === 'set' ? item.body.id : `${item.workoutId}:finish`
+}
+
+// A row saved before the finish existed has no kind.
+function withKind(row: PendingItem): PendingItem {
+  return { ...row, kind: row.kind ?? 'set' } as PendingItem
+}
 
 export function createDexieQueueStore(db: LocalDb): QueueStore {
   return {
@@ -15,14 +25,18 @@ export function createDexieQueueStore(db: LocalDb): QueueStore {
         db.pendingSets.orderBy('seq').toArray(),
         db.rejectedSets.toArray(),
       ])
-      return { pending, rejected: rejected.sort((a, b) => a.rejectedAt - b.rejectedAt) }
+      return {
+        pending: pending.map(withKind),
+        rejected: rejected.sort((a, b) => a.rejectedAt - b.rejectedAt),
+      }
     },
-    async add(set) {
+    async add(item) {
+      const id = itemIdOf(item)
       return db.transaction('rw', db.pendingSets, async () => {
-        const existing = await db.pendingSets.where('id').equals(set.body.id).first()
-        if (existing) return existing
-        const seq = await db.pendingSets.add({ ...set, id: set.body.id } as PendingSet)
-        return { ...set, id: set.body.id, seq }
+        const existing = await db.pendingSets.where('id').equals(id).first()
+        if (existing) return withKind(existing)
+        const seq = await db.pendingSets.add({ ...item, id } as PendingItem)
+        return { ...item, id, seq } as PendingItem
       })
     },
     async remove(id) {
@@ -31,9 +45,9 @@ export function createDexieQueueStore(db: LocalDb): QueueStore {
     async reject(id, reason) {
       await db.transaction('rw', db.pendingSets, db.rejectedSets, async () => {
         const pending = await db.pendingSets.where('id').equals(id).first()
-        if (!pending) return
+        if (!pending || (pending.kind ?? 'set') !== 'set') return
         await db.pendingSets.where('id').equals(id).delete()
-        await db.rejectedSets.put(rejectedOf(pending, reason))
+        await db.rejectedSets.put(rejectedOf(pending as PendingSet, reason))
       })
     },
     async clearRejected() {
@@ -48,16 +62,17 @@ export function rejectedOf(pending: PendingSet, reason: RejectionReason): Reject
 
 export function createMemoryQueueStore(): QueueStore {
   let nextSeq = 1
-  let pending: PendingSet[] = []
+  let pending: PendingItem[] = []
   let rejected: RejectedSet[] = []
   return {
     async load() {
       return { pending: [...pending], rejected: [...rejected] }
     },
-    async add(set: NewPendingSet) {
-      const existing = pending.find(({ id }) => id === set.body.id)
+    async add(item: NewPendingItem) {
+      const id = itemIdOf(item)
+      const existing = pending.find((stored) => stored.id === id)
       if (existing) return existing
-      const added: PendingSet = { ...set, id: set.body.id, seq: nextSeq++ }
+      const added = { ...item, id, seq: nextSeq++ } as PendingItem
       pending = [...pending, added]
       return added
     },
@@ -66,7 +81,7 @@ export function createMemoryQueueStore(): QueueStore {
     },
     async reject(id, reason) {
       const found = pending.find((set) => set.id === id)
-      if (!found) return
+      if (found?.kind !== 'set') return
       pending = pending.filter((set) => set.id !== id)
       rejected = [...rejected, rejectedOf(found, reason)]
     },

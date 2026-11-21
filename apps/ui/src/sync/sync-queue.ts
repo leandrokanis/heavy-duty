@@ -1,17 +1,20 @@
+import type { FinishWorkoutBody } from '@/features/workout/workout-finish.types'
 import type { RecordWorkoutSetBody, SendOutcome } from '@/features/workout/workout-set.types'
-import { rejectedOf } from './queue-store'
-import type { PendingSet, QueueContents, QueueStore } from './sync.types'
+import { itemIdOf, rejectedOf } from './queue-store'
+import type { NewPendingItem, PendingItem, QueueContents, QueueStore } from './sync.types'
 
-export type SendSet = (workoutId: string, body: RecordWorkoutSetBody) => Promise<SendOutcome>
+export type SendItem = (item: PendingItem) => Promise<SendOutcome>
 
 export type SyncQueueOptions = {
   store: QueueStore
-  send: SendSet
+  send: SendItem
   now?: () => number
 }
 
 export type SyncQueue = {
   enqueue(workoutId: string, body: RecordWorkoutSetBody): Promise<void>
+  // The end of the workout goes after its sets; a second call for the same workout does nothing.
+  enqueueFinish(workoutId: string, body: FinishWorkoutBody): Promise<void>
   flush(): Promise<void>
   dismissRejected(): Promise<void>
   subscribe(listener: () => void): () => void
@@ -68,9 +71,10 @@ export function createSyncQueue({ store, send, now = Date.now }: SyncQueueOption
     for (;;) {
       const head = snapshot.pending[0]
       if (!head) return
-      const outcome = await send(head.workoutId, head.body)
+      const outcome = await send(head)
       if (outcome.status === 'retry') return
-      if (outcome.status === 'confirmed') {
+      // A refused finish leaves in silence: the athlete cannot fix it and it must not block the queue (ADR-022).
+      if (outcome.status === 'confirmed' || head.kind === 'finish') {
         update(({ pending, rejected }) => ({
           pending: pending.filter(({ id }) => id !== head.id),
           rejected,
@@ -87,20 +91,19 @@ export function createSyncQueue({ store, send, now = Date.now }: SyncQueueOption
     }
   }
 
+  async function add(item: NewPendingItem): Promise<void> {
+    await ready
+    const id = itemIdOf(item)
+    if (snapshot.pending.some((stored) => stored.id === id)) return
+    const added = { ...item, id, seq: (snapshot.pending.at(-1)?.seq ?? 0) + 1 } as PendingItem
+    update(({ pending, rejected }) => ({ pending: [...pending, added], rejected }))
+    await persist(() => store.add(item))
+    void flush()
+  }
+
   return {
-    async enqueue(workoutId, body) {
-      await ready
-      const set: PendingSet = {
-        seq: (snapshot.pending.at(-1)?.seq ?? 0) + 1,
-        id: body.id,
-        workoutId,
-        body,
-        queuedAt: now(),
-      }
-      update(({ pending, rejected }) => ({ pending: [...pending, set], rejected }))
-      await persist(() => store.add({ workoutId, body, queuedAt: set.queuedAt }))
-      void flush()
-    },
+    enqueue: (workoutId, body) => add({ kind: 'set', workoutId, body, queuedAt: now() }),
+    enqueueFinish: (workoutId, body) => add({ kind: 'finish', workoutId, body, queuedAt: now() }),
     flush,
     async dismissRejected() {
       update(({ pending }) => ({ pending, rejected: [] }))

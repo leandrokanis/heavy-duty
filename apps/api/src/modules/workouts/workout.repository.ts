@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import type { Database } from '../../db/connection.js'
 import { exercises, plannedExercises, workoutSets, workouts } from '../../db/schema.js'
 import type { ExerciseKind } from '../catalog/catalog.schemas.js'
-import type { WorkoutSet } from './workouts.schemas.js'
+import type { Workout, WorkoutEndReason, WorkoutSet } from './workouts.schemas.js'
 
 export type NewWorkout = {
   id: string
@@ -24,7 +24,10 @@ const workoutSetColumns = {
   performedAt: workoutSets.performedAt,
 }
 
-export type WorkoutRow = NewWorkout
+export type WorkoutRow = NewWorkout & {
+  finishedAt: string | null
+  endReason: WorkoutEndReason | null
+}
 
 export function findWorkoutRow(db: Database, workoutId: string): WorkoutRow | undefined {
   return db
@@ -34,6 +37,8 @@ export function findWorkoutRow(db: Database, workoutId: string): WorkoutRow | un
       programDayId: workouts.programDayId,
       letter: workouts.letter,
       startedAt: workouts.startedAt,
+      finishedAt: workouts.finishedAt,
+      endReason: workouts.endReason,
     })
     .from(workouts)
     .where(eq(workouts.id, workoutId))
@@ -42,6 +47,14 @@ export function findWorkoutRow(db: Database, workoutId: string): WorkoutRow | un
 
 export function insertWorkout(db: Database, workout: NewWorkout): void {
   db.insert(workouts).values(workout).run()
+}
+
+export function updateWorkoutFinish(
+  db: Database,
+  workoutId: string,
+  finish: Pick<Workout, 'finishedAt' | 'endReason'>,
+): void {
+  db.update(workouts).set(finish).where(eq(workouts.id, workoutId)).run()
 }
 
 export function findWorkoutSetRow(db: Database, setId: string): WorkoutSet | undefined {
