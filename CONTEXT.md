@@ -11,7 +11,7 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Grupo muscular | Conjunto de músculos que soma volume e progresso. O catálogo inicial tem 11: peito, costas, lombar, ombros, bíceps, tríceps, abdômen, quadríceps, posteriores de coxa, glúteos e panturrilhas | `MuscleGroup` | área, região, braço, perna, core |
 | Músculo | Músculo ativado por um exercício. Cada músculo pertence a um grupo muscular | `Muscle` | — |
 | Exercício | Movimento cadastrado, do tipo repetição ou tempo, que ativa um ou mais músculos principais e, opcionalmente, músculos secundários | `Exercise` | atividade, movimento |
-| Músculo secundário | Músculo que o exercício ativa de forma auxiliar, como o tríceps no supino. Conta metade do volume para o grupo (proposta da Q08) | `secondaryMuscles` | sinergista |
+| Músculo secundário | Músculo que o exercício ativa de forma auxiliar, como o tríceps no supino. Conta metade do volume para o grupo (proposta da Q08) | `role: 'secondary'`; na entrada do cadastro, `secondaryMuscleSlugs` | sinergista |
 | Tipo de exercício | `repetição` (medido em repetições) ou `tempo` (medido em segundos) | `ExerciseKind = 'reps' \| 'time'` | modalidade |
 
 ## Programa

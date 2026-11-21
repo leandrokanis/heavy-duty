@@ -8,6 +8,13 @@ export type MuscleBody = {
   muscleGroup: { slug: string; name: string }
 }
 
+export type ExerciseBody = {
+  name: string
+  kind: string
+  muscles: { slug: string; role: string }[]
+  muscleGroups: { slug: string; name: string }[]
+}
+
 export function postMuscle(
   request: APIRequestContext,
   data: Record<string, string>,
@@ -15,10 +22,17 @@ export function postMuscle(
   return request.post(`${API_BASE_URL}/api/muscles`, { data })
 }
 
+export function postExercise(
+  request: APIRequestContext,
+  data: Record<string, unknown>,
+): Promise<APIResponse> {
+  return request.post(`${API_BASE_URL}/api/exercises`, { data })
+}
+
 export function callMcpTool(
   request: APIRequestContext,
   name: string,
-  args: Record<string, string>,
+  args: Record<string, unknown>,
 ): Promise<APIResponse> {
   return request.post(`${API_BASE_URL}/mcp`, {
     headers: { accept: 'application/json, text/event-stream' },

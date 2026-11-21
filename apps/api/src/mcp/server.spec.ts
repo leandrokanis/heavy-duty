@@ -69,7 +69,7 @@ describe('Given an app in development with a database', () => {
   })
 
   describe('When tools/list is called on /mcp', () => {
-    it('Then should return list_muscle_groups, list_muscles and add_muscle, none destructive', async () => {
+    it('Then should return the five catalog tools, none destructive', async () => {
       await postJsonRpc(app, INITIALIZE_REQUEST)
       const listed = await postJsonRpc(app, { id: 2, method: 'tools/list', params: {} })
       const tools = (listed.result?.tools ?? []) as ListedTool[]
@@ -99,6 +99,20 @@ describe('Given an app in development with a database', () => {
         },
         {
           name: 'add_muscle',
+          hasDescription: true,
+          hasSchemas: true,
+          readOnly: false,
+          destructive: false,
+        },
+        {
+          name: 'list_exercises',
+          hasDescription: true,
+          hasSchemas: true,
+          readOnly: true,
+          destructive: false,
+        },
+        {
+          name: 'add_exercise',
           hasDescription: true,
           hasSchemas: true,
           readOnly: false,

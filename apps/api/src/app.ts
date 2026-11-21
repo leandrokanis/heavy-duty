@@ -4,6 +4,7 @@ import type { Database } from './db/connection.js'
 import { createRouter, handleError, handleNotFound } from './http/errors.js'
 import { DEFAULT_MCP_ALLOWED_HOSTS, mcpHostGuard } from './mcp/host-guard.js'
 import { handleMcpRequest, MCP_PATH } from './mcp/server.js'
+import { createExerciseRoutes } from './modules/catalog/exercise.routes.js'
 import { createMuscleRoutes } from './modules/catalog/muscle.routes.js'
 import { createMuscleGroupRoutes } from './modules/catalog/muscle-group.routes.js'
 import { createHealthRoutes } from './modules/system/health.routes.js'
@@ -27,6 +28,7 @@ export function createApp(options: AppOptions): OpenAPIHono {
     if (options.db) {
       app.route('/', createMuscleGroupRoutes(options.db))
       app.route('/', createMuscleRoutes(options.db))
+      app.route('/', createExerciseRoutes(options.db))
     }
     app.doc31(OPENAPI_DOCUMENT_PATH, OPENAPI_CONFIG)
     app.get('/api/docs', swaggerUI({ url: OPENAPI_DOCUMENT_PATH }))

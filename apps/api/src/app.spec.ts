@@ -36,11 +36,21 @@ describe('Given an app in production with a database', () => {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ name: 'peitoral maior', muscleGroupSlug: 'chest' }),
         }),
+        app.request('/api/exercises'),
+        app.request('/api/exercises', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            name: 'Supino reto',
+            kind: 'reps',
+            primaryMuscleSlugs: ['peitoral-maior'],
+          }),
+        }),
         app.request('/mcp', { method: 'POST' }),
       ]
       const statuses = (await Promise.all(requests)).map((response) => response.status)
 
-      expect(statuses).toEqual([404, 404, 404, 404])
+      expect(statuses).toEqual([404, 404, 404, 404, 404, 404])
     })
   })
 })
@@ -53,7 +63,7 @@ describe('Given an app in development with a database', () => {
   })
 
   describe('When the OpenAPI document is generated', () => {
-    it('Then should declare GET /api/muscle-groups, GET /api/muscles and POST /api/muscles', async () => {
+    it('Then should declare the catalog routes, with GET /api/exercises answering 200 and 500 and POST /api/exercises answering 201, 400, 409, 422 and 500', async () => {
       const response = await app.request('/api/openapi.json')
       const document = (await response.json()) as {
         paths: Record<string, Record<string, { responses: Record<string, unknown> }>>
@@ -65,10 +75,14 @@ describe('Given an app in development with a database', () => {
         listMuscleGroups: responseCodes('/api/muscle-groups', 'get'),
         listMuscles: responseCodes('/api/muscles', 'get'),
         addMuscle: responseCodes('/api/muscles', 'post'),
+        listExercises: responseCodes('/api/exercises', 'get'),
+        addExercise: responseCodes('/api/exercises', 'post'),
       }).toEqual({
         listMuscleGroups: ['200', '500'],
         listMuscles: ['200', '500'],
         addMuscle: ['201', '400', '409', '422', '500'],
+        listExercises: ['200', '500'],
+        addExercise: ['201', '400', '409', '422', '500'],
       })
     })
   })

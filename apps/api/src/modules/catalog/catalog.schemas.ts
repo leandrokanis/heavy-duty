@@ -37,3 +37,46 @@ export const AddMuscleInputSchema = z
 
 export type Muscle = z.infer<typeof MuscleSchema>
 export type AddMuscleInput = z.infer<typeof AddMuscleInputSchema>
+
+export const ExerciseKindSchema = z.enum(['reps', 'time']).openapi('ExerciseKind')
+
+export const ExerciseMuscleSchema = MuscleSchema.extend({
+  role: z.enum(['primary', 'secondary']).openapi({ example: 'secondary' }),
+}).openapi('ExerciseMuscle')
+
+export const ExerciseSchema = z
+  .object({
+    id: z.string().openapi({ example: '0193a1b2-0000-7000-8000-000000000201' }),
+    slug: z.string().openapi({ example: 'supino-reto' }),
+    name: z.string().openapi({ example: 'Supino reto' }),
+    kind: ExerciseKindSchema,
+    muscles: z.array(ExerciseMuscleSchema),
+    muscleGroups: z.array(MuscleGroupSchema.pick({ id: true, slug: true, name: true })),
+  })
+  .openapi('Exercise')
+
+export const ExerciseListSchema = z
+  .object({ exercises: z.array(ExerciseSchema) })
+  .openapi('ExerciseList')
+
+// Same as AddMuscleInputSchema: the service refuses missing or invalid values,
+// so kind stays a free string here.
+export const AddExerciseInputSchema = z
+  .object({
+    name: z.string().optional().openapi({ example: 'Supino reto' }),
+    kind: z.string().optional().openapi({ example: 'reps' }),
+    primaryMuscleSlugs: z
+      .array(z.string())
+      .optional()
+      .openapi({ example: ['peitoral-maior'] }),
+    secondaryMuscleSlugs: z
+      .array(z.string())
+      .optional()
+      .openapi({ example: ['triceps-braquial'] }),
+  })
+  .openapi('AddExerciseInput')
+
+export type ExerciseKind = z.infer<typeof ExerciseKindSchema>
+export type ExerciseMuscle = z.infer<typeof ExerciseMuscleSchema>
+export type Exercise = z.infer<typeof ExerciseSchema>
+export type AddExerciseInput = z.infer<typeof AddExerciseInputSchema>

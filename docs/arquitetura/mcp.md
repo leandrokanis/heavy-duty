@@ -27,8 +27,10 @@ As ferramentas existem só quando a API abriu o banco. Sem banco, `tools/list` d
 | `list_muscle_groups` | List the muscle groups of the catalog, in catalog order. | Nenhum | Não (`readOnlyHint: true`) | `listMuscleGroups`, em `modules/catalog/muscle-group.service.ts` |
 | `list_muscles` | List the registered muscles, each with its muscle group, ordered by slug. | Nenhum | Não (`readOnlyHint: true`) | `listMuscles`, em `modules/catalog/muscle.service.ts` |
 | `add_muscle` | Register a muscle in a muscle group. muscleGroupSlug is a slug from list_muscle_groups, such as "triceps". | `name` (texto), `muscleGroupSlug` (texto) | Não (`destructiveHint: false`) | `addMuscle`, em `modules/catalog/muscle.service.ts` |
+| `list_exercises` | List the active exercises ordered by slug, each with its kind, its muscles with role (primary or secondary) and muscle group, and the muscle groups it works. | Nenhum | Não (`readOnlyHint: true`) | `listExercises`, em `modules/catalog/exercise.service.ts` |
+| `add_exercise` | Register an exercise. kind is "reps" (measured in repetitions) or "time" (measured in seconds). primaryMuscleSlugs needs at least one muscle; secondaryMuscleSlugs is optional. Both take slugs from list_muscles, such as "peitoral-maior". | `name` (texto), `kind` (texto: `reps` ou `time`), `primaryMuscleSlugs` (lista de textos), `secondaryMuscleSlugs` (lista de textos, opcional) | Não (`destructiveHint: false`) | `addExercise`, em `modules/catalog/exercise.service.ts` |
 
-A US-F01-01 trouxe as três ferramentas. As rotas HTTP equivalentes estão em `contratos.md`, na seção "Catálogo de grupos musculares e músculos".
+A US-F01-01 trouxe as três primeiras ferramentas, e a US-F01-02 trouxe `list_exercises` e `add_exercise`. As rotas HTTP equivalentes estão em `contratos.md`, nas seções "Catálogo de grupos musculares e músculos" e "Catálogo de exercícios". O schema aceita os campos de `add_exercise` como opcionais, e o service recusa o campo ausente ou inválido, como na rota HTTP.
 
 ## Resultado e erro das ferramentas
 

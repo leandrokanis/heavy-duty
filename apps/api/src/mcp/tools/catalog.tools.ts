@@ -1,11 +1,15 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import {
+  AddExerciseInputSchema,
   AddMuscleInputSchema,
+  ExerciseListSchema,
+  ExerciseSchema,
   MuscleGroupListSchema,
   MuscleListSchema,
   MuscleSchema,
 } from '../../modules/catalog/catalog.schemas.js'
+import { addExercise, listExercises } from '../../modules/catalog/exercise.service.js'
 import { addMuscle, listMuscles } from '../../modules/catalog/muscle.service.js'
 import { listMuscleGroups } from '../../modules/catalog/muscle-group.service.js'
 import type { ToolDeps } from './index.js'
@@ -44,5 +48,29 @@ export function registerCatalogTools(server: McpServer, { db }: ToolDeps): void 
       annotations: { readOnlyHint: false, destructiveHint: false },
     },
     (input) => runTool(() => addMuscle(db, input)),
+  )
+
+  server.registerTool(
+    'list_exercises',
+    {
+      description:
+        'List the active exercises ordered by slug, each with its kind, its muscles with role (primary or secondary) and muscle group, and the muscle groups it works.',
+      inputSchema: z.object({}),
+      outputSchema: ExerciseListSchema,
+      annotations: { readOnlyHint: true },
+    },
+    () => runTool(() => listExercises(db)),
+  )
+
+  server.registerTool(
+    'add_exercise',
+    {
+      description:
+        'Register an exercise. kind is "reps" (measured in repetitions) or "time" (measured in seconds). primaryMuscleSlugs needs at least one muscle; secondaryMuscleSlugs is optional. Both take slugs from list_muscles, such as "peitoral-maior".',
+      inputSchema: AddExerciseInputSchema,
+      outputSchema: ExerciseSchema,
+      annotations: { readOnlyHint: false, destructiveHint: false },
+    },
+    (input) => runTool(() => addExercise(db, input)),
   )
 }

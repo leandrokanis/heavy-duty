@@ -4,6 +4,7 @@ import { DomainError } from '../../errors/domain-error.js'
 import type { AddMuscleInput, Muscle } from './catalog.schemas.js'
 import { existsMuscleWithSlug, insertMuscle, listMuscleRows } from './muscle.repository.js'
 import { findMuscleGroupBySlug } from './muscle-group.repository.js'
+import { toSlug } from './slug.js'
 
 export function listMuscles(db: Database): { muscles: Muscle[] } {
   return { muscles: listMuscleRows(db) }
@@ -11,7 +12,7 @@ export function listMuscles(db: Database): { muscles: Muscle[] } {
 
 export function addMuscle(db: Database, input: AddMuscleInput): Muscle {
   const name = (input.name ?? '').trim()
-  const slug = toMuscleSlug(name)
+  const slug = toSlug(name)
   if (!input.muscleGroupSlug) {
     throw new DomainError('muscle_group_required', 'informe o grupo muscular', 'invalid')
   }
@@ -38,14 +39,4 @@ export function addMuscle(db: Database, input: AddMuscleInput): Muscle {
   }
   insertMuscle(db, { id: muscle.id, muscleGroupId: group.id, slug, name })
   return muscle
-}
-
-function toMuscleSlug(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
 }
