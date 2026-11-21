@@ -18,8 +18,18 @@ Este documento lista as ferramentas do servidor MCP da API: nome, descrição, p
 
 ## Lista de ferramentas
 
-O EN-S0 não registra ferramenta: `tools/list` devolve uma lista vazia. A primeira ferramenta entra na US-F01-01.
+As ferramentas existem só quando a API abriu o banco. Sem banco, `tools/list` devolve uma lista vazia.
 
 | Ferramenta | Descrição | Parâmetros | Destrutiva | Service |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| `list_muscle_groups` | List the muscle groups of the catalog, in catalog order. | Nenhum | Não (`readOnlyHint: true`) | `listMuscleGroups`, em `modules/catalog/muscle-group.service.ts` |
+| `list_muscles` | List the registered muscles, each with its muscle group, ordered by slug. | Nenhum | Não (`readOnlyHint: true`) | `listMuscles`, em `modules/catalog/muscle.service.ts` |
+| `add_muscle` | Register a muscle in a muscle group. muscleGroupSlug is a slug from list_muscle_groups, such as "triceps". | `name` (texto), `muscleGroupSlug` (texto) | Não (`destructiveHint: false`) | `addMuscle`, em `modules/catalog/muscle.service.ts` |
+
+A US-F01-01 trouxe as três ferramentas. As rotas HTTP equivalentes estão em `contratos.md`, na seção "Catálogo de grupos musculares e músculos".
+
+## Resultado e erro das ferramentas
+
+- O resultado traz o mesmo objeto da rota HTTP em `structuredContent` e, em JSON, no primeiro item de `content`. Cada ferramenta declara o `outputSchema` desse objeto.
+- A recusa de domínio volta com `isError: true` e `{ code, message }` em JSON no texto, igual ao corpo da recusa HTTP. Exemplo: `add_muscle` sem `muscleGroupSlug` devolve `{ "code": "muscle_group_required", "message": "informe o grupo muscular" }`.
+- O erro inesperado vai para o log da API e volta com `isError: true` e `{ "code": "internal_error", "message": "erro interno do servidor" }`. O SDK 1.32.2 converte todo erro lançado pela ferramenta em resultado `isError` com a mensagem crua. A tradução em `apps/api/src/mcp/tools/tool-result.ts` impede que o detalhe interno chegue ao cliente.

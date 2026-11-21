@@ -1,15 +1,24 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { createApp } from '../src/app.js'
+import { openDatabase } from '../src/db/connection.js'
+import { runMigrations } from '../src/db/migrate.js'
 import { compareDocuments, OPENAPI_CONFIG } from '../src/openapi/document.js'
 
 const VERSIONED_PATH = fileURLToPath(
   new URL('../../../docs/arquitetura/openapi.json', import.meta.url),
 )
 
+// Catalog routes are mounted only with a database, so the document needs one.
 function generateDocument(): string {
-  const app = createApp({ nodeEnv: 'development', databaseHealth: () => true })
-  return `${JSON.stringify(app.getOpenAPI31Document(OPENAPI_CONFIG), null, 2)}\n`
+  const db = openDatabase(':memory:')
+  try {
+    runMigrations(db)
+    const app = createApp({ nodeEnv: 'development', databaseHealth: () => true, db })
+    return `${JSON.stringify(app.getOpenAPI31Document(OPENAPI_CONFIG), null, 2)}\n`
+  } finally {
+    db.$client.close()
+  }
 }
 
 function readVersionedDocument(): string {
