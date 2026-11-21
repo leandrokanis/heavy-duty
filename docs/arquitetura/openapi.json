@@ -5,7 +5,19 @@
     "version": "0.0.0",
     "description": "HTTP API of the Heavy Duty training app."
   },
+  "security": [
+    {
+      "sessionCookie": []
+    }
+  ],
   "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "hd_session"
+      }
+    },
     "schemas": {
       "HealthUp": {
         "type": "object",
@@ -65,6 +77,43 @@
           "status",
           "database"
         ]
+      },
+      "CeremonyOptions": {
+        "type": "object",
+        "additionalProperties": {},
+        "description": "PublicKeyCredential options JSON for @simplewebauthn/browser"
+      },
+      "EnrollmentRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Token from the enrollment link fragment"
+          },
+          "response": {
+            "description": "RegistrationResponseJSON from the browser"
+          }
+        }
+      },
+      "AuthSession": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "example": "2026-12-21T12:00:00.000Z"
+          }
+        },
+        "required": [
+          "expiresAt"
+        ]
+      },
+      "SignInRequest": {
+        "type": "object",
+        "properties": {
+          "response": {
+            "description": "AuthenticationResponseJSON from the browser"
+          }
+        }
       },
       "MuscleGroupList": {
         "type": "object",
@@ -409,6 +458,7 @@
           "system"
         ],
         "summary": "Report the API and database status",
+        "security": [],
         "responses": {
           "200": {
             "description": "The API is running and the database answers",
@@ -443,6 +493,321 @@
         }
       }
     },
+    "/api/auth/enrollment/options": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Start the enrollment of a passkey with the token of an enrollment link",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Options for navigator.credentials.create()",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CeremonyOptions"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "enrollment_token_invalid: the enrollment link expired, was used or does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The Origin header belongs to another site",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/enrollment/verify": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Finish the enrollment, spend the enrollment link and open an access session",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The passkey was stored and the hd_session cookie was set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "enrollment_token_invalid or enrollment_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The Origin header belongs to another site",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/sign-in/options": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Start a sign-in with a discoverable passkey",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Options for navigator.credentials.get()",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CeremonyOptions"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The Origin header belongs to another site",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/sign-in/verify": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Finish the sign-in and open an access session",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignInRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The passkey was verified and the hd_session cookie was set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: the body is not a JSON object",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "sign_in_failed: the passkey is unknown or the verification failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The Origin header belongs to another site",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/session": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Report whether the access session cookie is valid",
+        "responses": {
+          "200": {
+            "description": "The access session is valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSession"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Sign out: end the access session and clear its cookie",
+        "responses": {
+          "204": {
+            "description": "The access session ended and the cookie was cleared"
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The Origin header belongs to another site",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/muscle-groups": {
       "get": {
         "tags": [
@@ -456,6 +821,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MuscleGroupList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -486,6 +861,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MuscleList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -530,6 +915,16 @@
           },
           "400": {
             "description": "Missing muscle group (muscle_group_required) or missing name (muscle_name_required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
             "content": {
               "application/json": {
                 "schema": {
@@ -588,6 +983,16 @@
               }
             }
           },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected error",
             "content": {
@@ -628,6 +1033,16 @@
           },
           "400": {
             "description": "Missing name (exercise_name_required), missing kind (exercise_kind_required), kind other than reps or time (exercise_kind_invalid), no primary muscle (exercise_muscle_required) or a muscle given twice (exercise_muscle_duplicated)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
             "content": {
               "application/json": {
                 "schema": {
@@ -682,6 +1097,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SystemStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }

@@ -1,7 +1,7 @@
 import { type APIRequestContext, expect } from '@playwright/test'
 import { createBdd, type DataTable } from 'playwright-bdd'
 import {
-  API_BASE_URL,
+  APP_BASE_URL,
   callMcpTool,
   type ExerciseBody,
   type MuscleBody,
@@ -21,7 +21,7 @@ function splitList(names: string): string[] {
 
 // The feature keeps the muscle names of the PRD; the API takes the slug it assigned.
 async function toMuscleSlugs(request: APIRequestContext, names: string): Promise<string[]> {
-  const response = await request.get(`${API_BASE_URL}/api/muscles`)
+  const response = await request.get(`${APP_BASE_URL}/api/muscles`)
   const body = (await response.json()) as { muscles: (MuscleBody & { slug: string })[] }
   return splitList(names).map((name) => {
     const muscle = body.muscles.find((candidate) => candidate.name === name)
@@ -37,7 +37,7 @@ async function findListedExercise(
   catalog: CatalogState,
   name: string,
 ): Promise<ExerciseBody | undefined> {
-  const response = catalog.exerciseList ?? (await request.get(`${API_BASE_URL}/api/exercises`))
+  const response = catalog.exerciseList ?? (await request.get(`${APP_BASE_URL}/api/exercises`))
   const body = (await response.json()) as { exercises: ExerciseBody[] }
   return body.exercises.find((candidate) => candidate.name === name)
 }
@@ -92,7 +92,7 @@ Given(
 )
 
 When('the exercise list is requested over HTTP', async ({ request, catalog }) => {
-  catalog.exerciseList = await request.get(`${API_BASE_URL}/api/exercises`)
+  catalog.exerciseList = await request.get(`${APP_BASE_URL}/api/exercises`)
 })
 
 Then('the exercise should be available for programs', async ({ catalog }) => {

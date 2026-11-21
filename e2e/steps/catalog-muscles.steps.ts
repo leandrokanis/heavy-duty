@@ -1,12 +1,12 @@
 import { expect } from '@playwright/test'
 import { createBdd, type DataTable } from 'playwright-bdd'
-import { API_BASE_URL, callMcpTool, type MuscleBody, postMuscle } from './catalog-api.js'
+import { APP_BASE_URL, callMcpTool, type MuscleBody, postMuscle } from './catalog-api.js'
 import { lastResponseOf, test } from './catalog-fixtures.js'
 
 const { Given, When, Then } = createBdd(test)
 
 Given('the catalog has the 11 muscle groups of D30', async ({ request }) => {
-  const response = await request.get(`${API_BASE_URL}/api/muscle-groups`)
+  const response = await request.get(`${APP_BASE_URL}/api/muscle-groups`)
   const body = (await response.json()) as { muscleGroups: unknown[] }
 
   expect(body.muscleGroups).toHaveLength(11)
@@ -37,11 +37,11 @@ Given(
 )
 
 When('the planner lists the muscle groups', async ({ request, catalog }) => {
-  catalog.lastResponse = await request.get(`${API_BASE_URL}/api/muscle-groups`)
+  catalog.lastResponse = await request.get(`${APP_BASE_URL}/api/muscle-groups`)
 })
 
 When('the muscle list is requested over HTTP', async ({ request, catalog }) => {
-  catalog.muscleList = await request.get(`${API_BASE_URL}/api/muscles`)
+  catalog.muscleList = await request.get(`${APP_BASE_URL}/api/muscles`)
 })
 
 Then('the muscle should be available for exercises', async ({ catalog }) => {
@@ -51,7 +51,7 @@ Then('the muscle should be available for exercises', async ({ catalog }) => {
 Then(
   'the muscle list should show {string} linked to the group {string}',
   async ({ request, catalog }, name: string, muscleGroupName: string) => {
-    const response = catalog.muscleList ?? (await request.get(`${API_BASE_URL}/api/muscles`))
+    const response = catalog.muscleList ?? (await request.get(`${APP_BASE_URL}/api/muscles`))
     const body = (await response.json()) as { muscles: MuscleBody[] }
     const muscle = body.muscles.find((candidate) => candidate.name === name)
 

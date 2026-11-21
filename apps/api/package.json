@@ -17,6 +17,7 @@
     "backup:run": "tsx src/modules/system/backup/run.ts",
     "backup:scheduler": "tsx src/modules/system/backup/scheduler.ts",
     "backup:verify": "tsx src/modules/system/backup/verify.ts",
+    "auth:enroll": "tsx src/modules/auth/enroll.ts",
     "openapi": "tsx scripts/openapi.ts",
     "openapi:check": "tsx scripts/openapi.ts --check"
   },
@@ -25,6 +26,7 @@
     "@hono/swagger-ui": "0.6.2",
     "@hono/zod-openapi": "1.6.3",
     "@modelcontextprotocol/sdk": "1.32.2",
+    "@simplewebauthn/server": "14.0.3",
     "better-sqlite3": "13.2.0",
     "drizzle-orm": "0.45.4",
     "hono": "4.13.19",

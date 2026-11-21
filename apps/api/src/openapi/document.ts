@@ -1,12 +1,23 @@
 export const OPENAPI_DOCUMENT_PATH = '/api/openapi.json'
 
-export const OPENAPI_CONFIG = {
+export const OPENAPI_CONFIG: {
+  openapi: string
+  info: { title: string; version: string; description: string }
+  security: Record<string, string[]>[]
+} = {
   openapi: '3.1.0',
   info: {
     title: 'Heavy Duty API',
     version: '0.0.0',
     description: 'HTTP API of the Heavy Duty training app.',
   },
+  security: [{ sessionCookie: [] }],
+}
+
+export const SESSION_COOKIE_SECURITY_SCHEME = {
+  type: 'apiKey',
+  in: 'cookie',
+  name: 'hd_session',
 } as const
 
 export type DocumentComparison = {

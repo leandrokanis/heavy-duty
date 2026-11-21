@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { createApp } from '../../app.js'
 import { runSeed } from '../../db/seed.js'
 import { createTestDatabase } from '../../test/database.js'
+import { createSignedInApp } from '../../test/session.js'
 
 describe('Given a seeded database', () => {
   const db = createTestDatabase()
   runSeed(db)
-  const app = createApp({ nodeEnv: 'test', databaseHealth: () => true, db })
+  const app = createSignedInApp(createApp({ nodeEnv: 'test', databaseHealth: () => true, db }), db)
 
   describe('When GET /api/muscle-groups is requested', () => {
     it('Then should respond 200 with the 11 groups ordered by position, each with id, slug, name and position', async () => {

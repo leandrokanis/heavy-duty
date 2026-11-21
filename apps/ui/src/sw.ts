@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
-import { defaultCache } from '@serwist/next/worker'
 import { type PrecacheEntry, Serwist, type SerwistGlobalConfig } from 'serwist'
+import { runtimeCaching } from './sw-runtime-caching'
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -15,7 +15,7 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  runtimeCaching,
   fallbacks: {
     entries: [
       {

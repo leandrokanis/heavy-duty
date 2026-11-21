@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createApp } from '../../app.js'
 import { createId } from '../../db/id.js'
 import { createTestDatabase } from '../../test/database.js'
+import { createSignedInApp } from '../../test/session.js'
 import { type BackupRunRow, insertBackupRun } from './backup-run.repository.js'
 
 function backupRun(fields: Partial<BackupRunRow> & Pick<BackupRunRow, 'startedAt'>): BackupRunRow {
@@ -19,11 +20,11 @@ function backupRun(fields: Partial<BackupRunRow> & Pick<BackupRunRow, 'startedAt
 describe('Given a migrated database with no backup run', () => {
   describe('When GET /api/system/status is requested', () => {
     it('Then should respond 200 with latestRun null, lastSuccessfulRun null and an empty recentRuns', async () => {
-      const app = createApp({
-        nodeEnv: 'test',
-        databaseHealth: () => true,
-        db: createTestDatabase(),
-      })
+      const db = createTestDatabase()
+      const app = createSignedInApp(
+        createApp({ nodeEnv: 'test', databaseHealth: () => true, db }),
+        db,
+      )
 
       const response = await app.request('/api/system/status')
 
@@ -56,7 +57,10 @@ describe('Given a succeeded run on 2026-11-19, eight more runs, and a failed run
       for (const run of [latestFailed, succeeded, ...[...failedInBetween].reverse()]) {
         insertBackupRun(db, run)
       }
-      const app = createApp({ nodeEnv: 'test', databaseHealth: () => true, db })
+      const app = createSignedInApp(
+        createApp({ nodeEnv: 'test', databaseHealth: () => true, db }),
+        db,
+      )
 
       const response = await app.request('/api/system/status')
 

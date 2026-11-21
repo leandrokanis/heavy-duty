@@ -5,7 +5,7 @@
 | Nível C4 | 2, contêiner |
 | Pasta | `apps/ui` (`@heavy-duty/ui`) |
 | Onde roda | Processo Node.js no kasparov (servidor do Next.js) e navegador do celular ou do Mac (cliente) |
-| ADRs | ADR-009, ADR-002; substituiu a ADR-003 |
+| ADRs | ADR-009, ADR-002, ADR-019; substituiu a ADR-003 |
 | Ondas | 1 em diante |
 
 ## Responsabilidade
@@ -30,6 +30,7 @@ O app web não guarda regra de negócio. Validação de domínio, cálculo do jo
 | Tailwind CSS 4 | Estilo, com os tokens do `DESIGN.md` no tema | MIT | Aceita, ADR-009 |
 | Motion | Animação, exigida pelo Animate UI | MIT | Aceita, ADR-009 |
 | Serwist (`@serwist/next` 9.5.15) | Service worker: pré-carga, página sem conexão em `/~offline`, recebimento do Web Push | MIT | Aceita, ADR-009 |
+| `@simplewebauthn/browser` 14.0.0 | Cerimônias da chave de acesso no navegador (`startAuthentication`, `startRegistration`) | MIT | Aceita, ADR-019 |
 | TanStack Query | Cache e revalidação dos dados da API no cliente | MIT | Adiado para a onda 3 |
 | Dexie | Acesso ao IndexedDB (contêiner de armazenamento local) | Apache-2.0 | Adiado para a onda 3 (US-F03-03) |
 | Zod | Validação dos dados que chegam da API | MIT | Adiado para a onda 3 |
@@ -53,13 +54,16 @@ apps/ui/src/
     (treino)/              treino do dia, série, descanso, sequência: renderizados no cliente
     mapa/  periodo/        telas do jogo (ondas 5 a 7)
     admin/                 telas de administração no Mac (proposta para a Q10)
-    entrar/                autenticação (depende da ADR de autenticação)
+    cadastro/              cadastro da chave de acesso pelo link de cadastro (US-F14-01)
+    ~offline/              página sem conexão
     manifest.ts            manifesto do PWA
   components/ui/           componentes do Animate UI, sobre o Base UI, adaptados ao DESIGN.md
-  features/<feature>/      componentes, hooks e serviços de uma feature (workout, rest, game…)
+  features/<feature>/      componentes, hooks e serviços de uma feature (auth, workout, rest, game…)
+  features/auth/           AuthGate, tela de entrada, tela de cadastro, aviso sem conexão, cliente de /api/auth/*
   shared/                  utilitários usados por duas features ou mais
   sync/                    fila do armazenamento local e envio para a API
   sw.ts                    service worker (Serwist)
+  sw-runtime-caching.ts    regras de cache do service worker: /api/* só pela rede
   test/factories/          factories fishery
 ```
 
@@ -71,5 +75,9 @@ apps/ui/src/
 4. Cor, espaço, raio, material e duração vêm dos tokens do `DESIGN.md`, declarados no tema do Tailwind. Componente do Animate UI que traz cor ou raio próprio é ajustado aos tokens.
 5. Animação respeita `prefers-reduced-motion`, e vidro respeita `prefers-reduced-transparency` e `prefers-contrast: more` (`DESIGN.md`, Seções 12 e 15).
 6. O comportamento sem rede é testado no build de produção, porque o `next.config.ts` só aplica o Serwist fora de `NODE_ENV=development`: o `next dev` com Turbopack recusa a configuração de webpack que o Serwist acrescenta (conferido no EN-S0). O cenário `@EN-S0` do e2e executa contra o build de produção.
+
+7. O `AuthGate` do layout raiz consulta `GET /api/auth/session` e mostra a tela de entrada no lugar da tela pedida, na mesma URL, quando a resposta é 401; depois da entrada, mostra a tela pedida. Enquanto consulta, não mostra nada; na falha de rede ou na API fora do ar, mostra "Sem conexão". `/cadastro` e `/~offline` passam direto (ADR-019). A API é a fronteira de segurança: a tela não traz dado no HTML.
+8. O service worker não guarda resposta de `/api/*` do mesmo domínio: a primeira regra de `runtimeCaching` é `NetworkOnly` para essas rotas, antes do `defaultCache`. A saída (`signOut`) apaga todos os caches cujo nome não contém `precache` (FR-019, FR-020).
+9. O manifesto declara ícones PNG de 192 e 512 px e um de 512 px `maskable`; o layout declara o `apple-touch-icon` de 180 px. Os PNG são versionados e renderizados dos SVG com o Chromium (`apps/ui/README.md`).
 
 As regras de produto e de interface do dia a dia estão em `apps/ui/CLAUDE.md` e em `DESIGN.md`.

@@ -36,6 +36,8 @@ Siga `DESIGN.md` em toda tela e todo componente. Regras que mais erram:
 4. O registro funciona sem rede. A série vai para a fila local e segue para a API quando a conexão volta (F03, H10).
 5. A carga não fica negativa.
 6. O texto exibido ao usuário é em português do Brasil. Nome de componente, prop e identificador são em inglês.
+7. O `AuthGate` (`src/features/auth/auth-gate.tsx`) envolve toda tela no layout raiz e mostra a tela de entrada quando não há sessão de acesso. Só `/cadastro` e `/~offline` passam direto; não acrescente caminho sem ADR (ADR-019).
+8. O service worker não guarda resposta de `/api/*` (`src/sw-runtime-caching.ts`). Não acrescente regra de cache para a API antes da US-F03-03.
 
 ## Testes
 

@@ -26,6 +26,8 @@ services:
       <<: *node-environment
       PORT: "3001"
       DATABASE_PATH: /app/data/heavy-duty.dev.sqlite
+      # WebAuthn needs a domain as RP ID, so development uses localhost, not 127.0.0.1 (ADR-019).
+      APP_ORIGIN: http://localhost:${PROXY_PORT:-8080}
     volumes:
       - .:/app
       - api-root-node-modules:/app/node_modules

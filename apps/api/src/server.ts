@@ -3,6 +3,7 @@ import { createApp } from './app.js'
 import { loadConfig } from './config/env.js'
 import { type Database, openDatabase } from './db/connection.js'
 import { createDatabaseHealthProbe } from './db/health.js'
+import { createWebAuthnVerifier } from './modules/auth/webauthn.js'
 import type { DatabaseHealthProbe } from './modules/system/health.service.js'
 
 type DatabaseState = {
@@ -28,10 +29,14 @@ const app = createApp({
   databaseHealth,
   db,
   mcpAllowedHosts: config.mcpAllowedHosts,
+  appOrigin: config.appOrigin,
+  webAuthn: createWebAuthnVerifier({ appOrigin: config.appOrigin, rpId: config.rpId }),
 })
 
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
-  console.log(`Heavy Duty API listening on port ${info.port} (${config.nodeEnv})`)
+  console.log(
+    `Heavy Duty API listening on port ${info.port} (${config.nodeEnv}, origin ${config.appOrigin})`,
+  )
 })
 
 function shutdown(): void {

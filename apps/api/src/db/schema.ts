@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { check, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { blob, check, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
@@ -70,3 +70,33 @@ export const backupRuns = sqliteTable(
     ),
   ],
 )
+
+export const authCredentials = sqliteTable(
+  'auth_credentials',
+  {
+    id: text('id').primaryKey(),
+    credentialId: text('credential_id').notNull().unique(),
+    publicKey: blob('public_key', { mode: 'buffer' }).notNull(),
+    counter: integer('counter').notNull(),
+    transports: text('transports'),
+    createdAt: text('created_at').notNull(),
+    lastUsedAt: text('last_used_at'),
+  },
+  (table) => [check('auth_credentials_counter_check', sql`${table.counter} >= 0`)],
+)
+
+export const authSessions = sqliteTable('auth_sessions', {
+  id: text('id').primaryKey(),
+  tokenHash: text('token_hash').notNull().unique(),
+  createdAt: text('created_at').notNull(),
+  expiresAt: text('expires_at').notNull(),
+  lastSeenAt: text('last_seen_at').notNull(),
+})
+
+export const enrollmentTokens = sqliteTable('enrollment_tokens', {
+  id: text('id').primaryKey(),
+  tokenHash: text('token_hash').notNull().unique(),
+  createdAt: text('created_at').notNull(),
+  expiresAt: text('expires_at').notNull(),
+  usedAt: text('used_at'),
+})

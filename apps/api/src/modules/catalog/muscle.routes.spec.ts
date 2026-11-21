@@ -3,11 +3,13 @@ import { createApp } from '../../app.js'
 import type { Database } from '../../db/connection.js'
 import { runSeed } from '../../db/seed.js'
 import { createTestDatabase } from '../../test/database.js'
+import { createSignedInApp } from '../../test/session.js'
 
 function createSeededApp(): { app: ReturnType<typeof createApp>; db: Database } {
   const db = createTestDatabase()
   runSeed(db)
-  return { app: createApp({ nodeEnv: 'test', databaseHealth: () => true, db }), db }
+  const app = createSignedInApp(createApp({ nodeEnv: 'test', databaseHealth: () => true, db }), db)
+  return { app, db }
 }
 
 function postMuscle(app: ReturnType<typeof createApp>, body: Record<string, unknown>) {

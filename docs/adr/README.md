@@ -24,6 +24,7 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-016](016-icones-lucide.md) | Ícones do Lucide | Aceita |
 | [ADR-017](017-contrato-da-api-com-zod-openapi.md) | Contrato da API com zod-openapi e Swagger UI | Aceita |
 | [ADR-018](018-backup-diario-com-restic.md) | Backup diário com restic | Aceita |
+| [ADR-019](019-autenticacao-com-chave-de-acesso.md) | Autenticação do app web com chave de acesso | Aceita |
 
 ## Regras
 

@@ -1,5 +1,8 @@
 import type { MetadataRoute } from 'next'
 
+// The splash screen matches the icon background [a confirmar: colors with the PO].
+const ICON_BACKGROUND = '#1c1c1e'
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Heavy Duty',
@@ -9,12 +12,16 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/',
     scope: '/',
     display: 'standalone',
+    theme_color: ICON_BACKGROUND,
+    background_color: ICON_BACKGROUND,
     icons: [
+      { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
       {
-        src: '/icons/icon.svg',
-        sizes: 'any',
-        type: 'image/svg+xml',
-        purpose: 'any',
+        src: '/icons/icon-maskable-512.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'maskable',
       },
     ],
   }

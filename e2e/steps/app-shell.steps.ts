@@ -1,7 +1,12 @@
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
+import { signInWithCookie, test } from './auth-fixtures.js'
 
-const { Given, When, Then } = createBdd()
+const { Given, When, Then } = createBdd(test)
+
+Given('the athlete signed in with a passkey', async ({ context, sessionCookie }) => {
+  await signInWithCookie(context, sessionCookie)
+})
 
 Given('the athlete opened the home page', async ({ page }) => {
   await page.goto('/')
@@ -38,4 +43,9 @@ Then('the service worker should be active', async ({ page }) => {
     })
 
   await expect.poll(readState).toBe('activated')
+})
+
+Then('the page should not show the {string} button', async ({ page }, name: string) => {
+  await expect(page.getByRole('heading', { name: 'Heavy Duty' })).toBeVisible()
+  await expect(page.getByRole('button', { name })).toHaveCount(0)
 })
