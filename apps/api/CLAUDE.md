@@ -39,8 +39,8 @@ Módulos previstos: `catalog` (grupo muscular, músculo, exercício), `programs`
 ## Comandos
 
 ```sh
-pnpm --filter @tap/api dev
-pnpm --filter @tap/api test
-pnpm --filter @tap/api lint
-pnpm --filter @tap/api typecheck
+pnpm --filter @heavy-duty/api dev
+pnpm --filter @heavy-duty/api test
+pnpm --filter @heavy-duty/api lint
+pnpm --filter @heavy-duty/api typecheck
 ```

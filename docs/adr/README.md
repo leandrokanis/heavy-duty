@@ -12,6 +12,8 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-004](004-api-node-hono.md) | API em Node.js com Hono | Aceita |
 | [ADR-005](005-sqlite.md) | SQLite como banco de dados | Aceita |
 | [ADR-006](006-mcp-no-processo-da-api.md) | Servidor MCP no processo da API | Proposta |
+| [ADR-007](007-smtp-proprio.md) | Envio de e-mail por servidor SMTP próprio no kasparov | Proposta |
+| [ADR-008](008-escopo-heavy-duty-nos-pacotes.md) | Escopo @heavy-duty nos pacotes do workspace | Proposta |
 
 ## Regras
 

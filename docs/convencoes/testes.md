@@ -2,7 +2,7 @@
 
 ## Resumo
 
-Este documento define as ferramentas de teste, a estrutura Given/When/Then, as factories e as regras de teste do app de treino.
+Este documento define as ferramentas de teste, a estrutura Given/When/Then, as factories e as regras de teste do Heavy Duty.
 
 ## 1. Introdução
 

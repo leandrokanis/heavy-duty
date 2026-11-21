@@ -42,8 +42,8 @@ Siga `DESIGN.md` em toda tela e todo componente. Regras que mais erram:
 ## Comandos
 
 ```sh
-pnpm --filter @tap/ui dev
-pnpm --filter @tap/ui test
-pnpm --filter @tap/ui lint
-pnpm --filter @tap/ui typecheck
+pnpm --filter @heavy-duty/ui dev
+pnpm --filter @heavy-duty/ui test
+pnpm --filter @heavy-duty/ui lint
+pnpm --filter @heavy-duty/ui typecheck
 ```

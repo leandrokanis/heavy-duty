@@ -1,10 +1,10 @@
-# PRD — App de treino
+# PRD — Heavy Duty
 
 ## 1. Controle
 
 | Campo | Valor |
 |---|---|
-| Versão | 0.2 |
+| Versão | 0.3 |
 | Data | 20/11/2026 |
 | Status | Rascunho — sujeito a revisão humana |
 | Classificação | Público |
@@ -17,7 +17,7 @@ Todas as estimativas (esforço, valor, incerteza, WSJF e prazo) são preliminare
 
 ## 2. Resumo executivo
 
-A frequência de musculação do Leandro caiu para uma vez por semana ou menos porque nada o puxa de volta, e o app que ele usa hoje guarda o histórico em dados presos ou pagos. O produto é um app web pessoal, hospedado no próprio servidor (kasparov), com duas frentes: no celular, o acompanhamento do treino na academia, com um toque por passo; pelo Claude, via MCP, toda a administração. A diferença-chave são os dados sob controle dele, sem assinatura. O benefício principal é uma gamificação leve, desenhada com o Octalysis: janelas de atividade por grupo muscular, calculadas pelo app, que o avisam perto de abrir e de fechar, em períodos de 12 semanas. O MVP (ondas 1 a 4) entrega o núcleo: registro e administração. A gamificação vem nas ondas 5 a 7, calibrada com os dados reais do MVP. O principal risco é o MVP nunca ficar pronto, porque não há prazo fixo; a mitigação é acompanhar a data de cada onda na revisão semanal.
+A frequência de musculação do Leandro caiu para uma vez por semana ou menos porque nada o puxa de volta, e o app que ele usa hoje guarda o histórico em dados presos ou pagos. O produto é um app web pessoal, hospedado no próprio servidor (kasparov), com duas frentes: no celular, o acompanhamento do treino na academia, com um toque por passo; pelo Claude, via MCP, toda a administração. A diferença-chave são os dados sob controle dele, sem assinatura. O benefício principal é uma gamificação desenhada com o Octalysis: janelas de atividade por grupo muscular, calculadas pelo app, que o avisam perto de abrir e de fechar, com pontos, níveis e medalhas, em períodos de 12 semanas. O MVP (ondas 1 a 4) entrega o núcleo: registro e administração. A gamificação vem nas ondas 5 a 7, calibrada com os dados reais do MVP. O principal risco é o MVP nunca ficar pronto, porque não há prazo fixo; a mitigação é acompanhar a data de cada onda na revisão semanal.
 
 ---
 
@@ -33,31 +33,33 @@ Sua frequência na academia caiu para uma vez por semana ou menos porque nada te
 - **Premissa:** o uso é pessoal, então a LGPD não pesa enquanto houver um único usuário.
 
 ### Visão
-> Para o Leandro, que voltou a treinar pouco e não quer o histórico de treino preso em um app pago, o app de treino é um registro de musculação hospedado no próprio servidor, que acompanha o treino no celular e o puxa de volta com janelas de atividade por grupo muscular. Diferentemente dos apps prontos de registro, nosso produto mantém todos os dados sob controle dele, sem assinatura.
+> Para o Leandro, que voltou a treinar pouco e não quer o histórico de treino preso em um app pago, o Heavy Duty é um registro de musculação hospedado no próprio servidor, que acompanha o treino no celular e o puxa de volta com janelas de atividade por grupo muscular. Diferentemente dos apps prontos de registro, nosso produto mantém todos os dados sob controle dele, sem assinatura.
 
 ### Projeto de gamificação (Octalysis)
-A gamificação é leve: sem pontos, medalhas, ranking ou elementos sociais. A regra de desenho é que o black hat (escassez, perda) traz de volta e o white hat (realização, criatividade) faz ficar.
+A gamificação usa pontos, níveis por grupo muscular, recordes, medalhas e ranking pessoal, sem elementos sociais (D23). A regra de desenho é que o black hat (escassez, perda) traz de volta e o white hat (realização, criatividade) faz ficar. O projeto completo está em `gamificacao.md`.
 
 | Núcleo | Intensidade proposta (0–10) | Mecânica |
 |---|---|---|
 | 1. Significado | 2 | Frase de intenção do período, exibida no retrato final (proposta) |
-| 2. Realização | 8 | Barra de progresso por grupo muscular e mapa do corpo |
+| 2. Realização | 9 | Pontos por série, nível por grupo muscular, recordes e mapa do corpo |
 | 3. Criatividade e feedback | 5 | Divisão, objetivo e cargas livres; o mapa reage na hora ao registro |
-| 4. Posse | 5 | Coleção de retratos congelados dos períodos |
+| 4. Posse | 7 | Estante de medalhas e coleção de retratos congelados dos períodos |
 | 5. Social | 0 | Excluído |
-| 6. Escassez | 7 | Janela que abre depois do descanso e fecha; avisos perto de abrir e de fechar |
-| 7. Imprevisibilidade | 3 | A janela varia conforme o volume do treino |
-| 8. Perda | 4 | O grupo esfria quando a janela passa, mas nunca perde o progresso já feito |
+| 6. Escassez | 7 | Janela que abre depois do descanso e fecha, com pontos em dobro enquanto aberta; avisos perto de abrir e de fechar |
+| 7. Imprevisibilidade | 5 | A janela varia conforme o volume do treino; medalhas ocultas até a conquista |
+| 8. Perda | 7 | O grupo esfria quando a janela passa e perde nível com o tempo; medalhas, recordes e o melhor nível ficam, e a memória muscular devolve os níveis perdidos com pontos em dobro (D24) |
 
-Equilíbrio: white hat 15 contra black hat 14. Ponto fraco: o lado esquerdo do octógono (2, 4, 6, motivação extrínseca) soma 20, contra 8 do lado direito (3, 5, 7, intrínseca). O risco de perda de força entre a quinta e a oitava semana está registrado como R04.
+Equilíbrio: white hat 16 contra black hat 19. Ponto fraco: o lado esquerdo do octógono (2, 4, 6, motivação extrínseca) soma 23, contra 10 do lado direito (3, 5, 7, intrínseca). O risco de perda de força entre a quinta e a oitava semana está registrado como R04.
 
 **Regras de jogo decididas pelo PO:**
 - A janela é por grupo muscular, e o próprio app calcula quando ela abre e quanto tempo fica aberta, a partir do último treino. O objetivo do programa define a janela-base, e o volume registrado a ajusta.
 - Só musculação conta, em qualquer divisão.
 - O progresso é uma barra por grupo, que cresce mais quando o grupo é treinado dentro da janela.
-- Quando a janela passa sem treino, o grupo esfria, mas não perde progresso.
+- Quando a janela passa sem treino, o grupo esfria e começa a perder nível no mesmo instante, aos poucos, com o tempo. O app avisa antes de cada queda, os níveis perdidos voltam com pontos em dobro até o melhor nível do grupo, e medalhas, recordes, retratos e o melhor nível nunca se perdem (D24).
 - Os períodos duram 12 semanas e terminam com um retrato congelado; o período seguinte recomeça do zero.
 - O app avisa perto de a janela abrir e perto de fechar.
+- Cada série rende pontos relativos ao plano, em dobro dentro da janela. Os pontos sobem o nível de cada grupo treinado, de 1 a 20 (D23, D28).
+- Medalhas, recordes e o ranking pessoal comparam o PO só com o próprio histórico (D23).
 
 ---
 
@@ -97,12 +99,12 @@ Equilíbrio: white hat 15 contra black hat 14. Ponto fraco: o lado esquerdo do o
 | É | Não é |
 |---|---|
 | Um app web pessoal: no celular, voltado para a academia; a administração passa pelo Claude, via MCP, e depois do MVP também por telas no Mac (D22) | Uma rede social ou comunidade de treino |
-| Um registro de musculação com gamificação leve | Um personal trainer que monta treino ou prescreve carga |
+| Um registro de musculação com gamificação: pontos, níveis e medalhas | Um personal trainer que monta treino ou prescreve carga |
 | Uma ferramenta própria, rodando no kasparov | Um app de saúde geral (sono, dieta, cardio, BJJ) |
 
 | Faz | Não faz |
 |---|---|
-| Guia e registra o treino com um toque por passo e ajuste por arrasto | Dar pontos, medalhas ou ranking |
+| Guia e registra o treino com um toque por passo e ajuste por arrasto | Ranking contra outras pessoas ou compartilhamento |
 | Calcula a janela de cada grupo e avisa perto de abrir e de fechar | Sincronizar com relógio, Apple Saúde ou Google Fit |
 | Mostra o progresso por grupo e congela o retrato de cada período | Sugerir mudanças no treino a partir dos dados (**Hipótese**) |
 
@@ -173,6 +175,7 @@ O próximo ciclo trimestral, em meados de dezembro de 2026, é marco do MVP, nã
 | F08 | Mapa do corpo | Feature | 7 | EE | $$$ | ♥♥♥ | Amarelo | O mapa torna o estado das janelas visível de relance | A definir (protótipo antes) |
 | F09 | Avisos perto de abrir e de fechar | Feature | 7 | EE | $$$ | ♥♥ | Amarelo | O aviso é o gatilho que falta hoje (H02) | A definir (depende de Q02) |
 | F11 | Períodos de 12 semanas e retrato | Feature | 7 | E | $ | ♥♥ | Verde | Começo e fim dão sentido ao esforço (Octalysis 4) | A definir (depende de Q01) |
+| F17 | Avisos por e-mail | Feature | 7 | E | $ | ♥ | Vermelho | Um segundo canal garante o gatilho quando o aviso no celular não chega (R01, H02) | Aviso de janela por letra, aviso de queda de nível e resumo semanal por e-mail, sempre junto com o aviso no celular, pelo servidor SMTP próprio (ADR-007) |
 
 ### Enabler de exploração
 - **EN01, calibrar a janela (de F07).** Pergunta: que horas-base por objetivo e que ajuste pelo volume fazem a janela parecer certa no uso real? Insumo: o histórico registrado durante o MVP. Aprendizado esperado: uma regra de cálculo validada pelo PO antes de a janela aparecer.
@@ -222,7 +225,7 @@ Todas as ondas passam nas regras do Caroli (conferidas com código): até 3 func
 | 4 | F04, F06 | Registro completo — **fim do MVP** |
 | 5 | F07, F15a | Janela calibrada com dados reais; indicador de volume |
 | 6 | F10, F12, F15b | Progresso, treino do dia e indicador de janelas |
-| 7 | F08, F09, F11 | Mapa, avisos e períodos: início do primeiro período de 12 semanas |
+| 7 | F08, F09, F11, F17 | Mapa, avisos (no celular e por e-mail) e períodos: início do primeiro período de 12 semanas |
 
 ---
 
@@ -342,6 +345,10 @@ Funcionalidade: Administração via MCP
 - **US-F03-01.** Como atleta, quero abrir o treino do dia com o primeiro exercício pronto e os valores preenchidos, para começar sem configurar nada.
 - **US-F03-02.** Como atleta, quero marcar a série como feita com um toque, para registrar sem interromper o treino.
 - **US-F03-03.** Como atleta, quero registrar o treino mesmo sem sinal, para não depender da internet da academia.
+- **US-F03-04.** Como atleta, quero ver a sequência do treino e ir para qualquer exercício que falta, para seguir quando o equipamento está ocupado.
+- **US-F03-05.** Como atleta, quero pular um exercício, para encurtar o treino quando o tempo está curto.
+- **US-F03-06.** Como atleta, quero rever as séries de um exercício já feito, para conferir o que registrei.
+- **US-F03-07.** Como atleta, quero que o exercício por tempo conte sozinho, com contagem regressiva de 3 segundos e sinal sonoro no começo e no fim, para fazer a série sem olhar o relógio.
 
 ```gherkin
 # language: pt
@@ -371,6 +378,54 @@ Funcionalidade: Execução do treino
     Quando o atleta registra as séries do treino
     Então as séries ficam salvas no aparelho
     E são enviadas ao servidor quando a conexão voltar
+
+  Cenário: exercício fora da ordem
+    Dado que o atleta está no Supino reto da letra "A"
+    Quando ele escolhe o Tríceps na polia na sequência do treino
+    Então o Tríceps na polia aparece com os valores preenchidos
+    E o Supino reto continua na sequência com as séries que faltam
+
+  Cenário: exercício escolhido durante o descanso
+    Dado que o descanso está contando
+    Quando o atleta escolhe outro exercício na sequência
+    Então o descanso continua
+    E o exercício escolhido aparece quando o descanso termina
+
+  Cenário: exercício pulado
+    Quando o atleta pula a Prancha
+    Então o treino segue para o próximo exercício que falta
+    E a Prancha fica marcada como pulada e pode ser feita depois
+
+  Cenário: fim com exercício pulado
+    Dado que só falta a Prancha, que foi pulada
+    Quando o atleta registra a última série do exercício atual
+    Então o treino termina
+    E o resumo mostra a Prancha entre os exercícios que ficaram de fora
+
+  Cenário: rever exercício feito
+    Dado que o atleta terminou o Supino reto
+    Quando ele abre a sequência do treino
+    Então o Supino reto mostra as séries registradas
+
+  Cenário: exercício por tempo
+    Dado que a Prancha exibida tem 45 s
+    Quando o atleta toca em "Próximo"
+    Então uma contagem de 3 segundos começa, com um sinal sonoro por segundo
+    E, ao fim da contagem, um sinal sonoro marca o início da execução
+    E o tempo da execução corre sozinho a partir de 45 s
+
+  Cenário: fim do exercício por tempo
+    Dado que a execução da Prancha está nos últimos 3 segundos
+    Então cada segundo tem um sinal sonoro
+    E, ao chegar a zero, um sinal sonoro de fim toca
+    E a série é registrada com 45 s
+    E o descanso começa
+
+  Cenário: exercício por tempo encerrado antes
+    Dado que a execução da Prancha está em 30 s de 45 s
+    Quando o atleta toca em "Próximo"
+    Então a série é registrada com 15 s
+    E o descanso começa
 ```
 
 ### F05. Descanso do programa
@@ -447,6 +502,50 @@ Funcionalidade: Histórico
     Então a edição é recusada com o motivo "treino não encontrado"
 ```
 
+### F17. Avisos por e-mail (onda 7, fora do MVP)
+
+Esta feature entra com os avisos da onda 7 (D32). As stories das outras features das ondas 5 a 7 ainda serão escritas.
+
+- **US-F17-01.** Como atleta, quero receber por e-mail o aviso de janela, um por letra, para não perder a janela quando o aviso no celular não chega.
+- **US-F17-02.** Como atleta, quero receber por e-mail o aviso antes de um grupo cair de nível, para ter tempo de treinar.
+- **US-F17-03.** Como atleta, quero um resumo semanal por e-mail, com janelas aproveitadas, níveis, recordes e medalhas, para ver a semana sem abrir o app.
+- **US-F17-04.** Como atleta, quero desligar os e-mails por um link no próprio e-mail, para parar de recebê-los sem entrar no app.
+
+```gherkin
+# language: pt
+Funcionalidade: Avisos por e-mail
+
+  Cenário: aviso de janela por e-mail
+    Dado que a janela de costas, bíceps e lombar abre amanhã às 9h
+    Quando chega a hora do aviso
+    Então o atleta recebe um aviso no celular
+    E recebe um e-mail com a letra B e o horário da janela
+
+  Cenário: um e-mail por letra
+    Dado que três grupos da letra B abrem no mesmo horário
+    Quando chega a hora do aviso
+    Então o atleta recebe um e-mail só, com os três grupos
+
+  Cenário: aviso de queda por e-mail
+    Dado que o quadríceps cai para o nível 6 amanhã
+    Quando chega a hora do aviso de queda
+    Então o atleta recebe um e-mail com o nível atual, o nível depois da queda e a letra que treina o grupo
+
+  Cenário: resumo semanal
+    Quando termina a semana
+    Então o atleta recebe um e-mail com as janelas aproveitadas, os níveis, os recordes e as medalhas da semana
+
+  Cenário: desligar os e-mails
+    Quando o atleta abre o link de desligar num e-mail
+    Então ele deixa de receber e-mails
+    E continua recebendo os avisos no celular
+
+  Cenário: falha no envio
+    Dado que o servidor de e-mail não consegue entregar uma mensagem
+    Então o aviso no celular é enviado mesmo assim
+    E a falha fica registrada na situação do sistema
+```
+
 ---
 
 ## 10. Riscos, questões em aberto e validações pendentes
@@ -462,16 +561,22 @@ Funcionalidade: Histórico
 | R01 | No iPhone, o aviso só funciona com o app instalado na tela inicial (iOS 16.4 ou posterior) | Assumido | Resolver a Q02 antes da onda 7 |
 | R02 | Queda de internet ou energia em casa interrompe os avisos | Aceito | — |
 | R04 | A gamificação é sobretudo extrínseca e pode perder força entre a quinta e a oitava semana | Aceito | Reforçar o núcleo 3 do Octalysis (feedback das escolhas) |
+| R08 | Ver os níveis caírem depois de semanas parado desanima o retorno | Mitigado | Proteções da D24, sobretudo a memória muscular e o aviso antes da queda |
+| R09 | E-mail enviado do servidor de casa cai no spam ou é bloqueado: provedores de internet costumam bloquear a porta 25, e IP residencial tem má reputação | Assumido | Validar a entrega antes da onda 7, com SPF, DKIM, DMARC e DNS reverso (ADR-007) |
 
 ### Questões em aberto
 - **Q01:** o primeiro período começa fora do ciclo; os períodos seguintes se realinham ao ciclo trimestral?
 - **Q02:** o celular é iPhone ou Android?
 - **Q04:** o primeiro treino depois de um esfriamento rende o progresso cheio ("bem-vindo de volta")?
-- **Q06:** quando a janela sugere uma letra e o plano sugere outra, qual vale?
+- **Q06:** quando a janela sugere uma letra e o plano sugere outra, qual vale? A proposta é que a recuperação decida quais letras podem ser feitas: sai da sugestão a letra cujos grupos estão na maioria descansando. Entre as outras, grupos esfriando pesam mais que grupos em janela, e o grupo mais fraco desempata. O atalho do nível geral só leva à letra do grupo mais fraco se ele estiver em janela ou esfriando.
 - **Q07:** como calcular o volume de um exercício por tempo?
-- **Q08:** um músculo ativado de forma secundária conta o volume inteiro para o grupo, ou só uma parte?
+- **Q08:** um músculo ativado de forma secundária conta o volume inteiro para o grupo, ou só uma parte? A proposta é metade (D30).
 - **Q09:** a academia tem sinal de celular e Wi-Fi confiáveis?
 - **Q10:** em que onda entram as telas de administração no Mac (D22)?
+- **Q11:** quais são os parâmetros dos pontos e do nível? A proposta é 10 pontos por série no plano e o nível 20 em cerca de 4 semanas aproveitando todas as janelas (D23, D28).
+- **Q12:** a sequência de semanas tem proteção por período, ou sai do desenho para não castigar o retorno (D23, Q04)?
+- **Q13:** qual é o ritmo da perda de nível? A proposta é ir do 20 ao 1 em 4 a 5 semanas de esfriamento, calibrado com os dados reais (D24).
+- **Q14:** em que dia e hora sai o resumo semanal, e qual é o endereço de remetente dos e-mails (F17)?
 - **Resolvidas:** Q03 (a F13 foi removida) e Q05 (MVP sem gamificação, D18).
 
 ### Hipóteses e validações pendentes (o PO é o único papel)
@@ -518,6 +623,17 @@ Funcionalidade: Histórico
 | D20 | Sequenciador mantido; o próximo ciclo é marco do MVP |
 | D21 | Criticidade no tempo: 8 para o MVP, 5 para a cadeia do período, 2 para o resto |
 | D22 | Telas de administração no Mac, com referência visual no macOS 27, entram depois do MVP e convivem com o MCP; a onda está em aberto (Q10) |
+| D23 | Pontos, níveis por grupo muscular, recordes, medalhas e ranking pessoal entram na gamificação. O ranking compara só com o próprio histórico, sem elementos sociais (revisa a Seção 3 e o "não faz") |
+| D24 | O grupo perde nível com o tempo assim que a janela passa sem treino, com quatro proteções: aviso antes da queda, memória muscular (pontos em dobro até o melhor nível), medalhas, recordes, retratos e melhor nível que nunca se perdem, e ritmo lento. O nível atravessa os períodos; o período zera só a barra do período, as metas e o ranking (revisa a regra de não perder progresso da Seção 3) |
+| D25 | Começar e encerrar o treino pedem confirmação, com o resumo da letra e com as séries que faltam. São as duas exceções à meta de um toque por passo (O5); o treino que termina na última série não pede confirmação |
+| D26 | O botão de encerrar sai do canto superior da tela de treino e vai para a folha da sequência do treino (US-F03-04), longe do polegar e do lugar onde se espera o voltar |
+| D27 | O exercício por tempo tem contagem regressiva de 3 segundos e cronômetro de execução, com sinais sonoros no começo, nos últimos 3 segundos e no fim. O fim registra a série e inicia o descanso (US-F03-07) |
+| D28 | O nível de cada grupo vai de 1 a 20 e mede a forma atual: aproveitando todas as janelas, o grupo chega ao 20 em cerca de 4 semanas (parâmetro). Os pontos são relativos ao plano, e cada grupo recebe o mesmo total por treino completo. O nível premia a regularidade; o recorde premia a força |
+| D29 | O nível geral é o nível do grupo mais fraco entre os que o programa treina, e não a média. O app mostra qual grupo limita o nível geral e leva à letra que mais treina esse grupo |
+| D30 | Catálogo inicial com 11 grupos musculares: peito, costas (latíssimo, trapézio e romboides), lombar (eretores da espinha), ombros, bíceps, tríceps, abdômen, quadríceps, posteriores de coxa, glúteos e panturrilhas. O exercício separa músculos principais e secundários; o secundário conta metade, como proposta para a Q08 (responde em parte à H13) |
+| D31 | O aviso de janela é um por letra, não um por grupo, para os 11 grupos não virarem ruído (F09) |
+| D32 | Avisos por e-mail entram na onda 7 (F17): aviso de janela por letra, aviso de queda de nível e resumo semanal. Todo aviso vai pelos dois canais, celular e e-mail. O envio é por servidor SMTP próprio no kasparov, para manter a NFR01 (ADR-007) |
+| D33 | O produto se chama Heavy Duty |
 
 ---
 
@@ -525,9 +641,9 @@ Funcionalidade: Histórico
 
 | Objetivo | Features | Stories |
 |---|---|---|
-| O5. Um toque por passo | F03, F04, F05 | US-F03-01, US-F03-02, US-F03-03, US-F04-01, US-F04-02, US-F05-01 |
+| O5. Um toque por passo | F03, F04, F05 | US-F03-01, US-F03-02, US-F03-03, US-F03-04, US-F03-05, US-F03-06, US-F03-07, US-F04-01, US-F04-02, US-F05-01 |
 | O4. Progressão de carga | F02, F03, F06; depois F10, F15a | US-F02-01, US-F02-02, US-F03-02, US-F06-01; stories das ondas 5 e 6 a escrever |
-| O1. Regularidade | F07, F08, F09, F10, F11, F12, F15b (pós-MVP); o MVP gera os dados para a EN01 | Stories das ondas 5 a 7 a escrever |
+| O1. Regularidade | F07, F08, F09, F10, F11, F12, F15b, F17 (pós-MVP); o MVP gera os dados para a EN01 | US-F17-01 a US-F17-04; outras stories das ondas 5 a 7 a escrever |
 | NFR01. Dados próprios | F14, F16 | US-F14-01, US-F14-02, US-F16-01 |
 | Administração | F01, F02, F06, F16 | US-F01-01, US-F01-02, US-F02-01, US-F02-02, US-F06-01, US-F06-02, US-F16-01 |
 

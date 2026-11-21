@@ -2,7 +2,7 @@
 
 ## Resumo
 
-Este documento define quando um comentário é permitido no código do app de treino, que tamanho ele pode ter, como se escreve e o que ele não pode conter. Também traz as regras para outros textos em linguagem natural dentro do código, como nome de teste e descrição de API. O revisor confere cada regra lendo o diff.
+Este documento define quando um comentário é permitido no código do Heavy Duty, que tamanho ele pode ter, como se escreve e o que ele não pode conter. Também traz as regras para outros textos em linguagem natural dentro do código, como nome de teste e descrição de API. O revisor confere cada regra lendo o diff.
 
 ## Sumário
 

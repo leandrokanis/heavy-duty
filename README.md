@@ -1,6 +1,6 @@
-# App de treino
+# Heavy Duty
 
-App web pessoal de musculação, hospedado no próprio servidor. No celular, o app acompanha o treino na academia com um toque por passo. Pelo Claude, via MCP, o app recebe a administração: exercícios, programas e histórico. Depois do MVP, a administração também vai ter telas no Mac.
+O Heavy Duty é um app web pessoal de musculação, hospedado no próprio servidor. No celular, o app acompanha o treino na academia com um toque por passo. Pelo Claude, via MCP, o app recebe a administração: exercícios, programas e histórico. Depois do MVP, a administração também vai ter telas no Mac.
 
 Estado: documentação inicial. Os apps ainda não têm código. O plano de entrega está no roadmap de `docs/prd.md`, Seção 8.
 

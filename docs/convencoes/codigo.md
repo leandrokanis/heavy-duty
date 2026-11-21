@@ -2,7 +2,7 @@
 
 ## Resumo
 
-Este documento define o idioma, os nomes, a estrutura de pastas, os formatos de dado e as regras de dependência do código do app de treino. As regras de comentário estão em `comentarios.md`, e as de teste, em `testes.md`.
+Este documento define o idioma, os nomes, a estrutura de pastas, os formatos de dado e as regras de dependência do código do Heavy Duty. As regras de comentário estão em `comentarios.md`, e as de teste, em `testes.md`.
 
 ## 1. Linguagem de requisitos
 

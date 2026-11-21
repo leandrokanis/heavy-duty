@@ -1,4 +1,4 @@
-# Arquitetura do app de treino
+# Arquitetura do Heavy Duty
 
 Este documento descreve os componentes do app, os fluxos principais, os módulos da API e as decisões que ainda estão pendentes. As decisões tomadas estão nas ADRs de `docs/adr/`. Os requisitos vêm de `docs/prd.md`.
 
@@ -17,7 +17,9 @@ flowchart LR
     api["API (apps/api)<br/>Hono: HTTP e MCP"]
     db[("SQLite")]
     backup["Backup diário"]
+    smtp["Servidor SMTP<br/>(onda 7)"]
   end
+  inbox[("Caixa de e-mail<br/>do PO")]
   offsite[("Cópia fora do<br/>disco principal")]
 
   ui -- HTTP + JSON --> tunnel
@@ -26,6 +28,8 @@ flowchart LR
   api --> db
   backup -- lê --> db
   backup -- grava --> offsite
+  api -- enfileira --> smtp
+  smtp -- entrega --> inbox
 ```
 
 | Componente | Responsabilidade | ADR |
@@ -36,6 +40,7 @@ flowchart LR
 | SQLite | Guarda catálogo, programas e treinos num arquivo do servidor | ADR-005 |
 | Backup diário | Copia o banco para fora do disco principal e registra o resultado | [a confirmar: destino e ferramenta] |
 | Cloudflare Tunnel | Publica a API com HTTPS sem abrir porta no roteador (NFR04) | — |
+| Servidor SMTP | Entrega os avisos por e-mail a partir da onda 7 (F17). Fica no kasparov, para manter a NFR01 | ADR-007 (proposta) |
 
 ## Módulos da API
 
@@ -45,7 +50,8 @@ flowchart LR
 | `system` | estado do backup | 1 | F14 |
 | `programs` | `Program`, `ProgramDay`, `PlannedExercise` | 2 | F02 |
 | `workouts` | `Workout`, `WorkoutSet` | 3 e 4 | F03, F04, F05, F06 |
-| `windows` | `ActivityWindow`, progresso, `Period` | 5 a 7 | F07, F10, F11, F12 |
+| `windows` | `ActivityWindow`, progresso, nível, pontos, medalhas, `Period` | 5 a 7 | F07, F10, F11, F12 |
+| `notifications` | Aviso no celular (Web Push) e por e-mail, resumo semanal | 7 | F09, F17 |
 
 Os nomes das entidades estão em `CONTEXT.md`.
 
@@ -87,6 +93,7 @@ Os nomes das entidades estão em `CONTEXT.md`.
 | Estratégia de sincronização sem sinal | H10, Q09 | Antes da onda 3 |
 | Geração do ID no cliente (UUID v7 ou outro) | Fila local, idempotência | Antes da onda 3 |
 | Avisos por Web Push | Q02, R01 | Antes da onda 7 |
+| Validação da entrega do SMTP próprio (porta 25, SPF, DKIM, DMARC, DNS reverso) | ADR-007, R09 | Antes da onda 7 |
 | Lugar das telas de administração: a mesma PWA (`apps/ui`) ou um app separado | D22, Q10, `DESIGN.md` Seção 5.5 | Antes da onda das telas de administração |
 | Ferramentas de lint e formatação | `docs/convencoes/codigo.md` | Scaffold da onda 1 |
 

@@ -1,8 +1,8 @@
-# Diretrizes de interface do app de treino
+# Diretrizes de interface do Heavy Duty
 
 ## Resumo
 
-Este documento é o guia de interface (HIG) do app de treino. Ele define layout, alvos de toque, navegação, tipografia, cor, materiais, forma, ícones, movimento e acessibilidade da PWA (`apps/ui`). A referência visual é a linguagem do iOS 27 e do macOS 27, baseada no Liquid Glass, adaptada para a web. O revisor confere cada regra no diff e na tela renderizada.
+Este documento é o guia de interface (HIG) do Heavy Duty. Ele define layout, alvos de toque, navegação, tipografia, cor, materiais, forma, ícones, movimento e acessibilidade da PWA (`apps/ui`). A referência visual é a linguagem do iOS 27 e do macOS 27, baseada no Liquid Glass, adaptada para a web. O revisor confere cada regra no diff e na tela renderizada.
 
 ## Sumário
 
@@ -59,11 +59,14 @@ A UI é uma página web. Ela segue a linguagem visual do iOS e do macOS, mas NÃ
 
 Os princípios vêm das personas e das metas do PRD. Em conflito entre uma regra visual e um princípio, o princípio vence.
 
-1. **Um toque por passo.** Cada passo do fluxo da academia DEVE pedir um toque (PRD, O5). A tela NÃO DEVE pedir confirmação extra no fluxo de treino.
+1. **Um toque por passo.** Cada passo do fluxo da academia DEVE pedir um toque (PRD, O5). A tela NÃO DEVE pedir confirmação extra no fluxo de treino, com duas exceções (PRD, D25):
+   - Começar o treino DEVE pedir confirmação numa folha com o resumo da letra: exercícios, séries e duração estimada.
+   - Encerrar o treino pelo botão "Encerrar", na folha da sequência do treino (Seção 9.4), DEVE pedir confirmação numa folha com as séries feitas e as que faltam. O treino que termina na última série NÃO DEVE pedir confirmação.
+   - Na folha de encerrar, "Continuar" mantém o treino. Com a folha aberta, o descanso continua contando, mas a próxima série espera a folha fechar.
 2. **Leitura de relance.** O atleta olha o celular apoiado no banco, entre séries. Carga, repetições e descanso DEVEM ser os maiores elementos da tela de treino.
 3. **Sem teclado no treino.** O fluxo de treino NÃO DEVE abrir teclado. Valores mudam por arrasto ou por toque (PRD, F04; Seção 16.3).
 4. **Estado de rede visível.** Quando a série fica na fila local, a tela DEVE mostrar que o envio está pendente, sem bloquear o treino (PRD, US-F03-03).
-5. **Gamificação leve.** A interface NÃO DEVE mostrar pontos, medalhas ou ranking (PRD, Seção 3).
+5. **Gamificação sem comparação social.** A interface PODE mostrar pontos, níveis, recordes, medalhas e ranking pessoal, mas NÃO DEVE comparar o atleta com outras pessoas (PRD, D23; `docs/gamificacao.md`).
 
 ## 4. Referência visual: Liquid Glass na web
 
@@ -171,6 +174,14 @@ O HIG não especifica botão de ação central sobre a barra de abas. Se o app a
 - A barra DEVE reservar um espaço vazio do tamanho do botão, para o botão não cobrir a área de toque das abas vizinhas.
 - A altura que o botão sobe acima da barra é escolha visual do PO. Ponto de partida: 15 % a 20 % da altura do botão, medidos contra o centro visual dos ícones das abas.
 
+### 9.4. Navegação no treino
+
+- O topo da tela de treino DEVE ter um controle com a letra e a barra de exercícios. Um toque nele abre a folha da sequência do treino (PRD, US-F03-04).
+- A folha DEVE listar os exercícios da letra com o estado de cada um: feito, com as séries registradas (US-F03-06); atual; pulado; ou por fazer.
+- Um toque num exercício que falta DEVE levar a ele. Durante o descanso, o exercício escolhido vira o próximo, e o descanso continua.
+- O exercício atual DEVE ter a ação "Pular" (US-F03-05). O exercício pulado continua na lista e PODE ser feito depois.
+- O botão de encerrar o treino DEVE ficar na folha da sequência, não no topo da tela de treino (PRD, D26). O canto superior é o lugar onde se espera o voltar e fica longe do polegar, o que facilita o toque acidental.
+
 ## 10. Tipografia
 
 ### 10.1. Família
@@ -205,7 +216,12 @@ O HIG não especifica botão de ação central sobre a barra de abas. Se o app a
 | Sucesso | `--color-success` | Série registrada, envio concluído |
 | Atenção | `--color-warning` | Envio pendente sem rede |
 | Erro | `--color-danger` | Falha e ação destrutiva |
-| Janela de atividade | `--color-window-open`, `--color-window-cooling` | Reservado para as ondas 5 a 7 |
+| Janela de atividade | `--color-window-open`, `--color-window-cooling` | Reservado para as ondas 5 a 7. A janela aberta também marca o ×2 dos pontos |
+| Pontos e nível | `--color-game-xp`, `--color-game-xp-2` | Só gamificação: pontos, barra e selo de nível (ondas 5 a 7) |
+| Faixa de nível | `--color-tier-1` a `--color-tier-4` | Só gamificação: selo de nível em bronze, prata, ouro e violeta. Cada faixa também tem forma própria (círculo, escudo, hexágono e estrela), para não depender só da cor (`docs/gamificacao.md`) |
+| Medalha e ranking | `--color-game-gold` | Só gamificação: medalhas e posições do ranking pessoal |
+| Recorde | `--color-game-record` | Só gamificação: marca e destaque de recorde |
+| Sequência de semanas | `--color-game-flame` | Só gamificação: ícone da sequência |
 
 Os valores das cores são definidos no scaffold da onda 1 [a confirmar: paleta escolhida pelo PO].
 
@@ -260,6 +276,7 @@ O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar no sc
 - O traço do ícone DEVERIA combinar com o peso do texto vizinho.
 - Ícone assimétrico DEVE ser centralizado opticamente, não pela caixa delimitadora.
 - Ícone sem rótulo visível DEVE ter nome acessível (`aria-label`).
+- Os elementos de gamificação (pontos, nível, medalha, ranking, recorde, sequência e meta semanal) PODEM usar ícones preenchidos com gradiente, nas cores de jogo da Seção 11.1, para se distinguirem dos ícones de traço da interface (`docs/gamificacao.md`).
 
 ## 15. Movimento e resposta ao toque
 
@@ -268,6 +285,20 @@ O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar no sc
 - O movimento DEVE ser reduzido a troca de opacidade, ou retirado, com `prefers-reduced-motion: reduce`.
 - O fim do descanso DEVE ter sinal visual. O Safari do iOS não aceita a Vibration API, então a interface NÃO DEVE depender de vibração.
 - As regras detalhadas de animação, mola e gesto ficam para um documento próprio [a confirmar: quando a onda 3 começar].
+- Som, vibração e animações longas (pontos que sobem, subida de nível em tela cheia, medalha) PODEM ser usados só nos elementos de gamificação, conforme `docs/gamificacao.md`, e no cronômetro do exercício por tempo (Seção 15.1). O som DEVE ter chave para desligar. Uma informação NÃO DEVE depender só de som ou de vibração.
+- A subida de nível em tela cheia NÃO DEVE pedir toque para fechar: ela some sozinha, para manter um toque por passo (PRD, O5).
+- A tela cheia DEVE ficar para a entrada numa faixa de nível e para o nível 20. A subida de nível comum DEVE aparecer na própria barra, com animação e som curtos, para não cansar com subidas frequentes.
+
+### 15.1. Cronômetro do exercício por tempo
+
+- Em exercício por tempo, "Próximo" DEVE iniciar uma contagem regressiva de 3 segundos, com o número em destaque e um sinal sonoro curto por segundo (PRD, US-F03-07; D27).
+- O fim da contagem DEVE ter um sinal sonoro distinto, mais agudo, que marca o início da execução.
+- A execução DEVE mostrar o tempo restante num anel, como o descanso. Os últimos 3 segundos DEVEM ter um sinal sonoro por segundo e mudar a cor do anel para a cor de atenção.
+- O fim da execução DEVE ter um sinal sonoro de fim, distinto dos outros, e DEVE registrar a série e iniciar o descanso sem pedir toque.
+- Durante a execução, "Próximo" DEVE encerrar a série antes do fim e registrar o tempo feito. "Cancelar" DEVE voltar à série sem registrar.
+- Durante a contagem de 3 segundos, "Próximo" DEVE ficar desativado, para um toque duplo não encerrar a série logo no começo.
+- O anel e os números DEVEM bastar sem som: no iPhone, o som da página pode não tocar com o modo silencioso ligado [a confirmar no scaffold].
+- A tela DEVERIA ficar acesa durante a execução e o descanso, com a Screen Wake Lock API onde o navegador aceitar [a confirmar: suporte em 2026].
 
 ## 16. Acessibilidade
 

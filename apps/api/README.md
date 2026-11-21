@@ -1,4 +1,4 @@
-# API do app de treino
+# API do Heavy Duty
 
 Serviço que guarda exercícios, programas e treinos em SQLite. A API atende a UI por HTTP e o Claude por MCP.
 
@@ -14,9 +14,9 @@ Estado: sem código. O scaffold faz parte da onda 1 do PRD.
 ## Comandos
 
 ```sh
-pnpm --filter @tap/api dev
-pnpm --filter @tap/api test
-pnpm --filter @tap/api build
+pnpm --filter @heavy-duty/api dev
+pnpm --filter @heavy-duty/api test
+pnpm --filter @heavy-duty/api build
 ```
 
 Os comandos passam a existir com o `package.json` do scaffold.

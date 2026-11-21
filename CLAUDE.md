@@ -1,6 +1,6 @@
-# App de treino
+# Heavy Duty
 
-Monorepo open source de um app pessoal de musculação. A UI (`apps/ui`) é um PWA para registrar o treino no celular. A API (`apps/api`) guarda os dados e expõe um servidor MCP para administrar o app pelo Claude. O produto está descrito em `docs/prd.md`.
+Monorepo open source do Heavy Duty, um app pessoal de musculação. A UI (`apps/ui`) é um PWA para registrar o treino no celular. A API (`apps/api`) guarda os dados e expõe um servidor MCP para administrar o app pelo Claude. O produto está descrito em `docs/prd.md`.
 
 Estado atual: só a documentação e a estrutura de pastas existem. Os apps ainda não têm código. O scaffold dos apps faz parte da onda 1 do PRD (F01 e F14).
 
@@ -20,6 +20,7 @@ Estado atual: só a documentação e a estrutura de pastas existem. Os apps aind
 | `e2e/` | Testes ponta a ponta com Playwright e playwright-bdd |
 | `DESIGN.md` | Diretrizes de interface (HIG), com referência no iOS 27 e no macOS 27 |
 | `docs/prd.md` | Requisitos de produto: features, stories e cenários de aceite |
+| `docs/gamificacao.md` | Projeto de gamificação (Octalysis) das ondas 5 a 7 |
 | `docs/arquitetura.md` | Componentes, fluxos e decisões pendentes |
 | `docs/adr/` | Registros de decisão de arquitetura (ADR) |
 | `docs/convencoes/` | Código, comentários, testes, escrita técnica e Git |
@@ -29,13 +30,13 @@ Estado atual: só a documentação e a estrutura de pastas existem. Os apps aind
 ## Comandos
 
 ```sh
-pnpm install                    # instala as dependências do workspace
-pnpm dev                        # inicia todos os apps em modo de desenvolvimento
-pnpm test                       # executa os testes de todos os apps
-pnpm lint                       # executa o lint de todos os apps
-pnpm typecheck                  # verifica os tipos de todos os apps
-pnpm e2e                        # executa a suíte ponta a ponta
-pnpm --filter @tap/api test     # executa os testes de um app só
+pnpm install                          # instala as dependências do workspace
+pnpm dev                              # inicia todos os apps em modo de desenvolvimento
+pnpm test                             # executa os testes de todos os apps
+pnpm lint                             # executa o lint de todos os apps
+pnpm typecheck                        # verifica os tipos de todos os apps
+pnpm e2e                              # executa a suíte ponta a ponta
+pnpm --filter @heavy-duty/api test    # executa os testes de um app só
 ```
 
 Enquanto os apps não têm `package.json`, os scripts terminam sem executar nada.
@@ -58,6 +59,7 @@ Enquanto os apps não têm `package.json`, os scripts terminam sem executar nada
 | Implementar uma story | a story em `docs/prd.md` e a pasta da story em `docs/specs/` |
 | Criar módulo, rota ou ferramenta MCP | `docs/arquitetura.md` e `docs/convencoes/codigo.md` |
 | Criar ou alterar tela ou componente de UI | `DESIGN.md` |
+| Implementar janela, progresso, mapa, aviso ou período (ondas 5 a 7) | `docs/gamificacao.md` |
 | Escrever teste | `docs/convencoes/testes.md` |
 | Escrever ou revisar comentário | `docs/convencoes/comentarios.md` |
 | Escrever ou revisar documentação | `docs/convencoes/escrita-tecnica.md` |
