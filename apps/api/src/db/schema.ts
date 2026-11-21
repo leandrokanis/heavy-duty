@@ -182,3 +182,65 @@ export const plannedExercises = sqliteTable(
     index('planned_exercises_exercise_idx').on(table.exerciseId),
   ],
 )
+
+// The workout copies program_id and letter, so removing the day keeps what was trained (FR-009).
+export const workouts = sqliteTable(
+  'workouts',
+  {
+    id: text('id').primaryKey(),
+    programId: text('program_id')
+      .notNull()
+      .references(() => programs.id, { onDelete: 'restrict' }),
+    programDayId: text('program_day_id').references(() => programDays.id, {
+      onDelete: 'set null',
+    }),
+    letter: text('letter').notNull(),
+    startedAt: text('started_at').notNull(),
+    finishedAt: text('finished_at'),
+    endReason: text('end_reason', { enum: ['completed', 'ended_early'] }),
+  },
+  (table) => [
+    check('workouts_letter_check', sql`${table.letter} GLOB '[A-Z]'`),
+    check(
+      'workouts_end_reason_check',
+      sql`${table.endReason} IS NULL OR ${table.endReason} IN ('completed', 'ended_early')`,
+    ),
+    index('workouts_program_idx').on(table.programId),
+    index('workouts_program_day_idx').on(table.programDayId),
+  ],
+)
+
+export const workoutSets = sqliteTable(
+  'workout_sets',
+  {
+    id: text('id').primaryKey(),
+    workoutId: text('workout_id')
+      .notNull()
+      .references(() => workouts.id, { onDelete: 'cascade' }),
+    exerciseId: text('exercise_id')
+      .notNull()
+      .references(() => exercises.id, { onDelete: 'restrict' }),
+    plannedExerciseId: text('planned_exercise_id').references(() => plannedExercises.id, {
+      onDelete: 'set null',
+    }),
+    setNumber: integer('set_number').notNull(),
+    loadG: integer('load_g').notNull(),
+    reps: integer('reps'),
+    seconds: integer('seconds'),
+    performedAt: text('performed_at').notNull(),
+    correctedAt: text('corrected_at'),
+  },
+  (table) => [
+    check('workout_sets_set_number_check', sql`${table.setNumber} >= 1`),
+    check('workout_sets_load_g_check', sql`${table.loadG} >= 0`),
+    check('workout_sets_reps_check', sql`${table.reps} IS NULL OR ${table.reps} >= 1`),
+    check('workout_sets_seconds_check', sql`${table.seconds} IS NULL OR ${table.seconds} >= 1`),
+    check(
+      'workout_sets_single_measure_check',
+      sql`(${table.reps} IS NULL) <> (${table.seconds} IS NULL)`,
+    ),
+    index('workout_sets_workout_idx').on(table.workoutId),
+    index('workout_sets_exercise_idx').on(table.exerciseId),
+    index('workout_sets_planned_exercise_idx').on(table.plannedExerciseId),
+  ],
+)

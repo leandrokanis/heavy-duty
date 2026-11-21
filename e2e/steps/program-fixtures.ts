@@ -7,6 +7,7 @@ export type ProgramState = {
   programIdsByName: Record<string, string>
   lastResponse?: APIResponse
   fetchedProgram?: APIResponse
+  workoutId?: string
 }
 
 export const test = base.extend<{ program: ProgramState }>({
@@ -35,4 +36,11 @@ export function letterOf(program: ProgramState): string {
     throw new Error('No day was added by a previous step')
   }
   return program.letter
+}
+
+export function workoutIdOf(program: ProgramState): string {
+  if (!program.workoutId) {
+    throw new Error('No workout was recorded by a previous step')
+  }
+  return program.workoutId
 }

@@ -140,6 +140,42 @@ describe('Given an app in production with a database and no session cookie', () 
   })
 })
 
+describe('Given an app in production with a database, a program and no session cookie', () => {
+  const db = createTestDatabase()
+  runSeed(db)
+  const app = createApp({ nodeEnv: 'production', databaseHealth: () => true, db })
+
+  describe('When each of the six program edit routes is requested', () => {
+    it('Then should respond 401 with code unauthenticated and no training data', async () => {
+      const send = (method: string, path: string, body?: Record<string, unknown>) =>
+        app.request(path, {
+          method,
+          headers: { 'content-type': 'application/json' },
+          body: body === undefined ? undefined : JSON.stringify(body),
+        })
+      const programId = '0193a1b2-0000-7000-8000-000000000301'
+      const responses = await Promise.all([
+        send('PATCH', `/api/programs/${programId}`, { goal: 'strength' }),
+        send('POST', `/api/programs/${programId}/activate`),
+        send('PATCH', `/api/programs/${programId}/days/A`, { label: 'Empurrar' }),
+        send('DELETE', `/api/programs/${programId}/days/A`),
+        send('PATCH', `/api/programs/${programId}/days/A/exercises/supino-reto`, { loadG: 42500 }),
+        send('DELETE', `/api/programs/${programId}/days/A/exercises/supino-reto`),
+      ])
+      const results = await Promise.all(
+        responses.map(async (response) => ({
+          status: response.status,
+          body: await response.json(),
+        })),
+      )
+
+      expect(results).toEqual(
+        Array.from({ length: 6 }, () => ({ status: 401, body: UNAUTHENTICATED_BODY })),
+      )
+    })
+  })
+})
+
 describe('Given an app in development with a database and no session cookie', () => {
   const app = createApp({
     nodeEnv: 'development',
@@ -303,6 +339,45 @@ describe('Given an app in development with a database', () => {
           security: undefined,
           statuses: ['201', '400', '401', '404', '409', '422', '500'],
         },
+      })
+    })
+  })
+
+  describe('When the OpenAPI document is generated for the program edit routes', () => {
+    it('Then should declare the six edit routes under the global session cookie security, with their response statuses', async () => {
+      const response = await app.request('/api/openapi.json')
+      const document = (await response.json()) as {
+        paths: Record<
+          string,
+          Record<string, { security?: unknown; responses: Record<string, unknown> }>
+        >
+      }
+      const describeRoute = (path: string, method: string) => ({
+        security: document.paths[path]?.[method]?.security,
+        statuses: Object.keys(document.paths[path]?.[method]?.responses ?? {}).sort(),
+      })
+      const editStatuses = { security: undefined, statuses: ['200', '400', '401', '404', '500'] }
+
+      expect({
+        updateProgram: describeRoute('/api/programs/{programId}', 'patch'),
+        activateProgram: describeRoute('/api/programs/{programId}/activate', 'post'),
+        updateProgramDay: describeRoute('/api/programs/{programId}/days/{letter}', 'patch'),
+        removeProgramDay: describeRoute('/api/programs/{programId}/days/{letter}', 'delete'),
+        updatePlannedExercise: describeRoute(
+          '/api/programs/{programId}/days/{letter}/exercises/{exerciseSlug}',
+          'patch',
+        ),
+        removePlannedExercise: describeRoute(
+          '/api/programs/{programId}/days/{letter}/exercises/{exerciseSlug}',
+          'delete',
+        ),
+      }).toEqual({
+        updateProgram: editStatuses,
+        activateProgram: { security: undefined, statuses: ['200', '401', '404', '500'] },
+        updateProgramDay: editStatuses,
+        removeProgramDay: editStatuses,
+        updatePlannedExercise: editStatuses,
+        removePlannedExercise: editStatuses,
       })
     })
   })

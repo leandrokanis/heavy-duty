@@ -1,0 +1,142 @@
+import { describe, expect, it } from 'vitest'
+import {
+  addPlannedExercise,
+  addProgramDay,
+  createProgram,
+} from '../modules/programs/program.service.js'
+import { createProgramTestApp, PROGRAM_TEST_START } from '../test/programs.js'
+import { readWorkout, recordWorkout } from '../test/workouts.js'
+
+const STARTED_AT = '2026-11-20T18:30:00.000Z'
+
+function givenProgramWithLetterC() {
+  const { db } = createProgramTestApp()
+  const now = PROGRAM_TEST_START
+  const program = createProgram(db, { name: 'Programa 1', goal: 'hypertrophy' }, now)
+  addProgramDay(db, program.id, { letter: 'C' }, now)
+  addPlannedExercise(
+    db,
+    program.id,
+    'C',
+    { exerciseSlug: 'supino-reto', sets: 3, targetReps: 10, loadG: 60000, restSeconds: 90 },
+    now,
+  )
+  const workoutId = recordWorkout(
+    db,
+    {
+      programId: program.id,
+      letter: 'C',
+      startedAt: STARTED_AT,
+      sets: [{ exerciseSlug: 'supino-reto', loadG: 60000, reps: 10 }],
+    },
+    now,
+  )
+  return { db, programId: program.id, workoutId }
+}
+
+describe("Given a workout of letter 'C' with supino-reto at loadG 60000", () => {
+  describe("When the program_days row of 'C' is deleted", () => {
+    it('Then the workout should keep letter, programId, startedAt and the set, with programDayId and plannedExerciseId null', () => {
+      const { db, programId, workoutId } = givenProgramWithLetterC()
+
+      db.$client.prepare("DELETE FROM program_days WHERE letter = 'C'").run()
+
+      expect(readWorkout(db, workoutId)).toEqual({
+        programId,
+        programDayId: null,
+        letter: 'C',
+        startedAt: STARTED_AT,
+        sets: [
+          {
+            exerciseSlug: 'supino-reto',
+            plannedExerciseId: null,
+            loadG: 60000,
+            reps: 10,
+            seconds: null,
+          },
+        ],
+      })
+    })
+  })
+})
+
+// RESTRICT surfaces as SQLITE_CONSTRAINT_TRIGGER, so the message tells the rule apart.
+function errorOf(action: () => unknown): string | undefined {
+  try {
+    action()
+    return undefined
+  } catch (error) {
+    return (error as Error).message
+  }
+}
+
+function givenWorkoutWithPrancha() {
+  const given = givenProgramWithLetterC()
+  const workoutId = recordWorkout(
+    given.db,
+    {
+      programId: given.programId,
+      letter: 'C',
+      startedAt: STARTED_AT,
+      sets: [{ exerciseSlug: 'prancha', loadG: 0, seconds: 45 }],
+    },
+    PROGRAM_TEST_START,
+  )
+  return { ...given, workoutId, before: readWorkout(given.db, workoutId) }
+}
+
+describe('Given a recorded workout', () => {
+  describe('When the program row is deleted', () => {
+    it('Then should throw a foreign key error and keep the workout', () => {
+      const { db, programId, workoutId, before } = givenWorkoutWithPrancha()
+
+      const error = errorOf(() =>
+        db.$client.prepare('DELETE FROM programs WHERE id = ?').run(programId),
+      )
+
+      expect({ error, after: readWorkout(db, workoutId) }).toEqual({
+        error: 'FOREIGN KEY constraint failed',
+        after: before,
+      })
+    })
+  })
+
+  describe('When the row of an exercise used only by the workout is deleted', () => {
+    it('Then should throw a foreign key error and keep the workout', () => {
+      const { db, workoutId, before } = givenWorkoutWithPrancha()
+
+      const error = errorOf(() =>
+        db.$client.prepare("DELETE FROM exercises WHERE slug = 'prancha'").run(),
+      )
+
+      expect({ error, after: readWorkout(db, workoutId) }).toEqual({
+        error: 'FOREIGN KEY constraint failed',
+        after: before,
+      })
+    })
+  })
+
+  describe.each([
+    { input: 'both reps and seconds', set: { reps: 10, seconds: 45 } },
+    { input: 'neither reps nor seconds', set: {} },
+  ])('When a set is inserted with $input', ({ set }) => {
+    it('Then should throw a check constraint error', () => {
+      const { db, programId } = givenProgramWithLetterC()
+
+      const error = errorOf(() =>
+        recordWorkout(
+          db,
+          {
+            programId,
+            letter: 'C',
+            startedAt: STARTED_AT,
+            sets: [{ exerciseSlug: 'supino-reto', loadG: 60000, ...set }],
+          },
+          PROGRAM_TEST_START,
+        ),
+      )
+
+      expect(error).toBe('CHECK constraint failed: workout_sets_single_measure_check')
+    })
+  })
+})

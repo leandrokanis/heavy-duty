@@ -292,7 +292,9 @@ O objeto `Exercise` tem a forma `{ "id", "slug", "name", "kind", "muscles": [{ "
 
 ## Programa
 
-As cinco rotas desta seção vêm da US-F02-01. As rotas existem só quando a API abriu o banco e exigem sessão de acesso em todos os ambientes (ADR-019). As ferramentas MCP `create_program`, `add_program_day`, `add_planned_exercise`, `get_program` e `list_programs` chamam o mesmo service, `apps/api/src/modules/programs/program.service.ts`, e devolvem o mesmo objeto e as mesmas recusas (`mcp.md`).
+As cinco primeiras rotas desta seção vêm da US-F02-01, e as seis rotas de edição vêm da US-F02-02. As rotas existem só quando a API abriu o banco e exigem sessão de acesso em todos os ambientes (ADR-019). As ferramentas MCP do programa (`create_program`, `add_program_day`, `add_planned_exercise`, `update_program`, `activate_program`, `update_program_day`, `remove_program_day`, `update_planned_exercise`, `remove_planned_exercise`, `get_program` e `list_programs`) chamam o mesmo service, `apps/api/src/modules/programs/program.service.ts`, e devolvem o mesmo objeto e as mesmas recusas (`mcp.md`).
+
+Nenhuma rota de edição muda treino já registrado (US-F02-02, FR-009). O treino guarda a letra e os valores executados de cada série; quando a letra ou o exercício do programa sai do plano, só o vínculo do treino com o plano fica nulo (`dados.md`, seção "Execução").
 
 Cada ação de escrita é atômica: em qualquer recusa ou falha, nenhuma linha fica gravada e o programa ativo não muda. A carga trafega em gramas (`loadG`), e o alvo de tempo e o descanso trafegam em segundos (`targetSeconds`, `restSeconds`). Toda medida é um inteiro até `Number.MAX_SAFE_INTEGER`, sem fração.
 
@@ -317,6 +319,7 @@ O objeto `Program` tem a forma `{ "id", "name", "goal", "isActive", "createdAt",
 | 400 | `planned_exercise_target_invalid` | `alvo inválido` | O alvo não é inteiro a partir de 1 |
 | 404 | `program_not_found` | `programa não encontrado` | Nenhum programa tem o `programId` do caminho |
 | 404 | `program_day_not_found` | `letra não encontrada no programa` | O programa não tem a letra do caminho |
+| 404 | `planned_exercise_not_found` | `exercício não está na letra` | A letra do caminho não tem o exercício do `exerciseSlug`, ou o slug não existe no catálogo. O exercício arquivado depois de entrar na letra continua sendo encontrado |
 | 409 | `program_day_letter_duplicated` | `letra já existe no programa` | O programa já tem a letra. A comparação usa a letra em maiúscula |
 | 409 | `planned_exercise_duplicated` | `exercício já está na letra` | A letra já tem o exercício. O mesmo exercício em outra letra é aceito |
 | 422 | `exercise_not_found` | `exercício não encontrado` | O slug não existe no catálogo, ou o exercício está arquivado |
@@ -326,6 +329,13 @@ O service confere a entrada nesta ordem e devolve só a primeira recusa:
 - Criar programa: nome, objetivo ausente, objetivo inválido.
 - Acrescentar letra: letra ausente, letra inválida, programa, letra repetida.
 - Acrescentar exercício do programa: letra inválida, exercício ausente, séries, carga ausente, carga inválida, descanso ausente, descanso inválido, programa, letra no programa, exercício no catálogo, alvo do tipo errado, alvo ausente, alvo inválido, exercício já na letra.
+- Mudar programa: nome, objetivo ausente, objetivo inválido, programa.
+- Escolher programa ativo: programa.
+- Mudar nome da letra e remover letra: letra inválida, programa, letra no programa.
+- Mudar exercício do programa: letra inválida, exercício ausente (só no MCP), séries, carga, descanso, programa, letra no programa, exercício na letra, alvo do tipo errado, alvo inválido.
+- Remover exercício do programa: letra inválida, exercício ausente (só no MCP), programa, letra no programa, exercício na letra.
+
+Na edição, o campo ausente mantém o valor, e o `null` em `name`, `goal`, `sets`, `loadG`, `restSeconds` ou no alvo do tipo do exercício é recusado como valor inválido, com o `code` da tabela acima. O `null` no alvo do outro tipo é ignorado, porque é o valor que o cliente leu de volta. A edição sem nenhum campo confere o caminho e devolve o programa sem gravar.
 
 A entrada é conferida antes das consultas ao banco. O alvo é a exceção, porque o tipo do exercício só aparece depois da busca no catálogo.
 
@@ -422,6 +432,122 @@ A entrada é conferida antes das consultas ao banco. O alvo é a exceção, porq
 | 404 | `{ "code": "program_not_found" \| "program_day_not_found", "message" }` | O programa ou a letra não existe |
 | 409 | `{ "code": "planned_exercise_duplicated", "message": "exercício já está na letra" }` | A letra já tem o exercício |
 | 422 | `{ "code": "exercise_not_found", "message": "exercício não encontrado" }` | O exercício não existe no catálogo ou está arquivado |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+### PATCH /api/programs/{programId}
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Mudar o nome ou o objetivo de um programa |
+| Story | US-F02-02 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Corpo | `{ "goal": "strength" }` ou `{ "name": "Programa A" }`. Os dois campos são opcionais e aceitam `null`; só muda o campo enviado |
+| Efeito colateral | Atualiza a linha em `programs`. O nome fica sem os espaços das pontas. O objetivo novo não recalcula nada nesta story |
+| Idempotência | Idempotente. A mesma chamada repetida deixa o mesmo estado |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `Program` | O programa foi mudado, ou o corpo veio vazio |
+| 400 | `{ "code": "program_name_required" \| "program_goal_required" \| "program_goal_invalid", "message" }` | O nome é `null`, vazio ou só espaços; o objetivo é `null`, vazio ou fora da lista |
+| 400 | `{ "code": "invalid_request", "message": "requisição inválida" }` | O corpo não é JSON, ou um campo tem o tipo errado (texto no lugar de número, ou o contrário) |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 404 | `{ "code": "program_not_found", "message": "programa não encontrado" }` | Nenhum programa tem o `programId` |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+### POST /api/programs/{programId}/activate
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Escolher o programa ativo, de onde o próximo treino tira os valores |
+| Story | US-F02-02 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Corpo | Nenhum |
+| Efeito colateral | Desativa o programa ativo anterior e ativa o escolhido, na mesma transação. O anterior continua cadastrado. Escolher o programa que já é o ativo não grava nada |
+| Idempotência | Idempotente |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `Program`, com `isActive` verdadeiro | O programa passou a ser o ativo, ou já era |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 404 | `{ "code": "program_not_found", "message": "programa não encontrado" }` | Nenhum programa tem o `programId`. O programa ativo não muda |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+### PATCH /api/programs/{programId}/days/{letter}
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Mudar o nome de uma letra do programa |
+| Story | US-F02-02 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Corpo | `{ "label": "Empurrar" }`. O `label` é opcional e aceita `null`. A letra do caminho aceita minúscula. A letra em si não muda |
+| Efeito colateral | Atualiza o `label` em `program_days`. O nome fica sem os espaços das pontas; o nome vazio, só com espaços ou nulo fica `null`; o campo ausente mantém o nome |
+| Idempotência | Idempotente |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `Program` | O nome foi mudado, ou o corpo veio vazio |
+| 400 | `{ "code": "program_day_letter_invalid", "message": "a letra deve ser de A a Z" }` | A letra do caminho não é de A a Z |
+| 400 | `{ "code": "invalid_request", "message": "requisição inválida" }` | O corpo não é JSON, ou um campo tem o tipo errado (texto no lugar de número, ou o contrário) |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 404 | `{ "code": "program_not_found" \| "program_day_not_found", "message" }` | O programa ou a letra não existe |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+### DELETE /api/programs/{programId}/days/{letter}
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Remover uma letra do programa, com os exercícios do programa dela, para mudar a frequência |
+| Story | US-F02-02 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Corpo | Nenhum |
+| Efeito colateral | Apaga a linha em `program_days`; os exercícios do programa da letra saem por `ON DELETE CASCADE`. As outras letras mantêm a ordem relativa, sem renumerar. O treino registrado da letra continua com `letter` e as séries; `program_day_id` e `planned_exercise_id` ficam nulos. Acrescentar de novo a letra cria uma letra vazia no fim |
+| Idempotência | Não idempotente. A repetição responde 404 `program_day_not_found` |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `Program`, sem a letra | A letra foi removida. Remover a única letra deixa `days` vazio |
+| 400 | `{ "code": "program_day_letter_invalid", "message": "a letra deve ser de A a Z" }` | A letra do caminho não é de A a Z |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 404 | `{ "code": "program_not_found" \| "program_day_not_found", "message" }` | O programa ou a letra não existe |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+### PATCH /api/programs/{programId}/days/{letter}/exercises/{exerciseSlug}
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Mudar séries, alvo, carga ou descanso de um exercício do programa. O exercício do catálogo não muda: trocar de exercício é remover um e acrescentar outro |
+| Story | US-F02-02 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Corpo | `{ "loadG": 42500 }` ou `{ "sets": 4, "targetReps": 8, "restSeconds": 120 }`. Todos os campos são opcionais e aceitam `null`; só muda o campo enviado. A letra do caminho aceita minúscula |
+| Efeito colateral | Atualiza a linha em `planned_exercises`. O treino registrado continua com os valores executados. A carga zero e o descanso zero são aceitos |
+| Idempotência | Idempotente |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `Program` | O exercício do programa foi mudado, ou o corpo veio vazio |
+| 400 | `{ "code", "message" }` com `program_day_letter_invalid`, `planned_exercise_sets_invalid`, `planned_exercise_load_invalid`, `planned_exercise_rest_invalid`, `planned_exercise_target_time`, `planned_exercise_target_reps` ou `planned_exercise_target_invalid` | A letra do caminho ou um campo do corpo é inválido |
+| 400 | `{ "code": "invalid_request", "message": "requisição inválida" }` | O corpo não é JSON, ou um campo tem o tipo errado (texto no lugar de número, ou o contrário) |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 404 | `{ "code": "program_not_found" \| "program_day_not_found" \| "planned_exercise_not_found", "message" }` | O programa, a letra ou o exercício na letra não existe |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+### DELETE /api/programs/{programId}/days/{letter}/exercises/{exerciseSlug}
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Remover um exercício de uma letra do programa |
+| Story | US-F02-02 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Corpo | Nenhum |
+| Efeito colateral | Apaga a linha em `planned_exercises`. Os outros exercícios da letra mantêm a ordem relativa, sem renumerar. A série registrada continua com o exercício e os valores; `planned_exercise_id` fica nulo. O exercício arquivado depois de entrar na letra também pode ser removido |
+| Idempotência | Não idempotente. A repetição responde 404 `planned_exercise_not_found` |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `Program`, sem o exercício na letra | O exercício foi removido. Remover o único exercício deixa a letra vazia |
+| 400 | `{ "code": "program_day_letter_invalid", "message": "a letra deve ser de A a Z" }` | A letra do caminho não é de A a Z |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 404 | `{ "code": "program_not_found" \| "program_day_not_found" \| "planned_exercise_not_found", "message" }` | O programa, a letra ou o exercício na letra não existe |
 | 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
 
 ## Situação do app

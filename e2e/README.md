@@ -2,7 +2,7 @@
 
 Testes ponta a ponta com Playwright e playwright-bdd. Os cenários vêm dos cenários de aceite do PRD.
 
-Estado: o scaffold (EN-S0) criou a suíte com os cenários `@EN-S0` em `features/app-shell.feature`. A US-F01-01 acrescentou os cenários `@US-F01-01` em `features/catalog-muscles.feature`, e a US-F01-02, os cenários `@US-F01-02` em `features/catalog-exercises.feature`, os dois contra a API por HTTP e pelo `/mcp`. A US-F14-02 acrescentou o cenário `@US-F14-02` "falha no backup" em `features/system-backup.feature`. A US-F14-01 acrescentou os cenários `@US-F14-01` em `features/auth.feature` e passou a exigir a sessão de acesso nos outros cenários. A US-F02-01 acrescentou os cenários `@US-F02-01` em `features/programs.feature`, contra a API por HTTP e pelo `/mcp`. Os cenários do fluxo da academia entram na onda 3 (F03).
+Estado: o scaffold (EN-S0) criou a suíte com os cenários `@EN-S0` em `features/app-shell.feature`. A US-F01-01 acrescentou os cenários `@US-F01-01` em `features/catalog-muscles.feature`, e a US-F01-02, os cenários `@US-F01-02` em `features/catalog-exercises.feature`, os dois contra a API por HTTP e pelo `/mcp`. A US-F14-02 acrescentou o cenário `@US-F14-02` "falha no backup" em `features/system-backup.feature`. A US-F14-01 acrescentou os cenários `@US-F14-01` em `features/auth.feature` e passou a exigir a sessão de acesso nos outros cenários. A US-F02-01 acrescentou os cenários `@US-F02-01` em `features/programs.feature`, contra a API por HTTP e pelo `/mcp`. A US-F02-02 acrescentou os cenários `@US-F02-02` em `features/programs-edit.feature`, que editam o programa por HTTP e pelo `/mcp` e conferem um treino de fixture gravado direto no banco. Os cenários do fluxo da academia entram na onda 3 (F03).
 
 ## Estrutura planejada
 
@@ -30,9 +30,10 @@ pnpm --filter @heavy-duty/e2e run test --grep @US-F01-02         # executa os ce
 pnpm --filter @heavy-duty/e2e run test --grep @US-F14-02         # executa o cenário da falha no backup
 pnpm --filter @heavy-duty/e2e run test --grep @US-F14-01         # executa os cenários da chave de acesso
 pnpm --filter @heavy-duty/e2e run test --grep @US-F02-01         # executa os cenários do programa
+pnpm --filter @heavy-duty/e2e run test --grep @US-F02-02         # executa os cenários da edição do programa
 ```
 
-A suíte sobe três servidores (`webServer` em `playwright.config.ts`). Os cenários rodam em três projetos, todos com `devices['Pixel 7']` (Chromium): `catalog-muscles`, só com `features/catalog-muscles.feature`; `mobile`, com o restante menos o programa, que depende do primeiro; e `programs`, só com `features/programs.feature`, que depende do `mobile`:
+A suíte sobe três servidores (`webServer` em `playwright.config.ts`). Os cenários rodam em quatro projetos, todos com `devices['Pixel 7']` (Chromium): `catalog-muscles`, só com `features/catalog-muscles.feature`; `mobile`, com o restante menos o programa, que depende do primeiro; `programs`, só com `features/programs.feature`, que depende do `mobile`; e `programs-edit`, só com `features/programs-edit.feature`, que depende do `programs`:
 
 | Servidor | Endereço | Variável da porta | Observação |
 |---|---|---|---|
@@ -75,3 +76,12 @@ Os cenários `@US-F02-01` mudam o programa ativo, que é um só no banco. Por is
 - O `Background` cadastra os músculos e os exercícios "Supino reto" (`reps`) e "Prancha" (`time`) e aceita o 409 do item já cadastrado.
 - O `.feature` usa o texto do PRD ("40 kg", "10 reps", "45 s"). O passo converte a carga em gramas (40 kg vira `40000`) e o alvo em `targetReps` ou `targetSeconds`.
 - O passo de recusa confere um status 4xx e a `message`. O `code` e o status exato de cada recusa ficam cobertos nos testes de integração da API.
+
+Os cenários `@US-F02-02` também mudam o programa ativo. Por isso:
+
+- O projeto `programs-edit` roda em série e depois do `programs`. Um projeto só para as duas features não basta: com `fullyParallel: false`, o Playwright ainda roda dois arquivos ao mesmo tempo, em workers diferentes.
+- Com `--grep @US-F02-02`, o Playwright roda também os projetos `catalog-muscles`, `mobile` e `programs`, que são dependências.
+- O treino ainda não tem rota (US-F03-02). O passo grava e lê o treino de fixture direto no banco da API do e2e com `node:sqlite` (`steps/workout-fixtures.ts`), abrindo e fechando a conexão a cada chamada. O caminho do banco vem de `steps/api-server.ts`. O Node imprime `ExperimentalWarning: SQLite is an experimental feature` em cada worker; o aviso não muda o resultado.
+- O `Background` acrescenta o músculo "vasto lateral" (`quadriceps`) e o exercício "Agachamento" (`reps`) e aceita o 409 do item já cadastrado.
+- Os passos reaproveitam o fixture `program` e os helpers de `steps/program-helpers.ts` (conversão de carga e alvo, criação de programa e de letra), que `programs.steps.ts` também usa.
+- O passo "the next workout should suggest" confere o programa ativo de `GET /api/programs`, de onde o treino do dia (US-F03-01) vai tirar os valores.

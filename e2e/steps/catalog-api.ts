@@ -90,3 +90,64 @@ export function postPlannedExercise(
 export function getProgram(request: APIRequestContext, programId: string): Promise<APIResponse> {
   return request.get(`${APP_BASE_URL}/api/programs/${programId}`)
 }
+
+function programPath(programId: string, letter?: string, exerciseSlug?: string): string {
+  const day = letter === undefined ? '' : `/days/${letter}`
+  const exercise = exerciseSlug === undefined ? '' : `/exercises/${exerciseSlug}`
+  return `${APP_BASE_URL}/api/programs/${programId}${day}${exercise}`
+}
+
+export function patchProgram(
+  request: APIRequestContext,
+  programId: string,
+  data: Record<string, unknown>,
+): Promise<APIResponse> {
+  return request.patch(programPath(programId), { data })
+}
+
+export function activateProgram(
+  request: APIRequestContext,
+  programId: string,
+): Promise<APIResponse> {
+  return request.post(`${programPath(programId)}/activate`)
+}
+
+export function patchProgramDay(
+  request: APIRequestContext,
+  programId: string,
+  letter: string,
+  data: Record<string, unknown>,
+): Promise<APIResponse> {
+  return request.patch(programPath(programId, letter), { data })
+}
+
+export function deleteProgramDay(
+  request: APIRequestContext,
+  programId: string,
+  letter: string,
+): Promise<APIResponse> {
+  return request.delete(programPath(programId, letter))
+}
+
+export function patchPlannedExercise(
+  request: APIRequestContext,
+  programId: string,
+  letter: string,
+  exerciseSlug: string,
+  data: Record<string, unknown>,
+): Promise<APIResponse> {
+  return request.patch(programPath(programId, letter, exerciseSlug), { data })
+}
+
+export function deletePlannedExercise(
+  request: APIRequestContext,
+  programId: string,
+  letter: string,
+  exerciseSlug: string,
+): Promise<APIResponse> {
+  return request.delete(programPath(programId, letter, exerciseSlug))
+}
+
+export function listPrograms(request: APIRequestContext): Promise<APIResponse> {
+  return request.get(`${APP_BASE_URL}/api/programs`)
+}

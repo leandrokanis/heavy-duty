@@ -16,7 +16,8 @@ erDiagram
   PROGRAMS ||--o{ PROGRAM_DAYS : "divide em"
   PROGRAM_DAYS ||--o{ PLANNED_EXERCISES : lista
   EXERCISES ||--o{ PLANNED_EXERCISES : "é planejado em"
-  PROGRAM_DAYS ||--o{ WORKOUTS : "é treinada em"
+  PROGRAMS ||--o{ WORKOUTS : "é treinado em"
+  PROGRAM_DAYS |o--o{ WORKOUTS : "é treinada em"
   WORKOUTS ||--o{ WORKOUT_SETS : registra
   EXERCISES ||--o{ WORKOUT_SETS : "é executado em"
   PLANNED_EXERCISES |o--o{ WORKOUT_SETS : origina
@@ -79,7 +80,9 @@ erDiagram
   }
   WORKOUTS {
     text id PK
-    text program_day_id FK
+    text program_id FK
+    text program_day_id FK "nulo se a letra saiu do programa"
+    text letter "letra treinada, guardada no treino"
     text started_at
     text finished_at
     text end_reason "completed ou ended_early"
@@ -193,6 +196,8 @@ erDiagram
 
 As três tabelas vêm da migração `0005_programs` (US-F02-01). O programa é montado em passos: um programa sem letra e uma letra sem exercício são estados válidos durante a montagem.
 
+A edição do programa (US-F02-02) muda as linhas sem tocar no treino registrado. A remoção da letra apaga a linha de `program_days`, e os exercícios do programa dela saem por `ON DELETE CASCADE`. A remoção do exercício do programa apaga a linha de `planned_exercises`. Nenhuma remoção renumera `position`: a ordem relativa fica, com lacuna, e a próxima inclusão usa a maior `position` mais 1. Por isso a letra removida e acrescentada de novo volta vazia, no fim da ordem. Escolher o programa ativo desativa o anterior e ativa o escolhido na mesma transação, nessa ordem, por causa do índice parcial. O programa não tem remoção.
+
 | Tabela | Conteúdo | Regras |
 |---|---|---|
 | `programs` | Programas, com objetivo | `goal` é `strength`, `hypertrophy` ou `endurance`, com `CHECK`. O objetivo define a janela-base (regra 2 da gamificação). Um programa ativo por vez: o índice único parcial `programs_single_active_idx` em `is_active` com `WHERE is_active = 1` garante a regra no banco. A criação desativa o programa ativo anterior e grava o novo como ativo na mesma transação. O nome não é único. A lista vem com o ativo primeiro, depois `created_at` e `id` decrescentes |
@@ -201,10 +206,12 @@ As três tabelas vêm da migração `0005_programs` (US-F02-01). O programa é m
 
 ### Execução (F03 a F06, ondas 3 e 4)
 
+A US-F02-02 antecipou `workouts` e `workout_sets` na migração `0006_workouts`, sem rota nem ferramenta, para o banco garantir que editar o programa não altera treino registrado (FR-009 da US-F02-02; `apps/api/CLAUDE.md`, regra 7). As colunas são o mínimo dessa garantia: a idempotência da série, o único por série e a gravação pelo celular são da US-F03-02, que pode mudar as tabelas por migração. A cadeia de `SET NULL` (letra, exercício do programa, série) depende de `foreign_keys = ON`, que `openDatabase` liga.
+
 | Tabela | Conteúdo | Regras |
 |---|---|---|
-| `workouts` | Treinos realizados de uma letra | `end_reason` registra se o treino terminou na última série ou foi encerrado antes (D25) |
-| `workout_sets` | Séries registradas | `id` gerado no cliente: o mesmo `id` não cria outra série (US-F03-02). `load_g >= 0`, em gramas inteiras. Exatamente um entre `reps` e `seconds`. Guarda `exercise_id` e os valores executados, para o histórico não mudar quando o programa muda (US-F02-02) |
+| `workouts` | Treinos realizados de uma letra | Guarda `program_id` (`NOT NULL`, `ON DELETE RESTRICT`) e a letra treinada em `letter` (`CHECK (letter GLOB '[A-Z]')`). `program_day_id` é nulo e usa `ON DELETE SET NULL`: quando a letra sai do programa, o treino continua com a letra e as séries, sem o vínculo. `started_at` é obrigatório. `finished_at` e `end_reason` são nulos no treino em andamento; `end_reason` registra se o treino terminou na última série ou foi encerrado antes (D25), com `CHECK` em `completed` ou `ended_early`. Índices `workouts_program_idx` e `workouts_program_day_idx` |
+| `workout_sets` | Séries registradas | `id` gerado no cliente: o mesmo `id` não cria outra série (US-F03-02). `CHECK` de `set_number >= 1`, `load_g >= 0` (em gramas inteiras), `reps >= 1` e `seconds >= 1`, e exatamente um entre `reps` e `seconds`. Guarda `exercise_id` e os valores executados, para o histórico não mudar quando o programa muda (US-F02-02). `workout_id` usa `ON DELETE CASCADE`; `exercise_id` usa `ON DELETE RESTRICT`; `planned_exercise_id` é nulo e usa `ON DELETE SET NULL` ("nulo se o plano mudou"). Um índice por FK |
 | `workout_skips` | Exercícios pulados num treino (US-F03-05) | Um registro por exercício pulado. Alimenta o resumo "Ficaram de fora" |
 
 ### Gamificação (ondas 5 a 7)
