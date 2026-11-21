@@ -40,7 +40,7 @@
 
 | Módulo | Entidades e cálculo | Onda | Features |
 |---|---|---|---|
-| `auth` | `AuthCredential`, `AuthSession`, `EnrollmentToken`; desafio na memória; guarda de sessão; comando `auth:enroll` | 1 | F14 |
+| `auth` | `AuthCredential`, `AuthSession`, `EnrollmentToken`; desafio na memória; guarda de sessão; comando `auth:enroll`. Servidor de autorização do MCP: `OAuthClient`, código de autorização, `OAuthGrant`; comando `auth:revoke-mcp` | 1 e 2 | F14, F16 |
 | `catalog` | `MuscleGroup`, `Muscle`, `Exercise`, músculos principais e secundários | 1 | F01 |
 | `system` | Situação do backup e do envio de e-mail | 1 | F14, F17 |
 | `programs` | `Program`, `ProgramDay`, `PlannedExercise` | 2 | F02 |
@@ -55,7 +55,8 @@ Cada módulo junta rota, ferramenta MCP, service, repositório e testes (`docs/c
 | Direção | Com quem | Protocolo | Exemplos |
 |---|---|---|---|
 | Recebe | App web, pelo túnel | HTTPS, JSON em `/api/*` | `GET /api/today`, `POST /api/workouts`, `POST /api/workouts/{id}/sets`, `GET /api/game` |
-| Recebe | Claude, pelo túnel | MCP Streamable HTTP em `/mcp` | `add_exercise`, `list_programs`, `update_planned_exercise`, `list_workouts`, `remove_workout` |
+| Recebe | Claude, pelo túnel | MCP Streamable HTTP em `/mcp`, com a credencial do MCP em `Authorization: Bearer` | `add_exercise`, `list_programs`, `update_planned_exercise`, `list_workouts`, `remove_workout` |
+| Recebe | Claude, pelo túnel | HTTPS, OAuth 2.1 em `/.well-known/oauth-*`, `/api/oauth/register` e `/api/oauth/token` | Descoberta, registro do cliente, troca e renovação da credencial do MCP |
 | Grava e lê | Banco de dados | SQL pelo Drizzle | Todas as tabelas de `dados.md` |
 | Envia | Servidor SMTP local | SMTP na porta local | E-mail de aviso e resumo semanal |
 | Envia | Serviço de push do navegador | Web Push (HTTPS, VAPID) | Aviso de janela e de queda |
@@ -64,15 +65,15 @@ O contrato de cada rota é gerado dos schemas em `docs/arquitetura/openapi.json`
 
 ## Regras que o código segue
 
-1. Toda rota e toda ferramenta MCP exigem autenticação (NFR02). As rotas `/api/*` exigem a sessão de acesso da chave de acesso em todos os ambientes (ADR-019): a guarda de sessão tem lista fechada de rotas públicas, `GET /api/health` (sem dado de treino) e as quatro rotas da cerimônia. Uma rota nova nasce protegida. A guarda de origem recusa com 403 o método que muda estado com `Origin` de outro site. O `/mcp` só existe fora de `NODE_ENV=production` até a US-F16-01 autenticar o canal.
-2. O `/mcp` só atende os hosts de `MCP_ALLOWED_HOSTS` e recusa com 403 o `Host` ou o `Origin` de fora da lista, contra DNS rebinding (`mcp.md`, "Transporte e acesso").
+1. Toda rota e toda ferramenta MCP exigem autenticação (NFR02). As rotas `/api/*` exigem a sessão de acesso da chave de acesso em todos os ambientes (ADR-019): a guarda de sessão tem lista fechada de rotas públicas, `GET /api/health` (sem dado de treino), as quatro rotas da cerimônia e as duas rotas OAuth `POST /api/oauth/register` e `POST /api/oauth/token` (ADR-020). Uma rota nova nasce protegida. A guarda de origem recusa com 403 o método que muda estado com `Origin` de outro site. O `/mcp` exige a credencial do MCP em todos os ambientes (ADR-020), e cada canal lê só o próprio meio: o cookie não abre o `/mcp`, e a credencial do MCP não abre `/api/*`.
+2. O `/mcp` só atende os hosts de `MCP_ALLOWED_HOSTS`, mais o hostname de `APP_ORIGIN`, e recusa com 403 o `Host` ou o `Origin` de fora da lista, contra DNS rebinding. A guarda de host roda antes da guarda da credencial (`mcp.md`, "Transporte e acesso").
 3. A ferramenta MCP destrutiva declara `destructiveHint: true` e só age depois de confirmação explícita (US-F06-02).
 4. A gravação de série é idempotente pelo ID gerado no cliente: o mesmo ID não cria outra série.
 5. O erro de domínio tem `code` em inglês, em `snake_case`, e `message` em português (`docs/convencoes/codigo.md`, Seção 8).
 6. Data e hora são ISO 8601 em UTC; a carga é inteiro em gramas (`loadG`); o tempo é inteiro em segundos. A API não usa número de ponto flutuante para medida.
 7. O cálculo do jogo fica em funções puras do módulo `windows`, com os parâmetros num arquivo de configuração versionado (ADR-010).
 8. A falha de um canal de aviso não bloqueia o outro e fica registrada em `notifications`.
-9. O log não leva credencial, token nem o endereço de e-mail do PO. As cerimônias da chave de acesso descartam a exceção da biblioteca, que cita o desafio, em vez de registrar a exceção no log (FR-028).
+9. O log não leva credencial, token nem o endereço de e-mail do PO. O banco guarda só o SHA-256 do código de autorização, da credencial do MCP e do token de renovação. As cerimônias da chave de acesso descartam a exceção da biblioteca, que cita o desafio, em vez de registrar a exceção no log (FR-028).
 
 ## Configuração
 
@@ -81,11 +82,15 @@ O contrato de cada rota é gerado dos schemas em `docs/arquitetura/openapi.json`
 | `NODE_ENV` | Ambiente | `development` | `production` |
 | `PORT` | Porta HTTP | `3001` | `3001` |
 | `DATABASE_PATH` | Arquivo do SQLite | `data/heavy-duty.dev.sqlite` na raiz do repositório | Obrigatória |
-| `MCP_ALLOWED_HOSTS` | Hosts aceitos no `/mcp`, separados por vírgula | `localhost`, `127.0.0.1`, `[::1]` | — |
-| `APP_ORIGIN` | Origem pública do app (esquema, host e porta). O RP ID do WebAuthn é o hostname; o cookie leva `Secure` quando o esquema é `https`; a guarda de origem compara o `Origin` com o valor | `http://localhost:8080` | Obrigatória e `https`, senão a API não sobe e o erro cita `APP_ORIGIN` |
+| `MCP_ALLOWED_HOSTS` | Hosts aceitos no `/mcp`, separados por vírgula. O hostname de `APP_ORIGIN` entra sempre na lista | `localhost`, `127.0.0.1`, `[::1]` | — (o domínio público vem de `APP_ORIGIN`) |
+| `APP_ORIGIN` | Origem pública do app (esquema, host e porta). O RP ID do WebAuthn é o hostname; o cookie leva `Secure` quando o esquema é `https`; a guarda de origem compara o `Origin` com o valor; as URLs OAuth e o `WWW-Authenticate` do `/mcp` usam o valor | `http://localhost:8080` | Obrigatória e `https`, senão a API não sobe e o erro cita `APP_ORIGIN` |
 
 `APP_ORIGIN` não é segredo. O `compose.yaml` passa `http://localhost:${PROXY_PORT:-8080}` e o `compose.prod.yaml` passa `${APP_ORIGIN:-}`, lido do `.env` do servidor. O `.env.example` ainda não traz a variável: a inclusão de `APP_ORIGIN=https://<HOSTNAME>` é tarefa manual do PO. O desenvolvimento usa `http://localhost:8080`, não `http://127.0.0.1:8080`, porque o WebAuthn não aceita endereço IP como RP ID.
 
 ## Cadastro da chave de acesso
 
 O comando `pnpm --filter @heavy-duty/api auth:enroll` (`src/modules/auth/enroll.ts`) gera um link de cadastro de uso único, válido por 15 minutos, e imprime `<APP_ORIGIN>/cadastro#token=<token>` com o vencimento. O comando lê `DATABASE_PATH` e `APP_ORIGIN`, não cria banco nem executa migração, e termina com código 1 quando o arquivo do banco não existe ou a tabela `enrollment_tokens` falta. No desenvolvimento, execute `docker compose exec api pnpm --filter @heavy-duty/api auth:enroll`; na produção, `docker compose -f compose.yaml -f compose.prod.yaml exec api node dist/modules/auth/enroll.js`. O link não vai para arquivo nem para canal compartilhado: abra o link no celular dentro do prazo.
+
+## Revogação das autorizações do MCP
+
+O comando `pnpm --filter @heavy-duty/api auth:revoke-mcp` (`src/modules/auth/revoke-mcp.ts`) revoga todas as autorizações do MCP: marca `revoked_at` em cada autorização ativa de `oauth_grants`, gasta os códigos de autorização pendentes e imprime quantas autorizações e códigos atingiu. A credencial do MCP e o token de renovação emitidos antes passam a ser recusados; o Claude precisa de nova aprovação do PO. O comando lê `DATABASE_PATH`, não cria banco nem executa migração, não imprime token nem hash e termina com código 1 quando o arquivo do banco não existe. No desenvolvimento, execute `docker compose exec api pnpm --filter @heavy-duty/api auth:revoke-mcp`; na produção, `docker compose -f compose.yaml -f compose.prod.yaml exec api node dist/modules/auth/revoke-mcp.js`.

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createApp } from '../app.js'
+import { createTestDatabase } from '../test/database.js'
+import { createMcpAuthorizedApp } from '../test/mcp-auth.js'
 
 const INITIALIZE_BODY = JSON.stringify({
   jsonrpc: '2.0',
@@ -29,8 +31,16 @@ function postMcp(
   )
 }
 
-describe('Given an app in development with the default allowed hosts', () => {
-  const app = createApp({ nodeEnv: 'development', databaseHealth: () => true })
+function createAuthorizedApp(mcpAllowedHosts?: readonly string[]) {
+  const db = createTestDatabase()
+  return createMcpAuthorizedApp(
+    createApp({ nodeEnv: 'development', databaseHealth: () => true, db, mcpAllowedHosts }),
+    db,
+  )
+}
+
+describe('Given an app in development with the default allowed hosts and a valid MCP credential', () => {
+  const app = createAuthorizedApp()
 
   describe('When /mcp is requested with a foreign Host header', () => {
     it('Then should refuse with 403 and the forbidden_host code', async () => {
@@ -76,12 +86,8 @@ describe('Given an app in development with the default allowed hosts', () => {
   })
 })
 
-describe('Given an app in development that allows a custom host', () => {
-  const app = createApp({
-    nodeEnv: 'development',
-    databaseHealth: () => true,
-    mcpAllowedHosts: ['heavy-duty.example'],
-  })
+describe('Given an app in development that allows a custom host and a valid MCP credential', () => {
+  const app = createAuthorizedApp(['heavy-duty.example'])
 
   describe('When /mcp is requested with that host', () => {
     it('Then should reach the MCP server', async () => {

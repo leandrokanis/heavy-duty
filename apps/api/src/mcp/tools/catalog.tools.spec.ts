@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createApp } from '../../app.js'
 import { runSeed } from '../../db/seed.js'
 import { createTestDatabase } from '../../test/database.js'
+import { createMcpAuthorizedApp } from '../../test/mcp-auth.js'
 import { createSignedInApp } from '../../test/session.js'
 
 type ToolCallResult = {
@@ -15,8 +16,8 @@ type JsonRpcResponse = { result?: ToolCallResult; error?: { code: number; messag
 function createSeededApp(): ReturnType<typeof createApp> {
   const db = createTestDatabase()
   runSeed(db)
-  return createSignedInApp(
-    createApp({ nodeEnv: 'development', databaseHealth: () => true, db }),
+  return createMcpAuthorizedApp(
+    createSignedInApp(createApp({ nodeEnv: 'development', databaseHealth: () => true, db }), db),
     db,
   )
 }
@@ -166,9 +167,12 @@ describe('Given a database that fails unexpectedly', () => {
     it('Then should log the error and return code internal_error without the internal detail', async () => {
       const db = createTestDatabase()
       runSeed(db)
-      const app = createApp({ nodeEnv: 'development', databaseHealth: () => true, db })
+      const app = createMcpAuthorizedApp(
+        createApp({ nodeEnv: 'development', databaseHealth: () => true, db }),
+        db,
+      )
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-      db.$client.close()
+      db.$client.exec('DROP TABLE muscles')
 
       const called = await callTool(app, 'add_muscle', {
         name: 'peitoral maior',

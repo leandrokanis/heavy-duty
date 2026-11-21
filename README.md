@@ -35,6 +35,12 @@ docker compose exec api pnpm --filter @heavy-duty/api auth:enroll   # imprime ht
 
 Com a sessão de acesso, a API serve a documentação em http://localhost:8080/api/docs.
 
+O MCP fica em http://localhost:8080/mcp e exige a credencial do MCP em todos os ambientes (ADR-020). O cliente MCP descobre a autorização pela resposta 401, e o PO aprova o acesso na tela `/autorizar`, com a sessão de acesso. Para cortar todas as autorizações do MCP:
+
+```sh
+docker compose exec api pnpm --filter @heavy-duty/api auth:revoke-mcp   # revoga as autorizações e imprime as contagens
+```
+
 O backup diário fica no profile `backup`, com um repositório local do restic e uma senha só para desenvolvimento. O roteiro de produção e de restauração está em `docs/arquitetura/backup.md`:
 
 ```sh

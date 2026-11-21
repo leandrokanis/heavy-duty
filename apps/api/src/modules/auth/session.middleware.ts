@@ -17,6 +17,8 @@ const PUBLIC_ROUTES: ReadonlySet<string> = new Set([
   'POST /api/auth/enrollment/verify',
   'POST /api/auth/sign-in/options',
   'POST /api/auth/sign-in/verify',
+  'POST /api/oauth/register',
+  'POST /api/oauth/token',
 ])
 
 export type SessionGuardOptions = {

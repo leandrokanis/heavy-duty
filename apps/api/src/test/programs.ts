@@ -4,6 +4,7 @@ import { runSeed } from '../db/seed.js'
 import { addExercise } from '../modules/catalog/exercise.service.js'
 import { addMuscle } from '../modules/catalog/muscle.service.js'
 import { createTestDatabase } from './database.js'
+import { createMcpAccessToken, withMcpAccessToken } from './mcp-auth.js'
 import { createSessionCookie, withSessionCookie } from './session.js'
 
 export const PROGRAM_TEST_START = new Date('2026-11-21T10:00:00.000Z')
@@ -29,7 +30,7 @@ export function createTestClock(start: Date = PROGRAM_TEST_START): TestClock {
   }
 }
 
-// Seeded catalog with 'supino-reto' (reps) and 'prancha' (time), behind a signed-in session.
+// Seeded catalog with 'supino-reto' (reps) and 'prancha' (time), behind a signed-in session and an MCP credential.
 export function createProgramTestApp(options: { nodeEnv?: string } = {}): ProgramTestApp {
   const db = createTestDatabase()
   runSeed(db)
@@ -45,5 +46,7 @@ export function createProgramTestApp(options: { nodeEnv?: string } = {}): Progra
     db,
     now: clock.now,
   })
-  return { app: withSessionCookie(app, createSessionCookie(db, clock.now())), db, clock }
+  const signedIn = withSessionCookie(app, createSessionCookie(db, clock.now()))
+  const mcpToken = createMcpAccessToken(db, { now: clock.now() })
+  return { app: withMcpAccessToken(signedIn, mcpToken), db, clock }
 }

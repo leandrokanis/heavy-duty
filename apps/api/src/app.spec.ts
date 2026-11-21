@@ -88,11 +88,14 @@ describe('Given an app in production with a database', () => {
     })
   })
 
-  describe('When /mcp is requested', () => {
-    it('Then should respond 404', async () => {
+  describe('When /mcp is requested without an MCP credential', () => {
+    it('Then should respond 401 with code mcp_unauthenticated', async () => {
       const response = await app.request('/mcp', { method: 'POST' })
 
-      expect(response.status).toBe(404)
+      expect({ status: response.status, body: await response.json() }).toEqual({
+        status: 401,
+        body: { code: 'mcp_unauthenticated', message: 'credencial do MCP ausente ou inválida' },
+      })
     })
   })
 

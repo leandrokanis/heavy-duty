@@ -3,6 +3,7 @@ import { createApp } from '../../app.js'
 import { createId } from '../../db/id.js'
 import { insertBackupRun } from '../../modules/system/backup-run.repository.js'
 import { createTestDatabase } from '../../test/database.js'
+import { createMcpAuthorizedApp } from '../../test/mcp-auth.js'
 import { createSignedInApp } from '../../test/session.js'
 
 type JsonRpcResponse = { result?: { structuredContent?: unknown; isError?: boolean } }
@@ -36,8 +37,11 @@ describe('Given a failed backup run in the database', () => {
         sizeBytes: null,
         error: 'offsite copy failed: repository does not exist',
       })
-      const app = createSignedInApp(
-        createApp({ nodeEnv: 'development', databaseHealth: () => true, db }),
+      const app = createMcpAuthorizedApp(
+        createSignedInApp(
+          createApp({ nodeEnv: 'development', databaseHealth: () => true, db }),
+          db,
+        ),
         db,
       )
 

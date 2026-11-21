@@ -24,10 +24,10 @@ O erro de domínio de cada story acrescenta o próprio `code`, com a `message` d
 
 ## Sessão de acesso e guardas
 
-- A guarda de sessão (`apps/api/src/modules/auth/session.middleware.ts`) protege `/api/*` em todos os ambientes. A lista de rotas públicas é fechada: `GET /api/health` e as quatro rotas da cerimônia de cadastro e de entrada. Uma rota nova nasce protegida.
+- A guarda de sessão (`apps/api/src/modules/auth/session.middleware.ts`) protege `/api/*` em todos os ambientes. A lista de rotas públicas é fechada: `GET /api/health`, as quatro rotas da cerimônia de cadastro e de entrada, e `POST /api/oauth/register` e `POST /api/oauth/token` (ADR-020). Uma rota nova nasce protegida.
 - A guarda de origem (`apps/api/src/http/origin-guard.ts`) roda antes da guarda de sessão. Sem cabeçalho `Origin`, a requisição segue: cliente fora do navegador não carrega o cookie de outra pessoa.
 - A guarda, as rotas de dados, o documento OpenAPI e o Swagger UI só existem quando a API abriu o banco. Sem banco, só `/api/health` responde.
-- O `/mcp` não muda nesta story: responde 404 em produção e funciona fora de produção com a guarda de host, até a US-F16-01.
+- O `/mcp` exige a credencial do MCP em todos os ambientes, inclusive em produção (US-F16-01, ADR-020). O cookie `hd_session` não abre o `/mcp`, e a credencial do MCP não abre `/api/*`. O transporte e as ferramentas estão em `mcp.md`.
 - Quando o uso renova a sessão de acesso (no máximo uma vez por dia), a resposta reenvia o cookie `hd_session` com `Max-Age` de 30 dias.
 
 O cookie `hd_session` tem `HttpOnly`, `SameSite=Lax`, `Path=/`, `Max-Age=2592000` (30 dias) e `Secure` quando `APP_ORIGIN` usa `https`. O cookie não tem `Domain`. O valor é um token aleatório de 32 bytes em base64url; o banco guarda só o SHA-256 (`dados.md`).
@@ -165,6 +165,134 @@ As respostas de erro e o log não trazem token, desafio nem chave pública (FR-0
 | 204 | Nenhum | A sessão de acesso terminou |
 | 401 | `unauthenticated` | Sem sessão de acesso válida |
 | 403 | `forbidden_origin` | `Origin` de outro site |
+| 500 | `internal_error` | Erro inesperado |
+
+## Autorização do MCP
+
+As rotas desta seção vêm da US-F16-01 (ADR-020). O app é o próprio servidor de autorização OAuth 2.1 do `/mcp`: o cliente do MCP (o conector do Claude) descobre os metadados, se registra, pede autorização, o PO aprova na tela `/autorizar` do app web com a sessão de acesso, e o cliente troca o código por uma credencial do MCP. O banco guarda só o SHA-256 do código, da credencial e do token de renovação (`dados.md`).
+
+As rotas de descoberta, registro e token usam o formato de erro dos RFC 6749 e 7591, que o cliente OAuth lê: `{ "error", "error_description" }`, com `error_description` em inglês (o RFC só aceita ASCII). A prévia e a decisão usam o formato comum `{ code, message }`, que a tela lê. Nenhuma rota desta seção responde com CORS. Sem banco, nenhuma delas é montada: 404.
+
+| Formato | Status | Código | Quando |
+|---|---|---|---|
+| OAuth | 400 | `invalid_redirect_uri` | O registro traz `redirect_uris` vazio, com mais de 5 itens, com item acima de 2.048 caracteres, com fragmento ou fora de `https` e do loopback (`localhost`, `127.0.0.1`, `[::1]`) |
+| OAuth | 400 | `invalid_client_metadata` | O corpo do registro não é JSON, `redirect_uris` não é lista de texto ou `client_name` passa de 100 caracteres |
+| OAuth | 400 | `invalid_request` | Falta `grant_type`, `code`, `redirect_uri`, `code_verifier` ou `refresh_token`, ou o corpo do token não passa no schema |
+| OAuth | 401 | `invalid_client` | O `client_id` do token falta ou não existe |
+| OAuth | 400 | `invalid_grant` | O código ou o token de renovação não existe, venceu, foi usado, foi revogado, é de outro cliente, tem outro `redirect_uri` ou o `code_verifier` não confere |
+| OAuth | 400 | `invalid_target` | O `resource` do token difere do recurso da autorização |
+| OAuth | 400 | `unsupported_grant_type` | `grant_type` diferente de `authorization_code` e `refresh_token` |
+| OAuth | 413 | `invalid_request` | O corpo do registro ou do token passa de 16 KiB |
+| Comum | 400 | `oauth_client_unknown` (`Cliente do MCP desconhecido. Conecte o cliente de novo.`) | A prévia ou a decisão traz `client_id` ausente ou desconhecido |
+| Comum | 400 | `oauth_redirect_uri_invalid` (`Endereço de retorno não registrado por este cliente do MCP.`) | A prévia ou a decisão traz `redirect_uri` ausente ou diferente, letra por letra, dos registrados pelo cliente |
+
+### GET /.well-known/oauth-protected-resource/mcp e GET /.well-known/oauth-protected-resource
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Descrever o `/mcp` como recurso protegido (RFC 9728). A raiz atende o cliente que tenta o caminho sem sufixo |
+| Story | US-F16-01 |
+| Autenticação | Nenhuma (`security: []`). O documento não traz dado de treino |
+| Efeito colateral | Nenhum |
+| Idempotência | Idempotente |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `{ "resource": "<APP_ORIGIN>/mcp", "authorization_servers": ["<APP_ORIGIN>"], "bearer_methods_supported": ["header"], "resource_name": "Heavy Duty MCP" }` | Sempre, com banco |
+
+### GET /.well-known/oauth-authorization-server
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Descrever o servidor de autorização do app (RFC 8414) |
+| Story | US-F16-01 |
+| Autenticação | Nenhuma (`security: []`) |
+| Efeito colateral | Nenhum |
+| Idempotência | Idempotente |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `issuer` `<APP_ORIGIN>`, `authorization_endpoint` `<APP_ORIGIN>/autorizar`, `token_endpoint` `<APP_ORIGIN>/api/oauth/token`, `registration_endpoint` `<APP_ORIGIN>/api/oauth/register`, `response_types_supported` `["code"]`, `grant_types_supported` `["authorization_code", "refresh_token"]`, `code_challenge_methods_supported` `["S256"]`, `token_endpoint_auth_methods_supported` `["none"]` | Sempre, com banco |
+
+Todas as URLs dos documentos vêm de `APP_ORIGIN`, nunca do cabeçalho `Host`.
+
+### POST /api/oauth/register
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Registrar um cliente público do MCP (RFC 7591) |
+| Story | US-F16-01 |
+| Autenticação | Nenhuma (`security: []`). O cliente registrado não acessa nada até o PO aprovar |
+| Corpo | JSON com `redirect_uris` (1 a 5) e, opcional, `client_name` (até 100 caracteres). Outros campos são ignorados, inclusive `token_endpoint_auth_method` e `scope` |
+| Efeito colateral | Apaga os clientes nunca aprovados com mais de 24 horas. Com 20 clientes nunca aprovados, apaga o mais antigo deles. Grava o cliente em `oauth_clients`. Cliente aprovado nunca sai pelo despejo |
+| Idempotência | Não idempotente: cada chamada registra um cliente novo |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 201 | `{ "client_id", "client_id_issued_at", "client_name"?, "redirect_uris", "grant_types": ["authorization_code", "refresh_token"], "response_types": ["code"], "token_endpoint_auth_method": "none" }` | O cliente foi registrado, sem segredo |
+| 400 | `invalid_redirect_uri` ou `invalid_client_metadata` | Metadados recusados; nada é gravado |
+| 413 | `invalid_request` | Corpo acima de 16 KiB; nada é gravado |
+| 500 | `internal_error` | Erro inesperado |
+
+### GET /api/oauth/authorization
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Conferir um pedido de autorização e descrever o pedido para a tela `/autorizar` |
+| Story | US-F16-01 |
+| Autenticação | Sessão de acesso |
+| Query | Os parâmetros do pedido: `response_type`, `client_id`, `redirect_uri`, `code_challenge`, `code_challenge_method`, `state`, `resource` e `scope` (ignorado) |
+| Efeito colateral | Nenhum |
+| Idempotência | Idempotente |
+
+O cliente e o `redirect_uri` são conferidos primeiro: enquanto os dois não valem, nada redireciona. Depois, `response_type` diferente de `code`, `code_challenge` ausente ou `code_challenge_method` diferente de `S256` voltam ao `redirect_uri` com `error=invalid_request`; `resource` presente e diferente de `<APP_ORIGIN>/mcp`, sem barra final, volta com `error=invalid_target`. O `state` acompanha o erro.
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `{ "kind": "consent", "clientName", "redirectHost" }` | O pedido vale. `clientName` é o nome declarado pelo cliente (pode ser `null`); `redirectHost` é o host do `redirect_uri`, o dado confiável |
+| 200 | `{ "kind": "error_redirect", "redirectTo" }` | O pedido falhou depois de o cliente e o `redirect_uri` valerem |
+| 400 | `oauth_client_unknown` ou `oauth_redirect_uri_invalid` | A tela mostra a mensagem e não redireciona |
+| 401 | `unauthenticated` | Sem sessão de acesso |
+| 500 | `internal_error` | Erro inesperado |
+
+### POST /api/oauth/authorization
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Aprovar ou recusar um pedido de autorização |
+| Story | US-F16-01 |
+| Autenticação | Sessão de acesso e guarda de origem |
+| Corpo | JSON com os parâmetros do pedido e `decision` (`approve` ou `deny`) |
+| Efeito colateral | Confere o pedido de novo, como a prévia. Na aprovação, numa transação, grava o SHA-256 de um código aleatório de 32 bytes, válido por 5 minutos, em `oauth_authorization_codes` e marca `approved_at` do cliente na primeira aprovação. A recusa não grava nada |
+| Idempotência | Não idempotente: cada aprovação emite um código novo |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `{ "redirectTo" }` com `code` e `state` | Aprovação |
+| 200 | `{ "redirectTo" }` com `error=access_denied` e `state` | Recusa |
+| 200 | `{ "redirectTo" }` com `error=invalid_request` ou `invalid_target` | O pedido falhou depois de o cliente e o `redirect_uri` valerem; nenhum código |
+| 400 | `oauth_client_unknown`, `oauth_redirect_uri_invalid` ou `invalid_request` | Nada redireciona; nenhum código |
+| 401 | `unauthenticated` | Sem sessão de acesso |
+| 403 | `forbidden_origin` | `Origin` de outro site |
+| 500 | `internal_error` | Erro inesperado |
+
+### POST /api/oauth/token
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Trocar um código de autorização ou um token de renovação por uma credencial do MCP |
+| Story | US-F16-01 |
+| Autenticação | Nenhuma (`security: []`). Cliente público: o `client_id` vai no corpo, sem segredo; um `client_secret` enviado é ignorado |
+| Corpo | `application/x-www-form-urlencoded`, com `grant_type`, `client_id` e `resource` (opcional). `authorization_code` pede `code`, `redirect_uri` e `code_verifier`; `refresh_token` pede `refresh_token` |
+| Efeito colateral | Apaga os códigos vencidos e as autorizações com renovação vencida. `authorization_code`: consome o código de forma atômica (`UPDATE … WHERE used_at IS NULL AND expires_at > ?`), confere cliente, `redirect_uri`, `code_verifier` (`S256`) e recurso, e grava a autorização em `oauth_grants`; se a conferência falha, a transação desfaz o consumo. `refresh_token`: confere hash, cliente, vencimento e revogação e gera credencial e token de renovação novos na mesma linha (rotação), guardando o hash anterior. O token de renovação já trocado que volta é recusado e revoga a autorização inteira |
+| Idempotência | Não idempotente: o código vale uma vez, e cada renovação invalida o token de renovação usado |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `{ "access_token", "token_type": "Bearer", "expires_in": 3600, "refresh_token" }`, com `Cache-Control: no-store` | Troca ou renovação aceita. A credencial vale 1 hora; o token de renovação vale 30 dias desde a última emissão |
+| 400 | `invalid_request`, `invalid_grant`, `invalid_target` ou `unsupported_grant_type` | Nenhuma credencial |
+| 401 | `invalid_client` | `client_id` ausente ou desconhecido |
+| 413 | `invalid_request` | Corpo acima de 16 KiB |
 | 500 | `internal_error` | Erro inesperado |
 
 ## Catálogo de grupos musculares e músculos

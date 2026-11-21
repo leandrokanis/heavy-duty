@@ -28,6 +28,8 @@ erDiagram
   WORKOUTS |o--o{ MEDAL_AWARDS : rende
   PROGRAM_DAYS |o--o{ NOTIFICATIONS : "é avisada em"
   MUSCLE_GROUPS |o--o{ NOTIFICATIONS : "é avisado em"
+  OAUTH_CLIENTS ||--o{ OAUTH_AUTHORIZATION_CODES : recebe
+  OAUTH_CLIENTS ||--o{ OAUTH_GRANTS : "é autorizado em"
 
   MUSCLE_GROUPS {
     text id PK
@@ -171,6 +173,36 @@ erDiagram
     text expires_at
     text used_at
   }
+  OAUTH_CLIENTS {
+    text id PK "client_id"
+    text client_name
+    text redirect_uris "JSON"
+    text created_at
+    text approved_at
+  }
+  OAUTH_AUTHORIZATION_CODES {
+    text id PK
+    text code_hash UK
+    text client_id FK
+    text redirect_uri
+    text code_challenge
+    text resource
+    text created_at
+    text expires_at
+    text used_at
+  }
+  OAUTH_GRANTS {
+    text id PK
+    text client_id FK
+    text resource
+    text access_token_hash UK
+    text access_expires_at
+    text refresh_token_hash UK
+    text previous_refresh_token_hash
+    text refresh_expires_at
+    text created_at
+    text revoked_at
+  }
   BACKUP_RUNS {
     text id PK
     text started_at
@@ -236,15 +268,18 @@ A US-F02-02 antecipou `workouts` e `workout_sets` na migração `0006_workouts`,
 | `settings` | Configurações em chave e valor, como `email_enabled`, o hash do token de desligar e-mail e `webauthn_user_id` | Sem segredo em texto puro. O endereço de e-mail do PO e as credenciais ficam em variável de ambiente. `webauthn_user_id` é o identificador estável do usuário nas cerimônias da chave de acesso (16 bytes aleatórios em base64url), criado no primeiro cadastro e nunca trocado (US-F14-01) |
 | `backup_runs` | Uma linha por execução do backup, com início, fim, situação, tamanho e motivo | Gravada uma vez, no fim da execução, também na falha (F14). `status` é `succeeded` ou `failed`, com `CHECK`. `size_bytes` é o tamanho em bytes da cópia, inteiro não negativo com `CHECK`, e fica nulo na falha. `error` traz o motivo seguro da falha, com até 500 caracteres, e fica nulo no sucesso. Sem índice: a tabela cresce cerca de 365 linhas por ano [estimativa: uma execução por dia]. Só o processo do backup grava a tabela; a API e o MCP só leem (`get_system_status`) |
 
-### Acesso (F14, onda 1)
+### Acesso (F14, onda 1, e F16, onda 2)
 
-As três tabelas vêm da migração `0004_auth_passkeys` (US-F14-01, ADR-019). Não há tabela de usuário: o PO é o único usuário (D07), e toda chave de acesso cadastrada é dele. As datas ficam em ISO 8601, em UTC.
+As três primeiras tabelas vêm da migração `0004_auth_passkeys` (US-F14-01, ADR-019); as três do MCP, da migração `0007_auth_oauth` (US-F16-01, ADR-020). Não há tabela de usuário: o PO é o único usuário (D07), e toda chave de acesso cadastrada é dele. As datas ficam em ISO 8601, em UTC.
 
 | Tabela | Conteúdo | Regras |
 |---|---|---|
 | `auth_credentials` | Chaves de acesso (`AuthCredential`) cadastradas | `credential_id` único, em base64url. `public_key` em blob, no formato COSE. `counter` inteiro com `CHECK (counter >= 0)`, atualizado a cada entrada; a biblioteca recusa contador menor que o gravado. `transports` em texto JSON, nulo quando o navegador não informa. `last_used_at` nulo até a primeira entrada. A chave pública não sai em resposta nem em log (FR-028). Sem revogação nesta story |
 | `auth_sessions` | Sessões de acesso (`AuthSession`) | `token_hash` único: SHA-256 em hexadecimal do token aleatório de 32 bytes; o token em claro só existe no cookie `hd_session`. `expires_at` é 30 dias depois de `last_seen_at`. O uso renova `last_seen_at` e `expires_at` no máximo uma vez a cada 24 horas. A saída apaga a linha. A criação de uma sessão apaga as vencidas |
 | `enrollment_tokens` | Links de cadastro (`EnrollmentToken`) | `token_hash` único: SHA-256 do token, que só existe na saída do comando `auth:enroll`. `expires_at` é 15 minutos depois de `created_at`. `used_at` fica nulo até o consumo, que é atômico (`UPDATE … WHERE used_at IS NULL AND expires_at > ?`) e acontece na mesma transação que grava a chave de acesso. A criação de um link apaga os vencidos |
+| `oauth_clients` | Clientes do MCP (`OAuthClient`) registrados pelo registro dinâmico | `id` em UUID v7 é o `client_id`. `client_name` é o nome declarado, não confiável, até 100 caracteres, ou nulo. `redirect_uris` em texto JSON, de 1 a 5 endereços `https` ou de loopback. `approved_at` nulo até a primeira aprovação do PO. No máximo 20 clientes nunca aprovados: o registro apaga os nunca aprovados com mais de 24 horas e, na lotação, o mais antigo deles. Cliente aprovado não sai pelo despejo |
+| `oauth_authorization_codes` | Códigos de autorização | `code_hash` único: SHA-256 do código aleatório de 32 bytes, que só existe no redirecionamento ao `redirect_uri`. `client_id` com `ON DELETE CASCADE`. Guarda o `redirect_uri` e o desafio PKCE `S256` do pedido e o recurso `<APP_ORIGIN>/mcp`. `expires_at` é 5 minutos depois de `created_at`. O consumo é atômico (`UPDATE … WHERE used_at IS NULL AND expires_at > ?`). O comando `auth:revoke-mcp` marca `used_at` nos pendentes |
+| `oauth_grants` | Autorizações do MCP (`OAuthGrant`), uma linha por aprovação trocada | `client_id` com `ON DELETE CASCADE`. `access_token_hash` e `refresh_token_hash` únicos: SHA-256 da credencial do MCP e do token de renovação atuais, que só existem na resposta do token. `access_expires_at` é 1 hora depois da emissão; `refresh_expires_at`, 30 dias depois da última emissão. A renovação troca os dois hashes na mesma linha e guarda o anterior em `previous_refresh_token_hash`; o reuso do anterior marca `revoked_at`. O comando `auth:revoke-mcp` marca `revoked_at` em todas as ativas. A cada emissão, saem os códigos vencidos e as autorizações com renovação vencida |
 
 O desafio da cerimônia (`AuthChallenge`) não é tabela: fica na memória do processo da API por 5 minutos (ADR-019).
 

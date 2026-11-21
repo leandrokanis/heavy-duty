@@ -25,7 +25,10 @@
 |---|---|---|
 | `/api/*` | API | 3001 |
 | `/mcp` | API, servidor MCP | mesma da API |
+| `/.well-known/oauth-*` | API, metadados OAuth do `/mcp` (US-F16-01, ADR-020) | mesma da API |
 | todo o resto | App web (Next.js) | 3000 |
+
+A regra de entrada da API em `infra/cloudflared/config.yml` usa a expressão `^/(api|mcp|\.well-known/oauth-[a-z-]+)(/.*)?$`. O proxy de desenvolvimento (`infra/caddy/Caddyfile`) e o proxy do ponta a ponta (`e2e/support/proxy.ts`) seguem o mesmo roteamento. A tela de autorização `/autorizar` fica no app web, como o resto.
 
 Com um domínio só para tudo, o cookie de sessão é do próprio site, e o app web chama a API sem CORS.
 

@@ -23,8 +23,9 @@ Módulos previstos: `auth` (chave de acesso, sessão de acesso, link de cadastro
 
 1. A rota HTTP e a ferramenta MCP chamam o mesmo service. A regra de negócio não fica na rota nem na ferramenta.
 2. Toda rota e toda ferramenta MCP exigem autenticação. Sem credencial válida, a resposta não contém dado de treino (NFR02, R07).
-   As rotas `/api/*` exigem sessão de acesso em todos os ambientes, pela guarda de `src/modules/auth/session.middleware.ts` (ADR-019). A lista de rotas públicas é fechada: `GET /api/health` e as quatro rotas da cerimônia em `/api/auth/enrollment/*` e `/api/auth/sign-in/*`. Não acrescente rota à lista sem ADR. Até a US-F16-01, o `/mcp` só existe fora de `NODE_ENV=production`.
-   Teste de rota protegida usa `createSignedInApp` ou `createSessionCookie` de `src/test/session.ts`. Não crie opção que desligue a guarda.
+   As rotas `/api/*` exigem sessão de acesso em todos os ambientes, pela guarda de `src/modules/auth/session.middleware.ts` (ADR-019). A lista de rotas públicas é fechada: `GET /api/health`, as quatro rotas da cerimônia em `/api/auth/enrollment/*` e `/api/auth/sign-in/*`, e `POST /api/oauth/register` e `POST /api/oauth/token` (ADR-020). Não acrescente rota à lista sem ADR.
+   O `/mcp` exige a credencial do MCP (`Authorization: Bearer`) em todos os ambientes, pela guarda de `src/mcp/bearer-guard.ts`, depois da guarda de host (ADR-020). O cookie não abre o `/mcp`, e a credencial do MCP não abre `/api/*`.
+   Teste de rota protegida usa `createSignedInApp` ou `createSessionCookie` de `src/test/session.ts`. Teste que chama o `/mcp` usa `createMcpAuthorizedApp` ou `createMcpAccessToken` de `src/test/mcp-auth.ts`. Não crie opção que desligue uma guarda.
 3. Ferramenta MCP que apaga ou altera histórico declara `destructiveHint: true` e só age depois de confirmação explícita (US-F06-02).
 4. Nome de ferramenta MCP em `snake_case`, com verbo primeiro: `list_programs`, `add_exercise`, `remove_workout`.
 5. Datas trafegam e ficam no banco em ISO 8601, em UTC. A conversão para o fuso do usuário é da UI.
@@ -59,8 +60,11 @@ pnpm --filter @heavy-duty/api backup:run     # executa o backup uma vez; código
 pnpm --filter @heavy-duty/api backup:scheduler  # inicia o agendador diário do backup
 pnpm --filter @heavy-duty/api backup:verify <arquivo>  # confere um banco restaurado
 pnpm --filter @heavy-duty/api auth:enroll    # imprime um link de cadastro de chave de acesso; código 0 ou 1
+pnpm --filter @heavy-duty/api auth:revoke-mcp  # revoga todas as autorizações do MCP; código 0 ou 1
 ```
 
 O backup roda num processo separado da API (`src/modules/system/backup/`, ADR-018) e lê a configuração em `src/config/backup-env.ts`. A API não lê as variáveis do restic. O teste com o restic real (`restic-store.integration.spec.ts`) fica `skipped` no host sem o binário e roda dentro do contêiner `backup` (`docs/arquitetura/backup.md`).
 
 O comando `auth:enroll` (`src/modules/auth/enroll.ts`) lê `DATABASE_PATH` e `APP_ORIGIN`, não cria banco nem executa migração, e imprime o link `<APP_ORIGIN>/cadastro#token=…`. O link vale 15 minutos e uma vez só. Não copie o link para arquivo, log ou canal compartilhado.
+
+O comando `auth:revoke-mcp` (`src/modules/auth/revoke-mcp.ts`) lê `DATABASE_PATH`, não cria banco nem executa migração, marca `revoked_at` em todas as autorizações do MCP, gasta os códigos pendentes e imprime só as contagens. Depois dele, o Claude precisa de nova aprovação do PO.

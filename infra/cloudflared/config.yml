@@ -5,7 +5,7 @@ credentials-file: /etc/cloudflared/credentials.json
 
 ingress:
   - hostname: <HOSTNAME>
-    path: ^/(api|mcp)(/.*)?$
+    path: ^/(api|mcp|\.well-known/oauth-[a-z-]+)(/.*)?$
     service: http://api:3001
   - hostname: <HOSTNAME>
     service: http://web:3000

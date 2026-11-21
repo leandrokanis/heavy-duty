@@ -3,10 +3,13 @@ import type { OpenAPIHono } from '@hono/zod-openapi'
 import type { Database } from './db/connection.js'
 import { createRouter, handleError, handleNotFound } from './http/errors.js'
 import { originGuard } from './http/origin-guard.js'
+import { mcpBearerGuard } from './mcp/bearer-guard.js'
 import { DEFAULT_MCP_ALLOWED_HOSTS, mcpHostGuard } from './mcp/host-guard.js'
 import { handleMcpRequest, MCP_PATH } from './mcp/server.js'
 import { createAuthRoutes } from './modules/auth/auth.routes.js'
 import { createChallengeStore } from './modules/auth/challenge-store.js'
+import { createOAuthRoutes } from './modules/auth/oauth.routes.js'
+import { createOAuthMetadataRoutes } from './modules/auth/oauth-metadata.routes.js'
 import { requireSession } from './modules/auth/session.middleware.js'
 import { createWebAuthnVerifier, type WebAuthnVerifier } from './modules/auth/webauthn.js'
 import { createExerciseRoutes } from './modules/catalog/exercise.routes.js'
@@ -32,7 +35,7 @@ export type AppOptions = {
   webAuthn?: WebAuthnVerifier
 }
 
-const DEFAULT_APP_ORIGIN = 'http://localhost:8080'
+export const DEFAULT_APP_ORIGIN = 'http://localhost:8080'
 const CHALLENGE_TTL_MS = 5 * 60 * 1000
 const CHALLENGE_CAPACITY = 100
 
@@ -58,6 +61,8 @@ export function createApp(options: AppOptions): OpenAPIHono {
       capacity: CHALLENGE_CAPACITY,
     })
     app.route('/', createAuthRoutes({ db: options.db, now, appOrigin, webAuthn, challenges }))
+    app.route('/', createOAuthMetadataRoutes(appOrigin))
+    app.route('/', createOAuthRoutes({ db: options.db, now, appOrigin }))
     app.route('/', createMuscleGroupRoutes(options.db))
     app.route('/', createMuscleRoutes(options.db))
     app.route('/', createExerciseRoutes(options.db))
@@ -72,10 +77,11 @@ export function createApp(options: AppOptions): OpenAPIHono {
     app.get('/api/docs', swaggerUI({ url: OPENAPI_DOCUMENT_PATH }))
   }
 
-  // The MCP channel stays hidden in production until US-F16-01 authenticates it, see ADR-019.
-  if (options.nodeEnv !== 'production') {
-    const toolDeps = options.db ? { db: options.db, now } : undefined
+  // Without a database no credential can be checked, so /mcp is not mounted, see ADR-020.
+  if (options.db) {
+    const toolDeps = { db: options.db, now }
     app.use(MCP_PATH, mcpHostGuard(options.mcpAllowedHosts ?? DEFAULT_MCP_ALLOWED_HOSTS))
+    app.use(MCP_PATH, mcpBearerGuard({ db: options.db, now, appOrigin }))
     app.all(MCP_PATH, (c) => handleMcpRequest(c, toolDeps))
   }
 
