@@ -32,7 +32,7 @@ Siga `DESIGN.md` em toda tela e todo componente. Regras que mais erram:
 
 1. Cada passo do fluxo da academia pede um toque (meta O5 do PRD). Só começar e encerrar o treino pedem confirmação (D25).
 2. O fluxo de treino não abre teclado. Carga, repetições e tempo mudam por arrasto, em passos fixos (F04).
-3. Toque duplo em "Próximo" registra uma série só: o reducer de `src/features/workout/workout-flow.ts` ignora novo toque por `DOUBLE_TAP_GUARD_MS` (0,8 s, em `workout.config.ts`). Cada série e cada treino levam o ID gerado no cliente com `createClientId()` (`src/features/workout/client-id.ts`, UUID v7, ADR-014), que é a chave de idempotência.
+3. Toque duplo em "Próximo" tem efeito uma vez só: o reducer de `src/features/workout/workout-flow.ts` ignora novo toque por `DOUBLE_TAP_GUARD_MS` (0,8 s, em `workout.config.ts`) depois de toda troca de tela, seja registro, fim do descanso ou pulo do descanso (`lastStepAtMs`). Cada série e cada treino levam o ID gerado no cliente com `createClientId()` (`src/features/workout/client-id.ts`, UUID v7, ADR-014), que é a chave de idempotência.
 4. O registro funciona sem rede. A série vai para a fila local e segue para a API quando a conexão volta (F03, H10).
 5. A carga não fica negativa.
 6. O texto exibido ao usuário é em português do Brasil. Nome de componente, prop e identificador são em inglês.

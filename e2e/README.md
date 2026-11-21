@@ -2,7 +2,7 @@
 
 Testes ponta a ponta com Playwright e playwright-bdd. Os cenários vêm dos cenários de aceite do PRD.
 
-Estado: o scaffold (EN-S0) criou a suíte com os cenários `@EN-S0` em `features/app-shell.feature`. A US-F01-01 acrescentou os cenários `@US-F01-01` em `features/catalog-muscles.feature`, e a US-F01-02, os cenários `@US-F01-02` em `features/catalog-exercises.feature`, os dois contra a API por HTTP e pelo `/mcp`. A US-F14-02 acrescentou o cenário `@US-F14-02` "falha no backup" em `features/system-backup.feature`. A US-F14-01 acrescentou os cenários `@US-F14-01` em `features/auth.feature` e passou a exigir a sessão de acesso nos outros cenários. A US-F02-01 acrescentou os cenários `@US-F02-01` em `features/programs.feature`, contra a API por HTTP e pelo `/mcp`. A US-F02-02 acrescentou os cenários `@US-F02-02` em `features/programs-edit.feature`, que editam o programa por HTTP e pelo `/mcp` e conferem um treino de fixture gravado direto no banco. A US-F03-01 acrescentou os cenários `@US-F03-01` em `features/today-workout.feature`, os primeiros do fluxo da academia na tela. A US-F03-02 acrescentou os cenários `@US-F03-02` em `features/one-tap-set.feature`, que gravam a série pelo botão "Próximo".
+Estado: o scaffold (EN-S0) criou a suíte com os cenários `@EN-S0` em `features/app-shell.feature`. A US-F01-01 acrescentou os cenários `@US-F01-01` em `features/catalog-muscles.feature`, e a US-F01-02, os cenários `@US-F01-02` em `features/catalog-exercises.feature`, os dois contra a API por HTTP e pelo `/mcp`. A US-F14-02 acrescentou o cenário `@US-F14-02` "falha no backup" em `features/system-backup.feature`. A US-F14-01 acrescentou os cenários `@US-F14-01` em `features/auth.feature` e passou a exigir a sessão de acesso nos outros cenários. A US-F02-01 acrescentou os cenários `@US-F02-01` em `features/programs.feature`, contra a API por HTTP e pelo `/mcp`. A US-F02-02 acrescentou os cenários `@US-F02-02` em `features/programs-edit.feature`, que editam o programa por HTTP e pelo `/mcp` e conferem um treino de fixture gravado direto no banco. A US-F03-01 acrescentou os cenários `@US-F03-01` em `features/today-workout.feature`, os primeiros do fluxo da academia na tela. A US-F03-02 acrescentou os cenários `@US-F03-02` em `features/one-tap-set.feature`, que gravam a série pelo botão "Próximo". A US-F05-01 acrescentou os cenários `@US-F05-01` em `features/rest-timer.feature`, que deixam o descanso terminar sozinho, pulam o descanso e encerram o treino na última série.
 
 ## Estrutura planejada
 
@@ -33,9 +33,10 @@ pnpm --filter @heavy-duty/e2e run test --grep @US-F02-01         # executa os ce
 pnpm --filter @heavy-duty/e2e run test --grep @US-F02-02         # executa os cenários da edição do programa
 pnpm --filter @heavy-duty/e2e run test --grep @US-F03-01         # executa os cenários do treino do dia
 pnpm --filter @heavy-duty/e2e run test --grep @US-F03-02         # executa os cenários da série com um toque
+pnpm --filter @heavy-duty/e2e run test --grep @US-F05-01         # executa os cenários do descanso
 ```
 
-A suíte sobe três servidores (`webServer` em `playwright.config.ts`). Os cenários rodam em seis projetos, todos com `devices['Pixel 7']` (Chromium): `catalog-muscles`, só com `features/catalog-muscles.feature`; `mobile`, com o restante menos o programa e o treino do dia, que depende do primeiro; `programs`, só com `features/programs.feature`, que depende do `mobile`; `programs-edit`, só com `features/programs-edit.feature`, que depende do `programs`; `today-workout`, só com `features/today-workout.feature`, que depende do `programs-edit`; e `one-tap-set`, só com `features/one-tap-set.feature`, que depende do `today-workout`:
+A suíte sobe três servidores (`webServer` em `playwright.config.ts`). Os cenários rodam em sete projetos, todos com `devices['Pixel 7']` (Chromium): `catalog-muscles`, só com `features/catalog-muscles.feature`; `mobile`, com o restante menos o programa e o treino do dia, que depende do primeiro; `programs`, só com `features/programs.feature`, que depende do `mobile`; `programs-edit`, só com `features/programs-edit.feature`, que depende do `programs`; `today-workout`, só com `features/today-workout.feature`, que depende do `programs-edit`; `one-tap-set`, só com `features/one-tap-set.feature`, que depende do `today-workout`; e `rest-timer`, só com `features/rest-timer.feature`, que depende do `one-tap-set`:
 
 | Servidor | Endereço | Variável da porta | Observação |
 |---|---|---|---|
@@ -110,3 +111,12 @@ Os cenários `@US-F03-02` gravam séries pela tela e pela rota `POST /api/workou
 - O cenário "reenvio com o mesmo ID" chama a rota pelo `request`, sem a tela: 201 no primeiro envio, 200 no segundo, com o `performedAt` original, e uma série no treino.
 - O cenário "série com um toque" mede o botão "Próximo" com `boundingBox()`: pelo menos 56 px de altura e o topo na metade de baixo da tela (`DESIGN.md`, Seções 5.4 e 7).
 - Uma story que vier depois e precisar do histórico ou do programa ativo DEVE rodar num projeto depois do `one-tap-set`, ou refazer o estado no próprio `Background`.
+
+Os cenários `@US-F05-01` também gravam séries pela tela e mudam o programa ativo. Por isso:
+
+- O projeto `rest-timer` roda em série (`fullyParallel: false`), depois do `one-tap-set`. Com `--grep @US-F05-01`, o Playwright roda também os seis projetos anteriores, que são dependências.
+- O `Background` acrescenta o músculo "tríceps braquial" (`triceps`) e o exercício "Tríceps na polia" (`reps`), aceita o 409 do item já cadastrado, apaga os treinos com `clearWorkouts()` e cria o programa ativo com a letra "A": "Supino reto" (3 × 10, 40 kg, 90 s) e "Tríceps na polia" (3 × 12, 20 kg, 60 s). O cenário "última série da letra encerra o treino" cria um programa novo, com o "Tríceps na polia" de 1 série; o programa mais novo fica ativo.
+- O tempo anda por `page.clock.setFixedTime`. O passo "the clock reaches" fixa o relógio no fim do descanso, e o intervalo de 250 ms da tela relê o instante fixado e termina o descanso.
+- O passo "the athlete skips the rest" não espera envio: ele confere o descanso na tela, fixa o instante do toque e espera o descanso sumir. Cada toque fica pelo menos 1 s depois da troca anterior, porque a guarda de 0,8 s vale depois de toda troca de tela.
+- Os passos de toque, de envio e de leitura das séries vêm de `steps/one-tap-set.steps.ts`. O passo "the workout should hold the set numbers" lê as séries do treino com `readWorkoutSets()`, sem contar linhas do banco inteiro.
+- Uma story que vier depois e precisar do histórico ou do programa ativo DEVE rodar num projeto depois do `rest-timer`, ou refazer o estado no próprio `Background`.

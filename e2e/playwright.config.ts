@@ -17,6 +17,7 @@ const PROGRAMS_SPEC = /programs\.feature\.spec\.js$/
 const PROGRAMS_EDIT_SPEC = /programs-edit\.feature\.spec\.js$/
 const TODAY_WORKOUT_SPEC = /today-workout\.feature\.spec\.js$/
 const ONE_TAP_SET_SPEC = /one-tap-set\.feature\.spec\.js$/
+const REST_TIMER_SPEC = /rest-timer\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -49,6 +50,7 @@ export default defineConfig({
         PROGRAMS_EDIT_SPEC,
         TODAY_WORKOUT_SPEC,
         ONE_TAP_SET_SPEC,
+        REST_TIMER_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -86,6 +88,14 @@ export default defineConfig({
       testMatch: ONE_TAP_SET_SPEC,
       fullyParallel: false,
       dependencies: ['today-workout'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Also records sets and clears the workouts, with its own active program per scenario.
+    {
+      name: 'rest-timer',
+      testMatch: REST_TIMER_SPEC,
+      fullyParallel: false,
+      dependencies: ['one-tap-set'],
       use: { ...devices['Pixel 7'] },
     },
   ],

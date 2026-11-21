@@ -24,6 +24,23 @@ export const PRANCHA: TodayExercise = {
   loadSource: 'program',
 }
 
+export const TRICEPS_POLIA: TodayExercise = {
+  plannedExerciseId: 'planned-triceps',
+  exercise: {
+    id: 'exercise-triceps',
+    slug: 'triceps-polia',
+    name: 'Tríceps na polia',
+    kind: 'reps',
+  },
+  sets: 3,
+  targetReps: 12,
+  targetSeconds: null,
+  restSeconds: 60,
+  plannedLoadG: 20000,
+  loadG: 20000,
+  loadSource: 'program',
+}
+
 export function todayDay(
   letter: string,
   label: string | null,

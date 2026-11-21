@@ -21,6 +21,8 @@ Este documento é o guia de interface (HIG) do Heavy Duty. Ele define layout, al
 13. Forma e cantos
 14. Ícones
 15. Movimento e resposta ao toque
+    1. Cronômetro do exercício por tempo
+    2. Descanso
 16. Acessibilidade
 17. Estados da interface
 18. Tokens de design
@@ -302,6 +304,19 @@ O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar na pr
 - Durante a contagem de 3 segundos, "Próximo" DEVE ficar desativado, para um toque duplo não encerrar a série logo no começo.
 - O anel e os números DEVEM bastar sem som: no iPhone, o som da página pode não tocar com o modo silencioso ligado [a confirmar na US-F03-07].
 - A tela DEVERIA ficar acesa durante a execução e o descanso, com a Screen Wake Lock API onde o navegador aceitar [a confirmar: suporte em 2026].
+
+### 15.2. Descanso
+
+- O descanso DEVE mostrar o tempo restante em `m:ss`, com números tabulares, no centro de um anel que esvazia até o fim (PRD, US-F05-01).
+- O anel DEVE ter o papel `progressbar` e o nome "Descanso restante", com o tempo restante em `aria-valuetext`. O tempo DEVE ter o papel `timer` e o nome "Descanso", fora do `progressbar`, porque os filhos de um `progressbar` são apresentacionais em ARIA.
+- O traço do anel DEVE andar sem saltos, com transição linear, e DEVE parar de animar com `prefers-reduced-motion: reduce`.
+- Quando a série seguinte é de outro exercício, o descanso DEVE mostrar o rótulo "A seguir" e o nome do exercício. O título continua com o exercício do descanso.
+- "Próximo" DEVE ficar ativo durante o descanso. O toque pula o resto do descanso e abre a série seguinte sem registrar.
+- Um toque que chega menos de 0,8 s depois de qualquer troca de tela (registro, fim do descanso ou pulo) NÃO DEVE ter efeito.
+- O fim do descanso DEVE ter sinal visual na área da série (Seção 15) e DEVE ser anunciado na região `aria-live="polite"`, como "Série 2 de 3" ou "Tríceps na polia, série 1 de 3". O sinal NÃO DEVE depender de som nem de vibração.
+- A tela DEVERIA ficar acesa durante o descanso, com a Screen Wake Lock API onde o navegador aceitar [a confirmar: suporte no PWA do iPhone em 2026].
+- Exercício com descanso de 0 s NÃO DEVE mostrar a tela de descanso.
+- A última série da letra NÃO DEVE abrir descanso. A tela DEVE mostrar "Treino concluído" e o botão "Fechar", que volta às letras. "Fechar" DEVE ficar desativado enquanto houver série enviando ou não enviada.
 
 ## 16. Acessibilidade
 

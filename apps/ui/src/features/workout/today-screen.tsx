@@ -35,7 +35,17 @@ export function TodayScreen() {
     loadToday()
   }, [loadToday])
 
-  if (session) return <WorkoutScreen {...session} />
+  if (session) {
+    return (
+      <WorkoutScreen
+        {...session}
+        onFinish={() => {
+          setSession(null)
+          loadToday()
+        }}
+      />
+    )
+  }
   if (result?.status === 'offline') return <OfflineNotice onRetry={loadToday} />
   if (result?.status === 'unauthenticated') return <SignInScreen onSignedIn={loadToday} />
 

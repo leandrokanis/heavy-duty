@@ -3,20 +3,24 @@
 import { Button } from '@base-ui/react/button'
 import { Progress } from '@base-ui/react/progress'
 import { CloudOff } from 'lucide-react'
-import { type Dispatch, useEffect, useReducer, useRef, useState } from 'react'
-import { formatLoadKg, formatRestClock } from './format'
+import { type Dispatch, useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { formatLoadKg } from './format'
+import { RestRing } from './rest-ring'
 import type { TodayExercise } from './today.types'
+import { useScreenWakeLock } from './use-screen-wake-lock'
 import {
+  announcementOf,
   createWorkoutFlow,
   currentExercise,
   type RecordedSet,
+  upcomingExercise,
   type WorkoutFlowAction,
   type WorkoutSession,
   workoutFlowReducer,
 } from './workout-flow'
 import { postWorkoutSet } from './workout-set-client'
 
-export type WorkoutScreenProps = WorkoutSession
+export type WorkoutScreenProps = WorkoutSession & { onFinish: () => void }
 
 type Measure = { value: string; unit: string }
 
@@ -75,18 +79,58 @@ function UnsentNotice({ count, onResend }: { count: number; onResend: () => void
 }
 
 const REST_TICK_MS = 250
-const MS_PER_SECOND = 1000
 
-// Reads the clock on every tick instead of counting ticks, so the rest does not drift.
-function useRestSecondsLeft(restEndsAtMs: number | null): number | null {
+// Reads the clock on every tick instead of counting ticks, so the rest does not drift and the
+// first tick after the screen wakes up ends a rest that ran out in the background.
+function useRestClock(restEndsAtMs: number | null, onEnd: (nowMs: number) => void): number | null {
   const [, setTick] = useState(0)
   useEffect(() => {
     if (restEndsAtMs === null) return
-    const interval = setInterval(() => setTick((tick) => tick + 1), REST_TICK_MS)
+    const interval = setInterval(() => {
+      const nowMs = Date.now()
+      if (nowMs >= restEndsAtMs) onEnd(nowMs)
+      else setTick((tick) => tick + 1)
+    }, REST_TICK_MS)
     return () => clearInterval(interval)
-  }, [restEndsAtMs])
+  }, [restEndsAtMs, onEnd])
   if (restEndsAtMs === null) return null
-  return Math.max(0, Math.ceil((restEndsAtMs - Date.now()) / MS_PER_SECOND))
+  return Math.max(0, restEndsAtMs - Date.now())
+}
+
+function SetArea({ planned, afterPassage }: { planned: TodayExercise; afterPassage: boolean }) {
+  return (
+    <div
+      data-cue={afterPassage ? 'rest-end' : undefined}
+      className="flex flex-col gap-(--space-24) data-[cue=rest-end]:animate-[rest-end_var(--duration-base)_ease-out]"
+    >
+      <MeasureValue label="Carga" measure={{ value: formatLoadKg(planned.loadG), unit: 'kg' }} />
+      <MeasureValue label="Alvo" measure={targetOf(planned)} />
+    </div>
+  )
+}
+
+function RestArea({
+  msLeft,
+  planned,
+  upcoming,
+}: {
+  msLeft: number
+  planned: TodayExercise
+  upcoming: TodayExercise | null
+}) {
+  return (
+    <div className="flex flex-col gap-(--space-24)">
+      <RestRing msLeft={msLeft} restSeconds={planned.restSeconds} />
+      {upcoming ? (
+        <p className="flex flex-col items-center gap-(--space-4)">
+          <span className="text-[0.9375rem] opacity-60">A seguir</span>
+          <span className="text-[1.25rem] font-(--font-weight-semibold)">
+            {upcoming.exercise.name}
+          </span>
+        </p>
+      ) : null}
+    </div>
+  )
 }
 
 function dotClassOf(index: number, recordedCount: number, resting: boolean): string {
@@ -95,7 +139,7 @@ function dotClassOf(index: number, recordedCount: number, resting: boolean): str
   return 'bg-[color-mix(in_srgb,CanvasText_20%,transparent)]'
 }
 
-export function WorkoutScreen(session: WorkoutScreenProps) {
+export function WorkoutScreen({ onFinish, ...session }: WorkoutScreenProps) {
   const [state, dispatch] = useReducer(workoutFlowReducer, session, createWorkoutFlow)
   useSendRecordedSets(session.workoutId, state.recorded, dispatch)
   const { day } = session
@@ -103,15 +147,16 @@ export function WorkoutScreen(session: WorkoutScreenProps) {
   const setNumber = state.setNumber
   const planned: TodayExercise = currentExercise(state)
   const resting = state.phase === 'rest'
-  const restSecondsLeft = useRestSecondsLeft(state.restEndsAtMs)
+  const finished = state.phase === 'finished'
+  const endRest = useCallback((nowMs: number) => dispatch({ type: 'restEnd', nowMs }), [])
+  const restMsLeft = useRestClock(state.restEndsAtMs, endRest)
+  const upcoming = upcomingExercise(state)
+  useScreenWakeLock(resting)
   const recordedCount = state.recorded.filter(
     ({ body }) => body.plannedExerciseId === planned.plannedExerciseId,
   ).length
   const unsentCount = state.recorded.filter(({ status }) => status === 'failed').length
-  const lastRecorded = state.recorded.at(-1)?.body
-  const announcement = lastRecorded
-    ? `Série ${lastRecorded.setNumber} de ${planned.sets} registrada`
-    : ''
+  const hasPendingSet = state.recorded.some(({ status }) => status !== 'sent')
   return (
     <main className="flex min-h-dvh flex-col gap-(--space-32) px-(--space-margin-inline) py-(--space-24)">
       <div className="glass flex min-h-(--target-workout) items-center gap-(--space-16) rounded-(--radius-capsule) px-(--space-20)">
@@ -128,7 +173,9 @@ export function WorkoutScreen(session: WorkoutScreenProps) {
           </Progress.Track>
         </Progress.Root>
       </div>
-      <h1 className="text-[1.75rem] font-(--font-weight-semibold)">{planned.exercise.name}</h1>
+      <h1 className="text-[1.75rem] font-(--font-weight-semibold)">
+        {finished ? 'Treino concluído' : planned.exercise.name}
+      </h1>
       <Progress.Root
         aria-label="Séries"
         getAriaValueText={() => `${setNumber} de ${planned.sets}`}
@@ -146,38 +193,33 @@ export function WorkoutScreen(session: WorkoutScreenProps) {
           ))}
         </div>
       </Progress.Root>
-      {restSecondsLeft === null ? (
-        <div className="flex flex-col gap-(--space-24)">
-          <MeasureValue
-            label="Carga"
-            measure={{ value: formatLoadKg(planned.loadG), unit: 'kg' }}
-          />
-          <MeasureValue label="Alvo" measure={targetOf(planned)} />
-        </div>
-      ) : (
-        <div
-          role="timer"
-          aria-label="Descanso"
-          className="text-[5rem] leading-none font-(--font-weight-semibold) tabular-nums"
-        >
-          {formatRestClock(restSecondsLeft)}
-        </div>
-      )}
+      {state.phase === 'set' ? (
+        <SetArea
+          // A new key per set restarts the rest-end animation on every passage.
+          key={`${state.exerciseIndex}-${setNumber}`}
+          planned={planned}
+          afterPassage={state.lastStepAtMs !== null}
+        />
+      ) : null}
+      {resting && restMsLeft !== null ? (
+        <RestArea msLeft={restMsLeft} planned={planned} upcoming={upcoming} />
+      ) : null}
       <div className="mt-auto flex flex-col gap-(--space-16)">
         {unsentCount > 0 ? (
           <UnsentNotice count={unsentCount} onResend={() => dispatch({ type: 'resend' })} />
         ) : null}
         <Button
-          aria-disabled={resting ? 'true' : undefined}
-          className="min-h-(--target-workout) w-full rounded-(--radius-capsule) bg-[CanvasText] px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) text-[Canvas] active:opacity-60"
-          onClick={() => dispatch({ type: 'next', nowMs: Date.now() })}
+          disabled={finished && hasPendingSet}
+          focusableWhenDisabled
+          className="min-h-(--target-workout) w-full rounded-(--radius-capsule) bg-[CanvasText] px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) text-[Canvas] active:opacity-60 data-disabled:opacity-40"
+          onClick={finished ? onFinish : () => dispatch({ type: 'next', nowMs: Date.now() })}
         >
-          Próximo
+          {finished ? 'Fechar' : 'Próximo'}
         </Button>
       </div>
       {/* Mounted from the start: screen readers skip a live region born with its text. */}
       <p role="status" aria-live="polite" className="sr-only">
-        {announcement}
+        {announcementOf(state)}
       </p>
     </main>
   )
