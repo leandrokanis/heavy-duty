@@ -1,4 +1,4 @@
-// A second tap inside this window after a recorded set is ignored (FR-004).
+// A tap inside this window after any screen change (record, rest end, skip) is ignored.
 export const DOUBLE_TAP_GUARD_MS = 800
 
 // Estimate: long enough for a slow gym network, short enough to show the failure.

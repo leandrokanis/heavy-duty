@@ -62,7 +62,7 @@ apps/ui/src/
   components/ui/           componentes do Animate UI, sobre o Base UI, adaptados ao DESIGN.md
   features/<feature>/      componentes, hooks e serviços de uma feature (auth, workout, rest, game…)
   features/auth/           AuthGate, tela de entrada, tela de cadastro, aviso sem conexão, cliente de /api/auth/*
-  features/workout/        treino do dia: cliente de /api/today, lista de letras, folha de confirmação, tela de treino e formatação de carga e duração (US-F03-01); fluxo da série (reducer), cliente de /api/workouts/{workoutId}/sets, descanso e aviso de série não enviada (US-F03-02)
+  features/workout/        treino do dia: cliente de /api/today, lista de letras, folha de confirmação, tela de treino e formatação de carga e duração (US-F03-01); fluxo da série (reducer), cliente de /api/workouts/{workoutId}/sets, descanso e aviso de série não enviada (US-F03-02); fim e pulo do descanso, anel, tela acesa e treino concluído (US-F05-01)
   features/mcp-auth/       tela de autorização do MCP e cliente de /api/oauth/authorization
   shared/                  utilitários usados por duas features ou mais
   sync/                    fila do armazenamento local e envio para a API
@@ -87,13 +87,16 @@ apps/ui/src/
 
 ## Fluxo da série com um toque
 
-A US-F03-02 liga o botão "Próximo" da tela de treino:
+A US-F03-02 liga o botão "Próximo" da tela de treino, e a US-F05-01 completa o descanso:
 
 1. O toque em "Começar" gera o `id` do treino (UUID v7) e o início (`startedAt`, ISO 8601 em UTC) e abre a tela de treino com o programa e a letra. Nada é gravado ainda.
-2. O fluxo da tela fica num reducer puro (`workout-flow.ts`), com as fases `set` e `rest`. O toque em "Próximo" despacha a ação `next` com o instante do toque; o reducer monta a série com a carga e o alvo exibidos, um `id` novo (UUID v7 do instante) e `performedAt`, e passa ao descanso com o fim em `restEndsAtMs`.
-3. O descanso começa na hora, sem esperar a API: o tempo restante aparece em `m:ss` (`role="timer"`, nome "Descanso"), lido do relógio a cada 250 ms e parado em `0:00`. Durante o descanso, "Próximo" fica com `aria-disabled="true"` e sem ação até a US-F05-01.
-4. Depois de um toque que registrou, novos toques ficam ignorados por 0,8 s (`DOUBLE_TAP_GUARD_MS` em `workout.config.ts`).
-5. A região `aria-live="polite"`, montada desde a abertura da tela, anuncia "Série 1 de 3 registrada".
+2. O fluxo da tela fica num reducer puro (`workout-flow.ts`), com as fases `set`, `rest` e `finished`. Na fase `set`, o toque em "Próximo" despacha a ação `next` com o instante do toque. O reducer monta a série com a carga e o alvo exibidos, um `id` novo (UUID v7 do instante) e `performedAt`. Depois do registro, o reducer escolhe a fase seguinte:
+   - última série da letra: fase `finished`, sem descanso;
+   - descanso de 0 s: a série seguinte, na fase `set`;
+   - nos outros casos: fase `rest`, com o fim em `restEndsAtMs` pelo `restSeconds` do exercício da série registrada.
+3. O descanso começa na hora, sem esperar a API. O hook `useRestClock` relê o relógio a cada 250 ms e despacha `restEnd` com o instante lido quando o tempo acaba; o reducer ignora `restEnd` fora da fase `rest` ou antes de `restEndsAtMs`. A série seguinte vem de `nextPositionOf`: a próxima série do mesmo exercício ou a 1ª série do exercício seguinte. A volta do segundo plano termina o descanso no primeiro tique. Na fase `rest`, o toque em "Próximo" pula o resto do descanso e abre a série seguinte sem registrar.
+4. A tela de descanso mostra o anel (`rest-ring.tsx`, `Progress.Root` do Base UI com um `circle` SVG) e o tempo em `m:ss` (`role="timer"`, nome "Descanso"), fora do `progressbar`. `upcomingExercise` dá o exercício de "A seguir", só quando muda o exercício. `useScreenWakeLock` pede a tela acesa durante o descanso e refaz o pedido quando a página volta a ficar visível; sem suporte, o descanso segue igual.
+5. Novos toques ficam ignorados por 0,8 s depois de toda troca de tela: registro, fim do descanso ou pulo (`lastStepAtMs` no estado, `DOUBLE_TAP_GUARD_MS` em `workout.config.ts`). A região `aria-live="polite"`, montada desde a abertura da tela, anuncia o texto de `announcementOf`: "Série 1 de 3 registrada", "Série 2 de 3", "Tríceps na polia, série 1 de 3" ou "Série 3 de 3 registrada. Treino concluído". Depois do fim ou do pulo, a área da série recebe `data-cue="rest-end"` e a animação `rest-end` de `globals.css`, só de opacidade com `prefers-reduced-motion: reduce`. Na fase `finished`, a tela mostra "Treino concluído" e "Fechar"; o botão fica desativado enquanto houver série enviando ou com falha, e o toque chama `onFinish`, que volta às letras e pede `/api/today` de novo.
 6. Cada série segue na hora para `POST /api/workouts/{workoutId}/sets` (`workout-set-client.ts`), com limite de 10 s (`SEND_TIMEOUT_MS`, estimativa). 200 e 201 contam como enviada; rede, tempo esgotado, 401, 4xx e 5xx contam como falha.
 7. A série que falhou aparece numa linha discreta com o ícone `CloudOff`, "Série não enviada" e o botão "Reenviar", que manda de novo cada série com falha, com o mesmo `id` e o mesmo corpo. A série não enviada vive só na memória da tela até a fila da US-F03-03; o 401 não troca de tela.
 

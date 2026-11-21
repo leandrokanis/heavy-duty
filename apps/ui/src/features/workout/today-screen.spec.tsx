@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { NO_PROGRAM, PRANCHA, SUPINO_RETO, todayBody, todayDay } from './test-today'
+import { NO_PROGRAM, PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayBody, todayDay } from './test-today'
 import { TodayScreen } from './today-screen'
 
 vi.mock('@simplewebauthn/browser', () => ({
@@ -300,3 +300,33 @@ describe('Given the workout of the day is being requested', () => {
     })
   })
 })
+
+describe("Given letter 'A' with triceps-polia of one set", () => {
+  describe('When the athlete starts the letter, taps Próximo with the API answering 201 and then taps Fechar', () => {
+    it('Then the workout of the day should be requested again and the letters should show the new answer', async () => {
+      const fetchMock = stubFetch(
+        json(200, todayBody([todayDay('A', 'Superior', [{ ...TRICEPS_POLIA, sets: 1 }])], 'A')),
+        json(201),
+        json(200, todayBody([todayDay('B', 'Inferior', [PRANCHA])], 'B')),
+      )
+      await startLetterFromLoadedMock(/^A/)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Próximo' }))
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'Fechar' })).not.toHaveAttribute('data-disabled'),
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Fechar' }))
+      await screen.findByRole('button', { name: /^B/ })
+
+      expect(fetchMock.mock.calls.filter(([url]) => url === '/api/today').length).toBe(2)
+    })
+  })
+})
+
+async function startLetterFromLoadedMock(letter: RegExp) {
+  render(<TodayScreen />)
+  fireEvent.click(await screen.findByRole('button', { name: letter }))
+  const sheet = await screen.findByRole('dialog')
+  fireEvent.click(within(sheet).getByRole('button', { name: 'Começar' }))
+  await screen.findByRole('heading', { level: 1 })
+}
