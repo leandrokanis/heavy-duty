@@ -1,17 +1,24 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js'
+import type { Database } from '../../db/connection.js'
+import { registerCatalogTools } from './catalog.tools.js'
 
-export type ToolRegistration = (server: McpServer) => void
+export type ToolDeps = {
+  db: Database
+}
 
-export const toolRegistrations: readonly ToolRegistration[] = []
+export type ToolRegistration = (server: McpServer, deps: ToolDeps) => void
 
-export function registerTools(server: McpServer): void {
-  for (const register of toolRegistrations) {
-    register(server)
-  }
+export const toolRegistrations: readonly ToolRegistration[] = [registerCatalogTools]
 
-  if (toolRegistrations.length === 0) {
+export function registerTools(server: McpServer, deps: ToolDeps | undefined): void {
+  if (!deps) {
     // McpServer installs the tools/list handler only on the first registerTool call.
     server.server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: [] }))
+    return
+  }
+
+  for (const register of toolRegistrations) {
+    register(server, deps)
   }
 }

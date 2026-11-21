@@ -1,7 +1,26 @@
 import { describe, expect, it } from 'vitest'
 import { createApp } from '../app.js'
+import { createTestDatabase } from '../test/database.js'
 
 type JsonRpcResponse = { result?: Record<string, unknown>; error?: unknown }
+
+type ListedTool = {
+  name: string
+  description?: string
+  inputSchema?: unknown
+  outputSchema?: unknown
+  annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean }
+}
+
+const INITIALIZE_REQUEST = {
+  id: 1,
+  method: 'initialize',
+  params: {
+    protocolVersion: '2025-06-18',
+    capabilities: {},
+    clientInfo: { name: 'heavy-duty-spec', version: '0.0.0' },
+  },
+}
 
 async function postJsonRpc(
   app: ReturnType<typeof createApp>,
@@ -38,6 +57,54 @@ describe('Given an app in development', () => {
         serverName: (initialized.result?.serverInfo as { name?: string } | undefined)?.name,
         tools: listed.result?.tools,
       }).toEqual({ serverName: 'heavy-duty', tools: [] })
+    })
+  })
+})
+
+describe('Given an app in development with a database', () => {
+  const app = createApp({
+    nodeEnv: 'development',
+    databaseHealth: () => true,
+    db: createTestDatabase(),
+  })
+
+  describe('When tools/list is called on /mcp', () => {
+    it('Then should return list_muscle_groups, list_muscles and add_muscle, none destructive', async () => {
+      await postJsonRpc(app, INITIALIZE_REQUEST)
+      const listed = await postJsonRpc(app, { id: 2, method: 'tools/list', params: {} })
+      const tools = (listed.result?.tools ?? []) as ListedTool[]
+
+      expect(
+        tools.map((tool) => ({
+          name: tool.name,
+          hasDescription: Boolean(tool.description),
+          hasSchemas: Boolean(tool.inputSchema) && Boolean(tool.outputSchema),
+          readOnly: tool.annotations?.readOnlyHint === true,
+          destructive: tool.annotations?.destructiveHint === true,
+        })),
+      ).toEqual([
+        {
+          name: 'list_muscle_groups',
+          hasDescription: true,
+          hasSchemas: true,
+          readOnly: true,
+          destructive: false,
+        },
+        {
+          name: 'list_muscles',
+          hasDescription: true,
+          hasSchemas: true,
+          readOnly: true,
+          destructive: false,
+        },
+        {
+          name: 'add_muscle',
+          hasDescription: true,
+          hasSchemas: true,
+          readOnly: false,
+          destructive: false,
+        },
+      ])
     })
   })
 })

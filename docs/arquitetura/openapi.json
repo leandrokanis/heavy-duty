@@ -65,6 +65,119 @@
           "status",
           "database"
         ]
+      },
+      "MuscleGroupList": {
+        "type": "object",
+        "properties": {
+          "muscleGroups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MuscleGroup"
+            }
+          }
+        },
+        "required": [
+          "muscleGroups"
+        ]
+      },
+      "MuscleGroup": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "0193a1b2-0000-7000-8000-000000000001"
+          },
+          "slug": {
+            "type": "string",
+            "example": "triceps"
+          },
+          "name": {
+            "type": "string",
+            "example": "tríceps"
+          },
+          "position": {
+            "type": "integer",
+            "example": 6
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "position"
+        ]
+      },
+      "MuscleList": {
+        "type": "object",
+        "properties": {
+          "muscles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Muscle"
+            }
+          }
+        },
+        "required": [
+          "muscles"
+        ]
+      },
+      "Muscle": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "0193a1b2-0000-7000-8000-000000000101"
+          },
+          "slug": {
+            "type": "string",
+            "example": "triceps-braquial"
+          },
+          "name": {
+            "type": "string",
+            "example": "tríceps braquial"
+          },
+          "muscleGroup": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "0193a1b2-0000-7000-8000-000000000001"
+              },
+              "slug": {
+                "type": "string",
+                "example": "triceps"
+              },
+              "name": {
+                "type": "string",
+                "example": "tríceps"
+              }
+            },
+            "required": [
+              "id",
+              "slug",
+              "name"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "muscleGroup"
+        ]
+      },
+      "AddMuscleInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "tríceps braquial"
+          },
+          "muscleGroupSlug": {
+            "type": "string",
+            "example": "triceps"
+          }
+        }
       }
     },
     "parameters": {}
@@ -103,6 +216,134 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HealthDown"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/muscle-groups": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "List the muscle groups in catalog order",
+        "responses": {
+          "200": {
+            "description": "The muscle groups ordered by position",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MuscleGroupList"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/muscles": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "List the registered muscles with their muscle group",
+        "responses": {
+          "200": {
+            "description": "The muscles ordered by slug",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MuscleList"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Register a muscle in a muscle group",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMuscleInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The registered muscle",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Muscle"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing muscle group (muscle_group_required) or missing name (muscle_name_required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A muscle with the same name already exists (muscle_already_exists)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The muscle group is not in the catalog (muscle_group_not_found)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }

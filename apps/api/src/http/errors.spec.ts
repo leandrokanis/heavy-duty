@@ -1,6 +1,7 @@
 import { createRoute, z } from '@hono/zod-openapi'
 import { describe, expect, it, vi } from 'vitest'
 import { createApp } from '../app.js'
+import { DomainError } from '../errors/domain-error.js'
 import { createRouter, handleError } from './errors.js'
 
 describe('Given an app', () => {
@@ -58,6 +59,32 @@ describe('Given a router with a route that throws an unexpected error', () => {
       expect({ status: response.status, body: await response.json() }).toEqual({
         status: 500,
         body: { code: 'internal_error', message: expect.any(String) },
+      })
+    })
+  })
+})
+
+describe('Given a router with a route that throws a conflict DomainError', () => {
+  const router = createRouter()
+  router.get('/conflict', () => {
+    throw new DomainError('muscle_already_exists', 'músculo já cadastrado', 'conflict')
+  })
+  router.onError(handleError)
+
+  describe('When the route is requested', () => {
+    it('Then should respond 409 with the error code and message, without logging an unexpected error', async () => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      const response = await router.request('/conflict')
+
+      expect({
+        status: response.status,
+        body: await response.json(),
+        loggedErrors: consoleError.mock.calls.length,
+      }).toEqual({
+        status: 409,
+        body: { code: 'muscle_already_exists', message: 'músculo já cadastrado' },
+        loggedErrors: 0,
       })
     })
   })

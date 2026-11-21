@@ -8,6 +8,13 @@
       "when": 1795240857982,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1795244121167,
+      "tag": "0001_catalog_muscles",
+      "breakpoints": true
     }
   ]
 }

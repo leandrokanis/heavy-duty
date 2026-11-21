@@ -23,7 +23,7 @@ function openDatabaseState(databasePath: string): DatabaseState {
 
 const config = loadConfig(process.env)
 const { db, databaseHealth } = openDatabaseState(config.databasePath)
-const app = createApp({ nodeEnv: config.nodeEnv, databaseHealth })
+const app = createApp({ nodeEnv: config.nodeEnv, databaseHealth, db })
 
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
   console.log(`Heavy Duty API listening on port ${info.port} (${config.nodeEnv})`)
