@@ -63,10 +63,11 @@ O contrato de cada rota é gerado dos schemas em `docs/arquitetura/openapi.json`
 ## Regras que o código segue
 
 1. Toda rota e toda ferramenta MCP exigem autenticação (NFR02). O método depende da ADR de autenticação (H12). Até a autenticação existir, `/api/docs`, `/api/openapi.json` e `/mcp` só existem fora de `NODE_ENV=production`; `GET /api/health` é pública porque não devolve dado de treino (ADR-017).
-2. A ferramenta MCP destrutiva declara `destructiveHint: true` e só age depois de confirmação explícita (US-F06-02).
-3. A gravação de série é idempotente pelo ID gerado no cliente: o mesmo ID não cria outra série.
-4. O erro de domínio tem `code` em inglês, em `snake_case`, e `message` em português (`docs/convencoes/codigo.md`, Seção 8).
-5. Data e hora são ISO 8601 em UTC; a carga é inteiro em gramas (`loadG`); o tempo é inteiro em segundos. A API não usa número de ponto flutuante para medida.
-6. O cálculo do jogo fica em funções puras do módulo `windows`, com os parâmetros num arquivo de configuração versionado (ADR-010).
-7. A falha de um canal de aviso não bloqueia o outro e fica registrada em `notifications`.
-8. O log não leva credencial, token nem o endereço de e-mail do PO.
+2. O `/mcp` só atende os hosts de `MCP_ALLOWED_HOSTS` e recusa com 403 o `Host` ou o `Origin` de fora da lista, contra DNS rebinding (`mcp.md`, "Transporte e acesso").
+3. A ferramenta MCP destrutiva declara `destructiveHint: true` e só age depois de confirmação explícita (US-F06-02).
+4. A gravação de série é idempotente pelo ID gerado no cliente: o mesmo ID não cria outra série.
+5. O erro de domínio tem `code` em inglês, em `snake_case`, e `message` em português (`docs/convencoes/codigo.md`, Seção 8).
+6. Data e hora são ISO 8601 em UTC; a carga é inteiro em gramas (`loadG`); o tempo é inteiro em segundos. A API não usa número de ponto flutuante para medida.
+7. O cálculo do jogo fica em funções puras do módulo `windows`, com os parâmetros num arquivo de configuração versionado (ADR-010).
+8. A falha de um canal de aviso não bloqueia o outro e fica registrada em `notifications`.
+9. O log não leva credencial, token nem o endereço de e-mail do PO.

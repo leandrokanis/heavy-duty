@@ -2,6 +2,7 @@ import { swaggerUI } from '@hono/swagger-ui'
 import type { OpenAPIHono } from '@hono/zod-openapi'
 import type { Database } from './db/connection.js'
 import { createRouter, handleError, handleNotFound } from './http/errors.js'
+import { DEFAULT_MCP_ALLOWED_HOSTS, mcpHostGuard } from './mcp/host-guard.js'
 import { handleMcpRequest, MCP_PATH } from './mcp/server.js'
 import { createMuscleRoutes } from './modules/catalog/muscle.routes.js'
 import { createMuscleGroupRoutes } from './modules/catalog/muscle-group.routes.js'
@@ -13,6 +14,7 @@ export type AppOptions = {
   nodeEnv: string
   databaseHealth: DatabaseHealthProbe
   db?: Database
+  mcpAllowedHosts?: readonly string[]
 }
 
 export function createApp(options: AppOptions): OpenAPIHono {
@@ -29,6 +31,7 @@ export function createApp(options: AppOptions): OpenAPIHono {
     app.doc31(OPENAPI_DOCUMENT_PATH, OPENAPI_CONFIG)
     app.get('/api/docs', swaggerUI({ url: OPENAPI_DOCUMENT_PATH }))
     const toolDeps = options.db ? { db: options.db } : undefined
+    app.use(MCP_PATH, mcpHostGuard(options.mcpAllowedHosts ?? DEFAULT_MCP_ALLOWED_HOSTS))
     app.all(MCP_PATH, (c) => handleMcpRequest(c, toolDeps))
   }
 
