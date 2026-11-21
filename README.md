@@ -27,6 +27,14 @@ docker compose down           # encerra os serviços e mantém o banco em ./data
 
 A API serve a documentação em http://127.0.0.1:8080/api/docs. Se a porta 8080 estiver ocupada, execute `PROXY_PORT=8081 docker compose up -d`.
 
+O backup diário fica no profile `backup`, com um repositório local do restic e uma senha só para desenvolvimento. O roteiro de produção e de restauração está em `docs/arquitetura/backup.md`:
+
+```sh
+docker compose --profile backup up -d backup                          # sobe o agendador do backup
+docker compose exec backup pnpm --filter @heavy-duty/api backup:run   # executa o backup sob demanda
+docker compose --profile backup down                                  # encerra os serviços, inclusive o backup
+```
+
 No host, os comandos pedem Node.js 24 (versão em `.nvmrc`) e o pnpm 10.34.9, fixado em `packageManager`:
 
 ```sh

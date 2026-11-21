@@ -9,6 +9,7 @@ import { createMuscleRoutes } from './modules/catalog/muscle.routes.js'
 import { createMuscleGroupRoutes } from './modules/catalog/muscle-group.routes.js'
 import { createHealthRoutes } from './modules/system/health.routes.js'
 import type { DatabaseHealthProbe } from './modules/system/health.service.js'
+import { createSystemStatusRoutes } from './modules/system/system-status.routes.js'
 import { OPENAPI_CONFIG, OPENAPI_DOCUMENT_PATH } from './openapi/document.js'
 
 export type AppOptions = {
@@ -29,6 +30,7 @@ export function createApp(options: AppOptions): OpenAPIHono {
       app.route('/', createMuscleGroupRoutes(options.db))
       app.route('/', createMuscleRoutes(options.db))
       app.route('/', createExerciseRoutes(options.db))
+      app.route('/', createSystemStatusRoutes(options.db))
     }
     app.doc31(OPENAPI_DOCUMENT_PATH, OPENAPI_CONFIG)
     app.get('/api/docs', swaggerUI({ url: OPENAPI_DOCUMENT_PATH }))

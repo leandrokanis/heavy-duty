@@ -37,6 +37,13 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Histórico | Conjunto dos treinos registrados | `history` | log |
 | Volume | Soma de carga × repetições por grupo muscular num intervalo. A fórmula para exercício de tempo está em aberto (Q07) | `volume` | — |
 
+## Operação
+
+| Termo | Definição | Código | Não usar |
+|---|---|---|---|
+| Execução de backup | Uma tentativa do backup diário ou sob demanda, com início, fim, situação (`succeeded` ou `failed`), tamanho da cópia em bytes e motivo da falha. Fica na tabela `backup_runs` | `BackupRun` | job, rodada |
+| Situação do app | O que o planejador consulta sobre a operação do app: a execução de backup mais recente, a última bem-sucedida e as recentes | `SystemStatus` | saúde, health |
+
 ## Gamificação (ondas 5 a 7)
 
 | Termo | Definição | Código | Não usar |

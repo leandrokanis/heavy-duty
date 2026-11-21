@@ -26,7 +26,7 @@ describe('Given an app in production with a database', () => {
     db: createTestDatabase(),
   })
 
-  describe('When the catalog routes and /mcp are requested', () => {
+  describe('When the catalog routes, /api/system/status and /mcp are requested', () => {
     it('Then should respond 404 to each', async () => {
       const requests = [
         app.request('/api/muscle-groups'),
@@ -46,11 +46,12 @@ describe('Given an app in production with a database', () => {
             primaryMuscleSlugs: ['peitoral-maior'],
           }),
         }),
+        app.request('/api/system/status'),
         app.request('/mcp', { method: 'POST' }),
       ]
       const statuses = (await Promise.all(requests)).map((response) => response.status)
 
-      expect(statuses).toEqual([404, 404, 404, 404, 404, 404])
+      expect(statuses).toEqual([404, 404, 404, 404, 404, 404, 404])
     })
   })
 })
@@ -84,6 +85,19 @@ describe('Given an app in development with a database', () => {
         listExercises: ['200', '500'],
         addExercise: ['201', '400', '409', '422', '500'],
       })
+    })
+  })
+
+  describe('When the OpenAPI document is generated for the system status', () => {
+    it('Then should declare GET /api/system/status with 200 and 500', async () => {
+      const response = await app.request('/api/openapi.json')
+      const document = (await response.json()) as {
+        paths: Record<string, Record<string, { responses: Record<string, unknown> }>>
+      }
+
+      expect(
+        Object.keys(document.paths['/api/system/status']?.get?.responses ?? {}).sort(),
+      ).toEqual(['200', '500'])
     })
   })
 })

@@ -312,6 +312,92 @@
             ]
           }
         }
+      },
+      "SystemStatus": {
+        "type": "object",
+        "properties": {
+          "backup": {
+            "$ref": "#/components/schemas/BackupStatus"
+          }
+        },
+        "required": [
+          "backup"
+        ]
+      },
+      "BackupStatus": {
+        "type": "object",
+        "properties": {
+          "latestRun": {
+            "$ref": "#/components/schemas/BackupRun"
+          },
+          "lastSuccessfulRun": {
+            "$ref": "#/components/schemas/BackupRun"
+          },
+          "recentRuns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackupRun"
+            }
+          }
+        },
+        "required": [
+          "latestRun",
+          "lastSuccessfulRun",
+          "recentRuns"
+        ]
+      },
+      "BackupRun": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "019aa5f0-0000-7000-8000-000000000301"
+          },
+          "startedAt": {
+            "type": "string",
+            "example": "2026-11-21T06:00:00.000Z"
+          },
+          "finishedAt": {
+            "type": "string",
+            "example": "2026-11-21T06:00:04.000Z"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BackupRunStatus"
+          },
+          "sizeBytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "example": 98304
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "offsite copy failed: repository does not exist"
+          }
+        },
+        "required": [
+          "id",
+          "startedAt",
+          "finishedAt",
+          "status",
+          "sizeBytes",
+          "error"
+        ]
+      },
+      "BackupRunStatus": {
+        "type": "string",
+        "enum": [
+          "succeeded",
+          "failed"
+        ]
       }
     },
     "parameters": {}
@@ -566,6 +652,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/system/status": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Report the backup status: latest run, last successful run and recent runs",
+        "responses": {
+          "200": {
+            "description": "The backup status, with null runs when no backup ran yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatus"
                 }
               }
             }

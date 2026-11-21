@@ -202,7 +202,7 @@ erDiagram
 | Tabela | Conteúdo | Regras |
 |---|---|---|
 | `settings` | Configurações em chave e valor, como `email_enabled` e o hash do token de desligar e-mail | Sem segredo em texto puro. O endereço de e-mail do PO e as credenciais ficam em variável de ambiente |
-| `backup_runs` | Uma linha por execução do backup | Gravada também na falha, com o motivo (F14) |
+| `backup_runs` | Uma linha por execução do backup, com início, fim, situação, tamanho e motivo | Gravada uma vez, no fim da execução, também na falha (F14). `status` é `succeeded` ou `failed`, com `CHECK`. `size_bytes` é o tamanho em bytes da cópia, inteiro não negativo com `CHECK`, e fica nulo na falha. `error` traz o motivo seguro da falha, com até 500 caracteres, e fica nulo no sucesso. Sem índice: a tabela cresce cerca de 365 linhas por ano [estimativa: uma execução por dia]. Só o processo do backup grava a tabela; a API e o MCP só leem (`get_system_status`) |
 
 ## O que não é tabela
 

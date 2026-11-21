@@ -33,17 +33,20 @@ function parseHostList(value: string | undefined): string[] | undefined {
   return hosts && hosts.length > 0 ? hosts : undefined
 }
 
-export function loadConfig(env: Environment): AppConfig {
-  const parsed = EnvironmentSchema.parse(env)
-
-  if (parsed.NODE_ENV === 'production' && parsed.DATABASE_PATH === undefined) {
+export function resolveDatabasePath(nodeEnv: string, databasePath: string | undefined): string {
+  if (nodeEnv === 'production' && databasePath === undefined) {
     throw new Error('DATABASE_PATH is required when NODE_ENV is production')
   }
+  return databasePath ?? DEV_DATABASE_PATH
+}
+
+export function loadConfig(env: Environment): AppConfig {
+  const parsed = EnvironmentSchema.parse(env)
 
   return {
     nodeEnv: parsed.NODE_ENV,
     port: parsed.PORT,
-    databasePath: parsed.DATABASE_PATH ?? DEV_DATABASE_PATH,
+    databasePath: resolveDatabasePath(parsed.NODE_ENV, parsed.DATABASE_PATH),
     mcpAllowedHosts: parseHostList(parsed.MCP_ALLOWED_HOSTS) ?? DEFAULT_MCP_ALLOWED_HOSTS,
   }
 }

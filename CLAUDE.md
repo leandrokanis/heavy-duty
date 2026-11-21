@@ -40,6 +40,7 @@ pnpm typecheck                        # verifica os tipos de todos os apps
 pnpm e2e                              # executa a suíte ponta a ponta
 pnpm --filter @heavy-duty/api test    # executa os testes de um app só
 pnpm --filter @heavy-duty/api openapi:check  # confere o contrato versionado da API
+pnpm --filter @heavy-duty/api backup:run     # executa o backup uma vez (ADR-018)
 ```
 
 O ambiente de desenvolvimento sobe com Docker Compose, no projeto `heavy-duty`:
@@ -49,6 +50,8 @@ docker compose up -d                                   # sobe web, api e proxy e
 docker compose logs -f api                             # acompanha o log de um serviço
 docker compose exec api pnpm --filter @heavy-duty/api test  # executa os testes dentro do contêiner
 docker compose down                                    # encerra os serviços e mantém ./data/
+docker compose --profile backup up -d backup           # sobe o agendador do backup, fora do padrão
+docker compose --profile backup down                   # encerra os serviços, inclusive o backup
 ```
 
 Troque a porta do proxy com `PROXY_PORT` e ligue a observação por polling com `DEV_WATCH_POLLING=true`, sem editar o `compose.yaml`.

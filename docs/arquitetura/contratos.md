@@ -155,3 +155,32 @@ O objeto `Exercise` tem a forma `{ "id", "slug", "name", "kind", "muscles": [{ "
 | 409 | `{ "code": "exercise_already_exists", "message": "exercício já cadastrado" }` | O exercício já existe |
 | 422 | `{ "code": "muscle_not_found", "message": "músculo não encontrado" }` | Um músculo informado não existe no catálogo |
 | 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+## Situação do app
+
+A rota desta seção vem da US-F14-02. Até a autenticação existir (US-F14-01), a rota existe só fora de `NODE_ENV=production` e só quando a API abriu o banco. Em produção, a rota responde 404. A ferramenta MCP `get_system_status` devolve o mesmo objeto (`mcp.md`), pelo mesmo service `getSystemStatus`, em `apps/api/src/modules/system/system-status.service.ts`.
+
+### GET /api/system/status
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Mostrar a situação do backup diário: a execução mais recente, a última bem-sucedida e as execuções recentes |
+| Story | US-F14-02 |
+| Autenticação | Nenhuma até a US-F14-01. A rota não existe em produção |
+| Efeito colateral | Nenhum. A rota só lê a tabela `backup_runs` |
+| Idempotência | Idempotente |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `{ "backup": { "latestRun", "lastSuccessfulRun", "recentRuns" } }` | Sempre que o banco responde |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+Cada execução de backup tem `id`, `startedAt`, `finishedAt`, `status` (`succeeded` ou `failed`), `sizeBytes` e `error`. As datas vêm em ISO 8601, em UTC. `sizeBytes` é o tamanho em bytes da cópia do banco e fica `null` na falha. `error` traz o motivo da falha e fica `null` no sucesso.
+
+- `latestRun` é a execução com o início mais recente, com sucesso ou falha.
+- `lastSuccessfulRun` é a execução bem-sucedida mais recente, mesmo quando ela já saiu de `recentRuns`. A data mostra quantos dias o app ficou sem backup.
+- `recentRuns` traz até 7 execuções, da mais nova para a mais antiga.
+
+Sem nenhuma execução registrada, a resposta é `{ "backup": { "latestRun": null, "lastSuccessfulRun": null, "recentRuns": [] } }`.
+
+O motivo da falha começa pela etapa em inglês (`snapshot failed` ou `offsite copy failed`) e traz a última linha da saída de erro da ferramenta de cópia. O texto não tem caractere de controle, troca a senha do repositório e a credencial em URL (`://usuário:senha@`) por `***` e tem no máximo 500 caracteres (`docs/arquitetura/backup.md`). Exemplo: `offsite copy failed: Fatal: wrong password or no key found`.
