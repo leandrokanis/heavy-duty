@@ -5,7 +5,7 @@
 | Nível C4 | 2, contêiner (armazenamento de dados) |
 | Pasta | `apps/ui/src/sync/` |
 | Onde roda | IndexedDB do navegador do celular |
-| ADRs | ADR-009 (proposta); ADR de sincronização pendente (H10) |
+| ADRs | ADR-009; ADR de sincronização pendente (H10) |
 | Ondas | 3 em diante |
 
 ## Responsabilidade
@@ -20,7 +20,7 @@ O armazenamento local não é fonte da verdade. Quando a API confirma uma série
 
 | Tecnologia | Uso | Licença | Estado |
 |---|---|---|---|
-| IndexedDB | Banco do navegador | Padrão da web | Aceita, ADR-003 e ADR-009 |
+| IndexedDB | Banco do navegador | Padrão da web | Aceita, ADR-009 |
 | Dexie | Acesso tipado ao IndexedDB | Apache-2.0 | Proposta [a confirmar no scaffold] |
 | UUID gerado no cliente | ID da série e chave de idempotência | — | Pendente: versão do UUID (`docs/convencoes/codigo.md`, Seção 7) |
 

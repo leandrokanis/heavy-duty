@@ -102,12 +102,12 @@ C4Container
 
 | Contêiner | Responsabilidade | Tecnologia principal | Arquivo |
 |---|---|---|---|
-| App web | Telas do treino, do jogo e da administração; instalação como PWA | Next.js, React, Base UI, Animate UI, Tailwind CSS (Proposta, ADR-009) | `app-web.md` |
+| App web | Telas do treino, do jogo e da administração; instalação como PWA | Next.js, React, Base UI, Animate UI, Tailwind CSS (Aceita, ADR-009) | `app-web.md` |
 | Armazenamento local | Fila de séries sem sinal e cache do treino do dia, no navegador | IndexedDB com Dexie | `armazenamento-local.md` |
 | API | Regras de negócio, rotas HTTP, servidor MCP, cálculo do jogo e avisos | Node.js 24, Hono, MCP TypeScript SDK | `api.md` |
 | Banco de dados | Catálogo, programas, treinos, retratos e registros do sistema | SQLite em WAL, com Drizzle ORM | `banco-de-dados.md` |
 | Backup | Cópia diária do banco para fora do disco principal | Script Node.js com timer do systemd | `backup.md` |
-| Servidor SMTP | Entrega os e-mails de aviso e o resumo semanal, a partir da onda 7 | Postfix e OpenDKIM (Proposta, ADR-007) | `servidor-smtp.md` |
+| Servidor SMTP | Entrega os e-mails de aviso e o resumo semanal, a partir da onda 7 | Postfix e OpenDKIM (Aceita, ADR-007) | `servidor-smtp.md` |
 | Túnel | Publica o app com HTTPS e roteia `/api` e `/mcp` para a API | cloudflared | `tunel.md` |
 
 ## Implantação no kasparov
@@ -144,18 +144,17 @@ C4Container
 
 | NFR | Onde a arquitetura atende | Estado |
 |---|---|---|
-| NFR01, dados no servidor | Banco e servidor SMTP no kasparov; nenhum terceiro guarda dados de treino | ADR-005, ADR-007 (proposta) |
+| NFR01, dados no servidor | Banco e servidor SMTP no kasparov; nenhum terceiro guarda dados de treino | ADR-005, ADR-007 |
 | NFR02, autenticação forte | Autenticação no app web, na API e no MCP | Pendente |
 | NFR03, backup diário | Contêiner de backup, com o resultado registrado em `backup_runs` | Pendente: destino |
 | NFR04, HTTPS | Túnel da Cloudflare | Definido no PRD (D02) |
-| NFR05, instalação | Manifesto e service worker do app web (Serwist) | ADR-009 (proposta) |
+| NFR05, instalação | Manifesto e service worker do app web (Serwist) | ADR-009 |
 | NFR06, sem sinal | Fila no armazenamento local, com envio posterior | Pendente: ADR de sincronização (H10) |
 
 ## Decisões pendentes
 
 | Decisão | Insumo | Prazo |
 |---|---|---|
-| Aceitar a ADR-009 (Next.js, Base UI e Animate UI) e a ADR-010 (estado do jogo derivado) | Esta pasta | Antes do scaffold da onda 1 |
 | Método de autenticação do app web e do MCP | NFR02, R07, H12 | Antes da onda 1 (app web) e da onda 2 (MCP) |
 | Empacotamento e execução no kasparov: unidades do systemd ou Docker Compose | `README.md` desta pasta | Scaffold da onda 1 |
 | Ferramentas de lint e formatação | `docs/convencoes/codigo.md` | Scaffold da onda 1 |

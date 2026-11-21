@@ -5,7 +5,7 @@
 | Nível C4 | 2, contêiner |
 | Pasta | `apps/api` (`@heavy-duty/api`) |
 | Onde roda | Processo Node.js no kasparov |
-| ADRs | ADR-004, ADR-005, ADR-006 (proposta), ADR-007 (proposta), ADR-010 (proposta) |
+| ADRs | ADR-004, ADR-005, ADR-006 (proposta), ADR-007, ADR-010 |
 | Ondas | 1 em diante |
 
 ## Responsabilidade

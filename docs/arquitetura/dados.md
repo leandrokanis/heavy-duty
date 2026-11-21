@@ -1,6 +1,6 @@
 # Modelo de entidade e relacionamento
 
-Este documento descreve as tabelas do banco de dados (`banco-de-dados.md`), as relações entre elas e as regras que o banco garante. Os nomes de domínio estão em `CONTEXT.md`. O modelo segue a ADR-010 (proposta): o estado do jogo é calculado a partir do histórico, e só fica guardado o que não pode mudar quando a fórmula muda.
+Este documento descreve as tabelas do banco de dados (`banco-de-dados.md`), as relações entre elas e as regras que o banco garante. Os nomes de domínio estão em `CONTEXT.md`. O modelo segue a ADR-010: o estado do jogo é calculado a partir do histórico, e só fica guardado o que não pode mudar quando a fórmula muda.
 
 Estado: modelo planejado. As tabelas nascem por migração, na onda da feature que as usa.
 

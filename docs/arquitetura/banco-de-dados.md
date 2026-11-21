@@ -5,7 +5,7 @@
 | Nível C4 | 2, contêiner (armazenamento de dados) |
 | Pasta | Esquema e migrações em `apps/api/src/db/` [a confirmar no scaffold] |
 | Onde roda | Arquivo no disco do kasparov, aberto pelo processo da API |
-| ADRs | ADR-005; ADR-010 (proposta) define o que fica guardado |
+| ADRs | ADR-005; ADR-010 define o que fica guardado |
 | Ondas | 1 em diante |
 
 ## Responsabilidade

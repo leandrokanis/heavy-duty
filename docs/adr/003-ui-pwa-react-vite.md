@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Aceita |
+| Status | Substituída por ADR-009 |
 | Data | 2026-11-20 |
 | Decisor | PO |
 | Requisitos relacionados | NFR05, NFR06, F03, F09, R01, Q02 |

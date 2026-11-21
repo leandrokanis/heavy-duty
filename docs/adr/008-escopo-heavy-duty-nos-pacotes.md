@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Proposta |
+| Status | Aceita |
 | Data | 2026-11-21 |
 | Decisor | PO |
 | Requisitos relacionados | D33, ADR-001 |

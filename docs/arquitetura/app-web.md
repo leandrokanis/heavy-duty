@@ -5,7 +5,7 @@
 | Nível C4 | 2, contêiner |
 | Pasta | `apps/ui` (`@heavy-duty/ui`) |
 | Onde roda | Processo Node.js no kasparov (servidor do Next.js) e navegador do celular ou do Mac (cliente) |
-| ADRs | ADR-009 (proposta), ADR-002; substitui a ADR-003 quando a ADR-009 for aceita |
+| ADRs | ADR-009, ADR-002; substituiu a ADR-003 |
 | Ondas | 1 em diante |
 
 ## Responsabilidade
@@ -22,14 +22,14 @@ O app web não guarda regra de negócio. Validação de domínio, cálculo do jo
 
 | Tecnologia | Uso | Licença | Estado |
 |---|---|---|---|
-| Next.js 16, App Router [a confirmar a versão] | Rotas, layouts, servidor das páginas | MIT | Proposta, ADR-009 |
-| React 19 | Componentes | MIT | Proposta, ADR-009 |
+| Next.js 16, App Router [a confirmar a versão] | Rotas, layouts, servidor das páginas | MIT | Aceita, ADR-009 |
+| React 19 | Componentes | MIT | Aceita, ADR-009 |
 | TypeScript, modo estrito | Linguagem | Apache-2.0 | Aceita, ADR-002 |
-| Base UI (`@base-ui/react`) | Componentes sem estilo e acessíveis, base do Animate UI | MIT | Proposta, ADR-009 |
-| Animate UI, variante Base UI | Componentes animados copiados para `src/components/ui/` | MIT [a confirmar no LICENSE] | Proposta, ADR-009 |
-| Tailwind CSS 4 | Estilo, com os tokens do `DESIGN.md` no tema | MIT | Proposta, ADR-009 |
-| Motion | Animação, exigida pelo Animate UI | MIT | Proposta, ADR-009 |
-| Serwist (`@serwist/next`) | Service worker: pré-carga, página sem conexão, recebimento do Web Push | MIT | Proposta, ADR-009 |
+| Base UI (`@base-ui/react`) | Componentes sem estilo e acessíveis, base do Animate UI | MIT | Aceita, ADR-009 |
+| Animate UI, variante Base UI | Componentes animados copiados para `src/components/ui/` | MIT [a confirmar no LICENSE] | Aceita, ADR-009 |
+| Tailwind CSS 4 | Estilo, com os tokens do `DESIGN.md` no tema | MIT | Aceita, ADR-009 |
+| Motion | Animação, exigida pelo Animate UI | MIT | Aceita, ADR-009 |
+| Serwist (`@serwist/next`) | Service worker: pré-carga, página sem conexão, recebimento do Web Push | MIT | Aceita, ADR-009 |
 | TanStack Query | Cache e revalidação dos dados da API no cliente | MIT | Proposta [a confirmar no scaffold] |
 | Dexie | Acesso ao IndexedDB (contêiner de armazenamento local) | Apache-2.0 | Proposta [a confirmar no scaffold] |
 | Zod | Validação dos dados que chegam da API | MIT | Proposta [a confirmar no scaffold] |

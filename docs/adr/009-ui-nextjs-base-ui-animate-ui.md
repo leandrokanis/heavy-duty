@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Proposta |
+| Status | Aceita |
 | Data | 2026-11-21 |
 | Decisor | PO |
 | Requisitos relacionados | NFR05, NFR06, F03, F09, D22, ADR-003 |
@@ -24,7 +24,7 @@ A UI é um app Next.js com App Router, que continua sendo um PWA instalável. Os
 - A animação usa Motion, exigido pelo Animate UI, e respeita `prefers-reduced-motion`.
 - O componente copiado do Animate UI passa a ser código do projeto: segue o `DESIGN.md` e as convenções, e guarda a atribuição de licença no topo do arquivo.
 
-Quando aceita, esta ADR substitui a ADR-003.
+Esta ADR substitui a ADR-003.
 
 ## Consequências
 

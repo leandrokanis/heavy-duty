@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Proposta |
+| Status | Aceita |
 | Data | 2026-11-21 |
 | Decisor | PO |
 | Requisitos relacionados | NFR01, F17, D32, R09 |

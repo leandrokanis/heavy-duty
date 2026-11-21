@@ -5,7 +5,7 @@
 | Nível C4 | 2, contêiner |
 | Pasta | Configuração de infraestrutura [a confirmar no scaffold da onda 7] |
 | Onde roda | Serviço no kasparov |
-| ADRs | ADR-007 (proposta) |
+| ADRs | ADR-007 |
 | Ondas | 7 |
 
 ## Responsabilidade
@@ -18,9 +18,9 @@
 
 | Tecnologia | Uso | Licença | Estado |
 |---|---|---|---|
-| Postfix, só envio | Fila e entrega SMTP | IPL-1.0 ou EPL-2.0, software do sistema | Proposta, ADR-007 |
-| OpenDKIM | Assinatura DKIM | BSD | Proposta, ADR-007 |
-| Registros SPF, DKIM e DMARC no DNS do domínio | Autenticação do remetente | — | Proposta, ADR-007 |
+| Postfix, só envio | Fila e entrega SMTP | IPL-1.0 ou EPL-2.0, software do sistema | Aceita, ADR-007 |
+| OpenDKIM | Assinatura DKIM | BSD | Aceita, ADR-007 |
+| Registros SPF, DKIM e DMARC no DNS do domínio | Autenticação do remetente | — | Aceita, ADR-007 |
 
 ## Interfaces
 

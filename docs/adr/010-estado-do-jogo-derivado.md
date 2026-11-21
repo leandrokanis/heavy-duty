@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Proposta |
+| Status | Aceita |
 | Data | 2026-11-21 |
 | Decisor | PO |
 | Requisitos relacionados | F07, F10, F11, D24, D28, D29, Q11, Q13, EN01 |

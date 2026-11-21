@@ -38,3 +38,6 @@ CLAUDE.local.md
 .idea/
 .DS_Store
 *.log
+
+# Local development plan and reports (not versioned)
+/specs/
