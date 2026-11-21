@@ -2,7 +2,7 @@
 
 Testes ponta a ponta com Playwright e playwright-bdd. Os cenários vêm dos cenários de aceite do PRD.
 
-Estado: sem código. A suíte começa na onda 3, com o fluxo da academia (F03).
+Estado: o scaffold (EN-S0) criou a suíte com os cenários `@EN-S0` em `features/app-shell.feature`. Os cenários do fluxo da academia entram na onda 3 (F03).
 
 ## Estrutura planejada
 
@@ -22,8 +22,9 @@ e2e/
 ## Comandos
 
 ```sh
-pnpm e2e
-pnpm e2e -- features/workout.feature
+pnpm --filter @heavy-duty/e2e exec playwright install chromium   # instala o navegador, uma vez
+pnpm e2e                                                         # executa a suíte inteira
+pnpm --filter @heavy-duty/e2e run test --grep @EN-S0             # executa os cenários de uma tag
 ```
 
-Os comandos passam a existir com o `package.json` da suíte.
+A suíte executa o build de produção do app web em `127.0.0.1:3100`, trocável por `E2E_PORT`, no projeto `mobile` (`devices['Pixel 7']`).

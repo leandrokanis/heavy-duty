@@ -11,12 +11,18 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-003](003-ui-pwa-react-vite.md) | UI como PWA em React e Vite | Substituída por ADR-009 |
 | [ADR-004](004-api-node-hono.md) | API em Node.js com Hono | Aceita |
 | [ADR-005](005-sqlite.md) | SQLite como banco de dados | Aceita |
-| [ADR-006](006-mcp-no-processo-da-api.md) | Servidor MCP no processo da API | Proposta |
+| [ADR-006](006-mcp-no-processo-da-api.md) | Servidor MCP no processo da API | Aceita |
 | [ADR-007](007-smtp-proprio.md) | Envio de e-mail por servidor SMTP próprio no kasparov | Aceita |
 | [ADR-008](008-escopo-heavy-duty-nos-pacotes.md) | Escopo @heavy-duty nos pacotes do workspace | Aceita |
 | [ADR-009](009-ui-nextjs-base-ui-animate-ui.md) | UI em Next.js com Base UI e Animate UI | Aceita |
 | [ADR-010](010-estado-do-jogo-derivado.md) | Estado do jogo derivado do histórico de treinos | Aceita |
 | [ADR-011](011-ambiente-de-desenvolvimento-docker-compose.md) | Ambiente de desenvolvimento com Docker Compose | Aceita |
+| [ADR-012](012-lint-e-formatacao-com-biome.md) | Lint e formatação com Biome | Aceita |
+| [ADR-013](013-sqlite-com-drizzle-e-better-sqlite3.md) | Acesso ao SQLite com Drizzle ORM e better-sqlite3 | Aceita |
+| [ADR-014](014-id-em-uuid-v7.md) | ID de entidade em UUID v7 | Aceita |
+| [ADR-015](015-empacotamento-com-docker-compose-e-cloudflared.md) | Empacotamento de produção com Docker Compose e cloudflared | Aceita |
+| [ADR-016](016-icones-lucide.md) | Ícones do Lucide | Aceita |
+| [ADR-017](017-contrato-da-api-com-zod-openapi.md) | Contrato da API com zod-openapi e Swagger UI | Aceita |
 
 ## Regras
 

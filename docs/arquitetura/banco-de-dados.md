@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Nível C4 | 2, contêiner (armazenamento de dados) |
-| Pasta | Esquema e migrações em `apps/api/src/db/` [a confirmar no scaffold] |
+| Pasta | Esquema em `apps/api/src/db/schema.ts` e migrações em `apps/api/src/db/migrations/` (ADR-013) |
 | Onde roda | Arquivo no disco do kasparov, aberto pelo processo da API |
 | ADRs | ADR-005; ADR-010 define o que fica guardado |
 | Ondas | 1 em diante |
@@ -20,8 +20,8 @@ O estado do jogo (janela, pontos, nível, recorde, ranking) não fica guardado: 
 | Tecnologia | Uso | Licença | Estado |
 |---|---|---|---|
 | SQLite 3, modo WAL | Banco num arquivo só | Domínio público | Aceita, ADR-005 |
-| better-sqlite3 | Driver, usado pela API e pelo backup | MIT | Proposta: decisão pendente da onda 1 |
-| Drizzle ORM e drizzle-kit | Esquema em TypeScript e migrações versionadas | Apache-2.0 | Proposta: decisão pendente da onda 1 |
+| better-sqlite3 | Driver, usado pela API e pelo backup | MIT | Aceita, ADR-013 |
+| Drizzle ORM e drizzle-kit | Esquema em TypeScript e migrações versionadas | Apache-2.0 (ORM), MIT (drizzle-kit) | Aceita, ADR-013 |
 
 ## Interfaces
 
@@ -38,4 +38,4 @@ O estado do jogo (janela, pontos, nível, recorde, ranking) não fica guardado: 
 4. Medida é inteiro na menor unidade, sem ponto flutuante: carga em gramas (`load_g`), tempo em segundos. Nenhuma coluna usa `REAL`.
 5. ID é texto com UUID; data e hora são texto ISO 8601 em UTC.
 6. As restrições de domínio que o banco consegue garantir ficam também no banco, com `CHECK` e chave estrangeira: carga não negativa, tipo de exercício válido, letra única por programa.
-7. O arquivo do banco fica fora do repositório e do diretório do código. O caminho vem de variável de ambiente [a confirmar no scaffold].
+7. Em produção, o arquivo do banco fica fora do repositório e do diretório do código, na pasta do host em `HEAVY_DUTY_DATA_DIR` (`compose.prod.yaml`). O caminho vem de `DATABASE_PATH`, obrigatória em produção. No desenvolvimento, o padrão é `data/heavy-duty.dev.sqlite`, na pasta `./data/` fora do Git (ADR-011).

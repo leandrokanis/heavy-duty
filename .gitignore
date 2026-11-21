@@ -7,6 +7,12 @@ dist/
 build/
 dev-dist/
 *.tsbuildinfo
+.next/
+next-env.d.ts
+apps/ui/public/sw.js
+apps/ui/public/sw.js.map
+apps/ui/public/swe-worker-*.js
+apps/ui/public/swe-worker-*.js.map
 
 # Tests
 coverage/
@@ -41,3 +47,6 @@ CLAUDE.local.md
 
 # Local development plan and reports (not versioned)
 /specs/
+
+# Cloudflare Tunnel credentials (production, outside Git)
+infra/cloudflared/*.json

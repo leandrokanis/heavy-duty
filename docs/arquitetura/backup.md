@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Nível C4 | 2, contêiner |
-| Pasta | Script em `apps/api/src/modules/system/backup/` [a confirmar no scaffold] |
+| Pasta | Script em `apps/api/src/modules/system/backup/` [a confirmar na US-F14-02] |
 | Onde roda | Processo de curta duração no kasparov, disparado uma vez por dia por um timer do systemd |
 | ADRs | ADR-005; destino e ferramenta da cópia pendentes |
 | Ondas | 1 |

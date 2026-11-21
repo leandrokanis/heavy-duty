@@ -22,18 +22,19 @@ O app web não guarda regra de negócio. Validação de domínio, cálculo do jo
 
 | Tecnologia | Uso | Licença | Estado |
 |---|---|---|---|
-| Next.js 16, App Router [a confirmar a versão] | Rotas, layouts, servidor das páginas | MIT | Aceita, ADR-009 |
+| Next.js 16.4.6, App Router | Rotas, layouts, servidor das páginas; build de produção com `next build --webpack` | MIT | Aceita, ADR-009 |
 | React 19 | Componentes | MIT | Aceita, ADR-009 |
 | TypeScript, modo estrito | Linguagem | Apache-2.0 | Aceita, ADR-002 |
 | Base UI (`@base-ui/react`) | Componentes sem estilo e acessíveis, base do Animate UI | MIT | Aceita, ADR-009 |
-| Animate UI, variante Base UI | Componentes animados copiados para `src/components/ui/` | MIT [a confirmar no LICENSE] | Aceita, ADR-009 |
+| Animate UI, variante Base UI | Componentes animados copiados para `src/components/ui/` | "MIT + Commons Clause" no `LICENSE.md` oficial (2026-11-21) | Pendente: decisão do PO sobre a licença (ADR-016); nenhum componente copiado |
 | Tailwind CSS 4 | Estilo, com os tokens do `DESIGN.md` no tema | MIT | Aceita, ADR-009 |
 | Motion | Animação, exigida pelo Animate UI | MIT | Aceita, ADR-009 |
-| Serwist (`@serwist/next`) | Service worker: pré-carga, página sem conexão, recebimento do Web Push | MIT | Aceita, ADR-009 |
-| TanStack Query | Cache e revalidação dos dados da API no cliente | MIT | Proposta [a confirmar no scaffold] |
-| Dexie | Acesso ao IndexedDB (contêiner de armazenamento local) | Apache-2.0 | Proposta [a confirmar no scaffold] |
-| Zod | Validação dos dados que chegam da API | MIT | Proposta [a confirmar no scaffold] |
-| Vitest e Testing Library | Teste de componente | MIT | Aceita, `docs/convencoes/testes.md` |
+| Serwist (`@serwist/next` 9.5.15) | Service worker: pré-carga, página sem conexão em `/~offline`, recebimento do Web Push | MIT | Aceita, ADR-009 |
+| TanStack Query | Cache e revalidação dos dados da API no cliente | MIT | Adiado para a onda 3 |
+| Dexie | Acesso ao IndexedDB (contêiner de armazenamento local) | Apache-2.0 | Adiado para a onda 3 (US-F03-03) |
+| Zod | Validação dos dados que chegam da API | MIT | Adiado para a onda 3 |
+| Vitest, jsdom e Testing Library | Teste de componente | MIT | Aceita, `docs/convencoes/testes.md` |
+| Lucide (`lucide-react`) | Conjunto de ícones; o pacote entra com a primeira tela que usar ícone | ISC | Aceita, ADR-016 |
 
 ## Interfaces
 
@@ -69,6 +70,6 @@ apps/ui/src/
 3. A série recebe o ID no cliente antes de entrar na fila; esse ID é a chave de idempotência (`armazenamento-local.md`).
 4. Cor, espaço, raio, material e duração vêm dos tokens do `DESIGN.md`, declarados no tema do Tailwind. Componente do Animate UI que traz cor ou raio próprio é ajustado aos tokens.
 5. Animação respeita `prefers-reduced-motion`, e vidro respeita `prefers-reduced-transparency` e `prefers-contrast: more` (`DESIGN.md`, Seções 12 e 15).
-6. O comportamento sem rede é testado no build de produção, porque o Serwist não roda no modo de desenvolvimento com Turbopack [a confirmar no scaffold].
+6. O comportamento sem rede é testado no build de produção, porque o `next.config.ts` só aplica o Serwist fora de `NODE_ENV=development`: o `next dev` com Turbopack recusa a configuração de webpack que o Serwist acrescenta (conferido no EN-S0). O cenário `@EN-S0` do e2e executa contra o build de produção.
 
 As regras de produto e de interface do dia a dia estão em `apps/ui/CLAUDE.md` e em `DESIGN.md`.

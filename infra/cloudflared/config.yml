@@ -1,0 +1,12 @@
+# Cloudflare Tunnel routing (docs/arquitetura/tunel.md). The credentials file stays outside Git.
+# compose.prod.yaml passes CLOUDFLARE_TUNNEL_ID to `cloudflared tunnel run`, which overrides this key.
+tunnel: <TUNNEL_ID>
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: <HOSTNAME>
+    path: ^/(api|mcp)(/.*)?$
+    service: http://api:3001
+  - hostname: <HOSTNAME>
+    service: http://web:3000
+  - service: http_status:404

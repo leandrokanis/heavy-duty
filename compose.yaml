@@ -1,0 +1,82 @@
+# Development environment (ADR-011). Only the proxy publishes a port on the host.
+name: heavy-duty
+
+x-node-environment: &node-environment
+  NODE_ENV: development
+  WATCHPACK_POLLING: ${DEV_WATCH_POLLING:-false}
+  CHOKIDAR_USEPOLLING: ${DEV_WATCH_POLLING:-false}
+
+services:
+  api:
+    image: heavy-duty-dev-api
+    build:
+      context: .
+      dockerfile: infra/docker/dev.Dockerfile
+    user: node
+    working_dir: /app
+    command:
+      - sh
+      - -c
+      - >-
+        pnpm install --frozen-lockfile --filter heavy-duty --filter @heavy-duty/api &&
+        pnpm --filter @heavy-duty/api db:migrate &&
+        pnpm --filter @heavy-duty/api db:seed &&
+        exec pnpm --filter @heavy-duty/api dev
+    environment:
+      <<: *node-environment
+      PORT: "3001"
+      DATABASE_PATH: /app/data/heavy-duty.dev.sqlite
+    volumes:
+      - .:/app
+      - api-root-node-modules:/app/node_modules
+      - api-node-modules:/app/apps/api/node_modules
+      - pnpm-store:/pnpm-store
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3001/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 300s
+
+  web:
+    image: heavy-duty-dev-web
+    build:
+      context: .
+      dockerfile: infra/docker/dev.Dockerfile
+    user: node
+    working_dir: /app
+    command:
+      - sh
+      - -c
+      - >-
+        pnpm install --frozen-lockfile --filter heavy-duty --filter @heavy-duty/ui &&
+        exec pnpm --filter @heavy-duty/ui dev --hostname 0.0.0.0
+    environment:
+      <<: *node-environment
+      NEXT_TELEMETRY_DISABLED: "1"
+    volumes:
+      - .:/app
+      - web-root-node-modules:/app/node_modules
+      - web-node-modules:/app/apps/ui/node_modules
+      - web-next:/app/apps/ui/.next
+      - pnpm-store:/pnpm-store
+
+  proxy:
+    image: caddy:2.11.7-alpine
+    ports:
+      - "127.0.0.1:${PROXY_PORT:-8080}:80"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on:
+      - api
+      - web
+
+volumes:
+  api-root-node-modules:
+  api-node-modules:
+  web-root-node-modules:
+  web-node-modules:
+  web-next:
+  pnpm-store:
+  caddy-data:

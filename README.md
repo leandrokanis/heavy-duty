@@ -2,26 +2,39 @@
 
 O Heavy Duty é um app web pessoal de musculação, hospedado no próprio servidor. No celular, o app acompanha o treino na academia com um toque por passo. Pelo Claude, via MCP, o app recebe a administração: exercícios, programas e histórico. Depois do MVP, a administração também vai ter telas no Mac.
 
-Estado: documentação inicial. Os apps ainda não têm código. O plano de entrega está no roadmap de `docs/prd.md`, Seção 8.
+Estado: scaffold da onda 1. O workspace, o app web, a API e o ambiente de desenvolvimento existem, sem regra de domínio. O plano de entrega está no roadmap de `docs/prd.md`, Seção 8.
 
 ## Estrutura do repositório
 
 ```text
 apps/
-  ui/        PWA em Next.js, com Base UI e Animate UI
-  api/       API em Node e Hono, servidor MCP e SQLite
-e2e/         testes ponta a ponta com Playwright
+  ui/        @heavy-duty/ui: PWA em Next.js, com Base UI
+  api/       @heavy-duty/api: API em Node e Hono, servidor MCP e SQLite
+e2e/         @heavy-duty/e2e: testes ponta a ponta com Playwright e playwright-bdd
+infra/       imagens Docker, proxy de desenvolvimento (Caddy) e túnel (cloudflared)
 docs/        PRD, arquitetura, ADRs, convenções e qualidade
 ```
 
 ## Requisitos para desenvolver
 
-- Node.js 24 (versão em `.nvmrc`)
-- pnpm 10 [a confirmar no scaffold da onda 1]
+O caminho principal é o Docker Compose, com o plugin Compose instalado. O ambiente sobe sem arquivo `.env`:
+
+```sh
+docker compose up -d          # web, api e proxy; o app abre em http://127.0.0.1:8080
+docker compose exec api pnpm --filter @heavy-duty/api test
+docker compose down           # encerra os serviços e mantém o banco em ./data/
+```
+
+A API serve a documentação em http://127.0.0.1:8080/api/docs. Se a porta 8080 estiver ocupada, execute `PROXY_PORT=8081 docker compose up -d`.
+
+No host, os comandos pedem Node.js 24 (versão em `.nvmrc`) e o pnpm 10.34.9, fixado em `packageManager`:
 
 ```sh
 pnpm install
+pnpm lint
+pnpm typecheck
 pnpm test
+pnpm e2e
 ```
 
 ## Documentação

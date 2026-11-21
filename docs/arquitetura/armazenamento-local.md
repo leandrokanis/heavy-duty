@@ -21,7 +21,7 @@ O armazenamento local não é fonte da verdade. Quando a API confirma uma série
 | Tecnologia | Uso | Licença | Estado |
 |---|---|---|---|
 | IndexedDB | Banco do navegador | Padrão da web | Aceita, ADR-009 |
-| Dexie | Acesso tipado ao IndexedDB | Apache-2.0 | Proposta [a confirmar no scaffold] |
+| Dexie | Acesso tipado ao IndexedDB | Apache-2.0 | Proposta [a confirmar na US-F03-03] |
 | UUID gerado no cliente | ID da série e chave de idempotência | — | Pendente: versão do UUID (`docs/convencoes/codigo.md`, Seção 7) |
 
 ## Dados guardados
