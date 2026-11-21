@@ -3,12 +3,21 @@
 import { useCallback, useEffect, useState } from 'react'
 import { OfflineNotice } from '@/features/auth/offline-notice'
 import { SignInScreen } from '@/features/auth/sign-in-screen'
+import { loadActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
+import { useSyncQueue } from '@/sync/sync-context'
+import { type LoadedToday, loadToday } from '@/sync/today-cache'
 import { createClientId } from './client-id'
 import { LetterList } from './letter-list'
+import { PendingSetsIndicator } from './pending-sets-indicator'
+import { RejectedSetsNotice } from './rejected-sets-notice'
 import { StartSheet } from './start-sheet'
 import type { Today, TodayDay } from './today.types'
-import { fetchToday, type TodayResult } from './today-client'
-import type { WorkoutSession } from './workout-flow'
+import {
+  createWorkoutFlow,
+  restoreWorkoutFlow,
+  type WorkoutFlowState,
+  type WorkoutSession,
+} from './workout-flow'
 import { WorkoutScreen } from './workout-screen'
 
 const NO_PROGRAM = 'Nenhum programa cadastrado. Monte um programa pelo Claude.'
@@ -20,38 +29,56 @@ function emptyStateOf(today: Today): string | null {
   return null
 }
 
-// The phase lives in memory only: a reload goes back to the letters (US-F03-03 keeps the workout).
+// The workout in progress is read from the device on opening, so a reload or a closed app resumes it.
 export function TodayScreen() {
-  const [result, setResult] = useState<TodayResult | null>(null)
+  const queue = useSyncQueue()
+  const [result, setResult] = useState<LoadedToday | null>(null)
   const [sheetDay, setSheetDay] = useState<TodayDay | null>(null)
-  const [session, setSession] = useState<WorkoutSession | null>(null)
+  // 'pending' until the device has answered whether a workout is in progress.
+  const [flow, setFlow] = useState<WorkoutFlowState | null | 'pending'>('pending')
 
-  const loadToday = useCallback(() => {
+  // The queue sends again after each answer of the API, as it may be a session that came back.
+  const refresh = useCallback(() => {
     setResult(null)
-    fetchToday().then(setResult)
-  }, [])
+    loadToday().then((loaded) => {
+      setResult(loaded)
+      if (loaded.status === 'ok' && !('fromCache' in loaded)) void queue.flush()
+    })
+  }, [queue])
 
   useEffect(() => {
-    loadToday()
-  }, [loadToday])
+    refresh()
+    loadActiveWorkout(Date.now()).then((saved) =>
+      setFlow(saved ? restoreWorkoutFlow(saved, Date.now()) : null),
+    )
+  }, [refresh])
 
-  if (session) {
+  if (flow !== null && flow !== 'pending') {
     return (
       <WorkoutScreen
-        {...session}
+        flow={flow}
         onFinish={() => {
-          setSession(null)
-          loadToday()
+          setFlow(null)
+          refresh()
         }}
       />
     )
   }
-  if (result?.status === 'offline') return <OfflineNotice onRetry={loadToday} />
-  if (result?.status === 'unauthenticated') return <SignInScreen onSignedIn={loadToday} />
+  if (result?.status === 'offline') return <OfflineNotice onRetry={refresh} />
+  if (result?.status === 'unauthenticated') {
+    return (
+      <SignInScreen
+        onSignedIn={() => {
+          void queue.flush()
+          refresh()
+        }}
+      />
+    )
+  }
 
   return (
     <main
-      aria-busy={result === null ? 'true' : undefined}
+      aria-busy={result === null || flow === 'pending' ? 'true' : undefined}
       className="flex min-h-dvh flex-col gap-(--space-24) px-(--space-margin-inline) py-(--space-24)"
     >
       <h1 className="text-[2rem] font-(--font-weight-semibold)">Heavy Duty</h1>
@@ -65,13 +92,17 @@ export function TodayScreen() {
       ) : (
         <LetterListSkeleton />
       )}
+      <RejectedSetsNotice />
+      <PendingSetsIndicator />
       <StartSheet
         day={sheetDay}
         onClose={() => setSheetDay(null)}
         onStart={(day) => {
           setSheetDay(null)
           if (result?.status === 'ok' && result.today.program) {
-            setSession(startSession(result.today.program.id, day))
+            const started = createWorkoutFlow(startSession(result.today.program.id, day))
+            void saveActiveWorkout(started, Date.now())
+            setFlow(started)
           }
         }}
       />

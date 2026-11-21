@@ -11,4 +11,8 @@ export type RecordWorkoutSetBody = {
   performedAt: string
 }
 
-export type SendResult = 'sent' | 'failed'
+// What the API said about a sent set: gone from the queue, refused for a domain rule, or try again later.
+export type SendOutcome =
+  | { status: 'confirmed' }
+  | { status: 'rejected'; code: string; message: string }
+  | { status: 'retry' }

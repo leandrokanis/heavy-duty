@@ -46,8 +46,8 @@ Feature: Mark the set as done with one tap
     And the athlete started the day "A" at "2026-11-21T18:30:00.000Z"
     When the athlete taps "Próximo" at "2026-11-21T18:31:05.000Z"
     Then the rest should show "1:30"
-    And the screen should show "Série não enviada"
-    When the API answers again and the athlete taps "Reenviar"
+    And the screen should show "1 série aguardando envio"
+    When the API answers again and the queue sends the set
     Then only one set should be recorded in the workout, with the id of the first send
 
   Scenario: resend with the same id

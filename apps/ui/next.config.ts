@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto'
 import withSerwistInit from '@serwist/next'
 import type { NextConfig } from 'next'
+import { precacheEntries } from './src/precache-entries'
 
 const isDevelopment = process.env.NODE_ENV === 'development'
 
@@ -26,7 +26,9 @@ const nextConfig: NextConfig = {
 const withSerwist = withSerwistInit({
   swSrc: 'src/sw.ts',
   swDest: 'public/sw.js',
-  additionalPrecacheEntries: [{ url: '/~offline', revision: randomUUID() }],
+  additionalPrecacheEntries: precacheEntries,
+  // The queue sends on the online event; a page reload there would cut the workout on screen.
+  reloadOnOnline: false,
 })
 
 // Serwist adds a webpack config that next dev with Turbopack rejects, see ADR-009.

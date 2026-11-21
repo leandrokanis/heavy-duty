@@ -1,7 +1,17 @@
+import { startAuthentication } from '@simplewebauthn/browser'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { clearActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
+import { createMemoryQueueStore } from '@/sync/queue-store'
+import { SyncProvider } from '@/sync/sync-context'
+import { createSyncQueue, type SendSet, type SyncQueue } from '@/sync/sync-queue'
+import { pendingSetBody } from '@/sync/test-sets'
+import { clearCachedToday, loadToday } from '@/sync/today-cache'
 import { NO_PROGRAM, PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayBody, todayDay } from './test-today'
+import type { TodayDay } from './today.types'
 import { TodayScreen } from './today-screen'
+import { createWorkoutFlow, workoutFlowReducer } from './workout-flow'
+import { postWorkoutSet } from './workout-set-client'
 
 vi.mock('@simplewebauthn/browser', () => ({
   browserSupportsWebAuthn: () => true,
@@ -24,8 +34,21 @@ function json(status: number, body: unknown = {}) {
   return new Response(JSON.stringify(body), { status })
 }
 
-afterEach(() => {
+// The queue sends through fetch by default, so the stubs of fetch still drive the sends.
+function renderToday(send: SendSet = postWorkoutSet, queue?: SyncQueue) {
+  const ownQueue = queue ?? createSyncQueue({ store: createMemoryQueueStore(), send })
+  render(
+    <SyncProvider queue={ownQueue}>
+      <TodayScreen />
+    </SyncProvider>,
+  )
+  return ownQueue
+}
+
+afterEach(async () => {
   vi.useRealTimers()
+  await clearActiveWorkout()
+  await clearCachedToday()
 })
 
 describe('Given no active program', () => {
@@ -33,7 +56,7 @@ describe('Given no active program', () => {
     it('Then should show the Heavy Duty title and the empty state that points to Claude', async () => {
       stubFetch(json(200, NO_PROGRAM))
 
-      render(<TodayScreen />)
+      renderToday()
 
       expect({
         message: (
@@ -52,7 +75,7 @@ describe('Given an active program without exercises', () => {
     it('Then should show the empty state of a program without exercises', async () => {
       stubFetch(json(200, todayBody([], null)))
 
-      render(<TodayScreen />)
+      renderToday()
 
       expect(await screen.findByText(NO_EXERCISES)).toBeInTheDocument()
     })
@@ -62,7 +85,7 @@ describe('Given an active program without exercises', () => {
     it('Then should show the same empty state and no letter button', async () => {
       stubFetch(json(200, todayBody([todayDay('A', 'Superior', [], 0)], null)))
 
-      render(<TodayScreen />)
+      renderToday()
 
       expect({
         message: (await screen.findByText(NO_EXERCISES)) !== null,
@@ -87,7 +110,7 @@ describe("Given the active program with the letters 'A', 'C' and 'B' in plan ord
     it('Then should list the letters as buttons in plan order, with Sugerida only on C and B disabled', async () => {
       stubFetch(json(200, LETTERS_ACB))
 
-      render(<TodayScreen />)
+      renderToday()
       await screen.findByRole('button', { name: /^A/ })
       const buttons = screen.getAllByRole('button')
 
@@ -107,7 +130,7 @@ describe("Given the active program with the letters 'A', 'C' and 'B' in plan ord
     it('Then should show no instruction text', async () => {
       stubFetch(json(200, LETTERS_ACB))
 
-      render(<TodayScreen />)
+      renderToday()
       await screen.findByRole('button', { name: /^A/ })
 
       expect(screen.getByRole('main').textContent).toBe('Heavy DutyASuperiorCPernasSugeridaBVazia')
@@ -117,7 +140,7 @@ describe("Given the active program with the letters 'A', 'C' and 'B' in plan ord
 
 async function openLetters(body = LETTERS_ACB) {
   const fetchMock = stubFetch(json(200, body))
-  render(<TodayScreen />)
+  renderToday()
   await screen.findByRole('button', { name: /^A/ })
   return fetchMock
 }
@@ -217,7 +240,7 @@ describe("Given the workout of the day with letter 'A' of program-1", () => {
     it('Then the set should go to the sets of a v7 workout id with the program, the letter, the start and the tap instant', async () => {
       vi.useFakeTimers({ toFake: ['Date'], now: Date.UTC(2026, 10, 21, 18, 30, 0) })
       const fetchMock = stubFetch(json(200, LETTERS_ACB), json(201))
-      render(<TodayScreen />)
+      renderToday()
       fireEvent.click(await screen.findByRole('button', { name: /^A/ }))
       const sheet = await screen.findByRole('dialog')
       fireEvent.click(within(sheet).getByRole('button', { name: 'Começar' }))
@@ -268,7 +291,7 @@ describe('Given the workout of the day is being requested', () => {
         vi.fn(() => new Promise<Response>(() => {})),
       )
 
-      render(<TodayScreen />)
+      renderToday()
 
       expect(screen.getByRole('main').getAttribute('aria-busy')).toBe('true')
     })
@@ -278,7 +301,7 @@ describe('Given the workout of the day is being requested', () => {
     it('Then should show Sem conexão first and the letters after the second request', async () => {
       const fetchMock = stubFetch(new TypeError('Failed to fetch'), json(200, LETTERS_ACB))
 
-      render(<TodayScreen />)
+      renderToday()
       const offline = (await screen.findByRole('heading', { name: 'Sem conexão' })) !== null
       fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }))
       await screen.findByRole('button', { name: /^A/ })
@@ -294,7 +317,7 @@ describe('Given the workout of the day is being requested', () => {
     it('Then should show the Entrar button of the sign-in screen', async () => {
       stubFetch(json(401, { code: 'unauthenticated' }))
 
-      render(<TodayScreen />)
+      renderToday()
 
       expect(await screen.findByRole('button', { name: 'Entrar' })).toBeInTheDocument()
     })
@@ -324,9 +347,135 @@ describe("Given letter 'A' with triceps-polia of one set", () => {
 })
 
 async function startLetterFromLoadedMock(letter: RegExp) {
-  render(<TodayScreen />)
+  renderToday()
   fireEvent.click(await screen.findByRole('button', { name: letter }))
   const sheet = await screen.findByRole('dialog')
   fireEvent.click(within(sheet).getByRole('button', { name: 'Começar' }))
   await screen.findByRole('heading', { level: 1 })
 }
+
+const T0 = Date.UTC(2026, 10, 21, 18, 31, 5)
+
+describe('Given an active workout saved resting on supino-reto with 40 s left', () => {
+  describe('When the app opens', () => {
+    it('Then the rest should show 0:40 for supino-reto', async () => {
+      vi.useFakeTimers({ toFake: ['Date'], now: T0 })
+      const letterA = todayBody().days[0] as TodayDay
+      const resting = workoutFlowReducer(
+        createWorkoutFlow({
+          workoutId: '0193a1b2-0000-7000-8000-000000000601',
+          startedAt: '2026-11-21T18:30:00.000Z',
+          programId: 'program-1',
+          day: letterA,
+        }),
+        { type: 'next', nowMs: T0 - 50_000 },
+      )
+      await saveActiveWorkout(resting, T0 - 50_000)
+      stubFetch(json(200, todayBody()))
+
+      renderToday()
+
+      const rest = (await screen.findByRole('timer', { name: 'Descanso' })).textContent
+      expect({
+        title: screen.getByRole('heading', { level: 1 }).textContent,
+        rest,
+      }).toEqual({ title: 'Supino reto', rest: '0:40' })
+    })
+  })
+})
+
+describe('Given no connection and a cached today', () => {
+  describe('When the app opens', () => {
+    it('Then the letters should show the cached values', async () => {
+      stubFetch(json(200, LETTERS_ACB))
+      await loadToday()
+      stubFetch(new TypeError('Failed to fetch'))
+
+      renderToday()
+
+      expect({
+        letters: (await screen.findByRole('button', { name: /^A/ })).textContent,
+        offline: screen.queryByRole('heading', { name: 'Sem conexão' }),
+      }).toEqual({ letters: 'ASuperior', offline: null })
+    })
+  })
+})
+
+describe('Given a set that is still in the queue after failed sends', () => {
+  describe('When the workout of the day answers 200', () => {
+    it('Then the queue should send again and the indicator should be gone', async () => {
+      const send = vi
+        .fn<SendSet>()
+        .mockResolvedValueOnce({ status: 'retry' }) // the enqueue
+        .mockResolvedValueOnce({ status: 'retry' }) // the flush on mount
+        .mockResolvedValue({ status: 'confirmed' })
+      const queue = createSyncQueue({ store: createMemoryQueueStore(), send })
+      await queue.enqueue('workout-1', pendingSetBody())
+      await queue.flush()
+      stubFetch(json(200, LETTERS_ACB))
+
+      renderToday(send, queue)
+      await screen.findByRole('button', { name: /^A/ })
+
+      await waitFor(() => expect(send).toHaveBeenCalledTimes(3))
+      expect(queue.getSnapshot().pending).toEqual([])
+    })
+  })
+})
+
+describe('Given a set rejected by the API and a pending set in the queue', () => {
+  describe('When the letters show', () => {
+    it('Then the letters screen should carry the rejected notice and the pending indicator', async () => {
+      const queue = createSyncQueue({
+        store: createMemoryQueueStore(),
+        send: async (_workoutId, body) =>
+          body.id === 'refused'
+            ? {
+                status: 'rejected',
+                code: 'planned_exercise_not_found',
+                message: 'exercício removido',
+              }
+            : { status: 'retry' },
+      })
+      await queue.enqueue('workout-1', pendingSetBody({ id: 'refused' }))
+      await queue.enqueue('workout-1', pendingSetBody({ id: 'waiting', setNumber: 2 }))
+      await queue.flush()
+      stubFetch(json(200, LETTERS_ACB))
+
+      renderToday(undefined, queue)
+      await screen.findByRole('button', { name: /^A/ })
+
+      expect({
+        notice: screen.queryByText('exercício removido') !== null,
+        indicator: screen.queryByRole('status', { name: '1 série aguardando envio' }) !== null,
+      }).toEqual({ notice: true, indicator: true })
+    })
+  })
+})
+
+describe('Given a set that is still in the queue and an expired session', () => {
+  describe('When the athlete signs in and the workout of the day then fails by network', () => {
+    it('Then the queue should send the set right after the sign-in', async () => {
+      vi.mocked(startAuthentication).mockResolvedValue({ id: 'credential' } as never)
+      const send = vi
+        .fn<SendSet>()
+        .mockResolvedValueOnce({ status: 'retry' }) // the enqueue
+        .mockResolvedValueOnce({ status: 'retry' }) // the flush on mount
+        .mockResolvedValue({ status: 'confirmed' })
+      const queue = createSyncQueue({ store: createMemoryQueueStore(), send })
+      await queue.enqueue('workout-1', pendingSetBody())
+      await queue.flush()
+      stubFetch(
+        json(401, { code: 'unauthenticated' }),
+        json(200, { challenge: 'Y2hhbGxlbmdl' }),
+        json(200),
+        new TypeError('Failed to fetch'),
+      )
+
+      renderToday(send, queue)
+      fireEvent.click(await screen.findByRole('button', { name: 'Entrar' }))
+
+      await waitFor(() => expect(queue.getSnapshot().pending).toEqual([]))
+    })
+  })
+})

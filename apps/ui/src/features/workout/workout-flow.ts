@@ -1,7 +1,7 @@
 import { createClientId } from './client-id'
 import type { TodayDay, TodayExercise } from './today.types'
 import { DOUBLE_TAP_GUARD_MS } from './workout.config'
-import type { RecordWorkoutSetBody, SendResult } from './workout-set.types'
+import type { RecordWorkoutSetBody } from './workout-set.types'
 
 const MS_PER_SECOND = 1000
 
@@ -12,10 +12,6 @@ export type WorkoutSession = {
   day: TodayDay
 }
 
-export type SendStatus = 'sending' | 'sent' | 'failed'
-
-export type RecordedSet = { body: RecordWorkoutSetBody; status: SendStatus }
-
 export type WorkoutFlowState = {
   session: WorkoutSession
   phase: 'set' | 'rest' | 'finished'
@@ -24,14 +20,11 @@ export type WorkoutFlowState = {
   restEndsAtMs: number | null
   lastStepAtMs: number | null
   lastStep: 'record' | 'advance' | null
-  recorded: RecordedSet[]
+  // The sets as the API takes them; sending is the queue's job, so no status lives here.
+  recorded: RecordWorkoutSetBody[]
 }
 
-export type WorkoutFlowAction =
-  | { type: 'next'; nowMs: number }
-  | { type: 'restEnd'; nowMs: number }
-  | { type: 'sendResult'; setId: string; result: SendResult }
-  | { type: 'resend' }
+export type WorkoutFlowAction = { type: 'next'; nowMs: number } | { type: 'restEnd'; nowMs: number }
 
 export function createWorkoutFlow(session: WorkoutSession): WorkoutFlowState {
   return {
@@ -75,7 +68,7 @@ export function upcomingExercise(state: WorkoutFlowState): TodayExercise | null 
 // Text of the polite live region: the set just recorded, then the set now on screen, if any.
 export function announcementOf(state: WorkoutFlowState): string {
   if (state.lastStep === 'advance') return positionText(state)
-  const last = state.recorded.at(-1)?.body
+  const last = state.recorded.at(-1)
   if (state.lastStep !== 'record' || last === undefined) return ''
   const planned = state.session.day.exercises.find(
     ({ plannedExerciseId }) => plannedExerciseId === last.plannedExerciseId,
@@ -92,6 +85,13 @@ function positionText(state: WorkoutFlowState): string {
   return `Série ${state.setNumber} de ${planned.sets}`
 }
 
+// Brings a saved state back: a rest that ended with the app closed is over, and no tap of the
+// last session guards against the first tap of this one.
+export function restoreWorkoutFlow(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
+  const settled = hasRestEnded(state, nowMs) ? advance(state, nowMs) : state
+  return { ...settled, lastStepAtMs: null, lastStep: null }
+}
+
 export function workoutFlowReducer(
   state: WorkoutFlowState,
   action: WorkoutFlowAction,
@@ -102,10 +102,6 @@ export function workoutFlowReducer(
       return state.phase === 'rest' ? advance(state, action.nowMs) : recordSet(state, action.nowMs)
     case 'restEnd':
       return hasRestEnded(state, action.nowMs) ? advance(state, action.nowMs) : state
-    case 'sendResult':
-      return withStatus(state, (set) => set.body.id === action.setId, action.result)
-    case 'resend':
-      return withStatus(state, (set) => set.status === 'failed', 'sending')
   }
 }
 
@@ -135,7 +131,7 @@ function recordSet(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
     ...state,
     lastStepAtMs: nowMs,
     lastStep: 'record',
-    recorded: [...state.recorded, { body: setBodyOf(state, planned, nowMs), status: 'sending' }],
+    recorded: [...state.recorded, setBodyOf(state, planned, nowMs)],
   }
   // The last set of the day wins over a 0 s rest: there is no position to advance to.
   if (nextPositionOf(state.session.day, state) === null) {
@@ -168,16 +164,5 @@ function setBodyOf(
     loadG: planned.loadG,
     ...measure,
     performedAt: new Date(nowMs).toISOString(),
-  }
-}
-
-function withStatus(
-  state: WorkoutFlowState,
-  matches: (set: RecordedSet) => boolean,
-  status: SendStatus,
-): WorkoutFlowState {
-  return {
-    ...state,
-    recorded: state.recorded.map((set) => (matches(set) ? { ...set, status } : set)),
   }
 }

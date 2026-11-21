@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SEND_TIMEOUT_MS } from './workout.config'
-import type { RecordWorkoutSetBody } from './workout-set.types'
+import type { RecordWorkoutSetBody, SendOutcome } from './workout-set.types'
 import { postWorkoutSet } from './workout-set-client'
 
 const WORKOUT_ID = '0193a1b2-0000-7000-8000-000000000601'
@@ -42,26 +42,57 @@ describe('Given a set to send', () => {
     })
   })
 
-  describe.each([
-    { status: 200, result: 'sent' },
-    { status: 201, result: 'sent' },
-    { status: 401, result: 'failed' },
-    { status: 409, result: 'failed' },
-    { status: 422, result: 'failed' },
-    { status: 500, result: 'failed' },
-  ])('When the API answers $status', ({ status, result }) => {
-    it(`Then should resolve ${result}`, async () => {
+  describe.each<{ status: number; outcome: SendOutcome }>([
+    { status: 200, outcome: { status: 'confirmed' } },
+    { status: 201, outcome: { status: 'confirmed' } },
+    {
+      status: 400,
+      outcome: { status: 'rejected', code: 'validation_failed', message: 'Dado inválido' },
+    },
+    {
+      status: 409,
+      outcome: { status: 'rejected', code: 'workout_set_duplicated', message: 'Dado inválido' },
+    },
+    {
+      status: 422,
+      outcome: { status: 'rejected', code: 'planned_exercise_not_found', message: 'Dado inválido' },
+    },
+    { status: 401, outcome: { status: 'retry' } },
+    { status: 403, outcome: { status: 'retry' } },
+    { status: 404, outcome: { status: 'retry' } },
+    { status: 408, outcome: { status: 'retry' } },
+    { status: 429, outcome: { status: 'retry' } },
+    { status: 500, outcome: { status: 'retry' } },
+    { status: 503, outcome: { status: 'retry' } },
+  ])('When the API answers $status', ({ status, outcome }) => {
+    it(`Then the outcome should be ${JSON.stringify(outcome)}`, async () => {
+      const code = outcome.status === 'rejected' ? outcome.code : 'ignored'
       vi.stubGlobal(
         'fetch',
-        vi.fn(async () => json(status)),
+        vi.fn(async () => json(status, { code, message: 'Dado inválido' })),
       )
 
-      expect(await postWorkoutSet(WORKOUT_ID, BODY)).toBe(result)
+      expect(await postWorkoutSet(WORKOUT_ID, BODY)).toEqual(outcome)
+    })
+  })
+
+  describe('When the API refuses with a body that is not JSON', () => {
+    it('Then the outcome should be rejected with code unknown and the default message', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => new Response('<html>bad gateway</html>', { status: 422 })),
+      )
+
+      expect(await postWorkoutSet(WORKOUT_ID, BODY)).toEqual({
+        status: 'rejected',
+        code: 'unknown',
+        message: 'A API recusou a série.',
+      })
     })
   })
 
   describe('When the network fails', () => {
-    it('Then should resolve failed', async () => {
+    it('Then the outcome should be retry', async () => {
       vi.stubGlobal(
         'fetch',
         vi.fn(async () => {
@@ -69,12 +100,12 @@ describe('Given a set to send', () => {
         }),
       )
 
-      expect(await postWorkoutSet(WORKOUT_ID, BODY)).toBe('failed')
+      expect(await postWorkoutSet(WORKOUT_ID, BODY)).toEqual({ status: 'retry' })
     })
   })
 
   describe('When the API does not answer within the send timeout', () => {
-    it('Then should abort the request and resolve failed', async () => {
+    it('Then should abort the request and the outcome should be retry', async () => {
       vi.useFakeTimers()
       vi.stubGlobal(
         'fetch',
@@ -89,7 +120,7 @@ describe('Given a set to send', () => {
       const result = postWorkoutSet(WORKOUT_ID, BODY)
       await vi.advanceTimersByTimeAsync(SEND_TIMEOUT_MS)
 
-      expect(await result).toBe('failed')
+      expect(await result).toEqual({ status: 'retry' })
     })
   })
 })

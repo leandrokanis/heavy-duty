@@ -3,6 +3,7 @@ import { PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayDay } from './test-today'
 import {
   announcementOf,
   createWorkoutFlow,
+  restoreWorkoutFlow,
   upcomingExercise,
   type WorkoutFlowState,
   type WorkoutSession,
@@ -44,9 +45,9 @@ describe('Given the flow on set 1 of supino-reto showing 42500 g from the last w
       expect({
         phase: state.phase,
         restEndsAtMs: state.restEndsAtMs,
-        idVersion: recorded?.body.id[14],
-        idInstantMs: instantOf(recorded?.body.id ?? ''),
-        body: recorded && { ...recorded.body, id: undefined },
+        idVersion: recorded?.id[14],
+        idInstantMs: instantOf(recorded?.id ?? ''),
+        body: recorded && { ...recorded, id: undefined },
       }).toEqual({
         phase: 'rest',
         restEndsAtMs: T0 + 90_000,
@@ -74,7 +75,7 @@ describe('Given the flow on set 1 of prancha, 45 s at 0 g', () => {
         type: 'next',
         nowMs: T0,
       })
-      const body = state.recorded[0]?.body
+      const body = state.recorded[0]
 
       expect({
         restEndsAtMs: state.restEndsAtMs,
@@ -137,7 +138,7 @@ describe('Given the flow back on the set phase with the last set recorded at t',
     it('Then should record set 2', () => {
       const state = workoutFlowReducer(onSet, { type: 'next', nowMs: T0 + 800 })
 
-      expect(state.recorded.map(({ body }) => body.setNumber)).toEqual([2])
+      expect(state.recorded.map((body) => body.setNumber)).toEqual([2])
     })
   })
 })
@@ -230,7 +231,7 @@ describe.each([
 
   describe('When next arrives at t + 800 ms', () => {
     it('Then set 2 should be recorded', () => {
-      expect(next(onSet2, T0 + 800).recorded.map(({ body }) => body.setNumber)).toEqual([1, 2])
+      expect(next(onSet2, T0 + 800).recorded.map((body) => body.setNumber)).toEqual([1, 2])
     })
   })
 })
@@ -243,7 +244,7 @@ describe('Given set 1 of an exercise with 3 sets and restSeconds 0', () => {
       const state = next(createWorkoutFlow(sessionOf([NO_REST_SUPINO, TRICEPS_POLIA])), T0)
 
       expect({
-        recorded: state.recorded.map(({ body }) => body.setNumber),
+        recorded: state.recorded.map((body) => body.setNumber),
         phase: state.phase,
         setNumber: state.setNumber,
         restEndsAtMs: state.restEndsAtMs,
@@ -264,7 +265,7 @@ describe('Given set 3 of triceps-polia, the last set of the day', () => {
   describe('When next arrives', () => {
     it('Then set 3 should be recorded with 12 reps and 20000 g, and the workout should be finished with no rest', () => {
       const state = next(onLastSet, T0)
-      const last = state.recorded.at(-1)?.body
+      const last = state.recorded.at(-1)
 
       expect({
         setNumber: last?.setNumber,
@@ -300,7 +301,7 @@ describe.each([
       const state = next(createWorkoutFlow(sessionOf([exercise])), T0)
 
       expect({
-        recorded: state.recorded.map(({ body }) => body.setNumber),
+        recorded: state.recorded.map((body) => body.setNumber),
         phase: state.phase,
         restEndsAtMs: state.restEndsAtMs,
       }).toEqual({ recorded: [1], phase: 'finished', restEndsAtMs: null })
@@ -373,6 +374,53 @@ describe.each([
   describe('When the screen asks what to announce', () => {
     it(`Then should answer "${text}"`, () => {
       expect(announcementOf(state())).toBe(text)
+    })
+  })
+})
+
+describe('Given a saved state resting on supino-reto set 1 for 90 s', () => {
+  const saved = next(createWorkoutFlow(sessionOf(LETTER_A)), T0)
+
+  describe('When restoreWorkoutFlow runs after the rest ended while the app was closed', () => {
+    it('Then the phase should be set on set 2 with no double-tap guard', () => {
+      const state = restoreWorkoutFlow(saved, T0 + 120_000)
+
+      expect({
+        phase: state.phase,
+        exerciseIndex: state.exerciseIndex,
+        setNumber: state.setNumber,
+        restEndsAtMs: state.restEndsAtMs,
+        lastStepAtMs: state.lastStepAtMs,
+        lastStep: state.lastStep,
+        recorded: state.recorded.length,
+      }).toEqual({
+        phase: 'set',
+        exerciseIndex: 0,
+        setNumber: 2,
+        restEndsAtMs: null,
+        lastStepAtMs: null,
+        lastStep: null,
+        recorded: 1,
+      })
+    })
+  })
+
+  describe('When restoreWorkoutFlow runs with 40 s of rest left', () => {
+    it('Then should keep the rest end and clear the double-tap guard', () => {
+      const state = restoreWorkoutFlow(saved, T0 + 50_000)
+
+      expect({
+        phase: state.phase,
+        restEndsAtMs: state.restEndsAtMs,
+        lastStepAtMs: state.lastStepAtMs,
+        lastStep: state.lastStep,
+      }).toEqual({ phase: 'rest', restEndsAtMs: T0 + 90_000, lastStepAtMs: null, lastStep: null })
+    })
+  })
+
+  describe('When restoreWorkoutFlow runs exactly when the rest ends', () => {
+    it('Then the phase should be set on set 2', () => {
+      expect(restoreWorkoutFlow(saved, T0 + 90_000)).toMatchObject({ phase: 'set', setNumber: 2 })
     })
   })
 })

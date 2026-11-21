@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
+import { todayBody } from '@/features/workout/test-today'
+import { hasCachedToday, loadToday } from '@/sync/today-cache'
 import { fetchSession, signOut } from './auth-client'
 
 function stubCaches(names: string[]) {
@@ -50,6 +52,27 @@ describe('Given the session endpoint', () => {
         states: ['authenticated', 'unauthenticated', 'offline'],
         request: ['/api/auth/session', { credentials: 'same-origin' }],
       })
+    })
+  })
+})
+
+describe('Given a copy of the workout of the day on the device', () => {
+  describe('When signOut is called', () => {
+    it('Then the copy should be deleted', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (_path: string, init?: RequestInit) =>
+          init?.method === 'DELETE'
+            ? new Response(null, { status: 204 })
+            : new Response(JSON.stringify(todayBody()), { status: 200 }),
+        ),
+      )
+      await loadToday()
+      const before = await hasCachedToday()
+
+      await signOut()
+
+      expect({ before, after: await hasCachedToday() }).toEqual({ before: true, after: false })
     })
   })
 })
