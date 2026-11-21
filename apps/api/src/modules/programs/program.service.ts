@@ -408,7 +408,7 @@ function toPrograms(db: Database, programRows: readonly ProgramRow[]): Program[]
         label: day.label,
         exercises: plannedRows
           .filter((planned) => planned.programDayId === day.id)
-          .map(({ programDayId: _programDayId, ...planned }) => planned),
+          .map(({ id: _id, programDayId: _programDayId, ...planned }) => planned),
       })),
   }))
 }

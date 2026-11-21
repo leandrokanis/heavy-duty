@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDurationMinutes, formatLoadKg } from './format'
+import { formatDurationMinutes, formatLoadKg, formatRestClock } from './format'
 
 describe('Given a load in grams', () => {
   describe('When it is formatted in kg', () => {
@@ -21,6 +21,18 @@ describe('Given a duration in seconds', () => {
       [20, '1 min'],
     ])('Then %i s should read %s', (seconds, expected) => {
       expect(formatDurationMinutes(seconds)).toBe(expected)
+    })
+  })
+})
+
+describe('Given the rest left in seconds', () => {
+  describe('When it is formatted as a clock', () => {
+    it.each([
+      [90, '1:30'],
+      [5, '0:05'],
+      [0, '0:00'],
+    ])('Then %i s should read %s', (seconds, expected) => {
+      expect(formatRestClock(seconds)).toBe(expected)
     })
   })
 })

@@ -140,3 +140,47 @@ describe('Given a recorded workout', () => {
     })
   })
 })
+
+function insertSetRow(
+  db: ReturnType<typeof givenProgramWithLetterC>['db'],
+  workoutId: string,
+  setNumber: number,
+) {
+  const first = db.$client
+    .prepare('SELECT exercise_id AS exerciseId FROM workout_sets WHERE workout_id = ?')
+    .get(workoutId) as { exerciseId: string }
+  db.$client
+    .prepare(
+      `INSERT INTO workout_sets (id, workout_id, exercise_id, set_number, load_g, reps, performed_at)
+       VALUES (?, ?, ?, ?, 60000, 10, ?)`,
+    )
+    .run(
+      `0193a1b2-0000-7000-8000-00000000070${setNumber}`,
+      workoutId,
+      first.exerciseId,
+      setNumber,
+      STARTED_AT,
+    )
+}
+
+describe('Given a workout with set 1 of supino-reto', () => {
+  describe('When another row with the same workout, exercise and set number is inserted', () => {
+    it('Then should throw a unique constraint error', () => {
+      const { db, workoutId } = givenProgramWithLetterC()
+
+      const error = errorOf(() => insertSetRow(db, workoutId, 1))
+
+      expect(error).toBe(
+        'UNIQUE constraint failed: workout_sets.workout_id, workout_sets.exercise_id, workout_sets.set_number',
+      )
+    })
+  })
+
+  describe('When a row with set number 2 is inserted', () => {
+    it('Then should be accepted', () => {
+      const { db, workoutId } = givenProgramWithLetterC()
+
+      expect(errorOf(() => insertSetRow(db, workoutId, 2))).toBeUndefined()
+    })
+  })
+})

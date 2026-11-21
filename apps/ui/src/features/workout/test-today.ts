@@ -1,6 +1,7 @@
 import type { Today, TodayDay, TodayExercise } from './today.types'
 
 export const SUPINO_RETO: TodayExercise = {
+  plannedExerciseId: 'planned-supino',
   exercise: { id: 'exercise-supino', slug: 'supino-reto', name: 'Supino reto', kind: 'reps' },
   sets: 3,
   targetReps: 10,
@@ -12,6 +13,7 @@ export const SUPINO_RETO: TodayExercise = {
 }
 
 export const PRANCHA: TodayExercise = {
+  plannedExerciseId: 'planned-prancha',
   exercise: { id: 'exercise-prancha', slug: 'prancha', name: 'Prancha', kind: 'time' },
   sets: 3,
   targetReps: null,

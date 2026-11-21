@@ -702,8 +702,9 @@ O objeto `Today` tem a forma `{ "program": { "id", "name", "goal" } | null, "sug
 
 O objeto `TodayDay` tem a forma `{ "letter", "label", "estimatedDurationSeconds", "exercises": [TodayExercise] }`, com as letras na ordem do plano e os exercícios na ordem da letra. A letra sem exercício vem com `exercises: []` e `estimatedDurationSeconds: 0`.
 
-O objeto `TodayExercise` tem a forma `{ "exercise": { "id", "slug", "name", "kind" }, "sets", "targetReps", "targetSeconds", "restSeconds", "plannedLoadG", "loadG", "loadSource" }`:
+O objeto `TodayExercise` tem a forma `{ "plannedExerciseId", "exercise": { "id", "slug", "name", "kind" }, "sets", "targetReps", "targetSeconds", "restSeconds", "plannedLoadG", "loadG", "loadSource" }`:
 
+- `plannedExerciseId` é o `id` do exercício do programa (linha de `planned_exercises`). A tela envia esse valor na gravação da série (US-F03-02).
 - `plannedLoadG` é a carga do programa, em gramas.
 - `loadG` é a carga preenchida, em gramas: a carga da série mais recente do mesmo exercício no histórico, em qualquer programa e em qualquer letra. Sem série do exercício, é a carga do programa.
 - `loadSource` diz de onde veio a carga preenchida: `last_workout` (histórico) ou `program`.
@@ -723,6 +724,7 @@ Exemplo, com o Supino reto a 42,5 kg no último treino e a Prancha sem treino:
       "estimatedDurationSeconds": 675,
       "exercises": [
         {
+          "plannedExerciseId": "0193a1b2-0000-7000-8000-000000000401",
           "exercise": { "id": "0193a1b2-0000-7000-8000-000000000201", "slug": "supino-reto", "name": "Supino reto", "kind": "reps" },
           "sets": 3,
           "targetReps": 10,
@@ -733,6 +735,7 @@ Exemplo, com o Supino reto a 42,5 kg no último treino e a Prancha sem treino:
           "loadSource": "last_workout"
         },
         {
+          "plannedExerciseId": "0193a1b2-0000-7000-8000-000000000402",
           "exercise": { "id": "0193a1b2-0000-7000-8000-000000000202", "slug": "prancha", "name": "Prancha", "kind": "time" },
           "sets": 3,
           "targetReps": null,
@@ -753,6 +756,74 @@ Regras do cálculo:
 - **Série mais recente.** A série mais recente é a de `performed_at` mais recente. No empate, vale o maior `set_number` e, depois, o maior `id`. Treino encerrado e treino em andamento contam. A busca é pelo exercício (`exercise_id`), então o vínculo nulo com o exercício do programa não muda a carga.
 - **Letra sugerida.** A letra sugerida é a letra seguinte, na ordem do plano, à letra do treino mais recente do programa ativo (`started_at` mais recente; no empate, o maior `id`). Depois da última letra, a sugestão volta à primeira. Sem treino do programa ativo, ou com a letra do último treino fora do programa, a sugerida é a primeira letra. A sugestão pula letras sem exercício e fica `null` quando nenhuma letra tem exercício. Treino de outro programa não muda a sugestão.
 - **Duração estimada.** A duração estimada é a soma, em cada exercício da letra, de `sets × (execução + restSeconds)`, em segundos inteiros. A execução é `targetSeconds` no exercício de tempo e `targetReps × 3` no exercício de repetição [estimativa: 3 s por repetição, em `SECONDS_PER_REP` de `apps/api/src/modules/workouts/today.config.ts`]. Exemplo: Supino reto 3 × 10 com 90 s de descanso e Prancha 3 × 45 s com 60 s somam `3 × (30 + 90) + 3 × (45 + 60) = 675`.
+
+## Séries do treino
+
+A rota desta seção vem da US-F03-02. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem dos métodos que mudam estado. A gravação da série não tem ferramenta MCP: o registro é do atleta, e as ferramentas de treino do planejador são da F06 (`mcp.md` não muda). O service fica em `apps/api/src/modules/workouts/workout-set.service.ts`.
+
+### POST /api/workouts/{workoutId}/sets
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Gravar a série que o atleta marcou com "Próximo", com o ID gerado no celular. A primeira série do treino cria o treino |
+| Story | US-F03-02 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) e `Origin` igual a `APP_ORIGIN` quando o navegador manda o cabeçalho |
+| Caminho | `workoutId`: ID do treino em UUID, gerado no celular no toque em "Começar" (UUID v7, ADR-014) |
+| Corpo | `{ "id", "workout": { "programId", "letter", "startedAt" }, "plannedExerciseId", "exerciseId", "setNumber", "loadG", "reps", "performedAt" }` no exercício de repetição; o exercício de tempo manda `seconds` no lugar de `reps`. `id`, `programId`, `plannedExerciseId` e `exerciseId` são UUID; `setNumber`, `loadG`, `reps` e `seconds` são inteiros; `startedAt` e `performedAt` são ISO 8601 em UTC. O schema confere só o formato, e o service recusa os valores de domínio com `code` próprio |
+| Efeito colateral | Sem treino com o `workoutId`, grava uma linha em `workouts` com o programa, a letra em maiúscula, o `program_day_id` da letra e `started_at`, com `finished_at` e `end_reason` nulos. Depois, grava uma linha em `workout_sets` com o `id` recebido, o exercício, o exercício do programa, o número, a carga, a medida e `performed_at`. As datas ficam normalizadas com `toISOString()`. A recusa não grava nada: a conferência e a gravação ficam numa transação só |
+| Idempotência | Idempotente pelo `id` da série. O reenvio com o mesmo `id` e os mesmos valores (`workoutId`, `exerciseId`, `setNumber`, `loadG`, `reps` e `seconds`) responde 200 com a série gravada, sem mudar nada. `performedAt` e `plannedExerciseId` não entram na comparação: o horário é do toque, e o vínculo com o plano fica nulo quando o planejador remove o exercício do programa. O treino também é idempotente pelo `workoutId` com os mesmos dados |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 201 | `WorkoutSet` | Série nova gravada; o treino nasceu se ainda não existia |
+| 200 | `WorkoutSet`, com os valores do banco | O `id` da série já existe com os mesmos valores |
+| 400 | `{ "code": "invalid_request", "message": "requisição inválida" }` | Formato fora do schema: ID que não é UUID, número não inteiro, data fora de ISO 8601 em UTC, campo obrigatório ausente |
+| 400 | `{ "code": "program_day_letter_invalid", "message": "a letra deve ser de A a Z" }` | Letra fora de A a Z. A minúscula é aceita e gravada em maiúscula |
+| 400 | `{ "code": "workout_set_load_invalid", "message": "carga inválida" }` | `loadG` menor que 0 |
+| 400 | `{ "code": "workout_set_reps_invalid", "message": "repetições inválidas" }` | `reps` menor que 1 |
+| 400 | `{ "code": "workout_set_seconds_invalid", "message": "tempo inválido" }` | `seconds` menor que 1 |
+| 400 | `{ "code": "workout_set_measure_invalid", "message": "informe repetições no exercício de repetição e segundos no exercício de tempo" }` | Nenhuma medida, as duas, ou a medida que não é do tipo do exercício |
+| 400 | `{ "code": "workout_set_number_invalid", "message": "número da série inválido" }` | `setNumber` menor que 1 |
+| 400 | `{ "code": "workout_set_exercise_mismatch", "message": "exercício diferente do exercício do programa" }` | `exerciseId` diferente do exercício de `plannedExerciseId` |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida. O corpo não tem dado de treino |
+| 403 | `{ "code": "forbidden_origin", "message": "origem não permitida" }` | `Origin` diferente de `APP_ORIGIN` |
+| 409 | `{ "code": "workout_conflict", "message": "treino já registrado com outros dados" }` | O `workoutId` existe com outro programa, outra letra ou outro início |
+| 409 | `{ "code": "workout_set_id_conflict", "message": "série já registrada com outros valores" }` | O `id` da série existe com valores diferentes ou noutro treino |
+| 409 | `{ "code": "workout_set_duplicated", "message": "série já registrada neste treino" }` | Outro `id` para o mesmo treino, exercício e número da série |
+| 422 | `{ "code": "program_not_found", "message": "programa não encontrado" }` | O programa do corpo não existe |
+| 422 | `{ "code": "program_day_not_found", "message": "letra não encontrada no programa" }` | A letra não existe no programa |
+| 422 | `{ "code": "planned_exercise_not_found", "message": "exercício não encontrado na letra" }` | O exercício do programa não existe ou é de outra letra |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+O objeto `WorkoutSet` tem a forma `{ "id", "workoutId", "exerciseId", "plannedExerciseId", "setNumber", "loadG", "reps", "seconds", "performedAt" }`. `plannedExerciseId` fica `null` quando o planejador removeu o exercício do programa depois da gravação; `reps` ou `seconds` fica `null`, conforme o tipo do exercício.
+
+Exemplo do primeiro toque no Supino reto:
+
+```json
+{
+  "id": "0193a1b2-0000-7000-8000-000000000501",
+  "workout": { "programId": "0193a1b2-0000-7000-8000-000000000301", "letter": "A", "startedAt": "2026-11-21T18:30:00.000Z" },
+  "plannedExerciseId": "0193a1b2-0000-7000-8000-000000000401",
+  "exerciseId": "0193a1b2-0000-7000-8000-000000000201",
+  "setNumber": 1,
+  "loadG": 40000,
+  "reps": 10,
+  "performedAt": "2026-11-21T18:31:05.000Z"
+}
+```
+
+Ordem da conferência, na mesma transação:
+
+1. Formato, pelo schema (`invalid_request`).
+2. Treino existente com programa, letra ou início diferentes: 409 `workout_conflict`.
+3. `id` da série existente: 200 se os valores batem, 409 `workout_set_id_conflict` se não. O reenvio responde antes da leitura do plano, então funciona mesmo depois de o planejador mudar o programa.
+4. Regras de valor (400).
+5. Referências: programa, letra e exercício do programa (422); depois, exercício igual ao do exercício do programa e medida do tipo do exercício (400).
+6. Criação do treino, se faltar.
+7. Série repetida no treino: 409 `workout_set_duplicated`. O índice único `workout_sets_workout_exercise_set_unique` garante a regra no banco.
+8. Gravação da série.
+
+O programa que deixou de ser o ativo depois do "Começar" não impede a série: o treino guarda o programa treinado (`apps/api/CLAUDE.md`, regra 7). O número da série maior que o número de séries do programa é aceito.
 
 ## Situação do app
 

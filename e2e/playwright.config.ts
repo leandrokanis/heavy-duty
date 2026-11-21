@@ -16,6 +16,7 @@ const CATALOG_MUSCLES_SPEC = /catalog-muscles\.feature\.spec\.js$/
 const PROGRAMS_SPEC = /programs\.feature\.spec\.js$/
 const PROGRAMS_EDIT_SPEC = /programs-edit\.feature\.spec\.js$/
 const TODAY_WORKOUT_SPEC = /today-workout\.feature\.spec\.js$/
+const ONE_TAP_SET_SPEC = /one-tap-set\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -42,7 +43,13 @@ export default defineConfig({
     },
     {
       name: 'mobile',
-      testIgnore: [CATALOG_MUSCLES_SPEC, PROGRAMS_SPEC, PROGRAMS_EDIT_SPEC, TODAY_WORKOUT_SPEC],
+      testIgnore: [
+        CATALOG_MUSCLES_SPEC,
+        PROGRAMS_SPEC,
+        PROGRAMS_EDIT_SPEC,
+        TODAY_WORKOUT_SPEC,
+        ONE_TAP_SET_SPEC,
+      ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
     },
@@ -64,12 +71,21 @@ export default defineConfig({
       dependencies: ['programs'],
       use: { ...devices['Pixel 7'] },
     },
-    // Runs last and alone: it clears the fixture workouts and deactivates the programs.
+    // Runs alone: it clears the fixture workouts and deactivates the programs.
     {
       name: 'today-workout',
       testMatch: TODAY_WORKOUT_SPEC,
       fullyParallel: false,
       dependencies: ['programs-edit'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records sets in the shared database and clears the workouts, so it runs after the
+    // workout of the day and one scenario at a time; each scenario creates its own program.
+    {
+      name: 'one-tap-set',
+      testMatch: ONE_TAP_SET_SPEC,
+      fullyParallel: false,
+      dependencies: ['today-workout'],
       use: { ...devices['Pixel 7'] },
     },
   ],

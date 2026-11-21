@@ -22,7 +22,7 @@ O armazenamento local não é fonte da verdade. Quando a API confirma uma série
 |---|---|---|---|
 | IndexedDB | Banco do navegador | Padrão da web | Aceita, ADR-009 |
 | Dexie | Acesso tipado ao IndexedDB | Apache-2.0 | Proposta [a confirmar na US-F03-03] |
-| UUID gerado no cliente | ID da série e chave de idempotência | — | Pendente: versão do UUID (`docs/convencoes/codigo.md`, Seção 7) |
+| UUID gerado no cliente | ID da série e do treino e chave de idempotência, em UUID v7 com o pacote `uuid` 14.0.3 (`createClientId` em `apps/ui/src/features/workout/client-id.ts`, US-F03-02) | MIT | Aceita, ADR-014 |
 
 ## Dados guardados
 

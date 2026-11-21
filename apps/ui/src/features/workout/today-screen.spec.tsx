@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { NO_PROGRAM, PRANCHA, SUPINO_RETO, todayBody, todayDay } from './test-today'
 import { TodayScreen } from './today-screen'
 
@@ -23,6 +23,10 @@ function stubFetch(...responses: (Response | Error)[]) {
 function json(status: number, body: unknown = {}) {
   return new Response(JSON.stringify(body), { status })
 }
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('Given no active program', () => {
   describe('When the athlete opens the app', () => {
@@ -203,6 +207,38 @@ describe("Given letter 'A' with supino-reto at 42500 g for 10 reps first, then p
         target: '10rep',
         exercises: '1 de 2',
         sets: '1 de 3',
+      })
+    })
+  })
+})
+
+describe("Given the workout of the day with letter 'A' of program-1", () => {
+  describe('When the athlete taps Começar at 18:30:00 and Próximo at 18:31:05', () => {
+    it('Then the set should go to the sets of a v7 workout id with the program, the letter, the start and the tap instant', async () => {
+      vi.useFakeTimers({ toFake: ['Date'], now: Date.UTC(2026, 10, 21, 18, 30, 0) })
+      const fetchMock = stubFetch(json(200, LETTERS_ACB), json(201))
+      render(<TodayScreen />)
+      fireEvent.click(await screen.findByRole('button', { name: /^A/ }))
+      const sheet = await screen.findByRole('dialog')
+      fireEvent.click(within(sheet).getByRole('button', { name: 'Começar' }))
+      await screen.findByRole('heading', { level: 1, name: 'Supino reto' })
+      vi.setSystemTime(Date.UTC(2026, 10, 21, 18, 31, 5))
+
+      fireEvent.click(screen.getByRole('button', { name: 'Próximo' }))
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+      const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit]
+      const body = JSON.parse(init.body as string)
+
+      expect({
+        url: /^\/api\/workouts\/[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/sets$/.test(
+          url,
+        ),
+        workout: body.workout,
+        performedAt: body.performedAt,
+      }).toEqual({
+        url: true,
+        workout: { programId: 'program-1', letter: 'A', startedAt: '2026-11-21T18:30:00.000Z' },
+        performedAt: '2026-11-21T18:31:05.000Z',
       })
     })
   })
