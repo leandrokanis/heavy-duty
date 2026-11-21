@@ -15,6 +15,13 @@
       "when": 1795244121167,
       "tag": "0001_catalog_muscles",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1795265890609,
+      "tag": "0002_catalog_exercises",
+      "breakpoints": true
     }
   ]
 }

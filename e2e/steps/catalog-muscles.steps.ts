@@ -1,24 +1,9 @@
-import { type APIResponse, expect } from '@playwright/test'
-import { test as base, createBdd, type DataTable } from 'playwright-bdd'
+import { expect } from '@playwright/test'
+import { createBdd, type DataTable } from 'playwright-bdd'
 import { API_BASE_URL, callMcpTool, type MuscleBody, postMuscle } from './catalog-api.js'
-
-type CatalogState = { lastResponse?: APIResponse; muscleList?: APIResponse }
-
-export const test = base.extend<{ catalog: CatalogState }>({
-  // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructured first argument.
-  catalog: async ({}, use) => {
-    await use({})
-  },
-})
+import { lastResponseOf, test } from './catalog-fixtures.js'
 
 const { Given, When, Then } = createBdd(test)
-
-function lastResponseOf(catalog: CatalogState): APIResponse {
-  if (!catalog.lastResponse) {
-    throw new Error('No API response was recorded by a previous step')
-  }
-  return catalog.lastResponse
-}
 
 Given('the catalog has the 11 muscle groups of D30', async ({ request }) => {
   const response = await request.get(`${API_BASE_URL}/api/muscle-groups`)
@@ -79,10 +64,9 @@ Then(
   async ({ catalog }, message: string) => {
     const response = lastResponseOf(catalog)
 
-    expect({ status: response.status(), body: await response.json() }).toEqual({
-      status: 400,
-      body: { code: 'muscle_group_required', message },
-    })
+    const body = (await response.json()) as { message?: string }
+
+    expect({ status: response.status(), message: body.message }).toEqual({ status: 400, message })
   },
 )
 

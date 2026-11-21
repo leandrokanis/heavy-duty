@@ -1,4 +1,5 @@
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { sql } from 'drizzle-orm'
+import { check, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
@@ -21,3 +22,32 @@ export const muscles = sqliteTable('muscles', {
   slug: text('slug').notNull().unique(),
   name: text('name').notNull(),
 })
+
+export const exercises = sqliteTable(
+  'exercises',
+  {
+    id: text('id').primaryKey(),
+    slug: text('slug').notNull().unique(),
+    name: text('name').notNull(),
+    kind: text('kind', { enum: ['reps', 'time'] }).notNull(),
+    archivedAt: text('archived_at'),
+  },
+  (table) => [check('exercises_kind_check', sql`${table.kind} IN ('reps', 'time')`)],
+)
+
+export const exerciseMuscles = sqliteTable(
+  'exercise_muscles',
+  {
+    exerciseId: text('exercise_id')
+      .notNull()
+      .references(() => exercises.id, { onDelete: 'cascade' }),
+    muscleId: text('muscle_id')
+      .notNull()
+      .references(() => muscles.id, { onDelete: 'restrict' }),
+    role: text('role', { enum: ['primary', 'secondary'] }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.exerciseId, table.muscleId] }),
+    check('exercise_muscles_role_check', sql`${table.role} IN ('primary', 'secondary')`),
+  ],
+)

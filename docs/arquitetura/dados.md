@@ -42,6 +42,7 @@ erDiagram
   }
   EXERCISES {
     text id PK
+    text slug UK
     text name
     text kind "reps ou time"
     text archived_at "nulo se ativo"
@@ -162,8 +163,8 @@ erDiagram
 |---|---|---|
 | `muscle_groups` | Os 11 grupos do catálogo inicial (D30) | `slug` único. O grupo com músculo não pode ser removido |
 | `muscles` | Músculos, cada um num grupo | `muscle_group_id` obrigatório: músculo sem grupo é recusado com "informe o grupo muscular" (US-F01-01) |
-| `exercises` | Exercícios de repetição ou de tempo | `kind` em `reps` ou `time`. Exercício usado no histórico é arquivado (`archived_at`), não apagado |
-| `exercise_muscles` | Músculos que o exercício ativa, com o papel | Pelo menos um músculo `primary` por exercício: sem ele, o cadastro é recusado com "informe ao menos um músculo" (US-F01-02). O secundário conta metade do volume (D30, Q08) |
+| `exercises` | Exercícios de repetição ou de tempo | `slug` único, derivado do nome com a mesma regra do slug do músculo: exercício repetido é recusado com "exercício já cadastrado" (US-F01-02). `kind` em `reps` ou `time`, com `CHECK`. Exercício usado no histórico é arquivado (`archived_at`), não apagado, e sai da lista de exercícios |
+| `exercise_muscles` | Músculos que o exercício ativa, com o papel | Chave composta `exercise_id` e `muscle_id`: o mesmo músculo não entra duas vezes no exercício. `role` em `primary` ou `secondary`, com `CHECK`. Pelo menos um músculo `primary` por exercício: sem ele, o cadastro é recusado com "informe ao menos um músculo" (US-F01-02). O exercício e os músculos são gravados numa transação. `exercise_id` em `ON DELETE CASCADE`; `muscle_id` em `ON DELETE RESTRICT`: o músculo usado num exercício não pode ser removido. O secundário conta metade do volume (D30, Q08) |
 
 ### Programa (F02, onda 2)
 

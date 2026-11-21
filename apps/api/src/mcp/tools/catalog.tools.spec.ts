@@ -89,6 +89,74 @@ describe('Given a seeded database', () => {
   })
 })
 
+const ABS = { id: expect.any(String), slug: 'abs', name: 'abdômen' }
+
+const PRANCHA = {
+  id: expect.any(String),
+  slug: 'prancha',
+  name: 'Prancha',
+  kind: 'time',
+  muscles: [
+    {
+      id: expect.any(String),
+      slug: 'reto-abdominal',
+      name: 'reto abdominal',
+      role: 'primary',
+      muscleGroup: ABS,
+    },
+  ],
+  muscleGroups: [ABS],
+}
+
+const PRANCHA_INPUT = { name: 'Prancha', kind: 'time', primaryMuscleSlugs: ['reto-abdominal'] }
+
+describe("Given 'reto abdominal' in abs", () => {
+  async function createAppWithRetoAbdominal(): Promise<ReturnType<typeof createApp>> {
+    const app = createSeededApp()
+    await callTool(app, 'add_muscle', { name: 'reto abdominal', muscleGroupSlug: 'abs' })
+    return app
+  }
+
+  describe("When add_exercise registers 'Prancha' of kind time through /mcp", () => {
+    it("Then GET /api/exercises should list 'Prancha' of kind time linked to the group abdômen", async () => {
+      const app = await createAppWithRetoAbdominal()
+
+      await callTool(app, 'add_exercise', PRANCHA_INPUT)
+      const response = await app.request('/api/exercises')
+
+      expect(await response.json()).toEqual({ exercises: [PRANCHA] })
+    })
+
+    it('Then should return the exercise as structured content and as JSON text', async () => {
+      const app = await createAppWithRetoAbdominal()
+
+      const called = await callTool(app, 'add_exercise', PRANCHA_INPUT)
+      const text = called.result?.content?.[0]?.text ?? 'null'
+
+      expect({
+        structuredContent: called.result?.structuredContent,
+        text: JSON.parse(text),
+      }).toEqual({ structuredContent: PRANCHA, text: PRANCHA })
+    })
+  })
+
+  describe('When add_exercise is called without primaryMuscleSlugs', () => {
+    it("Then should return an error result with code exercise_muscle_required and message 'informe ao menos um músculo'", async () => {
+      const app = await createAppWithRetoAbdominal()
+
+      const called = await callTool(app, 'add_exercise', { name: 'Prancha', kind: 'time' })
+
+      expect({
+        isError: called.result?.isError,
+        error: JSON.parse(called.result?.content?.[0]?.text ?? 'null'),
+      }).toEqual({
+        isError: true,
+        error: { code: 'exercise_muscle_required', message: 'informe ao menos um músculo' },
+      })
+    })
+  })
+})
+
 describe('Given a database that fails unexpectedly', () => {
   describe('When add_muscle is called', () => {
     it('Then should log the error and return code internal_error without the internal detail', async () => {

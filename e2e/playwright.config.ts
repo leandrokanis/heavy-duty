@@ -10,9 +10,12 @@ const baseURL = `http://127.0.0.1:${port}`
 const apiDataDir = fileURLToPath(new URL('./.data', import.meta.url))
 const apiDatabasePath = `${apiDataDir}/heavy-duty.e2e.sqlite`
 
+const CATALOG_MUSCLES_SPEC = /catalog-muscles\.feature\.spec\.js$/
+
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
-  steps: 'steps/**/*.steps.ts',
+  // The fixtures file must be listed so bddgen can find the shared custom test.
+  steps: ['steps/**/*.steps.ts', 'steps/**/*-fixtures.ts'],
 })
 
 export default defineConfig({
@@ -25,8 +28,17 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
+    // The muscle scenarios expect a fresh catalog; the exercise scenarios then reuse
+    // those muscles in the same database, so the muscle scenarios run first.
+    {
+      name: 'catalog-muscles',
+      testMatch: CATALOG_MUSCLES_SPEC,
+      use: { ...devices['Pixel 7'] },
+    },
     {
       name: 'mobile',
+      testIgnore: CATALOG_MUSCLES_SPEC,
+      dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
     },
   ],

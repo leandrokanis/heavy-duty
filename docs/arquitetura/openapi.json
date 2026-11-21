@@ -178,6 +178,140 @@
             "example": "triceps"
           }
         }
+      },
+      "ExerciseList": {
+        "type": "object",
+        "properties": {
+          "exercises": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Exercise"
+            }
+          }
+        },
+        "required": [
+          "exercises"
+        ]
+      },
+      "Exercise": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "0193a1b2-0000-7000-8000-000000000201"
+          },
+          "slug": {
+            "type": "string",
+            "example": "supino-reto"
+          },
+          "name": {
+            "type": "string",
+            "example": "Supino reto"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ExerciseKind"
+          },
+          "muscles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExerciseMuscle"
+            }
+          },
+          "muscleGroups": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "example": "0193a1b2-0000-7000-8000-000000000001"
+                },
+                "slug": {
+                  "type": "string",
+                  "example": "triceps"
+                },
+                "name": {
+                  "type": "string",
+                  "example": "tríceps"
+                }
+              },
+              "required": [
+                "id",
+                "slug",
+                "name"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "kind",
+          "muscles",
+          "muscleGroups"
+        ]
+      },
+      "ExerciseKind": {
+        "type": "string",
+        "enum": [
+          "reps",
+          "time"
+        ]
+      },
+      "ExerciseMuscle": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Muscle"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string",
+                "enum": [
+                  "primary",
+                  "secondary"
+                ],
+                "example": "secondary"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          }
+        ]
+      },
+      "AddExerciseInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Supino reto"
+          },
+          "kind": {
+            "type": "string",
+            "example": "reps"
+          },
+          "primaryMuscleSlugs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "peitoral-maior"
+            ]
+          },
+          "secondaryMuscleSlugs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "triceps-braquial"
+            ]
+          }
+        }
       }
     },
     "parameters": {}
@@ -330,6 +464,104 @@
           },
           "422": {
             "description": "The muscle group is not in the catalog (muscle_group_not_found)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exercises": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "List the active exercises with their muscles and muscle groups",
+        "responses": {
+          "200": {
+            "description": "The active exercises ordered by slug",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseList"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Register a reps or time exercise with the muscles it works",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddExerciseInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The registered exercise",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Exercise"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing name (exercise_name_required), missing kind (exercise_kind_required), kind other than reps or time (exercise_kind_invalid), no primary muscle (exercise_muscle_required) or a muscle given twice (exercise_muscle_duplicated)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An exercise with the same name already exists (exercise_already_exists)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A muscle is not in the catalog (muscle_not_found)",
             "content": {
               "application/json": {
                 "schema": {
