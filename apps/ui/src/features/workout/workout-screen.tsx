@@ -7,6 +7,7 @@ import { clearActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-sto
 import { useSyncQueue } from '@/sync/sync-context'
 import { EndSheet } from './end-sheet'
 import { formatLoadKg } from './format'
+import { LeftOutSummary } from './left-out-summary'
 import { PendingSetsIndicator } from './pending-sets-indicator'
 import { RejectedSetsNotice } from './rejected-sets-notice'
 import { RestRing } from './rest-ring'
@@ -15,8 +16,10 @@ import type { TodayExercise } from './today.types'
 import { useScreenWakeLock } from './use-screen-wake-lock'
 import {
   announcementOf,
+  canSkipOf,
   currentExercise,
   exerciseProgressOf,
+  leftOutOf,
   sequenceOf,
   upcomingExercise,
   type WorkoutFlowState,
@@ -48,8 +51,8 @@ function MeasureValue({ label, measure }: { label: string; measure: Measure }) {
   )
 }
 
-// Puts each new set in the queue before anything else (the data that matters), then the end of
-// the workout, then saves the workout in progress; the rest starts without waiting for the send
+// Puts each new set in the queue before anything else (the data that matters), then the exercises
+// left out, then the end of the workout, then saves the workout in progress; the rest starts without waiting for the send
 // (FR-001, FR-005, FR-009). An ended workout is cleared from the device and handed to onFinish
 // once its sets and its finish are queued (FR-018). A restored flow starts with its sets already
 // in the ref, so they are not queued twice.
@@ -70,7 +73,13 @@ function usePersistWorkout(
     if (finish) finishQueued.current = true
     void (async () => {
       for (const body of fresh) await queue.enqueue(state.session.workoutId, body)
-      if (finish) await queue.enqueueFinish(state.session.workoutId, finish)
+      // A workout with no set recorded has no finish, so no skip goes either (FR-016).
+      if (finish) {
+        for (const { plannedExerciseId, skippedAt } of leftOutOf(state)) {
+          await queue.enqueueSkip(state.session.workoutId, { plannedExerciseId, skippedAt })
+        }
+        await queue.enqueueFinish(state.session.workoutId, finish)
+      }
       if (state.phase === 'ended') {
         closed.current = true
         await clearActiveWorkout()
@@ -210,6 +219,7 @@ export function WorkoutScreen({ flow, onFinish }: WorkoutScreenProps) {
           ))}
         </div>
       </Progress.Root>
+      {finished ? <LeftOutSummary items={leftOutOf(state)} /> : null}
       {state.phase === 'set' ? (
         <SetArea
           // A new key per set restarts the rest-end animation on every passage.
@@ -235,11 +245,17 @@ export function WorkoutScreen({ flow, onFinish }: WorkoutScreenProps) {
         open={state.sheet === 'sequence'}
         items={sequenceOf(state)}
         finished={finished}
+        canSkip={canSkipOf(state)}
         returnFocusRef={topControlRef}
         onClose={() => dispatch({ type: 'closeSheet', nowMs: Date.now() })}
         onPick={(exerciseIndex) => {
           const nowMs = Date.now()
           dispatch({ type: 'goTo', exerciseIndex, nowMs })
+          dispatch({ type: 'closeSheet', nowMs })
+        }}
+        onSkip={() => {
+          const nowMs = Date.now()
+          dispatch({ type: 'skip', nowMs })
           dispatch({ type: 'closeSheet', nowMs })
         }}
         onEnd={() => dispatch({ type: 'openSheet', sheet: 'confirmEnd' })}

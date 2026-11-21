@@ -829,7 +829,7 @@ O programa que deixou de ser o ativo depois do "Começar" não impede a série: 
 
 A rota desta seção vem da US-F03-04. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem. O fim não tem ferramenta MCP: a leitura e a correção do fim pelo planejador são das stories US-F06-01 e US-F06-02 (`mcp.md` não muda). O service fica em `apps/api/src/modules/workouts/workout-finish.service.ts`.
 
-O app não chama a rota direto da tela. O fim entra na fila local de envio depois das séries do treino e segue as regras da ADR-022.
+O app não chama a rota direto da tela. O fim entra na fila local de envio depois das séries e dos exercícios pulados do treino (seção "Exercício pulado") e segue as regras da ADR-022.
 
 ### POST /api/workouts/{workoutId}/finish
 
@@ -874,6 +874,60 @@ Ordem da conferência, na mesma transação:
 6. Gravação do fim.
 
 A API não limita o instante no futuro nem recusa série nova para um treino terminado [fora de escopo da US-F03-04].
+
+## Exercício pulado
+
+A rota desta seção vem da US-F03-05. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem. O exercício pulado não tem ferramenta MCP: a leitura e a correção pelo planejador são das stories US-F06-01 e US-F06-02 (`mcp.md` não muda). O service fica em `apps/api/src/modules/workouts/workout-skip.service.ts`.
+
+O app não chama a rota direto da tela. O pulado que resta no fim do treino entra na fila local de envio depois das séries e antes do fim, e segue as regras da ADR-023.
+
+### POST /api/workouts/{workoutId}/skips
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Gravar o exercício que ficou de fora do treino, com o instante do último pulo |
+| Story | US-F03-05 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) e `Origin` igual a `APP_ORIGIN` quando o navegador manda o cabeçalho |
+| Caminho | `workoutId`: ID do treino em UUID, o mesmo das séries |
+| Corpo | `{ "plannedExerciseId", "skippedAt" }`. `plannedExerciseId` é o UUID do exercício do programa; o corpo não leva `exerciseId`, a API lê o exercício pelo exercício do programa. `skippedAt` é ISO 8601 em UTC, com `Z`; o schema aceita como texto e o service recusa o valor com `code` próprio |
+| Efeito colateral | Grava uma linha em `workout_skips` com o treino, o exercício, o exercício do programa e `skipped_at` normalizado com `toISOString()`. A recusa não grava nada: a conferência e a gravação ficam numa transação só |
+| Idempotência | Idempotente pelo par exercício do programa e instante. O reenvio com o mesmo `plannedExerciseId` e o mesmo `skippedAt` (comparado depois da normalização) responde 200 com o registro gravado, sem mudar nada. Outro instante responde 409. Depois de o planejador remover o exercício da letra, o vínculo fica nulo e o reenvio responde 422; o registro original continua |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 201 | `WorkoutSkip` | Pulado gravado agora |
+| 200 | `WorkoutSkip`, com os valores do banco | O mesmo exercício do programa e o mesmo instante já estão gravados |
+| 400 | `{ "code": "invalid_request", "message": "requisição inválida" }` | Corpo fora do schema: campo ausente ou de outro tipo, ID que não é UUID |
+| 400 | `{ "code": "workout_skipped_at_invalid", "message": "instante do pulo inválido" }` | `skippedAt` vazio, sem `Z`, com deslocamento diferente de `Z` ou que não é data |
+| 400 | `{ "code": "workout_skipped_before_start", "message": "o pulo é anterior ao início do treino" }` | `skippedAt` anterior a `started_at`. O instante igual ao início é aceito |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida. O corpo não tem dado de treino |
+| 403 | `{ "code": "forbidden_origin", "message": "origem não permitida" }` | `Origin` diferente de `APP_ORIGIN` |
+| 404 | `{ "code": "workout_not_found", "message": "treino não encontrado" }` | Nenhum treino com o `workoutId` |
+| 409 | `{ "code": "workout_skip_conflict", "message": "exercício já pulado neste treino com outro instante" }` | O mesmo exercício do programa já está gravado com outro instante |
+| 409 | `{ "code": "workout_skip_conflict", "message": "exercício já pulado neste treino" }` | O exercício já está gravado por outro exercício do programa (a letra mudou depois do pulo) |
+| 422 | `{ "code": "planned_exercise_not_found", "message": "exercício não encontrado na letra" }` | O exercício do programa não existe ou não é da letra do treino |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+O objeto `WorkoutSkip` tem a forma `{ "workoutId", "exerciseId", "plannedExerciseId", "skippedAt" }`. `plannedExerciseId` fica `null` quando o planejador removeu o exercício do programa depois da gravação.
+
+Exemplo do pulo da Prancha:
+
+```json
+{ "plannedExerciseId": "0193a1b2-0000-7000-8000-000000000402", "skippedAt": "2026-11-21T18:40:00.000Z" }
+```
+
+Ordem da conferência, na mesma transação:
+
+1. Formato, pelo schema (`invalid_request`).
+2. Formato do instante, ainda sem ler o banco (`workout_skipped_at_invalid`).
+3. Treino existente: 404 `workout_not_found`.
+4. Pulo já gravado com o mesmo `plannedExerciseId`: 200 se o instante bate, 409 `workout_skip_conflict` se não. O reenvio responde antes da leitura do plano.
+5. Exercício do programa existente e da letra do treino: 422 `planned_exercise_not_found`.
+6. Instante anterior ao início: 400 `workout_skipped_before_start`.
+7. Exercício já pulado por outro exercício do programa: 409 `workout_skip_conflict`. A chave primária `(workout_id, exercise_id)` garante a regra no banco.
+8. Gravação do pulado.
+
+A API não recusa pulado de treino já terminado, porque a fila envia os pulados antes do fim [fora de escopo da US-F03-05].
 
 ## Situação do app
 

@@ -2,6 +2,7 @@ import type { Today } from '@/features/workout/today.types'
 import type { FinishWorkoutBody } from '@/features/workout/workout-finish.types'
 import type { WorkoutFlowState } from '@/features/workout/workout-flow'
 import type { RecordWorkoutSetBody } from '@/features/workout/workout-set.types'
+import type { RecordWorkoutSkipBody } from '@/features/workout/workout-skip.types'
 
 // A set waiting to go to the API; seq is the registration order. A row written before the
 // finish existed has no kind and reads as a set.
@@ -24,7 +25,18 @@ export type PendingFinish = {
   queuedAt: number
 }
 
-export type PendingItem = PendingSet | PendingFinish
+// An exercise left out of the workout, queued after the sets and before the finish; the id is
+// `${workoutId}:skip:${plannedExerciseId}` (ADR-023).
+export type PendingSkip = {
+  kind: 'skip'
+  seq: number
+  id: string
+  workoutId: string
+  body: RecordWorkoutSkipBody
+  queuedAt: number
+}
+
+export type PendingItem = PendingSet | PendingFinish | PendingSkip
 
 // A set the API refused for a domain rule; the server wins, so it is never resent.
 export type RejectedSet = {
@@ -39,6 +51,7 @@ export type RejectedSet = {
 export type NewPendingItem =
   | Pick<PendingSet, 'kind' | 'workoutId' | 'body' | 'queuedAt'>
   | Pick<PendingFinish, 'kind' | 'workoutId' | 'body' | 'queuedAt'>
+  | Pick<PendingSkip, 'kind' | 'workoutId' | 'body' | 'queuedAt'>
 
 export type RejectionReason = Pick<RejectedSet, 'code' | 'message' | 'rejectedAt'>
 

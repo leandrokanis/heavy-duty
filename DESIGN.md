@@ -185,7 +185,8 @@ O HIG não especifica botão de ação central sobre a barra de abas. Se o app a
 - A folha DEVE listar os exercícios da letra com o estado de cada um: feito, com as séries registradas (US-F03-06); atual; pulado; ou por fazer.
 - Um toque num exercício que falta DEVE levar a ele. Durante o descanso, o exercício escolhido vira o próximo, e o descanso continua.
 - Com a folha da sequência aberta, o descanso continua contando, mas a passagem à série seguinte espera a folha fechar (Seção 3, princípio 1).
-- O exercício atual DEVE ter a ação "Pular" (US-F03-05). O exercício pulado continua na lista e PODE ser feito depois.
+- O exercício atual DEVE ter a ação "Pular" (US-F03-05), com área de toque de 56 px ou mais, e o texto do botão DEVE dizer o nome do exercício no nome acessível. A ação "Pular" NÃO DEVE aparecer quando não resta outro exercício, não pulado, com série por fazer: nesse caso o atleta termina o exercício ou encerra o treino. A ação NÃO DEVE depender de gesto (WCAG 2.5.7).
+- O exercício pulado continua na lista com o texto "Pulado" e PODE ser feito depois. A tela de treino terminado DEVE mostrar a seção "Ficaram de fora" com os exercícios pulados que não foram feitos, e NÃO DEVE mostrar a seção quando nada ficou de fora.
 - O botão de encerrar o treino DEVE ficar na folha da sequência, não no topo da tela de treino (PRD, D26). O canto superior é o lugar onde se espera o voltar e fica longe do polegar, o que facilita o toque acidental.
 
 ## 10. Tipografia

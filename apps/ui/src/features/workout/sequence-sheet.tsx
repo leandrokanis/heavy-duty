@@ -2,7 +2,7 @@
 
 import { Button } from '@base-ui/react/button'
 import { Drawer } from '@base-ui/react/drawer'
-import { Check, Circle, CircleDot, X } from 'lucide-react'
+import { Check, Circle, CircleDot, SkipForward, X } from 'lucide-react'
 import type { RefObject } from 'react'
 import type { SequenceItem } from './workout-flow'
 
@@ -11,16 +11,29 @@ export type SequenceSheetProps = {
   items: SequenceItem[]
   // A finished workout lists everything done, with no way to another exercise or to end it.
   finished: boolean
+  // True while another exercise is left to do; without it the current row has no Pular (FR-002).
+  canSkip: boolean
   // Where the focus goes when the sheet closes: the control that opened it.
   returnFocusRef: RefObject<HTMLElement | null>
   onClose: () => void
   onPick: (exerciseIndex: number) => void
+  onSkip: () => void
   onEnd: () => void
 }
 
-const STATUS_LABEL = { done: 'Feito', current: 'Atual', todo: 'Por fazer' } as const
+const STATUS_LABEL = {
+  done: 'Feito',
+  current: 'Atual',
+  skipped: 'Pulado',
+  todo: 'Por fazer',
+} as const
 
-const STATUS_ICON = { done: Check, current: CircleDot, todo: Circle } as const
+const STATUS_ICON = {
+  done: Check,
+  current: CircleDot,
+  skipped: SkipForward,
+  todo: Circle,
+} as const
 
 const ROW_CLASS =
   'flex min-h-(--target-workout) w-full items-center gap-(--space-16) rounded-(--radius-capsule) px-(--space-20) text-left'
@@ -30,7 +43,9 @@ function ItemContent({ item }: { item: SequenceItem }) {
   return (
     <>
       <Icon aria-hidden="true" size={24} className="shrink-0" />
-      <span className="flex-1 text-[1.0625rem] font-(--font-weight-semibold)">{item.name}</span>
+      <span className="min-w-0 flex-1 truncate text-[1.0625rem] font-(--font-weight-semibold)">
+        {item.name}
+      </span>
       <span className="opacity-70">{STATUS_LABEL[item.status]}</span>
       <span className="tabular-nums opacity-70">{`${item.setsDone} de ${item.setsTotal}`}</span>
     </>
@@ -41,9 +56,11 @@ export function SequenceSheet({
   open,
   items,
   finished,
+  canSkip,
   returnFocusRef,
   onClose,
   onPick,
+  onSkip,
   onEnd,
 }: SequenceSheetProps) {
   return (
@@ -74,7 +91,7 @@ export function SequenceSheet({
             <ul className="flex flex-col gap-(--space-8)">
               {items.map((item) => (
                 <li key={item.exerciseIndex}>
-                  {item.status === 'todo' && !finished ? (
+                  {(item.status === 'todo' || item.status === 'skipped') && !finished ? (
                     <Button
                       className={`${ROW_CLASS} bg-[color-mix(in_srgb,CanvasText_8%,transparent)] active:opacity-60`}
                       onClick={() => onPick(item.exerciseIndex)}
@@ -82,8 +99,19 @@ export function SequenceSheet({
                       <ItemContent item={item} />
                     </Button>
                   ) : (
-                    <div className={ROW_CLASS}>
-                      <ItemContent item={item} />
+                    <div className="flex items-center gap-(--space-8)">
+                      <div className={`${ROW_CLASS} min-w-0 flex-1`}>
+                        <ItemContent item={item} />
+                      </div>
+                      {item.status === 'current' && canSkip && !finished ? (
+                        <Button
+                          aria-label={`Pular ${item.name}`}
+                          className="min-h-(--target-workout) shrink-0 rounded-(--radius-capsule) bg-[color-mix(in_srgb,CanvasText_12%,transparent)] px-(--space-20) text-[1.0625rem] font-(--font-weight-semibold) active:opacity-60"
+                          onClick={onSkip}
+                        >
+                          Pular
+                        </Button>
+                      ) : null}
                     </div>
                   )}
                 </li>

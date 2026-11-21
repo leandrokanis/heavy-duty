@@ -36,6 +36,8 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Sequência do treino | Lista dos exercícios da letra em andamento, na ordem do programa, com o estado de cada um (feito, atual ou por fazer). O toque no controle do topo da tela de treino abre a lista, e o toque num exercício por fazer leva a ele | `SequenceSheet`, `sequenceOf` | roteiro, fila de exercícios |
 | Encerrar | Ação do atleta que termina o treino antes da última série, pelo botão da sequência do treino e com confirmação. Grava o motivo "encerrado antes" | `endReason: 'ended_early'` | abandonar, sair do treino |
 | Fim do treino | Instante e motivo com que o treino terminou: na última série (`completed`) ou encerrado antes (`ended_early`). Segue para a API pela fila local, depois das séries | `finish`, `finishedAt`, `endReason` | conclusão, término |
+| Exercício pulado | Exercício que o atleta deixou para depois com a ação "Pular". Pode ser feito depois; o que resta pulado no fim do treino fica de fora | `skipped` (estado), `skip` (ação), `WorkoutSkip` e `workout_skips` (API) | ignorar, descartar |
+| Ficaram de fora | Exercícios pulados e não feitos, listados na tela de treino terminado | `leftOutOf`, `LeftOutSummary` | não feitos, restantes |
 | Passo | Ação do atleta no fluxo da academia que pede um toque: registrar a série, pular o descanso | — | etapa |
 | Ajuste por arrasto | Mudança de carga, repetições ou tempo por arrasto, em passos fixos, sem teclado | `dragAdjust` | slider |
 | Histórico | Conjunto dos treinos registrados | `history` | log |

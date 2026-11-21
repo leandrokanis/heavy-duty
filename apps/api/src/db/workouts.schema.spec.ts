@@ -184,3 +184,104 @@ describe('Given a workout with set 1 of supino-reto', () => {
     })
   })
 })
+
+const SKIPPED_AT = '2026-11-20T18:40:00.000Z'
+
+function givenWorkoutWithSkippedPrancha() {
+  const { db } = createProgramTestApp()
+  const now = PROGRAM_TEST_START
+  const program = createProgram(db, { name: 'Programa 1', goal: 'hypertrophy' }, now)
+  addProgramDay(db, program.id, { letter: 'C' }, now)
+  addPlannedExercise(
+    db,
+    program.id,
+    'C',
+    { exerciseSlug: 'supino-reto', sets: 3, targetReps: 10, loadG: 60000, restSeconds: 90 },
+    now,
+  )
+  addPlannedExercise(
+    db,
+    program.id,
+    'C',
+    { exerciseSlug: 'prancha', sets: 3, targetSeconds: 45, loadG: 0, restSeconds: 60 },
+    now,
+  )
+  const workoutId = recordWorkout(
+    db,
+    {
+      programId: program.id,
+      letter: 'C',
+      startedAt: STARTED_AT,
+      sets: [{ exerciseSlug: 'supino-reto', loadG: 60000, reps: 10 }],
+    },
+    now,
+  )
+  const prancha = db.$client
+    .prepare(
+      `SELECT p.id AS plannedExerciseId, p.exercise_id AS exerciseId
+       FROM planned_exercises p JOIN exercises e ON e.id = p.exercise_id WHERE e.slug = 'prancha'`,
+    )
+    .get() as { plannedExerciseId: string; exerciseId: string }
+  insertSkipRow(db, workoutId, prancha)
+  return { db, workoutId, prancha }
+}
+
+function insertSkipRow(
+  db: ReturnType<typeof givenProgramWithLetterC>['db'],
+  workoutId: string,
+  prancha: { plannedExerciseId: string; exerciseId: string },
+) {
+  db.$client
+    .prepare(
+      `INSERT INTO workout_skips (workout_id, exercise_id, planned_exercise_id, skipped_at)
+       VALUES (?, ?, ?, ?)`,
+    )
+    .run(workoutId, prancha.exerciseId, prancha.plannedExerciseId, SKIPPED_AT)
+}
+
+function readSkipRows(db: ReturnType<typeof givenProgramWithLetterC>['db'], workoutId: string) {
+  return db.$client
+    .prepare(
+      `SELECT exercise_id AS exerciseId, planned_exercise_id AS plannedExerciseId, skipped_at AS skippedAt
+       FROM workout_skips WHERE workout_id = ?`,
+    )
+    .all(workoutId)
+}
+
+describe('Given a workout with a skip of prancha', () => {
+  describe('When the planner removes prancha from the day', () => {
+    it('Then the skip should stay with planned_exercise_id null and exercise_id kept', () => {
+      const { db, workoutId, prancha } = givenWorkoutWithSkippedPrancha()
+
+      db.$client
+        .prepare('DELETE FROM planned_exercises WHERE id = ?')
+        .run(prancha.plannedExerciseId)
+
+      expect(readSkipRows(db, workoutId)).toEqual([
+        { exerciseId: prancha.exerciseId, plannedExerciseId: null, skippedAt: SKIPPED_AT },
+      ])
+    })
+  })
+
+  describe('When a second skip of the same exercise is inserted in the same workout', () => {
+    it('Then should throw a primary key error', () => {
+      const { db, workoutId, prancha } = givenWorkoutWithSkippedPrancha()
+
+      const error = errorOf(() => insertSkipRow(db, workoutId, prancha))
+
+      expect(error).toBe(
+        'UNIQUE constraint failed: workout_skips.workout_id, workout_skips.exercise_id',
+      )
+    })
+  })
+
+  describe('When the workout is deleted', () => {
+    it('Then the skip should be deleted with it', () => {
+      const { db, workoutId } = givenWorkoutWithSkippedPrancha()
+
+      db.$client.prepare('DELETE FROM workouts WHERE id = ?').run(workoutId)
+
+      expect(readSkipRows(db, workoutId)).toEqual([])
+    })
+  })
+})

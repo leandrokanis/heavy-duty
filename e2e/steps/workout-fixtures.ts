@@ -127,6 +127,7 @@ export function readWorkoutSets(workoutId: string): RecordedSetRow[] {
 // start from an empty history instead of the fixture workouts of US-F02-02.
 export function clearWorkouts(): void {
   withDatabase((db) => {
+    db.exec('DELETE FROM workout_skips')
     db.exec('DELETE FROM workouts')
   })
 }
@@ -173,5 +174,20 @@ export function readWorkoutEnd(workoutId: string): RecordedWorkoutEnd | undefine
           'SELECT finished_at AS finishedAt, end_reason AS endReason FROM workouts WHERE id = ?',
         )
         .get(workoutId) as RecordedWorkoutEnd | undefined,
+  )
+}
+
+export type RecordedSkip = { exerciseSlug: string; skippedAt: string }
+
+export function readWorkoutSkips(workoutId: string): RecordedSkip[] {
+  return withDatabase(
+    (db) =>
+      db
+        .prepare(
+          `SELECT e.slug AS exerciseSlug, k.skipped_at AS skippedAt
+             FROM workout_skips k JOIN exercises e ON e.id = k.exercise_id
+            WHERE k.workout_id = ? ORDER BY e.slug`,
+        )
+        .all(workoutId) as RecordedSkip[],
   )
 }

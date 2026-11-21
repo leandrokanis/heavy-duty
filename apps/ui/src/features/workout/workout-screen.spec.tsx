@@ -624,7 +624,7 @@ describe('Given the 3 sets of supino-reto recorded and set 1 of crucifixo on scr
       }).toEqual({
         items: [
           'Supino retoFeito3 de 3',
-          'CrucifixoAtual0 de 3',
+          'CrucifixoAtual0 de 3Pular',
           'Tríceps na poliaPor fazer0 de 3',
         ],
         end: true,
@@ -997,6 +997,247 @@ describe('Given the sequence sheet open', () => {
 
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
       expect(document.activeElement).toBe(topControl)
+    })
+  })
+})
+
+// Letter 'A' of the US-F03-05 spec: supino-reto, prancha (time) and triceps-polia.
+const SKIP_LETTER = [SUPINO_RETO, PRANCHA, TRICEPS_POLIA]
+
+const TOP_CONTROL_ON_PRANCHA = 'Sequência do treino, letra A, exercício 2 de 3'
+
+// The 3 sets of supino-reto recorded and set 1 of prancha on screen; returns the clock after the last tap.
+function flowOnPrancha(): { flow: WorkoutFlowState; clockMs: number } {
+  const flow = flowAfterSets(SKIP_LETTER, 3)
+  return { flow, clockMs: T0 + 6000 }
+}
+
+describe('Given the 3 sets of supino-reto recorded and set 1 of prancha on screen', () => {
+  describe('When the athlete opens the sequence and taps "Pular Prancha"', () => {
+    it('Then the sheet should close, the focus should return to the top control, the screen should show triceps-polia with 20 kg and 12 rep, and the sequence reopened should list prancha as "Pulado" with "0 de 3"', async () => {
+      vi.useFakeTimers({ now: T0 + 60_000 })
+      renderWorkout(SKIP_LETTER, vi.fn(), NEVER_SENT, flowOnPrancha().flow)
+      const topControl = screen.getByRole('button', { name: TOP_CONTROL_ON_PRANCHA })
+      const dialog = await openSequence(TOP_CONTROL_ON_PRANCHA)
+
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Pular Prancha' }))
+      })
+      await act(async () => vi.advanceTimersByTime(500))
+
+      const afterSkip = {
+        dialog: screen.queryByRole('dialog'),
+        focusOnTopControl: document.activeElement === topControl,
+        title: screen.getByRole('heading', { level: 1 }).textContent,
+        load: screen.getByRole('group', { name: 'Carga' }).textContent,
+        target: screen.getByRole('group', { name: 'Alvo' }).textContent,
+      }
+      const reopened = await openSequence('Sequência do treino, letra A, exercício 2 de 3')
+      expect({
+        afterSkip,
+        items: within(reopened)
+          .getAllByRole('listitem')
+          .map((item) => item.textContent),
+      }).toEqual({
+        afterSkip: {
+          dialog: null,
+          focusOnTopControl: true,
+          title: 'Tríceps na polia',
+          load: '20kg',
+          target: '12rep',
+        },
+        items: ['Supino retoFeito3 de 3', 'PranchaPulado0 de 3', 'Tríceps na poliaAtual0 de 3'],
+      })
+    })
+  })
+
+  describe('When the athlete skips prancha and then taps its row in the sequence', () => {
+    it('Then the screen should show prancha with 45 s', async () => {
+      vi.useFakeTimers({ now: T0 + 60_000 })
+      renderWorkout(SKIP_LETTER, vi.fn(), NEVER_SENT, flowOnPrancha().flow)
+      const dialog = await openSequence(TOP_CONTROL_ON_PRANCHA)
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Pular Prancha' }))
+      })
+      await act(async () => vi.advanceTimersByTime(500))
+      const reopened = await openSequence('Sequência do treino, letra A, exercício 2 de 3')
+
+      await act(async () => {
+        fireEvent.click(within(reopened).getByRole('button', { name: /Prancha/ }))
+      })
+      await act(async () => vi.advanceTimersByTime(500))
+
+      expect({
+        title: screen.getByRole('heading', { level: 1 }).textContent,
+        target: screen.getByRole('group', { name: 'Alvo' }).textContent,
+      }).toEqual({ title: 'Prancha', target: '45s' })
+    })
+  })
+})
+
+describe('Given the 90 s rest after the 3rd set of supino-reto with prancha as upcoming', () => {
+  describe('When the athlete skips prancha in the sequence', () => {
+    it('Then the ring should keep the time left, A seguir should show triceps-polia, and when the rest ends the screen should show set 1 of triceps-polia', async () => {
+      vi.useFakeTimers({ now: T0 + 60_000 })
+      renderWorkout(SKIP_LETTER, vi.fn(), NEVER_SENT, flowAfterSets(SKIP_LETTER, 2))
+      await act(async () => tapNext())
+      await act(async () => vi.advanceTimersByTime(10_000))
+      const dialog = await openSequence(TOP_CONTROL_ON_PRANCHA)
+
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Pular Prancha' }))
+      })
+      await act(async () => vi.advanceTimersByTime(500))
+      const duringRest = {
+        dialog: screen.queryByRole('dialog'),
+        clock: restClock(),
+        upNext: screen.queryByText('A seguir') !== null,
+        upNextName: screen.queryByText('Tríceps na polia') !== null,
+      }
+      await act(async () => vi.advanceTimersByTime(80_000))
+
+      expect({
+        duringRest,
+        title: screen.getByRole('heading', { level: 1 }).textContent,
+        load: screen.getByRole('group', { name: 'Carga' }).textContent,
+      }).toEqual({
+        duringRest: { dialog: null, clock: '1:20', upNext: true, upNextName: true },
+        title: 'Tríceps na polia',
+        load: '20kg',
+      })
+    })
+  })
+})
+
+// Supino-reto done, prancha skipped and the last set of triceps-polia on screen. Returns the flow
+// and a clock past its last step, so the first tap is not taken as a double tap.
+function flowOnLastTricepsSetWithPranchaSkipped(): { flow: WorkoutFlowState; nowMs: number } {
+  let flow = flowAfterSets(SKIP_LETTER, 3)
+  flow = workoutFlowReducer(flow, { type: 'skip', nowMs: T0 + 10_000 })
+  let nowMs = T0 + 11_000
+  for (let set = 0; set < 2; set += 1) {
+    flow = workoutFlowReducer(flow, { type: 'next', nowMs })
+    nowMs += 1000
+    flow = workoutFlowReducer(flow, { type: 'next', nowMs })
+    nowMs += 1000
+  }
+  return { flow, nowMs: nowMs + 5000 }
+}
+
+describe('Given supino-reto done, prancha skipped and the last set of triceps-polia on screen', () => {
+  describe('When the athlete taps "Próximo"', () => {
+    it('Then the screen should show "Treino concluído" with no confirmation, a "Ficaram de fora" section listing prancha with "0 de 3", the bar "Exercícios" at "2 de 3", and the queue should hold the new set, then the skip of prancha with its skippedAt, then the finish completed', async () => {
+      const { flow, nowMs } = flowOnLastTricepsSetWithPranchaSkipped()
+      vi.useFakeTimers({ now: nowMs })
+      const { queue } = renderWorkout(SKIP_LETTER, vi.fn(), NEVER_SENT, flow)
+
+      await act(async () => tapNext())
+      await act(async () => vi.advanceTimersByTime(300))
+
+      const section = screen.getByRole('region', { name: 'Ficaram de fora' })
+      const pending = queue.getSnapshot().pending
+      const lastSet = pending[0]?.body as { performedAt: string } | undefined
+      expect({
+        title: screen.getByRole('heading', { level: 1 }).textContent,
+        dialog: screen.queryByRole('dialog'),
+        leftOut: within(section)
+          .getAllByRole('listitem')
+          .map((item) => item.textContent),
+        bar: screen.getByRole('progressbar', { name: 'Exercícios' }).getAttribute('aria-valuetext'),
+        queue: pending.map(({ kind, body }) => [kind, body]),
+      }).toEqual({
+        title: 'Treino concluído',
+        dialog: null,
+        leftOut: ['Prancha0 de 3'],
+        bar: '2 de 3',
+        queue: [
+          ['set', expect.objectContaining({ plannedExerciseId: 'planned-triceps', setNumber: 3 })],
+          ['skip', { plannedExerciseId: 'planned-prancha', skippedAt: flow.skipped[0]?.skippedAt }],
+          ['finish', { finishedAt: lastSet?.performedAt, endReason: 'completed' }],
+        ],
+      })
+    })
+  })
+})
+
+describe('Given the last missing set of the day with nothing skipped', () => {
+  describe('When the athlete taps "Próximo"', () => {
+    it('Then the screen should have no "Ficaram de fora" section and the bar should read the total', async () => {
+      vi.useFakeTimers({ now: T0 })
+      renderWorkout([TRICEPS_TWO_SETS], vi.fn(), NEVER_SENT)
+      await tapSets(2)
+      await act(async () => vi.advanceTimersByTime(300))
+
+      expect({
+        section: screen.queryByRole('region', { name: 'Ficaram de fora' }),
+        bar: screen.getByRole('progressbar', { name: 'Exercícios' }).getAttribute('aria-valuetext'),
+      }).toEqual({ section: null, bar: '1 de 1' })
+    })
+  })
+})
+
+describe('Given prancha skipped and one set of triceps-polia on screen after supino-reto', () => {
+  describe('When the athlete records a set and ends the workout early', () => {
+    it('Then the queue should hold the set, the skip and the finish ended_early, and onFinish should be called with no summary shown', async () => {
+      const base = flowAfterSets(SKIP_LETTER, 3)
+      const skipped = workoutFlowReducer(base, { type: 'skip', nowMs: T0 + 10_000 })
+      vi.useFakeTimers({ now: T0 + 60_000 })
+      const onFinish = vi.fn()
+      const { queue } = renderWorkout(SKIP_LETTER, onFinish, NEVER_SENT, skipped)
+      await act(async () => tapNext())
+      await act(async () => vi.advanceTimersByTime(1000))
+      const dialog = await openSequence('Sequência do treino, letra A, exercício 2 de 3')
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Encerrar' }))
+      await act(async () => {})
+      const confirmation = screen.getByRole('dialog')
+
+      await act(async () => {
+        fireEvent.click(within(confirmation).getByRole('button', { name: 'Encerrar' }))
+      })
+
+      expect({
+        queue: queue.getSnapshot().pending.map(({ kind, body }) => [kind, body]),
+        finished: onFinish.mock.calls.length,
+        summary: screen.queryByRole('region', { name: 'Ficaram de fora' }),
+      }).toEqual({
+        queue: [
+          ['set', expect.objectContaining({ plannedExerciseId: 'planned-triceps', setNumber: 1 })],
+          [
+            'skip',
+            { plannedExerciseId: 'planned-prancha', skippedAt: skipped.skipped[0]?.skippedAt },
+          ],
+          ['finish', { finishedAt: new Date(T0 + 61_000).toISOString(), endReason: 'ended_early' }],
+        ],
+        finished: 1,
+        summary: null,
+      })
+    })
+  })
+})
+
+describe('Given the first exercise skipped before any set was recorded', () => {
+  describe('When the athlete ends the workout', () => {
+    it('Then nothing should be queued, not even the skip', async () => {
+      vi.useFakeTimers({ now: T0 + 60_000 })
+      const skipped = workoutFlowReducer(flowOf([SUPINO_RETO, PRANCHA]), {
+        type: 'skip',
+        nowMs: T0,
+      })
+      const onFinish = vi.fn()
+      const { queue } = renderWorkout([SUPINO_RETO, PRANCHA], onFinish, NEVER_SENT, skipped)
+      const dialog = await openSequence('Sequência do treino, letra A, exercício 1 de 2')
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Encerrar' }))
+      await act(async () => {})
+      const confirmation = screen.getByRole('dialog')
+
+      await act(async () => {
+        fireEvent.click(within(confirmation).getByRole('button', { name: 'Encerrar' }))
+      })
+
+      expect({
+        pending: queue.getSnapshot().pending,
+        finished: onFinish.mock.calls.length,
+      }).toEqual({ pending: [], finished: 1 })
     })
   })
 })

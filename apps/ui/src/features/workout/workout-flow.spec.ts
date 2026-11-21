@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { CRUCIFIXO, PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayDay } from './test-today'
 import {
   announcementOf,
+  canSkipOf,
   createWorkoutFlow,
   currentExercise,
   exerciseProgressOf,
+  leftOutOf,
   restoreWorkoutFlow,
   sequenceOf,
   upcomingExercise,
@@ -963,6 +965,376 @@ describe.each([
         phase: saved.phase,
         finish: saved.finish,
       })
+    })
+  })
+})
+
+// Letter 'A' of the US-F03-05 spec: supino-reto, prancha (time) and triceps-polia.
+const SKIP_LETTER = [SUPINO_RETO, PRANCHA, TRICEPS_POLIA]
+
+function skip(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
+  return workoutFlowReducer(state, { type: 'skip', nowMs })
+}
+
+// The 3 sets of supino-reto recorded and set 1 of prancha on screen, out of the rest.
+function onPranchaAfterSupino() {
+  return recordSets(createWorkoutFlow(sessionOf(SKIP_LETTER)), 3, T0)
+}
+
+describe('Given the 3 sets of supino-reto recorded and set 1 of prancha on screen, out of the rest', () => {
+  const { state: onPrancha, clock } = onPranchaAfterSupino()
+
+  describe('When skip arrives', () => {
+    it('Then should show set 1 of triceps-polia with 20 kg and 12 reps, mark prancha as skipped at the tap instant and announce it', () => {
+      const state = skip(onPrancha, clock)
+
+      expect({
+        phase: state.phase,
+        exercise: currentExercise(state).exercise.name,
+        setNumber: state.setNumber,
+        loadG: currentExercise(state).loadG,
+        targetReps: currentExercise(state).targetReps,
+        skipped: state.skipped,
+        announcement: announcementOf(state),
+      }).toEqual({
+        phase: 'set',
+        exercise: 'Tríceps na polia',
+        setNumber: 1,
+        loadG: 20000,
+        targetReps: 12,
+        skipped: [
+          { plannedExerciseId: 'planned-prancha', skippedAt: new Date(clock).toISOString() },
+        ],
+        announcement: 'Tríceps na polia, série 1 de 3',
+      })
+    })
+  })
+
+  describe('When skip arrives and next follows within 0.8 s', () => {
+    it('Then the next should record nothing', () => {
+      const skipped = skip(onPrancha, clock)
+
+      const state = next(skipped, clock + 500)
+
+      expect(state.recorded.length).toBe(skipped.recorded.length)
+    })
+  })
+})
+
+describe('Given prancha skipped and set 1 of triceps-polia on screen', () => {
+  const { state: onPrancha, clock } = onPranchaAfterSupino()
+  const onTriceps = skip(onPrancha, clock)
+
+  describe('When sequenceOf and exerciseProgressOf are read', () => {
+    it('Then should list supino-reto done 3 of 3, prancha skipped 0 of 3 and triceps-polia current 0 of 3, with progress 2', () => {
+      expect({
+        sequence: sequenceOf(onTriceps).map(({ name, status, setsDone, setsTotal }) => ({
+          name,
+          status,
+          setsDone,
+          setsTotal,
+        })),
+        progress: exerciseProgressOf(onTriceps),
+      }).toEqual({
+        sequence: [
+          { name: 'Supino reto', status: 'done', setsDone: 3, setsTotal: 3 },
+          { name: 'Prancha', status: 'skipped', setsDone: 0, setsTotal: 3 },
+          { name: 'Tríceps na polia', status: 'current', setsDone: 0, setsTotal: 3 },
+        ],
+        progress: 2,
+      })
+    })
+  })
+
+  describe('When canSkipOf is read', () => {
+    it('Then should be true while another exercise still has sets to do', () => {
+      expect(canSkipOf(onPrancha)).toBe(true)
+    })
+  })
+})
+
+describe('Given no other exercise with sets left that is not skipped', () => {
+  describe.each([
+    {
+      name: 'supino-reto and triceps-polia done and prancha on screen',
+      build: () => {
+        const afterSupino = recordSets(
+          createWorkoutFlow(sessionOf([SUPINO_RETO, TRICEPS_POLIA, PRANCHA])),
+          3,
+          T0,
+        )
+        return recordSets(afterSupino.state, 3, afterSupino.clock).state
+      },
+    },
+    {
+      name: 'prancha skipped and triceps-polia on screen',
+      build: () => {
+        const { state, clock } = onPranchaAfterSupino()
+        return skip(state, clock)
+      },
+    },
+    {
+      name: 'the workout finished on its last set',
+      build: () => recordSets(createWorkoutFlow(sessionOf([SUPINO_RETO, PRANCHA])), 6, T0).state,
+    },
+  ])('When canSkipOf is read with $name', ({ build }) => {
+    it('Then should be false', () => {
+      expect(canSkipOf(build())).toBe(false)
+    })
+  })
+})
+
+// The 90 s rest after the 3rd set of supino-reto, with prancha as the upcoming exercise.
+function restingAfterSupino() {
+  const afterTwo = recordSets(createWorkoutFlow(sessionOf(SKIP_LETTER)), 2, T0)
+  const recordedAtMs = afterTwo.clock
+  return { state: next(afterTwo.state, recordedAtMs), recordedAtMs }
+}
+
+describe('Given the 90 s rest after the 3rd set of supino-reto with prancha as upcoming', () => {
+  const { state: resting, recordedAtMs } = restingAfterSupino()
+
+  describe('When skip arrives during the rest', () => {
+    it('Then should keep restEndsAtMs and lastStepAtMs, skip prancha, make triceps-polia the upcoming exercise and announce it', () => {
+      const state = skip(resting, recordedAtMs + 3000)
+
+      expect({
+        restEndsAtMs: state.restEndsAtMs,
+        lastStepAtMs: state.lastStepAtMs,
+        skipped: state.skipped.map((mark) => mark.plannedExerciseId),
+        upcoming: upcomingExercise(state)?.exercise.name,
+        announcement: announcementOf(state),
+      }).toEqual({
+        restEndsAtMs: resting.restEndsAtMs,
+        lastStepAtMs: resting.lastStepAtMs,
+        skipped: ['planned-prancha'],
+        upcoming: 'Tríceps na polia',
+        announcement: 'A seguir: Tríceps na polia',
+      })
+    })
+
+    it('Then the end of the rest should show set 1 of triceps-polia', () => {
+      const skipped = skip(resting, recordedAtMs + 3000)
+
+      const state = restEnd(skipped, skipped.restEndsAtMs as number)
+
+      expect({
+        exercise: currentExercise(state).exercise.name,
+        setNumber: state.setNumber,
+      }).toEqual({ exercise: 'Tríceps na polia', setNumber: 1 })
+    })
+  })
+
+  describe('When triceps-polia is picked in the sequence and skip arrives', () => {
+    it('Then should skip the picked exercise, undo the pick and bring prancha by the order', () => {
+      const picked = goTo(resting, 2, recordedAtMs + 2000)
+
+      const state = skip(picked, recordedAtMs + 3000)
+
+      expect({
+        skipped: state.skipped.map((mark) => mark.plannedExerciseId),
+        nextExerciseIndex: state.nextExerciseIndex,
+        upcoming: upcomingExercise(state)?.exercise.name,
+      }).toEqual({
+        skipped: ['planned-triceps'],
+        nextExerciseIndex: null,
+        upcoming: 'Prancha',
+      })
+    })
+  })
+
+  describe('When prancha is skipped and then picked again during the rest', () => {
+    it('Then the pick should count and the skipped mark should stay until a set is recorded', () => {
+      const skipped = skip(resting, recordedAtMs + 3000)
+
+      const picked = goTo(skipped, 1, recordedAtMs + 4000)
+
+      const back = restEnd(picked, picked.restEndsAtMs as number)
+      expect({
+        exercise: currentExercise(back).exercise.name,
+        setNumber: back.setNumber,
+        skipped: back.skipped.map((mark) => mark.plannedExerciseId),
+      }).toEqual({ exercise: 'Prancha', setNumber: 1, skipped: ['planned-prancha'] })
+    })
+  })
+})
+
+describe('Given prancha skipped and set 1 of triceps-polia on screen, for the mark of the skipped exercise', () => {
+  const { state: onPrancha, clock } = onPranchaAfterSupino()
+  const onTriceps = skip(onPrancha, clock)
+
+  describe('When goTo arrives for prancha and next records its set', () => {
+    it('Then prancha should no longer be skipped and should go on with set 2', () => {
+      const onSkipped = goTo(onTriceps, 1, clock + 5000)
+      const recorded = next(onSkipped, clock + 6000)
+
+      const back = restEnd(recorded, recorded.restEndsAtMs as number)
+
+      expect({
+        skippedAfterGoTo: onSkipped.skipped.map((mark) => mark.plannedExerciseId),
+        skippedAfterRecord: recorded.skipped,
+        exercise: currentExercise(back).exercise.name,
+        setNumber: back.setNumber,
+      }).toEqual({
+        skippedAfterGoTo: ['planned-prancha'],
+        skippedAfterRecord: [],
+        exercise: 'Prancha',
+        setNumber: 2,
+      })
+    })
+  })
+
+  describe('When goTo arrives for prancha and then back for triceps-polia, with no set recorded', () => {
+    it('Then the mark of prancha should stay', () => {
+      const onSkipped = goTo(onTriceps, 1, clock + 5000)
+
+      const state = goTo(onSkipped, 2, clock + 6000)
+
+      expect(state.skipped.map((mark) => mark.plannedExerciseId)).toEqual(['planned-prancha'])
+    })
+  })
+
+  describe('When skip arrives again for prancha, later', () => {
+    it('Then should keep one mark with the new instant', () => {
+      const onSkipped = goTo(onTriceps, 1, clock + 5000)
+
+      const state = skip(onSkipped, clock + 9000)
+
+      expect(state.skipped).toEqual([
+        { plannedExerciseId: 'planned-prancha', skippedAt: new Date(clock + 9000).toISOString() },
+      ])
+    })
+  })
+})
+
+describe('Given 1 set of supino-reto recorded and set 2 on screen', () => {
+  describe('When skip arrives', () => {
+    it('Then supino-reto should be skipped with 1 of 3 done', () => {
+      const { state, clock } = recordSets(createWorkoutFlow(sessionOf(SKIP_LETTER)), 1, T0)
+
+      const skipped = skip(state, clock)
+
+      expect(sequenceOf(skipped)[0]).toMatchObject({
+        name: 'Supino reto',
+        status: 'skipped',
+        setsDone: 1,
+        setsTotal: 3,
+      })
+    })
+  })
+})
+
+// Prancha skipped, supino-reto done and the 3rd set of triceps-polia on screen.
+function onLastTricepsSetWithPranchaSkipped() {
+  const { state, clock } = onPranchaAfterSupino()
+  return recordSets(skip(state, clock), 2, clock + 1000)
+}
+
+describe('Given supino-reto 3 of 3, prancha skipped 0 of 3 and set 3 of triceps-polia on screen', () => {
+  const { state: onLastSet, clock } = onLastTricepsSetWithPranchaSkipped()
+
+  describe('When next records the set', () => {
+    it('Then should finish with no rest, list prancha as left out and announce the end with it', () => {
+      const state = next(onLastSet, clock)
+      const performedAt = state.recorded.at(-1)?.performedAt
+
+      expect({
+        phase: state.phase,
+        restEndsAtMs: state.restEndsAtMs,
+        finish: state.finish,
+        performedAt,
+        leftOut: leftOutOf(state).map(({ name, setsDone, setsTotal, skippedAt }) => ({
+          name,
+          setsDone,
+          setsTotal,
+          skippedAt,
+        })),
+        progress: exerciseProgressOf(state),
+        announcement: announcementOf(state),
+      }).toEqual({
+        phase: 'finished',
+        restEndsAtMs: null,
+        finish: { finishedAt: performedAt, endReason: 'completed' },
+        performedAt: new Date(clock).toISOString(),
+        leftOut: [
+          {
+            name: 'Prancha',
+            setsDone: 0,
+            setsTotal: 3,
+            skippedAt: onLastSet.skipped[0]?.skippedAt,
+          },
+        ],
+        progress: 2,
+        announcement: 'Série 3 de 3 registrada. Treino concluído. Ficou de fora: Prancha',
+      })
+    })
+  })
+
+  describe('When end arrives before the last set', () => {
+    it('Then the left out list should keep prancha', () => {
+      const state = end(onLastSet, clock)
+
+      expect(leftOutOf(state).map(({ name }) => name)).toEqual(['Prancha'])
+    })
+  })
+})
+
+describe('Given prancha skipped first and supino-reto skipped after, with triceps-polia on screen', () => {
+  const afterGoTo = goTo(createWorkoutFlow(sessionOf(SKIP_LETTER)), 1, T0)
+  const afterPrancha = skip(afterGoTo, T0 + 1000)
+  const onTriceps = skip(afterPrancha, T0 + 2000)
+
+  describe('When the 3 sets of triceps-polia are recorded', () => {
+    it('Then should list both in the order of the program and announce the plural', () => {
+      const { state, clock } = recordSets(onTriceps, 3, T0 + 3000)
+      expect(state.phase).toBe('finished')
+
+      expect({
+        leftOut: leftOutOf(state).map(({ name }) => name),
+        announcement: announcementOf(state),
+        clock: clock > T0,
+      }).toEqual({
+        leftOut: ['Supino reto', 'Prancha'],
+        announcement:
+          'Série 3 de 3 registrada. Treino concluído. Ficaram de fora: Supino reto, Prancha',
+        clock: true,
+      })
+    })
+  })
+})
+
+describe('Given a state saved with no skipped field', () => {
+  const { skipped: _skipped, ...legacy } = next(createWorkoutFlow(sessionOf(THREE_EXERCISES)), T0)
+
+  describe('When restoreWorkoutFlow runs', () => {
+    it('Then should come back with skipped empty', () => {
+      const state = restoreWorkoutFlow(legacy as unknown as WorkoutFlowState, T0 + 10_000)
+
+      expect(state.skipped).toEqual([])
+    })
+  })
+
+  describe('When restoreWorkoutFlow runs after the rest ended with the app closed', () => {
+    it('Then should show set 2 of supino-reto with skipped empty', () => {
+      const state = restoreWorkoutFlow(legacy as unknown as WorkoutFlowState, T0 + 120_000)
+
+      expect({ setNumber: state.setNumber, skipped: state.skipped }).toEqual({
+        setNumber: 2,
+        skipped: [],
+      })
+    })
+  })
+})
+
+describe('Given a state saved with prancha skipped', () => {
+  const { state: onPrancha, clock } = onPranchaAfterSupino()
+  const saved = skip(onPrancha, clock)
+
+  describe('When restoreWorkoutFlow runs', () => {
+    it('Then should come back with the mark', () => {
+      const state = restoreWorkoutFlow(saved, clock + 10_000)
+
+      expect(state.skipped).toEqual(saved.skipped)
     })
   })
 })

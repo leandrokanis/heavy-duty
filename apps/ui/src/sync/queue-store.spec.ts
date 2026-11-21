@@ -46,3 +46,24 @@ describe('Given a row written by the previous version, with no kind', () => {
     })
   })
 })
+
+describe('Given a skip added to the Dexie queue store', () => {
+  describe('When a new LocalDb instance opens the same database', () => {
+    it('Then load should return it with kind skip, its id and its body', async () => {
+      const databaseName = `queue-store-${crypto.randomUUID()}`
+      const body = { plannedExerciseId: 'planned-prancha', skippedAt: '2026-11-21T18:40:00.000Z' }
+      await createDexieQueueStore(new LocalDb(databaseName)).add({
+        kind: 'skip',
+        workoutId: WORKOUT_ID,
+        body,
+        queuedAt: 1000,
+      })
+
+      const { pending } = await createDexieQueueStore(new LocalDb(databaseName)).load()
+
+      expect(pending.map(({ kind, id, body }) => [kind, id, body])).toEqual([
+        ['skip', `${WORKOUT_ID}:skip:planned-prancha`, body],
+      ])
+    })
+  })
+})

@@ -22,7 +22,8 @@ erDiagram
   EXERCISES ||--o{ WORKOUT_SETS : "é executado em"
   PLANNED_EXERCISES |o--o{ WORKOUT_SETS : origina
   WORKOUTS ||--o{ WORKOUT_SKIPS : pula
-  PLANNED_EXERCISES ||--o{ WORKOUT_SKIPS : "é pulado em"
+  EXERCISES ||--o{ WORKOUT_SKIPS : "é pulado em"
+  PLANNED_EXERCISES |o--o{ WORKOUT_SKIPS : origina
   PERIODS ||--o{ PERIOD_SNAPSHOTS : congela
   MUSCLE_GROUPS ||--o{ PERIOD_SNAPSHOTS : "é retratado em"
   WORKOUTS |o--o{ MEDAL_AWARDS : rende
@@ -103,7 +104,8 @@ erDiagram
   }
   WORKOUT_SKIPS {
     text workout_id PK,FK
-    text planned_exercise_id PK,FK
+    text exercise_id PK,FK
+    text planned_exercise_id FK "nulo se o plano mudou"
     text skipped_at
   }
   PERIODS {
@@ -251,7 +253,7 @@ Regras da gravação (US-F03-02):
 |---|---|---|
 | `workouts` | Treinos realizados de uma letra | Guarda `program_id` (`NOT NULL`, `ON DELETE RESTRICT`) e a letra treinada em `letter` (`CHECK (letter GLOB '[A-Z]')`). `program_day_id` é nulo e usa `ON DELETE SET NULL`: quando a letra sai do programa, o treino continua com a letra e as séries, sem o vínculo. `started_at` é obrigatório. `finished_at` e `end_reason` são nulos no treino em andamento e a rota `POST /api/workouts/{workoutId}/finish` grava os dois (US-F03-04); `end_reason` registra se o treino terminou na última série ou foi encerrado antes (D25), com `CHECK` em `completed` ou `ended_early`. Índices `workouts_program_idx` e `workouts_program_day_idx` |
 | `workout_sets` | Séries registradas | `id` gerado no cliente: o mesmo `id` não cria outra série (US-F03-02). O trio `workout_id`, `exercise_id` e `set_number` é único (`workout_sets_workout_exercise_set_unique`). `CHECK` de `set_number >= 1`, `load_g >= 0` (em gramas inteiras), `reps >= 1` e `seconds >= 1`, e exatamente um entre `reps` e `seconds`. Guarda `exercise_id` e os valores executados, para o histórico não mudar quando o programa muda (US-F02-02). `workout_id` usa `ON DELETE CASCADE`; `exercise_id` usa `ON DELETE RESTRICT`; `planned_exercise_id` é nulo e usa `ON DELETE SET NULL` ("nulo se o plano mudou"). Um índice por FK |
-| `workout_skips` | Exercícios pulados num treino (US-F03-05) | Um registro por exercício pulado. Alimenta o resumo "Ficaram de fora" |
+| `workout_skips` | Exercícios pulados num treino (US-F03-05) | Um registro por exercício que ficou de fora do treino, com o instante do último pulo em `skipped_at`. A chave primária é `(workout_id, exercise_id)`: o exercício é único na letra e o vínculo com o plano fica nulo quando o plano muda, então a chave usa `exercise_id`. `workout_id` usa `ON DELETE CASCADE`; `exercise_id` é obrigatório e usa `ON DELETE RESTRICT`; `planned_exercise_id` é nulo e usa `ON DELETE SET NULL`, como em `workout_sets`, para o registro ficar quando o planejador remove o exercício da letra (FR-022). Índices `workout_skips_exercise_idx` e `workout_skips_planned_exercise_idx`. A rota `POST /api/workouts/{workoutId}/skips` grava a linha (`contratos.md`). Alimenta o resumo "Ficaram de fora" |
 
 ### Gamificação (ondas 5 a 7)
 

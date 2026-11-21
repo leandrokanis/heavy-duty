@@ -15,6 +15,9 @@ export type WorkoutSession = {
 
 export type SheetName = 'none' | 'sequence' | 'confirmEnd'
 
+// An exercise the athlete skipped and did not do yet; the instant is the last skip (ADR-023).
+export type SkippedMark = { plannedExerciseId: string; skippedAt: string }
+
 export type WorkoutFlowState = {
   session: WorkoutSession
   phase: 'set' | 'rest' | 'finished' | 'ended'
@@ -22,9 +25,11 @@ export type WorkoutFlowState = {
   setNumber: number
   restEndsAtMs: number | null
   lastStepAtMs: number | null
-  lastStep: 'record' | 'advance' | 'goTo' | null
+  lastStep: 'record' | 'advance' | 'goTo' | 'skip' | null
   // The exercise picked in the sequence during the rest; null when the order decides.
   nextExerciseIndex: number | null
+  // The exercises skipped and not done yet, in the order of the last skip.
+  skipped: SkippedMark[]
   // The sheet over the screen; while one is open the rest counts but the passage waits (FR-017).
   sheet: SheetName
   // How the workout ended; the screen queues it after the sets. Null while it runs, and after an
@@ -40,6 +45,7 @@ export type WorkoutFlowAction =
   | { type: 'goTo'; exerciseIndex: number; nowMs: number }
   | { type: 'openSheet'; sheet: Exclude<SheetName, 'none'> }
   | { type: 'closeSheet'; nowMs: number }
+  | { type: 'skip'; nowMs: number }
   | { type: 'end'; nowMs: number }
 
 export function createWorkoutFlow(session: WorkoutSession): WorkoutFlowState {
@@ -52,6 +58,7 @@ export function createWorkoutFlow(session: WorkoutSession): WorkoutFlowState {
     lastStepAtMs: null,
     lastStep: null,
     nextExerciseIndex: null,
+    skipped: [],
     sheet: 'none',
     finish: null,
     recorded: [],
@@ -65,9 +72,13 @@ function setsDoneOf(state: WorkoutFlowState, planned: TodayExercise): number {
     .length
 }
 
+function isSkipped(state: WorkoutFlowState, planned: TodayExercise): boolean {
+  return state.skipped.some((mark) => mark.plannedExerciseId === planned.plannedExerciseId)
+}
+
 // The set after the last recorded one (FR-008): the exercise picked in the sequence, else the next
 // set of the exercise on screen, else the first exercise of the letter, in program order, that
-// still has sets to do, else null.
+// still has sets to do, else null. Skipped exercises wait out of the order (FR-007).
 export function nextPositionOf(state: WorkoutFlowState): Position | null {
   const { exercises } = state.session.day
   const picked = typeof state.nextExerciseIndex === 'number' ? state.nextExerciseIndex : null
@@ -76,10 +87,12 @@ export function nextPositionOf(state: WorkoutFlowState): Position | null {
     return { exerciseIndex: picked, setNumber: setsDoneOf(state, pickedExercise) + 1 }
   }
   const current = exercises[state.exerciseIndex]
-  if (current && setsDoneOf(state, current) < current.sets) {
+  if (current && setsDoneOf(state, current) < current.sets && !isSkipped(state, current)) {
     return { exerciseIndex: state.exerciseIndex, setNumber: setsDoneOf(state, current) + 1 }
   }
-  const exerciseIndex = exercises.findIndex((planned) => setsDoneOf(state, planned) < planned.sets)
+  const exerciseIndex = exercises.findIndex(
+    (planned) => setsDoneOf(state, planned) < planned.sets && !isSkipped(state, planned),
+  )
   if (exerciseIndex === -1) return null
   return {
     exerciseIndex,
@@ -90,7 +103,7 @@ export function nextPositionOf(state: WorkoutFlowState): Position | null {
 export type SequenceItem = {
   exerciseIndex: number
   name: string
-  status: 'done' | 'current' | 'todo'
+  status: 'done' | 'current' | 'skipped' | 'todo'
   setsDone: number
   setsTotal: number
 }
@@ -105,11 +118,36 @@ export function sequenceOf(state: WorkoutFlowState): SequenceItem[] {
     return {
       exerciseIndex,
       name: planned.exercise.name,
-      status: exerciseIndex === currentIndex ? 'current' : done ? 'done' : 'todo',
+      status: statusOf(state, planned, exerciseIndex === currentIndex, done),
       setsDone,
       setsTotal: planned.sets,
     }
   })
+}
+
+// The exercise on screen wins over the skipped mark (FR-011).
+function statusOf(
+  state: WorkoutFlowState,
+  planned: TodayExercise,
+  isCurrent: boolean,
+  done: boolean,
+): SequenceItem['status'] {
+  if (isCurrent) return 'current'
+  if (done) return 'done'
+  return isSkipped(state, planned) ? 'skipped' : 'todo'
+}
+
+// Skipping needs another exercise with sets to do that is not skipped; otherwise the athlete
+// finishes the exercise or ends the workout (FR-002).
+export function canSkipOf(state: WorkoutFlowState): boolean {
+  if (state.phase !== 'set' && state.phase !== 'rest') return false
+  const target = state.phase === 'set' ? state.exerciseIndex : nextPositionOf(state)?.exerciseIndex
+  return state.session.day.exercises.some(
+    (planned, exerciseIndex) =>
+      exerciseIndex !== target &&
+      setsDoneOf(state, planned) < planned.sets &&
+      !isSkipped(state, planned),
+  )
 }
 
 function currentIndexOf(state: WorkoutFlowState): number | null {
@@ -118,12 +156,42 @@ function currentIndexOf(state: WorkoutFlowState): number | null {
   return state.exerciseIndex
 }
 
-// Exercises done plus the one on screen, up to the total (decision 51).
+// Exercises done plus the one on screen, up to the total (decision 51). A finished workout counts
+// only the exercises done, so the ones left out show (FR-012).
 export function exerciseProgressOf(state: WorkoutFlowState): number {
   const total = state.session.day.exercises.length
-  if (state.phase === 'finished') return total
   const done = sequenceOf(state).filter(({ status }) => status === 'done').length
+  if (state.phase === 'finished') return done
   return Math.min(done + 1, total)
+}
+
+export type LeftOutItem = {
+  plannedExerciseId: string
+  name: string
+  setsDone: number
+  setsTotal: number
+  skippedAt: string
+}
+
+// The exercises skipped and not done, in program order (FR-013). The screen queues them with the
+// end of the workout.
+export function leftOutOf(state: WorkoutFlowState): LeftOutItem[] {
+  return state.session.day.exercises.flatMap((planned) => {
+    const mark = state.skipped.find(
+      ({ plannedExerciseId }) => plannedExerciseId === planned.plannedExerciseId,
+    )
+    return mark
+      ? [
+          {
+            plannedExerciseId: planned.plannedExerciseId,
+            name: planned.exercise.name,
+            setsDone: setsDoneOf(state, planned),
+            setsTotal: planned.sets,
+            skippedAt: mark.skippedAt,
+          },
+        ]
+      : []
+  })
 }
 
 export function currentExercise(state: WorkoutFlowState): TodayExercise {
@@ -140,16 +208,30 @@ export function upcomingExercise(state: WorkoutFlowState): TodayExercise | null 
 
 // Text of the polite live region: the set just recorded, then the set now on screen, if any.
 export function announcementOf(state: WorkoutFlowState): string {
-  if (state.lastStep === 'advance' || state.lastStep === 'goTo') return positionText(state)
+  if (state.lastStep === 'skip' && state.phase === 'rest') return upcomingText(state)
+  if (state.lastStep === 'advance' || state.lastStep === 'goTo' || state.lastStep === 'skip') {
+    return positionText(state)
+  }
   const last = state.recorded.at(-1)
   if (state.lastStep !== 'record' || last === undefined) return ''
   const planned = state.session.day.exercises.find(
     ({ plannedExerciseId }) => plannedExerciseId === last.plannedExerciseId,
   ) as TodayExercise
   const recordedText = `Série ${last.setNumber} de ${planned.sets} registrada`
-  if (state.phase === 'finished') return `${recordedText}. Treino concluído`
+  if (state.phase === 'finished') return `${recordedText}. Treino concluído${leftOutText(state)}`
   if (state.phase === 'set') return `${recordedText}. ${positionText(state)}`
   return recordedText
+}
+
+function leftOutText(state: WorkoutFlowState): string {
+  const names = leftOutOf(state).map(({ name }) => name)
+  if (names.length === 0) return ''
+  return `. ${names.length === 1 ? 'Ficou' : 'Ficaram'} de fora: ${names.join(', ')}`
+}
+
+function upcomingText(state: WorkoutFlowState): string {
+  const position = nextPositionOf(state) as Position
+  return `A seguir: ${state.session.day.exercises[position.exerciseIndex]?.exercise.name}`
 }
 
 // The name comes with the set when the exercise is new on screen: the first set, a pick from the
@@ -160,6 +242,7 @@ function positionText(state: WorkoutFlowState): string {
   const isNewOnScreen =
     state.setNumber === 1 ||
     state.lastStep === 'goTo' ||
+    state.lastStep === 'skip' ||
     last?.plannedExerciseId !== planned.plannedExerciseId
   const numbers = `${state.setNumber} de ${planned.sets}`
   return isNewOnScreen ? `${planned.exercise.name}, série ${numbers}` : `Série ${numbers}`
@@ -168,7 +251,8 @@ function positionText(state: WorkoutFlowState): string {
 // Brings a saved state back: a rest that ended with the app closed is over, and no tap of the
 // last session guards against the first tap of this one.
 export function restoreWorkoutFlow(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
-  const settled = hasRestEnded(state, nowMs) ? advance(state, nowMs) : state
+  const saved: WorkoutFlowState = { ...state, skipped: state.skipped ?? [] }
+  const settled = hasRestEnded(saved, nowMs) ? advance(saved, nowMs) : saved
   return {
     ...settled,
     nextExerciseIndex: settled.nextExerciseIndex ?? null,
@@ -198,6 +282,8 @@ export function workoutFlowReducer(
       return { ...state, sheet: action.sheet }
     case 'closeSheet':
       return closeSheet(state, action.nowMs)
+    case 'skip':
+      return skipExercise(state, action.nowMs)
     case 'end':
       return endWorkout(state, action.nowMs)
   }
@@ -233,6 +319,40 @@ function pickDuringRest(state: WorkoutFlowState, exerciseIndex: number): Workout
 function closeSheet(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
   const closed: WorkoutFlowState = { ...state, sheet: 'none' }
   return hasRestEnded(closed, nowMs) ? advance(closed, nowMs) : closed
+}
+
+// Skipping marks the exercise on screen, or the one the rest brings, and moves on to the next one
+// by the order. Out of the rest the next set shows at once; in the rest the count goes on (FR-004).
+function skipExercise(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
+  if (!canSkipOf(state)) return state
+  if (state.phase === 'rest') {
+    const target = nextPositionOf(state) as Position
+    const marked = markSkipped(state, exerciseAt(state, target.exerciseIndex), nowMs)
+    return { ...marked, nextExerciseIndex: null, lastStep: 'skip' }
+  }
+  const marked = markSkipped(state, currentExercise(state), nowMs)
+  const position = nextPositionOf({ ...marked, nextExerciseIndex: null }) as Position
+  return { ...marked, ...position, lastStepAtMs: nowMs, lastStep: 'skip' }
+}
+
+function exerciseAt(state: WorkoutFlowState, exerciseIndex: number): TodayExercise {
+  return state.session.day.exercises[exerciseIndex] as TodayExercise
+}
+
+// The new skip of the same exercise replaces the instant.
+function markSkipped(
+  state: WorkoutFlowState,
+  planned: TodayExercise,
+  nowMs: number,
+): WorkoutFlowState {
+  const others = state.skipped.filter(
+    (mark) => mark.plannedExerciseId !== planned.plannedExerciseId,
+  )
+  const mark: SkippedMark = {
+    plannedExerciseId: planned.plannedExerciseId,
+    skippedAt: new Date(nowMs).toISOString(),
+  }
+  return { ...state, skipped: [...others, mark] }
 }
 
 // An early end stops the rest. A workout already finished on its last set keeps its reason.
@@ -279,6 +399,7 @@ function recordSet(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
     ...state,
     lastStepAtMs: nowMs,
     lastStep: 'record',
+    skipped: state.skipped.filter((mark) => mark.plannedExerciseId !== planned.plannedExerciseId),
     recorded: [...state.recorded, setBodyOf(state, planned, nowMs)],
   }
   // The last set of the day wins over a 0 s rest: there is no position to advance to.

@@ -1452,6 +1452,54 @@
           "finishedAt",
           "endReason"
         ]
+      },
+      "WorkoutSkip": {
+        "type": "object",
+        "properties": {
+          "workoutId": {
+            "type": "string",
+            "example": "0193a1b2-0000-7000-8000-000000000601"
+          },
+          "exerciseId": {
+            "type": "string",
+            "example": "0193a1b2-0000-7000-8000-000000000202"
+          },
+          "plannedExerciseId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "0193a1b2-0000-7000-8000-000000000402"
+          },
+          "skippedAt": {
+            "type": "string",
+            "example": "2026-11-21T18:40:00.000Z"
+          }
+        },
+        "required": [
+          "workoutId",
+          "exerciseId",
+          "plannedExerciseId",
+          "skippedAt"
+        ]
+      },
+      "RecordWorkoutSkipBody": {
+        "type": "object",
+        "properties": {
+          "plannedExerciseId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193a1b2-0000-7000-8000-000000000402"
+          },
+          "skippedAt": {
+            "type": "string",
+            "example": "2026-11-21T18:40:00.000Z"
+          }
+        },
+        "required": [
+          "plannedExerciseId",
+          "skippedAt"
+        ]
       }
     },
     "parameters": {}
@@ -3625,6 +3673,128 @@
           },
           "409": {
             "description": "The workout already ended with another instant or reason (workout_already_finished)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workouts/{workoutId}/skips": {
+      "post": {
+        "tags": [
+          "workouts"
+        ],
+        "summary": "Record an exercise left out of a workout. Sending the same skip again changes nothing",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193a1b2-0000-7000-8000-000000000601"
+            },
+            "required": true,
+            "name": "workoutId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordWorkoutSkipBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The skip recorded by an earlier identical request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutSkip"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The skip, recorded now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutSkip"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Body outside the schema (invalid_request), instant that is not UTC ISO 8601 (workout_skipped_at_invalid) or instant before the start (workout_skipped_before_start)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin other than the app origin (forbidden_origin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such workout (workout_not_found)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The exercise was already skipped in this workout at another instant or by another planned exercise (workout_skip_conflict)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Planned exercise missing or outside the letter of the workout (planned_exercise_not_found)",
             "content": {
               "application/json": {
                 "schema": {
