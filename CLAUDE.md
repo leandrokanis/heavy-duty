@@ -25,7 +25,7 @@ Estado atual: só a documentação e a estrutura de pastas existem. Os apps aind
 | `docs/adr/` | Registros de decisão de arquitetura (ADR) |
 | `docs/convencoes/` | Código, comentários, testes, escrita técnica e Git |
 | `docs/qualidade.md` | Definição de pronto, verificações automáticas e revisão |
-| `docs/specs/` | Uma pasta por story em desenvolvimento |
+| `specs/` | Pasta local, fora do Git: plano do MVP e artefatos de trabalho de cada story |
 
 ## Comandos
 
@@ -56,7 +56,7 @@ Enquanto os apps não têm `package.json`, os scripts terminam sem executar nada
 
 | Tarefa | Leia antes |
 |---|---|
-| Implementar uma story | a story em `docs/prd.md` e a pasta da story em `docs/specs/` |
+| Implementar uma story | a story em `docs/prd.md` e a pasta local da story em `specs/` |
 | Criar módulo, rota ou ferramenta MCP | `docs/arquitetura/api.md` e `docs/convencoes/codigo.md` |
 | Criar ou alterar tabela do banco | `docs/arquitetura/dados.md` |
 | Criar ou alterar tela ou componente de UI | `DESIGN.md` |
@@ -69,14 +69,15 @@ Enquanto os apps não têm `package.json`, os scripts terminam sem executar nada
 
 ## Fluxo de uma story
 
-1. Especifique a story em `docs/specs/<id-da-story>-<slug>/spec.md`.
-2. Quebre a story em issues de um PR cada.
-3. Escreva o plano técnico da issue em `plan.md`, na mesma pasta.
-4. Implemente com TDD, um teste de comportamento por passo do plano.
-5. Verifique contra o plano e os critérios de aceite. Registre o resultado em `qa.md`.
-6. Abra o PR com o modelo de `.github/pull_request_template.md`.
+1. Especifique a story em `specs/<id-da-story>-<slug>/spec.md`.
+2. Escreva o plano técnico da story em `plan.md`, na mesma pasta.
+3. Implemente com TDD, um teste de comportamento por passo do plano. Registre os ciclos em `tdd.md`.
+4. Verifique contra o plano e os critérios de aceite. Registre o resultado em `qa.md`.
+5. Faça o commit e abra o PR com o modelo de `.github/pull_request_template.md`.
 
-Se as skills `dev-*` estiverem instaladas, a pasta da story é o `FEATURE_DIR` delas. O layout está em `docs/specs/README.md`.
+A pasta `specs/` da raiz fica fora do Git (`.gitignore`): os artefatos de trabalho da story (`spec.md`, `plan.md`, `tdd.md`, `qa.md`, `decisoes.md`) não entram no commit. O que precisa ficar no repositório vai para o lugar definitivo: decisão de arquitetura em `docs/adr/`, contrato em `docs/arquitetura/`, termo em `CONTEXT.md` e requisito em `docs/prd.md`.
+
+Se as skills `dev-*` estiverem instaladas, a pasta local da story é o `FEATURE_DIR` delas. O nome da pasta começa com o ID da story do PRD (`US-F03-02`) e termina com um slug em inglês, como `specs/US-F03-02-one-tap-set/`.
 
 ## Glossário do domínio
 

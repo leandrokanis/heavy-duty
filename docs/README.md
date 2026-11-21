@@ -17,7 +17,6 @@ Toda a documentação do projeto está em português do Brasil e segue `convenco
 | `convencoes/escrita-tecnica.md` | Regras de redação em português | Ao escrever documentação |
 | `convencoes/git.md` | Branches, commits e pull requests | Ao fazer commit ou abrir PR |
 | `qualidade.md` | Definição de pronto, verificações automáticas e roteiro de revisão | Antes de abrir ou revisar PR |
-| `specs/` | Uma pasta por story em desenvolvimento | Ao trabalhar numa story |
 
 ## Regras para documento novo
 
