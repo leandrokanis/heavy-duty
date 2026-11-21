@@ -24,7 +24,8 @@ export type RecordedWorkout = {
   }[]
 }
 
-// Fixture workout written straight to the tables until US-F03-02 adds the workouts module.
+// Fixture workout written straight to the tables: the set route refuses past workouts and
+// sets without a planned exercise, which history fixtures need.
 export function recordWorkout(db: Database, input: RecordWorkoutInput, now: Date): string {
   return db.transaction((tx) => {
     const day = tx

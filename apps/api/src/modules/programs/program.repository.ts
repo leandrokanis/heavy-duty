@@ -34,7 +34,7 @@ export type NewPlannedExercise = {
   restSeconds: number
 }
 
-export type PlannedExerciseRow = PlannedExercise & { programDayId: string }
+export type PlannedExerciseRow = PlannedExercise & { id: string; programDayId: string }
 
 const programColumns = {
   id: programs.id,
@@ -183,6 +183,7 @@ export function listPlannedExerciseRows(
 ): PlannedExerciseRow[] {
   return db
     .select({
+      id: plannedExercises.id,
       programDayId: plannedExercises.programDayId,
       exercise: {
         id: exercises.id,

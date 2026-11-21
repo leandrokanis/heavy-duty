@@ -4,6 +4,7 @@ export type ExerciseKind = 'reps' | 'time'
 export type LoadSource = 'program' | 'last_workout'
 
 export type TodayExercise = {
+  plannedExerciseId: string
   exercise: { id: string; slug: string; name: string; kind: ExerciseKind }
   sets: number
   targetReps: number | null

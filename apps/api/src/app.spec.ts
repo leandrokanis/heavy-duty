@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createApp } from './app.js'
+import { workoutSets, workouts } from './db/schema.js'
 import { runSeed } from './db/seed.js'
 import { createTestDatabase } from './test/database.js'
 import { createSessionCookie, createSignedInApp } from './test/session.js'
@@ -191,6 +192,75 @@ describe('Given an app in production with a database and no session cookie, for 
       expect({ status: response.status, body: await response.json() }).toEqual({
         status: 401,
         body: UNAUTHENTICATED_BODY,
+      })
+    })
+  })
+})
+
+describe('Given an app in production with a database, for the set recording route', () => {
+  const db = createTestDatabase()
+  runSeed(db)
+  const app = createApp({ nodeEnv: 'production', databaseHealth: () => true, db })
+  const path = '/api/workouts/0193a1b2-0000-7000-8000-000000000601/sets'
+  const body = JSON.stringify({
+    id: '0193a1b2-0000-7000-8000-000000000501',
+    workout: {
+      programId: '0193a1b2-0000-7000-8000-000000000301',
+      letter: 'A',
+      startedAt: '2026-11-21T18:30:00.000Z',
+    },
+    plannedExerciseId: '0193a1b2-0000-7000-8000-000000000401',
+    exerciseId: '0193a1b2-0000-7000-8000-000000000201',
+    setNumber: 1,
+    loadG: 40000,
+    reps: 10,
+    performedAt: '2026-11-21T18:31:05.000Z',
+  })
+  const countRows = () => ({
+    workouts: db.select().from(workouts).all().length,
+    workoutSets: db.select().from(workoutSets).all().length,
+  })
+
+  describe('When POST /api/workouts/{workoutId}/sets arrives without a session cookie', () => {
+    it('Then should respond 401 with code unauthenticated and record nothing', async () => {
+      const response = await app.request(path, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body,
+      })
+
+      expect({
+        status: response.status,
+        body: await response.json(),
+        rows: countRows(),
+      }).toEqual({
+        status: 401,
+        body: UNAUTHENTICATED_BODY,
+        rows: { workouts: 0, workoutSets: 0 },
+      })
+    })
+  })
+
+  describe('When it arrives with a session cookie and an Origin of another site', () => {
+    it('Then should respond 403 with code forbidden_origin and record nothing', async () => {
+      const response = await app.request(path, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          cookie: createSessionCookie(db),
+          origin: 'https://evil.example',
+        },
+        body,
+      })
+
+      expect({
+        status: response.status,
+        body: await response.json(),
+        rows: countRows(),
+      }).toEqual({
+        status: 403,
+        body: { code: 'forbidden_origin', message: 'origem não permitida' },
+        rows: { workouts: 0, workoutSets: 0 },
       })
     })
   })

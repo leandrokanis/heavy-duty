@@ -6,6 +6,7 @@ export const LoadSourceSchema = z.enum(['program', 'last_workout']).openapi('Loa
 
 export const TodayExerciseSchema = z
   .object({
+    plannedExerciseId: z.string().openapi({ example: '0193a1b2-0000-7000-8000-000000000401' }),
     exercise: z.object({
       id: z.string().openapi({ example: '0193a1b2-0000-7000-8000-000000000201' }),
       slug: z.string().openapi({ example: 'supino-reto' }),
@@ -49,3 +50,50 @@ export type LoadSource = z.infer<typeof LoadSourceSchema>
 export type TodayExercise = z.infer<typeof TodayExerciseSchema>
 export type TodayDay = z.infer<typeof TodayDaySchema>
 export type Today = z.infer<typeof TodaySchema>
+
+// Domain values (negative load, zero reps, letter, measure by kind) are plain
+// numbers and strings here so the service refuses them with their own code.
+export const RecordWorkoutSetBodySchema = z
+  .object({
+    id: z.uuid().openapi({ example: '0193a1b2-0000-7000-8000-000000000501' }),
+    workout: z.object({
+      programId: z.uuid().openapi({ example: '0193a1b2-0000-7000-8000-000000000301' }),
+      letter: z.string().openapi({ example: 'A' }),
+      startedAt: z.iso.datetime().openapi({ example: '2026-11-21T18:30:00.000Z' }),
+    }),
+    plannedExerciseId: z.uuid().openapi({ example: '0193a1b2-0000-7000-8000-000000000401' }),
+    exerciseId: z.uuid().openapi({ example: '0193a1b2-0000-7000-8000-000000000201' }),
+    setNumber: z.number().int().openapi({ example: 1 }),
+    loadG: z.number().int().openapi({ example: 40000 }),
+    reps: z.number().int().optional().openapi({ example: 10 }),
+    seconds: z.number().int().optional().openapi({ example: 45 }),
+    performedAt: z.iso.datetime().openapi({ example: '2026-11-21T18:31:05.000Z' }),
+  })
+  .openapi('RecordWorkoutSetBody')
+
+export const WorkoutSetSchema = z
+  .object({
+    id: z.string().openapi({ example: '0193a1b2-0000-7000-8000-000000000501' }),
+    workoutId: z.string().openapi({ example: '0193a1b2-0000-7000-8000-000000000601' }),
+    exerciseId: z.string().openapi({ example: '0193a1b2-0000-7000-8000-000000000201' }),
+    plannedExerciseId: z
+      .string()
+      .nullable()
+      .openapi({ example: '0193a1b2-0000-7000-8000-000000000401' }),
+    setNumber: z.number().int().openapi({ example: 1 }),
+    loadG: z.number().int().openapi({ example: 40000 }),
+    reps: z.number().int().nullable().openapi({ example: 10 }),
+    seconds: z.number().int().nullable().openapi({ example: null }),
+    performedAt: z.string().openapi({ example: '2026-11-21T18:31:05.000Z' }),
+  })
+  .openapi('WorkoutSet')
+
+export const WorkoutIdParamsSchema = z.object({
+  workoutId: z.uuid().openapi({
+    param: { name: 'workoutId', in: 'path' },
+    example: '0193a1b2-0000-7000-8000-000000000601',
+  }),
+})
+
+export type RecordWorkoutSetBody = z.infer<typeof RecordWorkoutSetBodySchema>
+export type WorkoutSet = z.infer<typeof WorkoutSetSchema>

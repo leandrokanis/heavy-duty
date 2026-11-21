@@ -31,6 +31,7 @@ export function getToday(db: Database): Today {
         const lastLoadG = lastLoads.get(planned.exercise.id)
         const loadSource: LoadSource = lastLoadG === undefined ? 'program' : 'last_workout'
         return {
+          plannedExerciseId: planned.id,
           exercise: planned.exercise,
           sets: planned.sets,
           targetReps: planned.targetReps,

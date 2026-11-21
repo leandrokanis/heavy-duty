@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `workout_sets_workout_exercise_set_unique` ON `workout_sets` (`workout_id`,`exercise_id`,`set_number`);

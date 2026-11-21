@@ -111,7 +111,7 @@ O espaçamento DEVE usar a escala de tokens da Seção 18, com base de 4 px (Pro
 - O item mais importante DEVE ficar perto do topo e da borda inicial [HIG-LAYOUT].
 - Os componentes DEVEM estar alinhados entre si. Borda desalinhada parece descuido mesmo com espaçamento correto.
 - O conteúdo que não cabe na primeira tela DEVE dar pista de que existe mais (revelação progressiva), em vez de sumir sem rastro.
-- Na tela de treino, a ação principal ("feito") DEVERIA ficar na metade de baixo da tela, ao alcance do polegar (Projeto).
+- Na tela de treino, a ação principal ("Próximo") DEVERIA ficar na metade de baixo da tela, ao alcance do polegar (Projeto).
 
 ### 5.5. Tela larga e administração (referência macOS 27)
 
@@ -133,7 +133,7 @@ O espaçamento DEVE usar a escala de tokens da Seção 18, com base de 4 px (Pro
 
 - Todo elemento tocável DEVE ter área de toque de pelo menos 44 × 44 px. "A button needs a hit region of at least 44×44 pt" [HIG-BUTTONS]. Na web, 1 pt corresponde a 1 px CSS na escala base. O valor coincide com o critério 2.5.5 das WCAG 2.2 [WCAG22].
 - O desenho do ícone PODE ser menor que 44 px. O padding invisível completa a área de toque; a arte não aumenta.
-- Os controles da tela de treino ("feito", "próxima", ajuste de valor) DEVERIAM ter pelo menos 56 px de altura (Projeto), porque o atleta toca com a mão suada ou ocupada.
+- Os controles da tela de treino ("Próximo", ajuste de valor) DEVERIAM ter pelo menos 56 px de altura (Projeto), porque o atleta toca com a mão suada ou ocupada.
 - Duas áreas de toque NÃO DEVEM se sobrepor. A distância entre duas áreas vizinhas DEVERIA ser de pelo menos 8 px (Projeto).
 
 ```css

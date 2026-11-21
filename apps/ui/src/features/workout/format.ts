@@ -13,3 +13,8 @@ export function formatLoadKg(loadG: number): string {
 export function formatDurationMinutes(seconds: number): string {
   return `${Math.max(1, Math.round(seconds / SECONDS_PER_MINUTE))} min`
 }
+
+export function formatRestClock(seconds: number): string {
+  const minutes = Math.floor(seconds / SECONDS_PER_MINUTE)
+  return `${minutes}:${String(seconds % SECONDS_PER_MINUTE).padStart(2, '0')}`
+}

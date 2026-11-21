@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { OfflineNotice } from '@/features/auth/offline-notice'
 import { SignInScreen } from '@/features/auth/sign-in-screen'
+import { createClientId } from './client-id'
 import { LetterList } from './letter-list'
 import { StartSheet } from './start-sheet'
 import type { Today, TodayDay } from './today.types'
 import { fetchToday, type TodayResult } from './today-client'
+import type { WorkoutSession } from './workout-flow'
 import { WorkoutScreen } from './workout-screen'
 
 const NO_PROGRAM = 'Nenhum programa cadastrado. Monte um programa pelo Claude.'
@@ -22,7 +24,7 @@ function emptyStateOf(today: Today): string | null {
 export function TodayScreen() {
   const [result, setResult] = useState<TodayResult | null>(null)
   const [sheetDay, setSheetDay] = useState<TodayDay | null>(null)
-  const [startedDay, setStartedDay] = useState<TodayDay | null>(null)
+  const [session, setSession] = useState<WorkoutSession | null>(null)
 
   const loadToday = useCallback(() => {
     setResult(null)
@@ -33,7 +35,7 @@ export function TodayScreen() {
     loadToday()
   }, [loadToday])
 
-  if (startedDay) return <WorkoutScreen day={startedDay} />
+  if (session) return <WorkoutScreen {...session} />
   if (result?.status === 'offline') return <OfflineNotice onRetry={loadToday} />
   if (result?.status === 'unauthenticated') return <SignInScreen onSignedIn={loadToday} />
 
@@ -58,11 +60,24 @@ export function TodayScreen() {
         onClose={() => setSheetDay(null)}
         onStart={(day) => {
           setSheetDay(null)
-          setStartedDay(day)
+          if (result?.status === 'ok' && result.today.program) {
+            setSession(startSession(result.today.program.id, day))
+          }
         }}
       />
     </main>
   )
+}
+
+// The workout id and start are born on the phone at "Começar"; the API creates the workout with the first set.
+function startSession(programId: string, day: TodayDay): WorkoutSession {
+  const nowMs = Date.now()
+  return {
+    workoutId: createClientId(nowMs),
+    startedAt: new Date(nowMs).toISOString(),
+    programId,
+    day,
+  }
 }
 
 function TodayContent({ today, onSelect }: { today: Today; onSelect: (day: TodayDay) => void }) {

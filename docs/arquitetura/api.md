@@ -44,7 +44,7 @@
 | `catalog` | `MuscleGroup`, `Muscle`, `Exercise`, músculos principais e secundários | 1 | F01 |
 | `system` | Situação do backup e do envio de e-mail | 1 | F14, F17 |
 | `programs` | `Program`, `ProgramDay`, `PlannedExercise` | 2 | F02 |
-| `workouts` | `Workout`, `WorkoutSet`, exercícios pulados. Treino do dia (US-F03-01): `GET /api/today`, só de leitura, com a letra sugerida, a carga preenchida e a duração estimada (`today.service.ts`, regras puras em `today.rules.ts`) | 3 e 4 | F03, F04, F05, F06 |
+| `workouts` | `Workout`, `WorkoutSet`, exercícios pulados. Treino do dia (US-F03-01): `GET /api/today`, só de leitura, com a letra sugerida, a carga preenchida e a duração estimada (`today.service.ts`, regras puras em `today.rules.ts`). Gravação da série (US-F03-02): `POST /api/workouts/{workoutId}/sets`, idempotente pelo `id` da série, que cria o treino na primeira série (`workout-set.service.ts`) | 3 e 4 | F03, F04, F05, F06 |
 | `windows` | Cálculo derivado: janela, volume, pontos, nível, recorde, nível geral, sugestão; `Period`, `PeriodSnapshot`, medalhas | 5 a 7 | F07, F10, F11, F12 |
 | `notifications` | Agendador, Web Push, e-mail, resumo semanal, registro de envio | 7 | F09, F17 |
 
@@ -54,7 +54,7 @@ Cada módulo junta rota, ferramenta MCP, service, repositório e testes (`docs/c
 
 | Direção | Com quem | Protocolo | Exemplos |
 |---|---|---|---|
-| Recebe | App web, pelo túnel | HTTPS, JSON em `/api/*` | `GET /api/today`, `POST /api/workouts`, `POST /api/workouts/{id}/sets`, `GET /api/game` |
+| Recebe | App web, pelo túnel | HTTPS, JSON em `/api/*` | `GET /api/today`, `POST /api/workouts/{workoutId}/sets`, `GET /api/game` |
 | Recebe | Claude, pelo túnel | MCP Streamable HTTP em `/mcp`, com a credencial do MCP em `Authorization: Bearer` | `add_exercise`, `list_programs`, `update_planned_exercise`, `list_workouts`, `remove_workout` |
 | Recebe | Claude, pelo túnel | HTTPS, OAuth 2.1 em `/.well-known/oauth-*`, `/api/oauth/register` e `/api/oauth/token` | Descoberta, registro do cliente, troca e renovação da credencial do MCP |
 | Grava e lê | Banco de dados | SQL pelo Drizzle | Todas as tabelas de `dados.md` |

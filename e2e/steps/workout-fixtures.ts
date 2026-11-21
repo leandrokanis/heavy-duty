@@ -17,7 +17,8 @@ export type RecordedWorkout = {
 
 const STARTED_AT = '2026-11-20T18:30:00.000Z'
 
-// No route records a workout until US-F03-02, so the step writes it to the API database.
+// The route of US-F03-02 refuses workouts in the past and sets without a planned
+// exercise, so fixture workouts go straight to the API database.
 function withDatabase<T>(action: (db: DatabaseSync) => T): T {
   const db = new DatabaseSync(API_DATABASE_PATH)
   try {
@@ -97,6 +98,29 @@ export function readWorkout(workoutId: string): RecordedWorkout | undefined {
       .all(workoutId) as RecordedWorkout['sets']
     return { letter: workout.letter, startedAt: workout.startedAt, sets }
   })
+}
+
+export type RecordedSetRow = {
+  id: string
+  exerciseSlug: string
+  setNumber: number
+  loadG: number
+  reps: number | null
+  seconds: number | null
+}
+
+export function readWorkoutSets(workoutId: string): RecordedSetRow[] {
+  return withDatabase(
+    (db) =>
+      db
+        .prepare(
+          `SELECT s.id AS id, e.slug AS exerciseSlug, s.set_number AS setNumber, s.load_g AS loadG,
+                  s.reps AS reps, s.seconds AS seconds
+             FROM workout_sets s JOIN exercises e ON e.id = s.exercise_id
+            WHERE s.workout_id = ? ORDER BY s.set_number`,
+        )
+        .all(workoutId) as RecordedSetRow[],
+  )
 }
 
 // The e2e database is thrown away on every run, so the workout of the day scenarios

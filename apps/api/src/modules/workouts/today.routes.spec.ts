@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import type { Database } from '../../db/connection.js'
-import { exercises, workoutSets, workouts } from '../../db/schema.js'
+import { exercises, plannedExercises, workoutSets, workouts } from '../../db/schema.js'
 import { createProgramTestApp, type ProgramTestApp } from '../../test/programs.js'
 import { recordWorkout } from '../../test/workouts.js'
 import type { Today, TodayExercise } from './workouts.schemas.js'
@@ -118,6 +118,7 @@ describe("Given an older inactive program and the active hypertrophy program wit
         program: { id: programId, name: 'Programa 1', goal: 'hypertrophy' },
         days: [{ letter: 'A', label: 'Superior' }],
         supino: {
+          plannedExerciseId: expect.any(String),
           exercise: {
             id: expect.any(String),
             slug: 'supino-reto',
@@ -275,6 +276,7 @@ describe("Given letter 'A' with prancha 3 x 45 s at 0 g and no workout", () => {
       })
 
       expect(exerciseIn(await getToday(app), 'A', 'prancha')).toEqual({
+        plannedExerciseId: expect.any(String),
         exercise: { id: expect.any(String), slug: 'prancha', name: 'Prancha', kind: 'time' },
         sets: 3,
         targetReps: null,
@@ -395,6 +397,35 @@ describe("Given letter 'A' with supino-reto 3 x 10 with 90 s rest and prancha 3 
       const today = await getToday(app)
 
       expect(today.days.find((day) => day.letter === 'A')?.estimatedDurationSeconds).toBe(675)
+    })
+  })
+})
+
+describe("Given letter 'A' with supino-reto and prancha", () => {
+  describe('When the athlete requests the workout of the day', () => {
+    it('Then each exercise should bring the id of its planned exercise row', async () => {
+      const { app, db, programId } = await givenSupinoInLetterA()
+      await addPlanned(app, programId, 'A', PRANCHA)
+      const plannedIdBySlug = new Map(
+        db
+          .select({ id: plannedExercises.id, slug: exercises.slug })
+          .from(plannedExercises)
+          .innerJoin(exercises, eq(plannedExercises.exerciseId, exercises.id))
+          .all()
+          .map(({ id, slug }) => [slug, id]),
+      )
+
+      const today = await getToday(app)
+
+      expect(
+        today.days[0]?.exercises.map((planned) => ({
+          slug: planned.exercise.slug,
+          plannedExerciseId: planned.plannedExerciseId,
+        })),
+      ).toEqual([
+        { slug: 'supino-reto', plannedExerciseId: plannedIdBySlug.get('supino-reto') },
+        { slug: 'prancha', plannedExerciseId: plannedIdBySlug.get('prancha') },
+      ])
     })
   })
 })
