@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createApp } from '../app.js'
+import { createTestDatabase } from '../test/database.js'
+import { createSignedInApp } from '../test/session.js'
 import { compareDocuments } from './document.js'
 
 type OpenApiDocument = {
@@ -7,8 +9,12 @@ type OpenApiDocument = {
   paths: Record<string, Record<string, { responses: Record<string, unknown> }>>
 }
 
-describe('Given an app in development', () => {
-  const app = createApp({ nodeEnv: 'development', databaseHealth: () => true })
+describe('Given an app in development with a database and a session cookie', () => {
+  const db = createTestDatabase()
+  const app = createSignedInApp(
+    createApp({ nodeEnv: 'development', databaseHealth: () => true, db }),
+    db,
+  )
 
   describe('When GET /api/openapi.json is requested', () => {
     it('Then should describe the GET /api/health operation', async () => {

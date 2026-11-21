@@ -1,0 +1,12 @@
+import { createHash, randomBytes } from 'node:crypto'
+
+const TOKEN_BYTES = 32
+
+// 256 random bits make guessing impossible, so a plain SHA-256 needs no signing secret.
+export function generateToken(): string {
+  return randomBytes(TOKEN_BYTES).toString('base64url')
+}
+
+export function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
+}

@@ -20,12 +20,20 @@ docs/        PRD, arquitetura, ADRs, convenções e qualidade
 O caminho principal é o Docker Compose, com o plugin Compose instalado. O ambiente sobe sem arquivo `.env`:
 
 ```sh
-docker compose up -d          # web, api e proxy; o app abre em http://127.0.0.1:8080
+docker compose up -d          # web, api e proxy; o app abre em http://localhost:8080
 docker compose exec api pnpm --filter @heavy-duty/api test
 docker compose down           # encerra os serviços e mantém o banco em ./data/
 ```
 
-A API serve a documentação em http://127.0.0.1:8080/api/docs. Se a porta 8080 estiver ocupada, execute `PROXY_PORT=8081 docker compose up -d`.
+Abra o app em http://localhost:8080, não em http://127.0.0.1:8080: a chave de acesso (WebAuthn) não aceita endereço IP como domínio (ADR-019). Se a porta 8080 estiver ocupada, execute `PROXY_PORT=8081 docker compose up -d`; a origem da API acompanha a porta.
+
+O app pede a chave de acesso antes de qualquer tela. Para cadastrar a primeira chave de acesso no desenvolvimento, gere um link de cadastro e abra o link no navegador em até 15 minutos:
+
+```sh
+docker compose exec api pnpm --filter @heavy-duty/api auth:enroll   # imprime http://localhost:8080/cadastro#token=…
+```
+
+Com a sessão de acesso, a API serve a documentação em http://localhost:8080/api/docs.
 
 O backup diário fica no profile `backup`, com um repositório local do restic e uma senha só para desenvolvimento. O roteiro de produção e de restauração está em `docs/arquitetura/backup.md`:
 

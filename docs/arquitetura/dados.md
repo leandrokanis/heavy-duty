@@ -145,6 +145,29 @@ erDiagram
     text key PK
     text value
   }
+  AUTH_CREDENTIALS {
+    text id PK
+    text credential_id UK
+    blob public_key
+    integer counter
+    text transports "JSON, nulo"
+    text created_at
+    text last_used_at
+  }
+  AUTH_SESSIONS {
+    text id PK
+    text token_hash UK
+    text created_at
+    text expires_at
+    text last_seen_at
+  }
+  ENROLLMENT_TOKENS {
+    text id PK
+    text token_hash UK
+    text created_at
+    text expires_at
+    text used_at
+  }
   BACKUP_RUNS {
     text id PK
     text started_at
@@ -201,8 +224,20 @@ erDiagram
 
 | Tabela | Conteúdo | Regras |
 |---|---|---|
-| `settings` | Configurações em chave e valor, como `email_enabled` e o hash do token de desligar e-mail | Sem segredo em texto puro. O endereço de e-mail do PO e as credenciais ficam em variável de ambiente |
+| `settings` | Configurações em chave e valor, como `email_enabled`, o hash do token de desligar e-mail e `webauthn_user_id` | Sem segredo em texto puro. O endereço de e-mail do PO e as credenciais ficam em variável de ambiente. `webauthn_user_id` é o identificador estável do usuário nas cerimônias da chave de acesso (16 bytes aleatórios em base64url), criado no primeiro cadastro e nunca trocado (US-F14-01) |
 | `backup_runs` | Uma linha por execução do backup, com início, fim, situação, tamanho e motivo | Gravada uma vez, no fim da execução, também na falha (F14). `status` é `succeeded` ou `failed`, com `CHECK`. `size_bytes` é o tamanho em bytes da cópia, inteiro não negativo com `CHECK`, e fica nulo na falha. `error` traz o motivo seguro da falha, com até 500 caracteres, e fica nulo no sucesso. Sem índice: a tabela cresce cerca de 365 linhas por ano [estimativa: uma execução por dia]. Só o processo do backup grava a tabela; a API e o MCP só leem (`get_system_status`) |
+
+### Acesso (F14, onda 1)
+
+As três tabelas vêm da migração `0004_auth_passkeys` (US-F14-01, ADR-019). Não há tabela de usuário: o PO é o único usuário (D07), e toda chave de acesso cadastrada é dele. As datas ficam em ISO 8601, em UTC.
+
+| Tabela | Conteúdo | Regras |
+|---|---|---|
+| `auth_credentials` | Chaves de acesso (`AuthCredential`) cadastradas | `credential_id` único, em base64url. `public_key` em blob, no formato COSE. `counter` inteiro com `CHECK (counter >= 0)`, atualizado a cada entrada; a biblioteca recusa contador menor que o gravado. `transports` em texto JSON, nulo quando o navegador não informa. `last_used_at` nulo até a primeira entrada. A chave pública não sai em resposta nem em log (FR-028). Sem revogação nesta story |
+| `auth_sessions` | Sessões de acesso (`AuthSession`) | `token_hash` único: SHA-256 em hexadecimal do token aleatório de 32 bytes; o token em claro só existe no cookie `hd_session`. `expires_at` é 30 dias depois de `last_seen_at`. O uso renova `last_seen_at` e `expires_at` no máximo uma vez a cada 24 horas. A saída apaga a linha. A criação de uma sessão apaga as vencidas |
+| `enrollment_tokens` | Links de cadastro (`EnrollmentToken`) | `token_hash` único: SHA-256 do token, que só existe na saída do comando `auth:enroll`. `expires_at` é 15 minutos depois de `created_at`. `used_at` fica nulo até o consumo, que é atômico (`UPDATE … WHERE used_at IS NULL AND expires_at > ?`) e acontece na mesma transação que grava a chave de acesso. A criação de um link apaga os vencidos |
+
+O desafio da cerimônia (`AuthChallenge`) não é tabela: fica na memória do processo da API por 5 minutos (ADR-019).
 
 ## O que não é tabela
 
@@ -223,7 +258,6 @@ Pela ADR-010, estes dados são calculados pela API a cada leitura, a partir de `
 
 | Pendência | Efeito no modelo | Insumo |
 |---|---|---|
-| Método de autenticação | Tabela de credencial ou de sessão, conforme a ADR | H12, NFR02 |
 | Versão do UUID | Formato do `id` de todas as tabelas; UUID v7 ordena por tempo | `docs/convencoes/codigo.md`, Seção 7 |
 | Estratégia de sincronização sem sinal | Campos de controle em `workout_sets`, se houver conflito a resolver | H10, `armazenamento-local.md` |
 | Tempo no volume | Como `seconds` entra no volume e nos pontos | Q07 |

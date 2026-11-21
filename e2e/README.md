@@ -2,7 +2,7 @@
 
 Testes ponta a ponta com Playwright e playwright-bdd. Os cenários vêm dos cenários de aceite do PRD.
 
-Estado: o scaffold (EN-S0) criou a suíte com os cenários `@EN-S0` em `features/app-shell.feature`. A US-F01-01 acrescentou os cenários `@US-F01-01` em `features/catalog-muscles.feature`, e a US-F01-02, os cenários `@US-F01-02` em `features/catalog-exercises.feature`, os dois contra a API por HTTP e pelo `/mcp`. A US-F14-02 acrescentou o cenário `@US-F14-02` "falha no backup" em `features/system-backup.feature`. Os cenários do fluxo da academia entram na onda 3 (F03).
+Estado: o scaffold (EN-S0) criou a suíte com os cenários `@EN-S0` em `features/app-shell.feature`. A US-F01-01 acrescentou os cenários `@US-F01-01` em `features/catalog-muscles.feature`, e a US-F01-02, os cenários `@US-F01-02` em `features/catalog-exercises.feature`, os dois contra a API por HTTP e pelo `/mcp`. A US-F14-02 acrescentou o cenário `@US-F14-02` "falha no backup" em `features/system-backup.feature`. A US-F14-01 acrescentou os cenários `@US-F14-01` em `features/auth.feature` e passou a exigir a sessão de acesso nos outros cenários. Os cenários do fluxo da academia entram na onda 3 (F03).
 
 ## Estrutura planejada
 
@@ -28,16 +28,27 @@ pnpm --filter @heavy-duty/e2e run test --grep @EN-S0             # executa os ce
 pnpm --filter @heavy-duty/e2e run test --grep @US-F01-01         # executa os cenários do catálogo de músculos
 pnpm --filter @heavy-duty/e2e run test --grep @US-F01-02         # executa os cenários do catálogo de exercícios
 pnpm --filter @heavy-duty/e2e run test --grep @US-F14-02         # executa o cenário da falha no backup
+pnpm --filter @heavy-duty/e2e run test --grep @US-F14-01         # executa os cenários da chave de acesso
 ```
 
-A suíte sobe dois servidores (`webServer` em `playwright.config.ts`). Os cenários rodam em dois projetos, os dois com `devices['Pixel 7']`: `catalog-muscles`, só com `features/catalog-muscles.feature`, e `mobile`, com o restante, que depende do primeiro:
+A suíte sobe três servidores (`webServer` em `playwright.config.ts`). Os cenários rodam em dois projetos, os dois com `devices['Pixel 7']` (Chromium): `catalog-muscles`, só com `features/catalog-muscles.feature`, e `mobile`, com o restante, que depende do primeiro:
 
 | Servidor | Endereço | Variável da porta | Observação |
 |---|---|---|---|
-| Build de produção do app web | `127.0.0.1:3100` | `E2E_PORT` | — |
-| API, com `NODE_ENV=test` | `127.0.0.1:3101` | `E2E_API_PORT` | Banco novo a cada execução em `e2e/.data/heavy-duty.e2e.sqlite`, com as migrações e a semente aplicadas antes da subida |
+| Proxy de origem única (`support/proxy.ts`) | `localhost:3100` | `E2E_PORT` | Mesmo roteamento do `Caddyfile`: `/api/*` e `/mcp*` para a API, o resto para o app web. É o `baseURL` do navegador |
+| Build de produção do app web | `127.0.0.1:3102` | `E2E_WEB_PORT` | — |
+| API, com `NODE_ENV=test` | `127.0.0.1:3101` | `E2E_API_PORT` | `APP_ORIGIN=http://localhost:3100`. Banco novo a cada execução em `e2e/.data/heavy-duty.e2e.sqlite`, com as migrações e a semente aplicadas antes da subida |
 
-A pasta `e2e/.data/` fica fora do Git. Os passos chamam a API com o fixture `request` do Playwright, sem o proxy do Compose. A suíte não depende de Docker.
+A chave de acesso exige uma origem só para o app e a API, e o RP ID não aceita endereço IP: por isso o navegador usa `http://localhost:3100` (ADR-019). A pasta `e2e/.data/` fica fora do Git. Os passos chamam as rotas de dados pelo proxy e o `/mcp` direto na API. A suíte não depende de Docker.
+
+## Sessão de acesso nos cenários
+
+- O fixture de worker `sessionCookie` (`steps/auth-fixtures.ts`) cadastra uma chave de acesso pelo fluxo real: executa `pnpm --filter @heavy-duty/api auth:enroll` contra o banco do e2e, abre o link de cadastro num contexto com o autenticador virtual do Chromium e toca "Criar chave de acesso". Não existe comando de teste que crie sessão.
+- O fixture `request` manda o cookie `hd_session` desse worker. Os cenários de catálogo e de backup estendem o `test` de `auth-fixtures.ts`.
+- Os cenários de tela usam o passo "Given the athlete signed in with a passkey", que põe o cookie do worker no contexto do navegador.
+- Os cenários `@US-F14-01` criam o próprio autenticador virtual (`WebAuthn.addVirtualAuthenticator` pelo CDP). O Chromium aceita um autenticador `internal` por página; o cenário que precisa de dois navegadores cadastra num contexto separado e copia a chave com `WebAuthn.getCredentials` e `WebAuthn.addCredential`.
+- O cenário "sessão de acesso vencida" fica nos testes da API, porque o e2e não controla o relógio da API.
+- Nenhuma afirmação conta linhas no banco compartilhado.
 
 Os cenários de catálogo dividem o mesmo banco e rodam em paralelo (`fullyParallel`). Por isso:
 

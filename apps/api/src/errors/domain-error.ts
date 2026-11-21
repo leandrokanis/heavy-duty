@@ -1,4 +1,4 @@
-export type DomainErrorKind = 'invalid' | 'not_found_reference' | 'conflict'
+export type DomainErrorKind = 'invalid' | 'not_found_reference' | 'conflict' | 'unauthenticated'
 
 export class DomainError extends Error {
   readonly code: string

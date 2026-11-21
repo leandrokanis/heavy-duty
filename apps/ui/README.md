@@ -2,7 +2,7 @@
 
 PWA que o atleta usa no celular, na academia: mostra o treino do dia, registra cada série com um toque e conta o descanso. No MVP, a administração não passa pela UI; passa pelo MCP da API. As telas de administração no Mac entram depois do MVP (PRD, D22).
 
-Estado: scaffold (EN-S0). O app tem a página inicial, a página sem conexão, o manifesto do PWA, o service worker do Serwist e os tokens do `DESIGN.md`. Nenhum componente do Animate UI foi copiado: a licença está pendente de decisão do PO (ADR-016).
+Estado: o app tem a página inicial, a página sem conexão, a tela de entrada com chave de acesso, a tela de cadastro (`/cadastro`), o manifesto do PWA com ícones PNG, o service worker do Serwist e os tokens do `DESIGN.md` (EN-S0 e US-F14-01). Nenhum componente do Animate UI foi copiado: a licença está pendente de decisão do PO (ADR-016).
 
 ## Stack
 
@@ -19,3 +19,13 @@ pnpm --filter @heavy-duty/ui build
 ```
 
 O `build` usa `next build --webpack`, porque o Serwist gera o service worker só com o webpack. O `next dev` não registra o service worker; o comportamento sem rede é testado pelo e2e no build de produção.
+
+## Ícones
+
+Os ícones PNG de `public/icons/` são renderizados a partir de `icon.svg` e `icon-maskable.svg` com o Chromium do Playwright. O `icon-maskable.svg` tem fundo sem cantos e o desenho dentro dos 80 % centrais. Depois de mudar um SVG, gere os PNG de novo e versione os arquivos:
+
+```sh
+cd e2e && node support/render-icons.ts
+```
+
+O comando grava `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` e `apple-touch-icon.png` (180 × 180 px). O `manifest.spec.ts` e o `layout.spec.ts` conferem o tamanho real de cada arquivo.

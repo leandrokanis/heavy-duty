@@ -21,6 +21,7 @@ const getHealthRoute = createRoute({
   path: '/api/health',
   tags: ['system'],
   summary: 'Report the API and database status',
+  security: [],
   responses: {
     200: {
       description: 'The API is running and the database answers',

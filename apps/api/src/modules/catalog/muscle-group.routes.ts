@@ -1,6 +1,6 @@
 import { createRoute, type OpenAPIHono } from '@hono/zod-openapi'
 import type { Database } from '../../db/connection.js'
-import { createRouter, ErrorSchema } from '../../http/errors.js'
+import { createRouter, ErrorSchema, UNAUTHENTICATED_RESPONSE } from '../../http/errors.js'
 import { MuscleGroupListSchema } from './catalog.schemas.js'
 import { listMuscleGroups } from './muscle-group.service.js'
 
@@ -14,6 +14,7 @@ const listMuscleGroupsRoute = createRoute({
       description: 'The muscle groups ordered by position',
       content: { 'application/json': { schema: MuscleGroupListSchema } },
     },
+    401: UNAUTHENTICATED_RESPONSE,
     500: {
       description: 'Unexpected error',
       content: { 'application/json': { schema: ErrorSchema } },

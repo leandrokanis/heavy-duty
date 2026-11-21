@@ -16,6 +16,16 @@ export const INTERNAL_ERROR_BODY: ErrorBody = {
   message: 'erro interno do servidor',
 }
 
+export const UNAUTHENTICATED_BODY: ErrorBody = {
+  code: 'unauthenticated',
+  message: 'Entre com a sua chave de acesso.',
+}
+
+export const UNAUTHENTICATED_RESPONSE = {
+  description: 'No valid access session cookie',
+  content: { 'application/json': { schema: ErrorSchema } },
+} as const
+
 export function createRouter(): OpenAPIHono {
   return new OpenAPIHono({
     defaultHook: (result, c) => {
@@ -33,6 +43,7 @@ const DOMAIN_ERROR_STATUS = {
   invalid: 400,
   not_found_reference: 422,
   conflict: 409,
+  unauthenticated: 401,
 } as const satisfies Record<DomainErrorKind, number>
 
 export const handleError: ErrorHandler = (error, c) => {

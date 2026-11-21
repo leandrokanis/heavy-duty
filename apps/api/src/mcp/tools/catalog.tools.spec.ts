@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createApp } from '../../app.js'
 import { runSeed } from '../../db/seed.js'
 import { createTestDatabase } from '../../test/database.js'
+import { createSignedInApp } from '../../test/session.js'
 
 type ToolCallResult = {
   content?: { type: string; text: string }[]
@@ -14,7 +15,10 @@ type JsonRpcResponse = { result?: ToolCallResult; error?: { code: number; messag
 function createSeededApp(): ReturnType<typeof createApp> {
   const db = createTestDatabase()
   runSeed(db)
-  return createApp({ nodeEnv: 'development', databaseHealth: () => true, db })
+  return createSignedInApp(
+    createApp({ nodeEnv: 'development', databaseHealth: () => true, db }),
+    db,
+  )
 }
 
 async function callTool(

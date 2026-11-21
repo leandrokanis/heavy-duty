@@ -149,7 +149,7 @@ O ambiente de desenvolvimento sobe com `docker compose up`, a partir do `compose
 | NFR | Onde a arquitetura atende | Estado |
 |---|---|---|
 | NFR01, dados no servidor | Banco e servidor SMTP no kasparov; nenhum terceiro guarda dados de treino | ADR-005, ADR-007 |
-| NFR02, autenticação forte | Autenticação no app web, na API e no MCP | Pendente |
+| NFR02, autenticação forte | Chave de acesso (WebAuthn) e sessão de acesso em cookie no app web e nas rotas `/api/*`; o MCP fica para a US-F16-01 | Parcial: app web e API feitos (ADR-019); MCP pendente (US-F16-01) |
 | NFR03, backup diário | Contêiner de backup com restic, com o resultado registrado em `backup_runs` | ADR-018. Pendente: destino físico |
 | NFR04, HTTPS | Túnel da Cloudflare | Definido no PRD (D02) |
 | NFR05, instalação | Manifesto e service worker do app web (Serwist) | ADR-009 |
@@ -159,7 +159,7 @@ O ambiente de desenvolvimento sobe com `docker compose up`, a partir do `compose
 
 | Decisão | Insumo | Prazo |
 |---|---|---|
-| Método de autenticação do app web e do MCP | NFR02, R07, H12 | Antes da onda 1 (app web) e da onda 2 (MCP) |
+| Método de autenticação do MCP (o do app web está na ADR-019) | NFR02, R07, H12 | Antes da onda 2 (US-F16-01) |
 | Licença "MIT + Commons Clause" do Animate UI: aceitar ou substituir a parte do Animate UI na ADR-009 | ADR-016 | Onda 1, decisão do PO |
 | Destino físico do backup e política de retenção | NFR03, ADR-018, `backup.md` | Onda 1, tarefa manual do PO |
 | Estratégia de sincronização sem sinal | H10, Q09, `armazenamento-local.md` | Antes da onda 3 |

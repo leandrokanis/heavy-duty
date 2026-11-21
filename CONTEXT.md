@@ -30,12 +30,22 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 
 | Termo | Definição | Código | Não usar |
 |---|---|---|---|
-| Treino | Sessão realizada de uma letra, com data e séries registradas | `Workout` | sessão, sessão de treino |
+| Treino | Sessão realizada de uma letra, com data e séries registradas | `Workout` | sessão, sessão de treino, sessão de acesso |
 | Série | Execução registrada de um exercício, com carga e repetições ou tempo | `WorkoutSet` | set |
 | Passo | Ação do atleta no fluxo da academia que pede um toque: registrar a série, pular o descanso | — | etapa |
 | Ajuste por arrasto | Mudança de carga, repetições ou tempo por arrasto, em passos fixos, sem teclado | `dragAdjust` | slider |
 | Histórico | Conjunto dos treinos registrados | `history` | log |
 | Volume | Soma de carga × repetições por grupo muscular num intervalo. A fórmula para exercício de tempo está em aberto (Q07) | `volume` | — |
+
+## Acesso
+
+| Termo | Definição | Código | Não usar |
+|---|---|---|---|
+| Chave de acesso | Credencial do atleta para entrar no app: uma passkey (WebAuthn) guardada no celular, confirmada com biometria ou senha do aparelho. O app aceita mais de uma | `AuthCredential` | senha, passkey, credencial |
+| Sessão de acesso | Período em que o navegador fica autenticado depois da entrada, no cookie `hd_session`. Vence com 30 dias sem uso | `AuthSession` | sessão, login, token |
+| Link de cadastro | Link de uso único, válido por 15 minutos, que o PO gera no servidor com `auth:enroll` para cadastrar uma chave de acesso | `EnrollmentToken` | convite, link mágico |
+
+"Sessão" sozinha não é termo do domínio: o treino é `Workout`, e a autenticação é a sessão de acesso.
 
 ## Operação
 

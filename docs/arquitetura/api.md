@@ -5,7 +5,7 @@
 | Nível C4 | 2, contêiner |
 | Pasta | `apps/api` (`@heavy-duty/api`) |
 | Onde roda | Processo Node.js no kasparov |
-| ADRs | ADR-004, ADR-005, ADR-006, ADR-007, ADR-010, ADR-013, ADR-014, ADR-017 |
+| ADRs | ADR-004, ADR-005, ADR-006, ADR-007, ADR-010, ADR-013, ADR-014, ADR-017, ADR-019 |
 | Ondas | 1 em diante |
 
 ## Responsabilidade
@@ -33,12 +33,14 @@
 | pino | Log estruturado | MIT | Adiado: entra na primeira story que precisar de log; o scaffold usa `console.error` só em falha |
 | Vitest | Teste unitário e de integração | MIT | Aceita, `docs/convencoes/testes.md` |
 | `uuid` | Gerador de ID em UUID v7 (`createId()`) | MIT | Aceita, ADR-014 |
+| `@simplewebauthn/server` 14.0.3 | Opções e verificação das cerimônias da chave de acesso (WebAuthn), atrás do adaptador `src/modules/auth/webauthn.ts` | MIT; dependências MIT, BSD-3-Clause, Apache-2.0 e 0BSD | Aceita, ADR-019 |
 | tsx | Execução com recarga em desenvolvimento (`tsx watch`); a produção executa o build do `tsc` | MIT | Aceita, EN-S0 |
 
 ## Componentes (resumo do nível 3)
 
 | Módulo | Entidades e cálculo | Onda | Features |
 |---|---|---|---|
+| `auth` | `AuthCredential`, `AuthSession`, `EnrollmentToken`; desafio na memória; guarda de sessão; comando `auth:enroll` | 1 | F14 |
 | `catalog` | `MuscleGroup`, `Muscle`, `Exercise`, músculos principais e secundários | 1 | F01 |
 | `system` | Situação do backup e do envio de e-mail | 1 | F14, F17 |
 | `programs` | `Program`, `ProgramDay`, `PlannedExercise` | 2 | F02 |
@@ -62,7 +64,7 @@ O contrato de cada rota é gerado dos schemas em `docs/arquitetura/openapi.json`
 
 ## Regras que o código segue
 
-1. Toda rota e toda ferramenta MCP exigem autenticação (NFR02). O método depende da ADR de autenticação (H12). Até a autenticação existir, `/api/docs`, `/api/openapi.json` e `/mcp` só existem fora de `NODE_ENV=production`; `GET /api/health` é pública porque não devolve dado de treino (ADR-017).
+1. Toda rota e toda ferramenta MCP exigem autenticação (NFR02). As rotas `/api/*` exigem a sessão de acesso da chave de acesso em todos os ambientes (ADR-019): a guarda de sessão tem lista fechada de rotas públicas, `GET /api/health` (sem dado de treino) e as quatro rotas da cerimônia. Uma rota nova nasce protegida. A guarda de origem recusa com 403 o método que muda estado com `Origin` de outro site. O `/mcp` só existe fora de `NODE_ENV=production` até a US-F16-01 autenticar o canal.
 2. O `/mcp` só atende os hosts de `MCP_ALLOWED_HOSTS` e recusa com 403 o `Host` ou o `Origin` de fora da lista, contra DNS rebinding (`mcp.md`, "Transporte e acesso").
 3. A ferramenta MCP destrutiva declara `destructiveHint: true` e só age depois de confirmação explícita (US-F06-02).
 4. A gravação de série é idempotente pelo ID gerado no cliente: o mesmo ID não cria outra série.
@@ -70,4 +72,20 @@ O contrato de cada rota é gerado dos schemas em `docs/arquitetura/openapi.json`
 6. Data e hora são ISO 8601 em UTC; a carga é inteiro em gramas (`loadG`); o tempo é inteiro em segundos. A API não usa número de ponto flutuante para medida.
 7. O cálculo do jogo fica em funções puras do módulo `windows`, com os parâmetros num arquivo de configuração versionado (ADR-010).
 8. A falha de um canal de aviso não bloqueia o outro e fica registrada em `notifications`.
-9. O log não leva credencial, token nem o endereço de e-mail do PO.
+9. O log não leva credencial, token nem o endereço de e-mail do PO. As cerimônias da chave de acesso descartam a exceção da biblioteca, que cita o desafio, em vez de registrar a exceção no log (FR-028).
+
+## Configuração
+
+| Variável | Uso | Padrão | Produção |
+|---|---|---|---|
+| `NODE_ENV` | Ambiente | `development` | `production` |
+| `PORT` | Porta HTTP | `3001` | `3001` |
+| `DATABASE_PATH` | Arquivo do SQLite | `data/heavy-duty.dev.sqlite` na raiz do repositório | Obrigatória |
+| `MCP_ALLOWED_HOSTS` | Hosts aceitos no `/mcp`, separados por vírgula | `localhost`, `127.0.0.1`, `[::1]` | — |
+| `APP_ORIGIN` | Origem pública do app (esquema, host e porta). O RP ID do WebAuthn é o hostname; o cookie leva `Secure` quando o esquema é `https`; a guarda de origem compara o `Origin` com o valor | `http://localhost:8080` | Obrigatória e `https`, senão a API não sobe e o erro cita `APP_ORIGIN` |
+
+`APP_ORIGIN` não é segredo. O `compose.yaml` passa `http://localhost:${PROXY_PORT:-8080}` e o `compose.prod.yaml` passa `${APP_ORIGIN:-}`, lido do `.env` do servidor. O `.env.example` ainda não traz a variável: a inclusão de `APP_ORIGIN=https://<HOSTNAME>` é tarefa manual do PO. O desenvolvimento usa `http://localhost:8080`, não `http://127.0.0.1:8080`, porque o WebAuthn não aceita endereço IP como RP ID.
+
+## Cadastro da chave de acesso
+
+O comando `pnpm --filter @heavy-duty/api auth:enroll` (`src/modules/auth/enroll.ts`) gera um link de cadastro de uso único, válido por 15 minutos, e imprime `<APP_ORIGIN>/cadastro#token=<token>` com o vencimento. O comando lê `DATABASE_PATH` e `APP_ORIGIN`, não cria banco nem executa migração, e termina com código 1 quando o arquivo do banco não existe ou a tabela `enrollment_tokens` falta. No desenvolvimento, execute `docker compose exec api pnpm --filter @heavy-duty/api auth:enroll`; na produção, `docker compose -f compose.yaml -f compose.prod.yaml exec api node dist/modules/auth/enroll.js`. O link não vai para arquivo nem para canal compartilhado: abra o link no celular dentro do prazo.

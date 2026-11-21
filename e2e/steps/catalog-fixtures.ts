@@ -1,5 +1,5 @@
 import type { APIResponse } from '@playwright/test'
-import { test as base } from 'playwright-bdd'
+import { test as base } from './auth-fixtures.js'
 
 export type CatalogState = {
   lastResponse?: APIResponse

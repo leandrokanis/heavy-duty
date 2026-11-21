@@ -2,7 +2,7 @@
 
 Monorepo open source do Heavy Duty, um app pessoal de musculação. A UI (`apps/ui`) é um PWA em Next.js para registrar o treino no celular. A API (`apps/api`) guarda os dados e expõe um servidor MCP para administrar o app pelo Claude. O produto está descrito em `docs/prd.md`.
 
-Estado atual: o scaffold (EN-S0) criou os quatro pacotes do workspace (`heavy-duty`, `@heavy-duty/ui`, `@heavy-duty/api` e `@heavy-duty/e2e`), o ambiente de desenvolvimento com Docker Compose e a preparação da produção. Os apps ainda não têm regra de domínio. As stories seguem o roadmap da onda 1 do PRD (F01 e F14).
+Estado atual: o scaffold (EN-S0) criou os quatro pacotes do workspace (`heavy-duty`, `@heavy-duty/ui`, `@heavy-duty/api` e `@heavy-duty/e2e`), o ambiente de desenvolvimento com Docker Compose e a preparação da produção. A onda 1 trouxe o catálogo, o backup e a entrada com chave de acesso (US-F14-01). As stories seguem o roadmap da onda 1 do PRD (F01 e F14).
 
 ## Idioma
 
@@ -46,7 +46,7 @@ pnpm --filter @heavy-duty/api backup:run     # executa o backup uma vez (ADR-018
 O ambiente de desenvolvimento sobe com Docker Compose, no projeto `heavy-duty`:
 
 ```sh
-docker compose up -d                                   # sobe web, api e proxy em 127.0.0.1:8080
+docker compose up -d                                   # sobe web, api e proxy; abra http://localhost:8080
 docker compose logs -f api                             # acompanha o log de um serviço
 docker compose exec api pnpm --filter @heavy-duty/api test  # executa os testes dentro do contêiner
 docker compose down                                    # encerra os serviços e mantém ./data/
@@ -55,6 +55,8 @@ docker compose --profile backup down                   # encerra os serviços, i
 ```
 
 Troque a porta do proxy com `PROXY_PORT` e ligue a observação por polling com `DEV_WATCH_POLLING=true`, sem editar o `compose.yaml`.
+
+Use `http://localhost:8080`, não `http://127.0.0.1:8080`: a chave de acesso não aceita endereço IP (ADR-019). Para cadastrar uma chave de acesso, execute `docker compose exec api pnpm --filter @heavy-duty/api auth:enroll` e abra o link impresso. Não copie o link para arquivo.
 
 ## Regras que valem sempre
 

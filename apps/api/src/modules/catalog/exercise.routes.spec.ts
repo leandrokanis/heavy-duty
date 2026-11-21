@@ -3,6 +3,7 @@ import { createApp } from '../../app.js'
 import type { Database } from '../../db/connection.js'
 import { runSeed } from '../../db/seed.js'
 import { createTestDatabase } from '../../test/database.js'
+import { createSignedInApp } from '../../test/session.js'
 
 type App = ReturnType<typeof createApp>
 
@@ -17,7 +18,7 @@ const RETO_ABDOMINAL: MuscleSeed = { name: 'reto abdominal', muscleGroupSlug: 'a
 async function createCatalog(muscles: readonly MuscleSeed[]): Promise<{ app: App; db: Database }> {
   const db = createTestDatabase()
   runSeed(db)
-  const app = createApp({ nodeEnv: 'test', databaseHealth: () => true, db })
+  const app = createSignedInApp(createApp({ nodeEnv: 'test', databaseHealth: () => true, db }), db)
   for (const muscle of muscles) {
     await postJson(app, '/api/muscles', muscle)
   }

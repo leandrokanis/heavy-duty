@@ -12,6 +12,8 @@ services:
       NODE_ENV: production
       PORT: "3001"
       DATABASE_PATH: /app/data/heavy-duty.sqlite
+      # Public https origin of the app; the API refuses to start without it (ADR-019).
+      APP_ORIGIN: ${APP_ORIGIN:-}
     # The production database lives outside the repository checkout (banco-de-dados.md, rule 7).
     volumes: !override
       - ${HEAVY_DUTY_DATA_DIR:-/srv/heavy-duty/data}:/app/data
