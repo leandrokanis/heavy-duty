@@ -2,7 +2,7 @@
 
 Testes ponta a ponta com Playwright e playwright-bdd. Os cenários vêm dos cenários de aceite do PRD.
 
-Estado: o scaffold (EN-S0) criou a suíte com os cenários `@EN-S0` em `features/app-shell.feature`. A US-F01-01 acrescentou os cenários `@US-F01-01` em `features/catalog-muscles.feature`, e a US-F01-02, os cenários `@US-F01-02` em `features/catalog-exercises.feature`, os dois contra a API por HTTP e pelo `/mcp`. A US-F14-02 acrescentou o cenário `@US-F14-02` "falha no backup" em `features/system-backup.feature`. A US-F14-01 acrescentou os cenários `@US-F14-01` em `features/auth.feature` e passou a exigir a sessão de acesso nos outros cenários. Os cenários do fluxo da academia entram na onda 3 (F03).
+Estado: o scaffold (EN-S0) criou a suíte com os cenários `@EN-S0` em `features/app-shell.feature`. A US-F01-01 acrescentou os cenários `@US-F01-01` em `features/catalog-muscles.feature`, e a US-F01-02, os cenários `@US-F01-02` em `features/catalog-exercises.feature`, os dois contra a API por HTTP e pelo `/mcp`. A US-F14-02 acrescentou o cenário `@US-F14-02` "falha no backup" em `features/system-backup.feature`. A US-F14-01 acrescentou os cenários `@US-F14-01` em `features/auth.feature` e passou a exigir a sessão de acesso nos outros cenários. A US-F02-01 acrescentou os cenários `@US-F02-01` em `features/programs.feature`, contra a API por HTTP e pelo `/mcp`. Os cenários do fluxo da academia entram na onda 3 (F03).
 
 ## Estrutura planejada
 
@@ -29,9 +29,10 @@ pnpm --filter @heavy-duty/e2e run test --grep @US-F01-01         # executa os ce
 pnpm --filter @heavy-duty/e2e run test --grep @US-F01-02         # executa os cenários do catálogo de exercícios
 pnpm --filter @heavy-duty/e2e run test --grep @US-F14-02         # executa o cenário da falha no backup
 pnpm --filter @heavy-duty/e2e run test --grep @US-F14-01         # executa os cenários da chave de acesso
+pnpm --filter @heavy-duty/e2e run test --grep @US-F02-01         # executa os cenários do programa
 ```
 
-A suíte sobe três servidores (`webServer` em `playwright.config.ts`). Os cenários rodam em dois projetos, os dois com `devices['Pixel 7']` (Chromium): `catalog-muscles`, só com `features/catalog-muscles.feature`, e `mobile`, com o restante, que depende do primeiro:
+A suíte sobe três servidores (`webServer` em `playwright.config.ts`). Os cenários rodam em três projetos, todos com `devices['Pixel 7']` (Chromium): `catalog-muscles`, só com `features/catalog-muscles.feature`; `mobile`, com o restante menos o programa, que depende do primeiro; e `programs`, só com `features/programs.feature`, que depende do `mobile`:
 
 | Servidor | Endereço | Variável da porta | Observação |
 |---|---|---|---|
@@ -65,3 +66,12 @@ O cenário `@US-F14-02` executa `pnpm --filter @heavy-duty/api backup:run` contr
 - O cenário não depende do restic no host. Sem o binário, o motivo é `offsite copy failed: backup tool not found`; com o binário, o motivo é o erro do restic sobre o repositório.
 - O passo confere só a execução mais recente (`latestRun`), sem contar linhas de `backup_runs`, porque o banco do e2e é compartilhado.
 - O cenário "backup diário" fica no teste de integração com o restic real, dentro do contêiner `backup` (`docs/arquitetura/backup.md`).
+
+Os cenários `@US-F02-01` mudam o programa ativo, que é um só no banco. Por isso:
+
+- O projeto `programs` roda os cenários em série (`fullyParallel: false`), depois do `mobile`. Assim os cenários `@US-F01-02` recebem o 201 que esperam ao cadastrar "Supino reto" e "Prancha".
+- Com `--grep @US-F02-01`, o Playwright roda também os projetos `catalog-muscles` e `mobile`, que são dependências.
+- O estado do cenário fica no fixture `program` de `steps/program-fixtures.ts`, que estende o `test` do catálogo. O passo guarda o `id` de cada programa criado e confere o programa pelo `id`, sem contar linhas.
+- O `Background` cadastra os músculos e os exercícios "Supino reto" (`reps`) e "Prancha" (`time`) e aceita o 409 do item já cadastrado.
+- O `.feature` usa o texto do PRD ("40 kg", "10 reps", "45 s"). O passo converte a carga em gramas (40 kg vira `40000`) e o alvo em `targetReps` ou `targetSeconds`.
+- O passo de recusa confere um status 4xx e a `message`. O `code` e o status exato de cada recusa ficam cobertos nos testes de integração da API.

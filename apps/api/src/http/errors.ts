@@ -41,6 +41,7 @@ export const handleNotFound: NotFoundHandler = (c) =>
 
 const DOMAIN_ERROR_STATUS = {
   invalid: 400,
+  not_found: 404,
   not_found_reference: 422,
   conflict: 409,
   unauthenticated: 401,

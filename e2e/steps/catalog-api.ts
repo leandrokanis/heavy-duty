@@ -43,3 +43,50 @@ export function callMcpTool(
     data: { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } },
   })
 }
+
+export type PlannedExerciseBody = {
+  exercise: { slug: string; name: string; kind: string }
+  sets: number
+  targetReps: number | null
+  targetSeconds: number | null
+  loadG: number
+  restSeconds: number
+}
+
+export type ProgramBody = {
+  id: string
+  name: string
+  goal: string
+  isActive: boolean
+  days: { letter: string; label: string | null; exercises: PlannedExerciseBody[] }[]
+}
+
+export function postProgram(
+  request: APIRequestContext,
+  data: Record<string, unknown>,
+): Promise<APIResponse> {
+  return request.post(`${APP_BASE_URL}/api/programs`, { data })
+}
+
+export function postProgramDay(
+  request: APIRequestContext,
+  programId: string,
+  data: Record<string, unknown>,
+): Promise<APIResponse> {
+  return request.post(`${APP_BASE_URL}/api/programs/${programId}/days`, { data })
+}
+
+export function postPlannedExercise(
+  request: APIRequestContext,
+  programId: string,
+  letter: string,
+  data: Record<string, unknown>,
+): Promise<APIResponse> {
+  return request.post(`${APP_BASE_URL}/api/programs/${programId}/days/${letter}/exercises`, {
+    data,
+  })
+}
+
+export function getProgram(request: APIRequestContext, programId: string): Promise<APIResponse> {
+  return request.get(`${APP_BASE_URL}/api/programs/${programId}`)
+}

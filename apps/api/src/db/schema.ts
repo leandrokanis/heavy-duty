@@ -1,5 +1,15 @@
 import { sql } from 'drizzle-orm'
-import { blob, check, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import {
+  blob,
+  check,
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  unique,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core'
 
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
@@ -100,3 +110,75 @@ export const enrollmentTokens = sqliteTable('enrollment_tokens', {
   expiresAt: text('expires_at').notNull(),
   usedAt: text('used_at'),
 })
+
+export const programs = sqliteTable(
+  'programs',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    goal: text('goal', { enum: ['strength', 'hypertrophy', 'endurance'] }).notNull(),
+    isActive: integer('is_active', { mode: 'boolean' }).notNull(),
+    createdAt: text('created_at').notNull(),
+  },
+  (table) => [
+    check('programs_goal_check', sql`${table.goal} IN ('strength', 'hypertrophy', 'endurance')`),
+    uniqueIndex('programs_single_active_idx').on(table.isActive).where(sql`${table.isActive} = 1`),
+  ],
+)
+
+export const programDays = sqliteTable(
+  'program_days',
+  {
+    id: text('id').primaryKey(),
+    programId: text('program_id')
+      .notNull()
+      .references(() => programs.id, { onDelete: 'cascade' }),
+    letter: text('letter').notNull(),
+    label: text('label'),
+    position: integer('position').notNull(),
+  },
+  (table) => [
+    check('program_days_letter_check', sql`${table.letter} GLOB '[A-Z]'`),
+    unique('program_days_program_letter_unique').on(table.programId, table.letter),
+    unique('program_days_program_position_unique').on(table.programId, table.position),
+  ],
+)
+
+export const plannedExercises = sqliteTable(
+  'planned_exercises',
+  {
+    id: text('id').primaryKey(),
+    programDayId: text('program_day_id')
+      .notNull()
+      .references(() => programDays.id, { onDelete: 'cascade' }),
+    exerciseId: text('exercise_id')
+      .notNull()
+      .references(() => exercises.id, { onDelete: 'restrict' }),
+    position: integer('position').notNull(),
+    sets: integer('sets').notNull(),
+    targetReps: integer('target_reps'),
+    targetSeconds: integer('target_seconds'),
+    loadG: integer('load_g').notNull(),
+    restSeconds: integer('rest_seconds').notNull(),
+  },
+  (table) => [
+    check('planned_exercises_sets_check', sql`${table.sets} >= 1`),
+    check(
+      'planned_exercises_target_reps_check',
+      sql`${table.targetReps} IS NULL OR ${table.targetReps} >= 1`,
+    ),
+    check(
+      'planned_exercises_target_seconds_check',
+      sql`${table.targetSeconds} IS NULL OR ${table.targetSeconds} >= 1`,
+    ),
+    check(
+      'planned_exercises_single_target_check',
+      sql`(${table.targetReps} IS NULL) <> (${table.targetSeconds} IS NULL)`,
+    ),
+    check('planned_exercises_load_g_check', sql`${table.loadG} >= 0`),
+    check('planned_exercises_rest_seconds_check', sql`${table.restSeconds} >= 0`),
+    unique('planned_exercises_day_position_unique').on(table.programDayId, table.position),
+    unique('planned_exercises_day_exercise_unique').on(table.programDayId, table.exerciseId),
+    index('planned_exercises_exercise_idx').on(table.exerciseId),
+  ],
+)

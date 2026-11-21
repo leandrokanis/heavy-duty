@@ -18,9 +18,9 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 
 | Termo | Definição | Código | Não usar |
 |---|---|---|---|
-| Programa | Plano de treino com um objetivo e uma ou mais letras | `Program` | ficha, rotina, plano |
-| Objetivo | Finalidade do programa, como hipertrofia. Define a janela-base | `Goal` | meta |
-| Letra | Divisão do programa (A, B, C…) com a lista de exercícios de um dia de treino | `ProgramDay` | treino A, split |
+| Programa | Plano de treino com um objetivo e uma ou mais letras. Só um programa é o ativo por vez, e o programa criado passa a ser o ativo | `Program`, com `isActive` | ficha, rotina, plano |
+| Objetivo | Finalidade do programa: força, hipertrofia ou resistência. Define a janela-base | `Goal = 'strength' \| 'hypertrophy' \| 'endurance'` | meta |
+| Letra | Divisão do programa (A, B, C…) com a lista de exercícios de um dia de treino e um nome livre opcional, como "Superior" | `ProgramDay`, com `letter` e `label` | treino A, split |
 | Exercício do programa | Exercício dentro de uma letra, com séries, alvo, carga e descanso | `PlannedExercise` | — |
 | Alvo | Repetições (exercício de repetição) ou segundos (exercício de tempo) por série | `targetReps`, `targetSeconds` | — |
 | Carga | Peso usado na série. Guardada e trafegada como inteiro em gramas; a tela mostra em kg | `loadG` | peso |
