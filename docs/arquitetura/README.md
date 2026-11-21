@@ -110,6 +110,10 @@ C4Container
 | Servidor SMTP | Entrega os e-mails de aviso e o resumo semanal, a partir da onda 7 | Postfix e OpenDKIM (Aceita, ADR-007) | `servidor-smtp.md` |
 | Túnel | Publica o app com HTTPS e roteia `/api` e `/mcp` para a API | cloudflared | `tunel.md` |
 
+## Ambiente de desenvolvimento
+
+O ambiente de desenvolvimento sobe com `docker compose up`, a partir do `compose.yaml` da raiz (ADR-011). Ele tem três serviços: `web` (Next.js com recarga automática), `api` (Hono com recarga automática, MCP e Swagger em `/api/docs`) e `proxy`, que roteia `/api` e `/mcp` para a API e o resto para o app web, como o túnel faz em produção. O banco de desenvolvimento fica em `./data/`, fora do Git.
+
 ## Implantação no kasparov
 
 - O app web, a API, o servidor SMTP e o túnel são processos de longa duração no kasparov. O backup roda uma vez por dia.
@@ -156,7 +160,7 @@ C4Container
 | Decisão | Insumo | Prazo |
 |---|---|---|
 | Método de autenticação do app web e do MCP | NFR02, R07, H12 | Antes da onda 1 (app web) e da onda 2 (MCP) |
-| Empacotamento e execução no kasparov: unidades do systemd ou Docker Compose | `README.md` desta pasta | Scaffold da onda 1 |
+| Empacotamento e execução em produção no kasparov: Docker Compose, como no desenvolvimento (ADR-011), ou unidades do systemd | `README.md` desta pasta | Scaffold da onda 1 |
 | Ferramentas de lint e formatação | `docs/convencoes/codigo.md` | Scaffold da onda 1 |
 | Conjunto de ícones: Lucide, ou os ícones animados do Animate UI, que partem do Lucide | `DESIGN.md`, Seção 14 | Scaffold da onda 1 |
 | Destino e ferramenta da cópia do backup | NFR03, US-F14-02, `backup.md` | Onda 1 |
