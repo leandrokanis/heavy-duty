@@ -12,6 +12,7 @@ import { createWebAuthnVerifier, type WebAuthnVerifier } from './modules/auth/we
 import { createExerciseRoutes } from './modules/catalog/exercise.routes.js'
 import { createMuscleRoutes } from './modules/catalog/muscle.routes.js'
 import { createMuscleGroupRoutes } from './modules/catalog/muscle-group.routes.js'
+import { createProgramRoutes } from './modules/programs/program.routes.js'
 import { createHealthRoutes } from './modules/system/health.routes.js'
 import type { DatabaseHealthProbe } from './modules/system/health.service.js'
 import { createSystemStatusRoutes } from './modules/system/system-status.routes.js'
@@ -60,6 +61,7 @@ export function createApp(options: AppOptions): OpenAPIHono {
     app.route('/', createMuscleGroupRoutes(options.db))
     app.route('/', createMuscleRoutes(options.db))
     app.route('/', createExerciseRoutes(options.db))
+    app.route('/', createProgramRoutes({ db: options.db, now }))
     app.route('/', createSystemStatusRoutes(options.db))
     app.openAPIRegistry.registerComponent(
       'securitySchemes',
@@ -72,7 +74,7 @@ export function createApp(options: AppOptions): OpenAPIHono {
 
   // The MCP channel stays hidden in production until US-F16-01 authenticates it, see ADR-019.
   if (options.nodeEnv !== 'production') {
-    const toolDeps = options.db ? { db: options.db } : undefined
+    const toolDeps = options.db ? { db: options.db, now } : undefined
     app.use(MCP_PATH, mcpHostGuard(options.mcpAllowedHosts ?? DEFAULT_MCP_ALLOWED_HOSTS))
     app.all(MCP_PATH, (c) => handleMcpRequest(c, toolDeps))
   }

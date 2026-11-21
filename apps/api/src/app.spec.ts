@@ -105,6 +105,41 @@ describe('Given an app in production with a database', () => {
   })
 })
 
+describe('Given an app in production with a database and no session cookie', () => {
+  const db = createTestDatabase()
+  runSeed(db)
+  const app = createApp({ nodeEnv: 'production', databaseHealth: () => true, db })
+
+  describe('When the five program routes are requested', () => {
+    it('Then should respond 401 with code unauthenticated and no training data', async () => {
+      const post = (path: string, body: Record<string, unknown>) =>
+        app.request(path, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+      const programId = '0193a1b2-0000-7000-8000-000000000301'
+      const responses = await Promise.all([
+        post('/api/programs', { name: 'Programa 1', goal: 'hypertrophy' }),
+        app.request('/api/programs'),
+        app.request(`/api/programs/${programId}`),
+        post(`/api/programs/${programId}/days`, { letter: 'A' }),
+        post(`/api/programs/${programId}/days/A/exercises`, { exerciseSlug: 'supino-reto' }),
+      ])
+      const results = await Promise.all(
+        responses.map(async (response) => ({
+          status: response.status,
+          body: await response.json(),
+        })),
+      )
+
+      expect(results).toEqual(
+        Array.from({ length: 5 }, () => ({ status: 401, body: UNAUTHENTICATED_BODY })),
+      )
+    })
+  })
+})
+
 describe('Given an app in development with a database and no session cookie', () => {
   const app = createApp({
     nodeEnv: 'development',
@@ -230,6 +265,45 @@ describe('Given an app in development with a database', () => {
       expect(
         Object.keys(document.paths['/api/system/status']?.get?.responses ?? {}).sort(),
       ).toEqual(['200', '401', '500'])
+    })
+  })
+
+  describe('When the OpenAPI document is generated for the program routes', () => {
+    it('Then should declare the five program routes under the global session cookie security, with their response statuses', async () => {
+      const response = await app.request('/api/openapi.json')
+      const document = (await response.json()) as {
+        paths: Record<
+          string,
+          Record<string, { security?: unknown; responses: Record<string, unknown> }>
+        >
+      }
+      const describeRoute = (path: string, method: string) => ({
+        security: document.paths[path]?.[method]?.security,
+        statuses: Object.keys(document.paths[path]?.[method]?.responses ?? {}).sort(),
+      })
+
+      expect({
+        createProgram: describeRoute('/api/programs', 'post'),
+        listPrograms: describeRoute('/api/programs', 'get'),
+        getProgram: describeRoute('/api/programs/{programId}', 'get'),
+        addProgramDay: describeRoute('/api/programs/{programId}/days', 'post'),
+        addPlannedExercise: describeRoute(
+          '/api/programs/{programId}/days/{letter}/exercises',
+          'post',
+        ),
+      }).toEqual({
+        createProgram: { security: undefined, statuses: ['201', '400', '401', '500'] },
+        listPrograms: { security: undefined, statuses: ['200', '401', '500'] },
+        getProgram: { security: undefined, statuses: ['200', '401', '404', '500'] },
+        addProgramDay: {
+          security: undefined,
+          statuses: ['201', '400', '401', '404', '409', '500'],
+        },
+        addPlannedExercise: {
+          security: undefined,
+          statuses: ['201', '400', '401', '404', '409', '422', '500'],
+        },
+      })
     })
   })
 

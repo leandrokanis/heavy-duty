@@ -36,6 +36,13 @@
       "when": 1795271185860,
       "tag": "0004_auth_passkeys",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1795274221594,
+      "tag": "0005_programs",
+      "breakpoints": true
     }
   ]
 }

@@ -20,7 +20,7 @@ Todo erro HTTP tem o corpo `{ code, message }`: `code` em inglês, em `snake_cas
 | 404 | `not_found` | `recurso não encontrado` | Nenhuma rota atende o caminho. Com o banco aberto, um caminho desconhecido em `/api/*` sem sessão responde 401 antes |
 | 500 | `internal_error` | `erro interno do servidor` | Erro inesperado; o motivo vai para o log, não para a resposta |
 
-O erro de domínio de cada story acrescenta o próprio `code`, com a `message` do cenário do PRD.
+O erro de domínio de cada story acrescenta o próprio `code`, com a `message` do cenário do PRD. O `kind` do `DomainError` define o status: `invalid` 400, `unauthenticated` 401, `not_found` 404, `conflict` 409 e `not_found_reference` 422 (`apps/api/src/http/errors.ts`). O 404 de domínio vale para o recurso do caminho da rota que não existe, como o programa ou a letra (US-F02-01). A referência no corpo que não existe, como o exercício, responde 422.
 
 ## Sessão de acesso e guardas
 
@@ -288,6 +288,140 @@ O objeto `Exercise` tem a forma `{ "id", "slug", "name", "kind", "muscles": [{ "
 | 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
 | 409 | `{ "code": "exercise_already_exists", "message": "exercício já cadastrado" }` | O exercício já existe |
 | 422 | `{ "code": "muscle_not_found", "message": "músculo não encontrado" }` | Um músculo informado não existe no catálogo |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+## Programa
+
+As cinco rotas desta seção vêm da US-F02-01. As rotas existem só quando a API abriu o banco e exigem sessão de acesso em todos os ambientes (ADR-019). As ferramentas MCP `create_program`, `add_program_day`, `add_planned_exercise`, `get_program` e `list_programs` chamam o mesmo service, `apps/api/src/modules/programs/program.service.ts`, e devolvem o mesmo objeto e as mesmas recusas (`mcp.md`).
+
+Cada ação de escrita é atômica: em qualquer recusa ou falha, nenhuma linha fica gravada e o programa ativo não muda. A carga trafega em gramas (`loadG`), e o alvo de tempo e o descanso trafegam em segundos (`targetSeconds`, `restSeconds`). Toda medida é um inteiro até `Number.MAX_SAFE_INTEGER`, sem fração.
+
+O objeto `Program` tem a forma `{ "id", "name", "goal", "isActive", "createdAt", "days": [ProgramDay] }`. O `goal` é `strength`, `hypertrophy` ou `endurance`, e o `createdAt` vem em ISO 8601, em UTC. O objeto `ProgramDay` tem a forma `{ "letter", "label", "exercises": [PlannedExercise] }`, com as letras na ordem do plano (ordem de inclusão). O `label` fica `null` na letra sem nome. O objeto `PlannedExercise` tem a forma `{ "exercise": { "id", "slug", "name", "kind" }, "sets", "targetReps", "targetSeconds", "loadG", "restSeconds" }`, com os exercícios na ordem da letra (ordem de inclusão). O exercício de repetição tem `targetReps` preenchido e `targetSeconds` nulo; o exercício de tempo tem o contrário.
+
+| Status | `code` | `message` | Quando |
+|---|---|---|---|
+| 400 | `program_name_required` | `informe o nome do programa` | O corpo não traz `name`, ou o nome fica vazio depois do `trim` |
+| 400 | `program_goal_required` | `informe o objetivo do programa` | O corpo não traz `goal`, ou traz um texto vazio |
+| 400 | `program_goal_invalid` | `objetivo inválido` | O `goal` não é `strength`, `hypertrophy` nem `endurance` |
+| 400 | `program_day_letter_required` | `informe a letra` | O corpo não traz `letter`, ou traz um texto vazio |
+| 400 | `program_day_letter_invalid` | `a letra deve ser de A a Z` | A letra do corpo ou do caminho não é um caractere só de A a Z, em maiúscula ou minúscula. Letra acentuada, número e símbolo são recusados |
+| 400 | `planned_exercise_exercise_required` | `informe o exercício` | O corpo não traz `exerciseSlug`, ou traz um texto vazio |
+| 400 | `planned_exercise_sets_invalid` | `informe as séries, a partir de 1` | O corpo não traz `sets`, ou `sets` não é inteiro a partir de 1 |
+| 400 | `planned_exercise_load_required` | `informe a carga` | O corpo não traz `loadG` |
+| 400 | `planned_exercise_load_invalid` | `carga inválida` | O `loadG` é negativo, tem fração ou passa do inteiro seguro |
+| 400 | `planned_exercise_rest_required` | `informe o descanso` | O corpo não traz `restSeconds` |
+| 400 | `planned_exercise_rest_invalid` | `descanso inválido` | O `restSeconds` é negativo, tem fração ou passa do inteiro seguro |
+| 400 | `planned_exercise_target_time` | `este exercício é medido por tempo` | O corpo traz `targetReps` para um exercício de tempo, com ou sem `targetSeconds` |
+| 400 | `planned_exercise_target_reps` | `este exercício é medido por repetições` | O corpo traz `targetSeconds` para um exercício de repetição, com ou sem `targetReps` |
+| 400 | `planned_exercise_target_required` | `informe o alvo da série` | O exercício de repetição vem sem `targetReps`, ou o de tempo vem sem `targetSeconds`. O valor `null` conta como ausente |
+| 400 | `planned_exercise_target_invalid` | `alvo inválido` | O alvo não é inteiro a partir de 1 |
+| 404 | `program_not_found` | `programa não encontrado` | Nenhum programa tem o `programId` do caminho |
+| 404 | `program_day_not_found` | `letra não encontrada no programa` | O programa não tem a letra do caminho |
+| 409 | `program_day_letter_duplicated` | `letra já existe no programa` | O programa já tem a letra. A comparação usa a letra em maiúscula |
+| 409 | `planned_exercise_duplicated` | `exercício já está na letra` | A letra já tem o exercício. O mesmo exercício em outra letra é aceito |
+| 422 | `exercise_not_found` | `exercício não encontrado` | O slug não existe no catálogo, ou o exercício está arquivado |
+
+O service confere a entrada nesta ordem e devolve só a primeira recusa:
+
+- Criar programa: nome, objetivo ausente, objetivo inválido.
+- Acrescentar letra: letra ausente, letra inválida, programa, letra repetida.
+- Acrescentar exercício do programa: letra inválida, exercício ausente, séries, carga ausente, carga inválida, descanso ausente, descanso inválido, programa, letra no programa, exercício no catálogo, alvo do tipo errado, alvo ausente, alvo inválido, exercício já na letra.
+
+A entrada é conferida antes das consultas ao banco. O alvo é a exceção, porque o tipo do exercício só aparece depois da busca no catálogo.
+
+### POST /api/programs
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Criar um programa com nome e objetivo. O programa criado passa a ser o único programa ativo |
+| Story | US-F02-01 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Corpo | `{ "name": "Programa 1", "goal": "hypertrophy" }`. Os dois campos são opcionais no schema, e o service recusa o campo ausente ou inválido com o erro de domínio. O nome não precisa ser único |
+| Efeito colateral | Desativa o programa ativo anterior e grava uma linha em `programs` com `is_active` verdadeiro, na mesma transação. O nome fica sem os espaços das pontas. O `createdAt` vem do relógio da API |
+| Idempotência | Não idempotente. Cada chamada cria um programa novo |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 201 | `Program`, sem letras | O programa foi criado |
+| 400 | `{ "code": "program_name_required" \| "program_goal_required" \| "program_goal_invalid", "message" }` | A entrada está incompleta ou inválida |
+| 400 | `{ "code": "invalid_request", "message": "requisição inválida" }` | O corpo não é JSON, ou um campo não é texto |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+### GET /api/programs
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Listar os programas com as letras e os exercícios do programa |
+| Story | US-F02-01 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Nenhum |
+| Idempotência | Idempotente |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `{ "programs": [Program] }` | Sempre que o banco responde. O programa ativo vem primeiro, e os outros vêm do mais novo para o mais antigo por `createdAt`. O `id` decrescente desempata dois programas do mesmo milissegundo |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+### GET /api/programs/{programId}
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Mostrar um programa com as letras na ordem do plano e os exercícios de cada letra na ordem da letra |
+| Story | US-F02-01 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Nenhum |
+| Idempotência | Idempotente |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `Program` | O programa existe |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 404 | `{ "code": "program_not_found", "message": "programa não encontrado" }` | Nenhum programa tem o `programId`. Um `programId` que não é UUID também responde 404 |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+### POST /api/programs/{programId}/days
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Acrescentar uma letra ao fim da ordem do plano |
+| Story | US-F02-01 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Corpo | `{ "letter": "A", "label": "Superior" }`. A `letter` é opcional no schema, e o service recusa a letra ausente ou inválida. O `label` é opcional e aceita `null` |
+| Efeito colateral | Grava uma linha em `program_days` com a letra em maiúscula e `position` igual à maior `position` do programa mais 1, a partir de 1. O nome fica sem os espaços das pontas, e o nome vazio, só com espaços, nulo ou ausente fica `null` |
+| Idempotência | Não idempotente. A repetição da mesma letra recusa com 409 `program_day_letter_duplicated` |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 201 | `Program`, com a letra nova no fim | A letra foi acrescentada |
+| 400 | `{ "code": "program_day_letter_required" \| "program_day_letter_invalid", "message" }` | A letra falta ou não é de A a Z |
+| 400 | `{ "code": "invalid_request", "message": "requisição inválida" }` | O corpo não é JSON, ou um campo não é texto |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 404 | `{ "code": "program_not_found", "message": "programa não encontrado" }` | Nenhum programa tem o `programId` |
+| 409 | `{ "code": "program_day_letter_duplicated", "message": "letra já existe no programa" }` | O programa já tem a letra |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+### POST /api/programs/{programId}/days/{letter}/exercises
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Acrescentar um exercício do catálogo ao fim de uma letra, com séries, alvo, carga e descanso |
+| Story | US-F02-01 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Corpo | `{ "exerciseSlug": "supino-reto", "sets": 3, "targetReps": 10, "loadG": 40000, "restSeconds": 90 }` para um exercício de repetição; `{ "exerciseSlug": "prancha", "sets": 3, "targetSeconds": 45, "loadG": 0, "restSeconds": 60 }` para um exercício de tempo. Os campos são opcionais no schema, e o service recusa o campo ausente ou inválido. `targetReps` e `targetSeconds` aceitam `null`. O slug vem de `GET /api/exercises`. A letra do caminho aceita minúscula |
+| Efeito colateral | Grava uma linha em `planned_exercises` com `position` igual à maior `position` da letra mais 1, a partir de 1. A carga zero e o descanso zero são aceitos |
+| Idempotência | Não idempotente. A repetição do mesmo exercício na mesma letra recusa com 409 `planned_exercise_duplicated` |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 201 | `Program`, com o exercício novo no fim da letra | O exercício foi acrescentado |
+| 400 | `{ "code", "message" }` com `program_day_letter_invalid` ou um dos `code` 400 que começam com `planned_exercise_` | A letra do caminho ou o corpo está incompleto ou inválido |
+| 400 | `{ "code": "invalid_request", "message": "requisição inválida" }` | O corpo não é JSON, `exerciseSlug` não é texto ou uma medida não é número |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 404 | `{ "code": "program_not_found" \| "program_day_not_found", "message" }` | O programa ou a letra não existe |
+| 409 | `{ "code": "planned_exercise_duplicated", "message": "exercício já está na letra" }` | A letra já tem o exercício |
+| 422 | `{ "code": "exercise_not_found", "message": "exercício não encontrado" }` | O exercício não existe no catálogo ou está arquivado |
 | 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
 
 ## Situação do app

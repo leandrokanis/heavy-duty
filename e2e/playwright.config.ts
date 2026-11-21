@@ -13,6 +13,7 @@ const apiDataDir = API_DATA_DIR
 const apiDatabasePath = API_DATABASE_PATH
 
 const CATALOG_MUSCLES_SPEC = /catalog-muscles\.feature\.spec\.js$/
+const PROGRAMS_SPEC = /programs\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -39,8 +40,17 @@ export default defineConfig({
     },
     {
       name: 'mobile',
-      testIgnore: CATALOG_MUSCLES_SPEC,
+      testIgnore: [CATALOG_MUSCLES_SPEC, PROGRAMS_SPEC],
       dependencies: ['catalog-muscles'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Program scenarios change the single active program, so they run one at a time, and
+    // after the exercise scenarios that expect a 201 for the exercises they register.
+    {
+      name: 'programs',
+      testMatch: PROGRAMS_SPEC,
+      fullyParallel: false,
+      dependencies: ['mobile'],
       use: { ...devices['Pixel 7'] },
     },
   ],

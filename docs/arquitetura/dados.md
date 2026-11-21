@@ -13,8 +13,8 @@ erDiagram
   MUSCLE_GROUPS ||--o{ MUSCLES : agrupa
   EXERCISES ||--|{ EXERCISE_MUSCLES : ativa
   MUSCLES ||--o{ EXERCISE_MUSCLES : "é ativado em"
-  PROGRAMS ||--|{ PROGRAM_DAYS : "divide em"
-  PROGRAM_DAYS ||--|{ PLANNED_EXERCISES : lista
+  PROGRAMS ||--o{ PROGRAM_DAYS : "divide em"
+  PROGRAM_DAYS ||--o{ PLANNED_EXERCISES : lista
   EXERCISES ||--o{ PLANNED_EXERCISES : "é planejado em"
   PROGRAM_DAYS ||--o{ WORKOUTS : "é treinada em"
   WORKOUTS ||--o{ WORKOUT_SETS : registra
@@ -191,11 +191,13 @@ erDiagram
 
 ### Programa (F02, onda 2)
 
+As três tabelas vêm da migração `0005_programs` (US-F02-01). O programa é montado em passos: um programa sem letra e uma letra sem exercício são estados válidos durante a montagem.
+
 | Tabela | Conteúdo | Regras |
 |---|---|---|
-| `programs` | Programas, com objetivo | Um programa ativo por vez. O objetivo define a janela-base (regra 2 da gamificação) |
-| `program_days` | Letras do programa: uma para corpo inteiro, duas para superior e inferior, três para ABC, e assim por diante | `letter` é uma letra de A a Z, única dentro do programa, até 26 letras. `label` é livre e dá o nome da divisão, como "Superior", "Empurrar" ou "Peito e tríceps". `position` define a ordem do plano |
-| `planned_exercises` | Exercícios de cada letra, com séries, alvo, carga e descanso | `load_g >= 0`, em gramas inteiras. Exatamente um entre `target_reps` e `target_seconds`, conforme o tipo do exercício. `position` única dentro da letra |
+| `programs` | Programas, com objetivo | `goal` é `strength`, `hypertrophy` ou `endurance`, com `CHECK`. O objetivo define a janela-base (regra 2 da gamificação). Um programa ativo por vez: o índice único parcial `programs_single_active_idx` em `is_active` com `WHERE is_active = 1` garante a regra no banco. A criação desativa o programa ativo anterior e grava o novo como ativo na mesma transação. O nome não é único. A lista vem com o ativo primeiro, depois `created_at` e `id` decrescentes |
+| `program_days` | Letras do programa: uma para corpo inteiro, duas para superior e inferior, três para ABC, e assim por diante | `letter` é uma letra de A a Z, em maiúscula, com `CHECK (letter GLOB '[A-Z]')`, até 26 letras. O par `program_id` e `letter` é único. `label` é livre e dá o nome da divisão, como "Superior", "Empurrar" ou "Peito e tríceps"; fica nulo na letra sem nome. `position` define a ordem do plano (ordem de inclusão, a partir de 1), e o par `program_id` e `position` é único. `program_id` usa `ON DELETE CASCADE` |
+| `planned_exercises` | Exercícios de cada letra, com séries, alvo, carga e descanso | `CHECK` de `sets >= 1`, `target_reps >= 1`, `target_seconds >= 1`, `load_g >= 0` e `rest_seconds >= 0`, todos inteiros (carga em gramas, tempo e descanso em segundos). Exatamente um entre `target_reps` e `target_seconds`, com `CHECK`; o service escolhe o alvo pelo tipo do exercício. `position` é a ordem da letra (ordem de inclusão, a partir de 1), e o par `program_day_id` e `position` é único. O par `program_day_id` e `exercise_id` é único: o mesmo exercício não entra duas vezes na mesma letra. `program_day_id` usa `ON DELETE CASCADE`. `exercise_id` usa `ON DELETE RESTRICT`, com o índice `planned_exercises_exercise_idx`: o exercício usado num programa não sai do banco |
 
 ### Execução (F03 a F06, ondas 3 e 4)
 
