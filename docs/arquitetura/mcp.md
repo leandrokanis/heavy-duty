@@ -8,6 +8,8 @@ Este documento lista as ferramentas do servidor MCP da API: nome, descrição, p
 - O cliente envia `POST /mcp` com o cabeçalho `Accept: application/json, text/event-stream`.
 - Fora de `NODE_ENV=production`, o `/mcp` fica disponível sem autenticação, só no ambiente de desenvolvimento. Em produção, o `/mcp` responde 404 até a US-F16-01 trazer a autenticação (ADR-017).
 - O servidor se apresenta como `heavy-duty` e declara a capacidade `tools`.
+- O `/mcp` só atende requisição cujo cabeçalho `Host` esteja na lista de hosts permitidos, e cujo `Origin`, quando vier, também esteja. Fora da lista, a resposta é 403 com `{ "code": "forbidden_host", "message": "host não permitido" }`. A regra barra o ataque de DNS rebinding: uma página aberta no navegador não alcança o `/mcp` por um domínio que ela controla (`apps/api/src/mcp/host-guard.ts`).
+- A lista vem da variável `MCP_ALLOWED_HOSTS`, com nomes de host separados por vírgula e sem porta. O padrão é `localhost,127.0.0.1,[::1]`, que atende o proxy de desenvolvimento em `127.0.0.1:8080`. A produção acrescenta o domínio público na US-F16-01. A lista não substitui a autenticação: ela barra o navegador, não um cliente que fala direto com a API.
 
 ## Regras das ferramentas
 

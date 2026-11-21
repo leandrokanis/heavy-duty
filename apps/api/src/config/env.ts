@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
+import { DEFAULT_MCP_ALLOWED_HOSTS } from '../mcp/host-guard.js'
 
 export type Environment = Record<string, string | undefined>
 
@@ -7,6 +8,7 @@ export type AppConfig = {
   nodeEnv: string
   port: number
   databasePath: string
+  mcpAllowedHosts: readonly string[]
 }
 
 const DEFAULT_PORT = 3001
@@ -20,7 +22,16 @@ const EnvironmentSchema = z.object({
   NODE_ENV: z.string().default('development'),
   PORT: z.coerce.number().int().positive().default(DEFAULT_PORT),
   DATABASE_PATH: z.string().min(1).optional(),
+  MCP_ALLOWED_HOSTS: z.string().optional(),
 })
+
+function parseHostList(value: string | undefined): string[] | undefined {
+  const hosts = value
+    ?.split(',')
+    .map((host) => host.trim())
+    .filter((host) => host.length > 0)
+  return hosts && hosts.length > 0 ? hosts : undefined
+}
 
 export function loadConfig(env: Environment): AppConfig {
   const parsed = EnvironmentSchema.parse(env)
@@ -33,5 +44,6 @@ export function loadConfig(env: Environment): AppConfig {
     nodeEnv: parsed.NODE_ENV,
     port: parsed.PORT,
     databasePath: parsed.DATABASE_PATH ?? DEV_DATABASE_PATH,
+    mcpAllowedHosts: parseHostList(parsed.MCP_ALLOWED_HOSTS) ?? DEFAULT_MCP_ALLOWED_HOSTS,
   }
 }

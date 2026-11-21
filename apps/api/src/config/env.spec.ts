@@ -25,7 +25,18 @@ describe('Given an environment without PORT and DATABASE_PATH outside production
         nodeEnv: 'development',
         port: 3001,
         databasePath: expectedPath,
+        mcpAllowedHosts: ['localhost', '127.0.0.1', '[::1]'],
       })
+    })
+  })
+})
+
+describe('Given MCP_ALLOWED_HOSTS with a comma separated list', () => {
+  const env = { NODE_ENV: 'development', MCP_ALLOWED_HOSTS: ' heavy-duty.example , localhost ,' }
+
+  describe('When the configuration is loaded', () => {
+    it('Then should return the trimmed hostnames without empty entries', () => {
+      expect(loadConfig(env).mcpAllowedHosts).toEqual(['heavy-duty.example', 'localhost'])
     })
   })
 })
