@@ -6,6 +6,7 @@ services:
     build:
       context: .
       dockerfile: infra/docker/api.Dockerfile
+      target: api
     command: !reset null
     environment: !override
       NODE_ENV: production
@@ -21,6 +22,28 @@ services:
         - -e
         - "fetch('http://127.0.0.1:3001/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
       start_period: 30s
+    restart: unless-stopped
+
+  # Always on in production; the restic password comes from a host file (ADR-018).
+  backup:
+    profiles: !reset []
+    image: heavy-duty-backup
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+      target: backup
+    command: !reset null
+    environment: !override
+      NODE_ENV: production
+      DATABASE_PATH: /app/data/heavy-duty.sqlite
+      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:-/backup/restic}
+      RESTIC_PASSWORD_FILE: /run/secrets/restic-password
+      BACKUP_TIME_ZONE: ${BACKUP_TIME_ZONE:-America/Sao_Paulo}
+      BACKUP_DAILY_AT: ${BACKUP_DAILY_AT:-03:00}
+    volumes: !override
+      - ${HEAVY_DUTY_DATA_DIR:-/srv/heavy-duty/data}:/app/data
+      - ${HEAVY_DUTY_BACKUP_DIR:-/srv/heavy-duty/backup}:/backup
+      - ${HEAVY_DUTY_RESTIC_PASSWORD_FILE:-/srv/heavy-duty/secrets/restic-password}:/run/secrets/restic-password:ro
     restart: unless-stopped
 
   web:

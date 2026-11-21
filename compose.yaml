@@ -61,6 +61,37 @@ services:
       - web-next:/app/apps/ui/.next
       - pnpm-store:/pnpm-store
 
+  # Daily backup (ADR-018), off by default: docker compose --profile backup up -d backup
+  backup:
+    image: heavy-duty-dev-backup
+    profiles: ["backup"]
+    build:
+      context: .
+      dockerfile: infra/docker/dev.Dockerfile
+    user: node
+    working_dir: /app
+    command:
+      - sh
+      - -c
+      - >-
+        pnpm install --frozen-lockfile --filter heavy-duty --filter @heavy-duty/api &&
+        (restic cat config > /dev/null 2>&1 || restic init) &&
+        exec pnpm --filter @heavy-duty/api backup:scheduler
+    environment:
+      <<: *node-environment
+      DATABASE_PATH: /app/data/heavy-duty.dev.sqlite
+      RESTIC_REPOSITORY: /backup/restic
+      # Insecure and for development only: the dev repository keeps throwaway data.
+      RESTIC_PASSWORD: insecure-dev-only-restic-password
+      BACKUP_TIME_ZONE: America/Sao_Paulo
+      BACKUP_DAILY_AT: "03:00"
+    volumes:
+      - .:/app
+      - backup-root-node-modules:/app/node_modules
+      - backup-node-modules:/app/apps/api/node_modules
+      - pnpm-store:/pnpm-store
+      - backup-dev-repo:/backup
+
   proxy:
     image: caddy:2.11.7-alpine
     ports:
@@ -75,6 +106,9 @@ services:
 volumes:
   api-root-node-modules:
   api-node-modules:
+  backup-root-node-modules:
+  backup-node-modules:
+  backup-dev-repo:
   web-root-node-modules:
   web-node-modules:
   web-next:

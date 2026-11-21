@@ -22,6 +22,13 @@
       "when": 1795265890609,
       "tag": "0002_catalog_exercises",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1795267911811,
+      "tag": "0003_system_backup_runs",
+      "breakpoints": true
     }
   ]
 }

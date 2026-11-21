@@ -2,7 +2,7 @@
 
 Testes ponta a ponta com Playwright e playwright-bdd. Os cenários vêm dos cenários de aceite do PRD.
 
-Estado: o scaffold (EN-S0) criou a suíte com os cenários `@EN-S0` em `features/app-shell.feature`. A US-F01-01 acrescentou os cenários `@US-F01-01` em `features/catalog-muscles.feature`, e a US-F01-02, os cenários `@US-F01-02` em `features/catalog-exercises.feature`, os dois contra a API por HTTP e pelo `/mcp`. Os cenários do fluxo da academia entram na onda 3 (F03).
+Estado: o scaffold (EN-S0) criou a suíte com os cenários `@EN-S0` em `features/app-shell.feature`. A US-F01-01 acrescentou os cenários `@US-F01-01` em `features/catalog-muscles.feature`, e a US-F01-02, os cenários `@US-F01-02` em `features/catalog-exercises.feature`, os dois contra a API por HTTP e pelo `/mcp`. A US-F14-02 acrescentou o cenário `@US-F14-02` "falha no backup" em `features/system-backup.feature`. Os cenários do fluxo da academia entram na onda 3 (F03).
 
 ## Estrutura planejada
 
@@ -27,6 +27,7 @@ pnpm e2e                                                         # executa a su�
 pnpm --filter @heavy-duty/e2e run test --grep @EN-S0             # executa os cenários de uma tag
 pnpm --filter @heavy-duty/e2e run test --grep @US-F01-01         # executa os cenários do catálogo de músculos
 pnpm --filter @heavy-duty/e2e run test --grep @US-F01-02         # executa os cenários do catálogo de exercícios
+pnpm --filter @heavy-duty/e2e run test --grep @US-F14-02         # executa o cenário da falha no backup
 ```
 
 A suíte sobe dois servidores (`webServer` em `playwright.config.ts`). Os cenários rodam em dois projetos, os dois com `devices['Pixel 7']`: `catalog-muscles`, só com `features/catalog-muscles.feature`, e `mobile`, com o restante, que depende do primeiro:
@@ -46,3 +47,10 @@ Os cenários de catálogo dividem o mesmo banco e rodam em paralelo (`fullyParal
 - Cada cenário cadastra um exercício com nome próprio, para não colidir com outro cenário na recusa de exercício repetido.
 - O passo de recusa confere o status 400 e a `message`. O `code` de cada recusa fica coberto nos testes de integração da API.
 - O `.feature` usa o nome do músculo, e o passo troca o nome pelo slug que `GET /api/muscles` devolve.
+
+O cenário `@US-F14-02` executa `pnpm --filter @heavy-duty/api backup:run` contra o banco da API do e2e, com o repositório do restic numa pasta que não existe e a senha insegura de desenvolvimento. O comando termina com código 1 e registra a falha. Depois, o passo chama `get_system_status` pelo `/mcp` e confere a execução mais recente. Detalhes do cenário:
+
+- O caminho do banco vem de `steps/api-server.ts`, a mesma constante que o `playwright.config.ts` usa para subir a API.
+- O cenário não depende do restic no host. Sem o binário, o motivo é `offsite copy failed: backup tool not found`; com o binário, o motivo é o erro do restic sobre o repositório.
+- O passo confere só a execução mais recente (`latestRun`), sem contar linhas de `backup_runs`, porque o banco do e2e é compartilhado.
+- O cenário "backup diário" fica no teste de integração com o restic real, dentro do contêiner `backup` (`docs/arquitetura/backup.md`).

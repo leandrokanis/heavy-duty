@@ -28,11 +28,11 @@ O estado do jogo (janela, pontos, nível, recorde, ranking) não fica guardado: 
 | Direção | Com quem | Como |
 |---|---|---|
 | Lê e grava | API | Drizzle ORM sobre better-sqlite3, no mesmo processo |
-| Lê, e grava só `backup_runs` | Backup | API de backup do SQLite, sem parar a API |
+| Lê, e grava só `backup_runs` | Backup | `VACUUM INTO` numa conexão própria, sem parar a API, e inserção em `backup_runs` com Drizzle ORM (ADR-018) |
 
 ## Regras que o código segue
 
-1. Só a API grava nas tabelas de domínio. O backup lê o banco e grava só o resultado em `backup_runs`.
+1. Só a API grava nas tabelas de domínio. O backup lê o banco e grava só o resultado em `backup_runs`. O backup não executa migrações: a API executa na subida.
 2. Toda mudança de esquema é uma migração versionada do drizzle-kit, no mesmo PR da mudança de código.
 3. Tabela e coluna em `snake_case`, tabela no plural, unidade no nome da coluna (`load_g`, `rest_seconds`). O código TypeScript usa camelCase (`loadG`), e o Drizzle faz a conversão.
 4. Medida é inteiro na menor unidade, sem ponto flutuante: carga em gramas (`load_g`), tempo em segundos. Nenhuma coluna usa `REAL`.

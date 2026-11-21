@@ -51,3 +51,22 @@ export const exerciseMuscles = sqliteTable(
     check('exercise_muscles_role_check', sql`${table.role} IN ('primary', 'secondary')`),
   ],
 )
+
+export const backupRuns = sqliteTable(
+  'backup_runs',
+  {
+    id: text('id').primaryKey(),
+    startedAt: text('started_at').notNull(),
+    finishedAt: text('finished_at').notNull(),
+    status: text('status', { enum: ['succeeded', 'failed'] }).notNull(),
+    sizeBytes: integer('size_bytes'),
+    error: text('error'),
+  },
+  (table) => [
+    check('backup_runs_status_check', sql`${table.status} IN ('succeeded', 'failed')`),
+    check(
+      'backup_runs_size_bytes_check',
+      sql`${table.sizeBytes} IS NULL OR ${table.sizeBytes} >= 0`,
+    ),
+  ],
+)

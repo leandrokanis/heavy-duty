@@ -53,4 +53,9 @@ pnpm --filter @heavy-duty/api db:migrate     # aplica as migrações em DATABASE
 pnpm --filter @heavy-duty/api db:seed        # executa a semente idempotente
 pnpm --filter @heavy-duty/api openapi        # regenera docs/arquitetura/openapi.json
 pnpm --filter @heavy-duty/api openapi:check  # confere o contrato versionado
+pnpm --filter @heavy-duty/api backup:run     # executa o backup uma vez; código 0 ou 1
+pnpm --filter @heavy-duty/api backup:scheduler  # inicia o agendador diário do backup
+pnpm --filter @heavy-duty/api backup:verify <arquivo>  # confere um banco restaurado
 ```
+
+O backup roda num processo separado da API (`src/modules/system/backup/`, ADR-018) e lê a configuração em `src/config/backup-env.ts`. A API não lê as variáveis do restic. O teste com o restic real (`restic-store.integration.spec.ts`) fica `skipped` no host sem o binário e roda dentro do contêiner `backup` (`docs/arquitetura/backup.md`).

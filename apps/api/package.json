@@ -14,6 +14,9 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
+    "backup:run": "tsx src/modules/system/backup/run.ts",
+    "backup:scheduler": "tsx src/modules/system/backup/scheduler.ts",
+    "backup:verify": "tsx src/modules/system/backup/verify.ts",
     "openapi": "tsx scripts/openapi.ts",
     "openapi:check": "tsx scripts/openapi.ts --check"
   },

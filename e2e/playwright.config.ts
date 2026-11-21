@@ -1,14 +1,14 @@
-import { fileURLToPath } from 'node:url'
 import { defineConfig, devices } from '@playwright/test'
 import { defineBddConfig } from 'playwright-bdd'
+import { API_DATA_DIR, API_DATABASE_PATH } from './steps/api-server.js'
 import { API_BASE_URL, API_PORT } from './steps/catalog-api.js'
 
 const port = Number(process.env.E2E_PORT ?? 3100)
 const baseURL = `http://127.0.0.1:${port}`
 
 // A fresh database per run keeps the catalog scenarios repeatable.
-const apiDataDir = fileURLToPath(new URL('./.data', import.meta.url))
-const apiDatabasePath = `${apiDataDir}/heavy-duty.e2e.sqlite`
+const apiDataDir = API_DATA_DIR
+const apiDatabasePath = API_DATABASE_PATH
 
 const CATALOG_MUSCLES_SPEC = /catalog-muscles\.feature\.spec\.js$/
 
