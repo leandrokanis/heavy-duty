@@ -72,7 +72,7 @@ C4Container
   System_Ext(offsite, "Destino do backup", "Repositório do restic fora do disco principal")
 
   Boundary(navegador, "Celular ou Mac do PO", "Navegador") {
-    ContainerDb(local, "Armazenamento local", "IndexedDB, Dexie", "Fila de séries sem sinal e cache do treino do dia")
+    ContainerDb(local, "Armazenamento local", "IndexedDB, Dexie", "Fila de séries sem sinal e cópia do treino do dia")
   }
 
   System_Boundary(kasparov, "Heavy Duty, no servidor kasparov") {
@@ -103,7 +103,7 @@ C4Container
 | Contêiner | Responsabilidade | Tecnologia principal | Arquivo |
 |---|---|---|---|
 | App web | Telas do treino, do jogo e da administração; instalação como PWA | Next.js, React, Base UI, Animate UI, Tailwind CSS (Aceita, ADR-009) | `app-web.md` |
-| Armazenamento local | Fila de séries sem sinal e cache do treino do dia, no navegador | IndexedDB com Dexie | `armazenamento-local.md` |
+| Armazenamento local | Fila de séries sem sinal e cópia do treino do dia, no navegador | IndexedDB com Dexie | `armazenamento-local.md` |
 | API | Regras de negócio, rotas HTTP, servidor MCP, cálculo do jogo e avisos | Node.js 24, Hono, MCP TypeScript SDK | `api.md` |
 | Banco de dados | Catálogo, programas, treinos, retratos e registros do sistema | SQLite em WAL, com Drizzle ORM | `banco-de-dados.md` |
 | Backup | Cópia diária do banco para fora do disco principal | Agendador Node.js com restic, no serviço `backup` do Compose (Aceita, ADR-018) | `backup.md` |
@@ -127,7 +127,7 @@ O ambiente de desenvolvimento sobe com `docker compose up`, a partir do `compose
 
 1. O app web mostra a série com os valores do programa ou do último treino (US-F03-01).
 2. O atleta toca em "Próximo". O app web gera o ID da série, que também é a chave de idempotência, e grava a série na fila do armazenamento local.
-3. O app web envia a série à API. Se não há rede, a série fica na fila até a conexão voltar (US-F03-03).
+3. A fila do app web envia a série à API, em ordem. Se não há rede, a série fica na fila e segue quando a conexão volta, sem toque do atleta (US-F03-03, ADR-021).
 4. A API grava a série no banco. Uma segunda requisição com o mesmo ID não cria outra série (US-F03-02).
 5. O app web inicia o descanso com o `restSeconds` do programa (US-F05-01) e, com a gamificação, mostra os pontos calculados pela API (ADR-010).
 
@@ -153,7 +153,7 @@ O ambiente de desenvolvimento sobe com `docker compose up`, a partir do `compose
 | NFR03, backup diário | Contêiner de backup com restic, com o resultado registrado em `backup_runs` | ADR-018. Pendente: destino físico |
 | NFR04, HTTPS | Túnel da Cloudflare | Definido no PRD (D02) |
 | NFR05, instalação | Manifesto e service worker do app web (Serwist) | ADR-009 |
-| NFR06, sem sinal | Fila no armazenamento local, com envio posterior | Pendente: ADR de sincronização (H10) |
+| NFR06, sem sinal | Fila no armazenamento local, com envio posterior em ordem, e cópia local do treino do dia | ADR-021 |
 
 ## Decisões pendentes
 
@@ -162,7 +162,6 @@ O ambiente de desenvolvimento sobe com `docker compose up`, a partir do `compose
 | Método de autenticação do MCP (o do app web está na ADR-019) | NFR02, R07, H12 | Antes da onda 2 (US-F16-01) |
 | Licença "MIT + Commons Clause" do Animate UI: aceitar ou substituir a parte do Animate UI na ADR-009 | ADR-016 | Onda 1, decisão do PO |
 | Destino físico do backup e política de retenção | NFR03, ADR-018, `backup.md` | Onda 1, tarefa manual do PO |
-| Estratégia de sincronização sem sinal | H10, Q09, `armazenamento-local.md` | Antes da onda 3 |
 | Avisos por Web Push no iPhone | Q02, R01 | Antes da onda 7 |
 | Validação da entrega do SMTP próprio | ADR-007, R09 | Antes da onda 7 |
 | Lugar das telas de administração: proposta de rotas `/admin` no mesmo app web | D22, Q10, `app-web.md` | Antes da onda das telas de administração |

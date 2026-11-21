@@ -1,21 +1,42 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { clearActiveWorkout, loadActiveWorkout } from '@/sync/active-workout-store'
+import { createMemoryQueueStore } from '@/sync/queue-store'
+import { SYNC_RETRY_INTERVAL_MS } from '@/sync/sync.config'
+import { SyncProvider } from '@/sync/sync-context'
+import { createSyncQueue, type SendSet, type SyncQueue } from '@/sync/sync-queue'
 import { PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayDay } from './test-today'
+import { createWorkoutFlow, workoutFlowReducer } from './workout-flow'
 import { WorkoutScreen } from './workout-screen'
+import type { SendOutcome } from './workout-set.types'
+import { postWorkoutSet } from './workout-set-client'
 
 const WORKOUT_ID = '0193a1b2-0000-7000-8000-000000000601'
 const STARTED_AT = '2026-11-21T18:30:00.000Z'
 
-function renderWorkout(exercises = [SUPINO_RETO, PRANCHA], onFinish = vi.fn()) {
-  return render(
-    <WorkoutScreen
-      workoutId={WORKOUT_ID}
-      startedAt={STARTED_AT}
-      programId="program-1"
-      day={todayDay('A', 'Superior', exercises)}
-      onFinish={onFinish}
-    />,
+function flowOf(exercises = [SUPINO_RETO, PRANCHA]) {
+  return createWorkoutFlow({
+    workoutId: WORKOUT_ID,
+    startedAt: STARTED_AT,
+    programId: 'program-1',
+    day: todayDay('A', 'Superior', exercises),
+  })
+}
+
+// The queue sends through fetch by default, so the stubs of fetch still drive the sends.
+function renderWorkout(
+  exercises = [SUPINO_RETO, PRANCHA],
+  onFinish = vi.fn(),
+  send: SendSet = postWorkoutSet,
+  flow = flowOf(exercises),
+): { queue: SyncQueue } {
+  const queue = createSyncQueue({ store: createMemoryQueueStore(), send })
+  render(
+    <SyncProvider queue={queue}>
+      <WorkoutScreen flow={flow} onFinish={onFinish} />
+    </SyncProvider>,
   )
+  return { queue }
 }
 
 // Letter 'A' of the spec: supino-reto 3 x 10 at 42,5 kg resting 90 s, then triceps-polia 3 x 12.
@@ -53,9 +74,10 @@ function tapNext() {
   fireEvent.click(screen.getByRole('button', { name: 'Próximo' }))
 }
 
-afterEach(() => {
+afterEach(async () => {
   vi.useRealTimers()
   Reflect.deleteProperty(navigator, 'wakeLock')
+  await clearActiveWorkout()
 })
 
 describe('Given supino-reto with 42,5 kg from the last workout and 10 reps', () => {
@@ -151,14 +173,14 @@ describe('Given the workout screen on set 1 of supino-reto', () => {
 
 describe('Given the workout screen on set 1 of supino-reto, for a double tap', () => {
   describe('When the athlete taps Próximo twice with 300 ms between the taps', () => {
-    it('Then should send one set only and keep the rest at 1:30', () => {
+    it('Then should send one set only and keep the rest at 1:30', async () => {
       vi.useFakeTimers({ now: T0 })
       const fetchMock = stubFetch(created(), created())
       renderWorkout()
 
-      act(() => tapNext())
-      act(() => vi.advanceTimersByTime(300))
-      act(() => tapNext())
+      await act(async () => tapNext())
+      await act(async () => vi.advanceTimersByTimeAsync(300))
+      await act(async () => tapNext())
 
       expect({ posts: fetchMock.mock.calls.length, rest: restClock() }).toEqual({
         posts: 1,
@@ -168,28 +190,32 @@ describe('Given the workout screen on set 1 of supino-reto, for a double tap', (
   })
 })
 
-describe('Given the network fails on the first send', () => {
-  describe('When the athlete taps Próximo and then Reenviar, with the API answering 201', () => {
-    it('Then the rest should start with Série não enviada and Reenviar, and the resend should carry the same body and clear the notice', async () => {
-      const fetchMock = stubFetch(new TypeError('Failed to fetch'), created())
-      renderWorkout()
+describe('Given no connection', () => {
+  describe('When the athlete records two sets of supino-reto and the queue sends again with the API answering', () => {
+    it('Then the screen should show that 2 sets await sending while the rest keeps counting, and the indicator should disappear after the send', async () => {
+      vi.useFakeTimers({ now: T0 })
+      let outcome: SendOutcome = { status: 'retry' }
+      renderWorkout([SUPINO_RETO, PRANCHA], vi.fn(), async () => outcome)
 
       await act(async () => tapNext())
-      const afterFailure = {
+      await act(async () => vi.advanceTimersByTimeAsync(1000))
+      await act(async () => tapNext())
+      await act(async () => vi.advanceTimersByTimeAsync(1000))
+      await act(async () => tapNext())
+      const offline = {
+        indicator: screen.getByRole('status', { name: '2 séries aguardando envio' }).textContent,
         resting: screen.queryByRole('timer', { name: 'Descanso' }) !== null,
-        notice: screen.queryByText('Série não enviada') !== null,
+        next: buttonState('Próximo'),
       }
-      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Reenviar' })))
-      const [first, second] = sentBodies(fetchMock)
+      outcome = { status: 'confirmed' }
+      await act(async () => vi.advanceTimersByTimeAsync(SYNC_RETRY_INTERVAL_MS))
 
       expect({
-        afterFailure,
-        sameBody: second !== undefined && JSON.stringify(second) === JSON.stringify(first),
-        noticeAfterResend: screen.queryByText('Série não enviada'),
+        offline,
+        indicatorAfter: screen.queryByRole('status', { name: /aguardando envio/ }),
       }).toEqual({
-        afterFailure: { resting: true, notice: true },
-        sameBody: true,
-        noticeAfterResend: null,
+        offline: { indicator: '2 séries aguardando envio', resting: true, next: 'enabled' },
+        indicatorAfter: null,
       })
     })
   })
@@ -197,7 +223,7 @@ describe('Given the network fails on the first send', () => {
 
 describe('Given the API answers 401 to the send', () => {
   describe('When the athlete taps Próximo', () => {
-    it('Then the workout screen should stay and show Série não enviada', async () => {
+    it('Then the workout screen should stay and show that 1 set awaits sending, with no resend button', async () => {
       stubFetch(new Response(JSON.stringify({ code: 'unauthenticated' }), { status: 401 }))
       renderWorkout()
 
@@ -205,9 +231,27 @@ describe('Given the API answers 401 to the send', () => {
 
       expect({
         title: screen.getByRole('heading', { level: 1 }).textContent,
-        notice: screen.queryByText('Série não enviada') !== null,
-        resend: screen.queryByRole('button', { name: 'Reenviar' }) !== null,
-      }).toEqual({ title: 'Supino reto', notice: true, resend: true })
+        indicator: screen.queryByRole('status', { name: '1 série aguardando envio' }) !== null,
+        resend: screen.queryByRole('button', { name: 'Reenviar' }),
+      }).toEqual({ title: 'Supino reto', indicator: true, resend: null })
+    })
+  })
+})
+
+describe('Given a workout restored with set 1 already recorded', () => {
+  describe('When the screen opens and the queue is empty', () => {
+    it('Then the restored set should not be queued again', async () => {
+      const recorded = workoutFlowReducer(flowOf(), { type: 'next', nowMs: T0 })
+      const { queue } = renderWorkout(
+        undefined,
+        vi.fn(),
+        async () => ({ status: 'retry' }),
+        recorded,
+      )
+
+      await act(async () => {})
+
+      expect(queue.getSnapshot().pending).toEqual([])
     })
   })
 })
@@ -506,45 +550,32 @@ describe('Given a letter with triceps-polia of one set', () => {
   })
 })
 
-describe('Given the last set of the day and a network that fails on the first send', () => {
-  describe('When the workout finishes, and then the athlete taps Reenviar with the API answering 201 and taps Fechar', () => {
-    it('Then Fechar should stay disabled while the set is not sent, and call onFinish once after the resend', async () => {
-      const onFinish = vi.fn()
-      stubFetch(new TypeError('Failed to fetch'), created())
-      renderWorkout([TRICEPS_ONE_SET], onFinish)
-
-      await act(async () => tapNext())
-      const afterFailure = {
-        notice: screen.queryByText('Série não enviada') !== null,
-        resend: screen.queryByRole('button', { name: 'Reenviar' }) !== null,
-        close: buttonState('Fechar'),
-      }
-      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Reenviar' })))
-      const afterResend = buttonState('Fechar')
-      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Fechar' })))
-
-      expect({ afterFailure, afterResend, onFinish: onFinish.mock.calls.length }).toEqual({
-        afterFailure: { notice: true, resend: true, close: 'disabled' },
-        afterResend: 'enabled',
-        onFinish: 1,
-      })
-    })
-  })
-})
-
-describe('Given the last set of the day still being sent', () => {
+describe('Given the last set of the day with the network failing', () => {
   describe('When the workout finishes and the athlete taps Fechar', () => {
-    it('Then Fechar should be disabled and onFinish should not be called', async () => {
+    it('Then Fechar should be enabled with the set in the queue, clear the workout in progress and call onFinish once', async () => {
       const onFinish = vi.fn()
-      stubFetch('pending')
-      renderWorkout([TRICEPS_ONE_SET], onFinish)
+      const { queue } = renderWorkout([TRICEPS_ONE_SET], onFinish, async () => ({
+        status: 'retry',
+      }))
       await act(async () => tapNext())
+      const beforeClose = {
+        close: buttonState('Fechar'),
+        saved: (await loadActiveWorkout(Date.now()))?.phase,
+        pending: queue.getSnapshot().pending.length,
+      }
 
       await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Fechar' })))
 
-      expect({ close: buttonState('Fechar'), onFinish: onFinish.mock.calls.length }).toEqual({
-        close: 'disabled',
-        onFinish: 0,
+      expect({
+        beforeClose,
+        saved: await loadActiveWorkout(Date.now()),
+        pending: queue.getSnapshot().pending.length,
+        onFinish: onFinish.mock.calls.length,
+      }).toEqual({
+        beforeClose: { close: 'enabled', saved: 'finished', pending: 1 },
+        saved: null,
+        pending: 1,
+        onFinish: 1,
       })
     })
   })

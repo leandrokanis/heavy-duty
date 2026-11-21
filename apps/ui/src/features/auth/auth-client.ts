@@ -4,6 +4,7 @@ import type {
   PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
 } from '@simplewebauthn/browser'
+import { clearCachedToday } from '@/sync/today-cache'
 
 export type SessionState = 'authenticated' | 'unauthenticated' | 'offline'
 
@@ -64,8 +65,11 @@ export async function verifyEnrollment(
 }
 
 // The precache holds only static files and the offline page, so it survives the sign-out.
+// The copy of the workout of the day goes too. The queue and the workout in progress stay: they hold
+// the sets that still have to reach the API (ADR-021).
 export async function signOut(): Promise<void> {
   await fetch(SESSION_PATH, { method: 'DELETE', ...SAME_ORIGIN })
+  await clearCachedToday()
   if (typeof caches === 'undefined') return
   const names = await caches.keys()
   await Promise.all(

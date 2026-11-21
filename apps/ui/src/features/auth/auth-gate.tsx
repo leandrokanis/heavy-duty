@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { hasCachedToday } from '@/sync/today-cache'
 import { fetchSession, type SessionState } from './auth-client'
 import { OfflineNotice } from './offline-notice'
 import { SignInScreen } from './sign-in-screen'
@@ -13,14 +14,23 @@ export type AuthGateProps = {
   children: ReactNode
 }
 
+// Without signal the home page still opens when the device holds a copy of the workout of the day,
+// which only exists after a 200 with a session; the API stays the security boundary (FR-013).
+async function resolveOffline(pathname: string): Promise<SessionState> {
+  return pathname === '/' && (await hasCachedToday()) ? 'authenticated' : 'offline'
+}
+
 export function AuthGate({ children }: AuthGateProps) {
-  const isOpenPath = OPEN_PATHS.has(usePathname())
+  const pathname = usePathname()
+  const isOpenPath = OPEN_PATHS.has(pathname)
   const [session, setSession] = useState<SessionState | 'pending'>('pending')
 
   const checkSession = useCallback(() => {
     setSession('pending')
-    fetchSession().then(setSession)
-  }, [])
+    fetchSession()
+      .then((state) => (state === 'offline' ? resolveOffline(pathname) : state))
+      .then(setSession)
+  }, [pathname])
 
   useEffect(() => {
     if (!isOpenPath) checkSession()

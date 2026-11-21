@@ -136,3 +136,29 @@ export function deactivatePrograms(): void {
     db.exec('UPDATE programs SET is_active = 0 WHERE is_active = 1')
   })
 }
+
+// The id of the only workout in the database, for scenarios where the page, not the test, created it.
+export function readOnlyWorkoutId(): string | undefined {
+  return withDatabase((db) => {
+    const rows = db.prepare('SELECT id FROM workouts').all() as { id: string }[]
+    return rows.length === 1 ? rows[0]?.id : undefined
+  })
+}
+
+export function countWorkouts(): number {
+  return withDatabase(
+    (db) => (db.prepare('SELECT COUNT(*) AS total FROM workouts').get() as { total: number }).total,
+  )
+}
+
+export function readWorkoutSetInstants(workoutId: string): string[] {
+  return withDatabase((db) =>
+    (
+      db
+        .prepare(
+          'SELECT performed_at AS performedAt FROM workout_sets WHERE workout_id = ? ORDER BY set_number',
+        )
+        .all(workoutId) as { performedAt: string }[]
+    ).map(({ performedAt }) => performedAt),
+  )
+}

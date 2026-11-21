@@ -5,14 +5,14 @@
 | Nível C4 | 2, contêiner (armazenamento de dados) |
 | Pasta | `apps/ui/src/sync/` |
 | Onde roda | IndexedDB do navegador do celular |
-| ADRs | ADR-009; ADR de sincronização pendente (H10) |
+| ADRs | ADR-009, ADR-021 |
 | Ondas | 3 em diante |
 
 ## Responsabilidade
 
 - Guardar a série registrada até a API confirmar o recebimento (US-F03-03).
 - Guardar o treino do dia em andamento, para o fluxo continuar se o app fechar ou a rede cair.
-- Guardar uma cópia do programa e dos valores do último treino, para o treino abrir sem sinal.
+- Guardar uma cópia da resposta de `GET /api/today` (programa e valores do último treino), para o treino abrir sem sinal.
 
 O armazenamento local não é fonte da verdade. Quando a API confirma uma série, o registro local é apagado.
 
@@ -21,16 +21,20 @@ O armazenamento local não é fonte da verdade. Quando a API confirma uma série
 | Tecnologia | Uso | Licença | Estado |
 |---|---|---|---|
 | IndexedDB | Banco do navegador | Padrão da web | Aceita, ADR-009 |
-| Dexie | Acesso tipado ao IndexedDB | Apache-2.0 | Proposta [a confirmar na US-F03-03] |
+| Dexie 4.4.7 | Acesso tipado ao IndexedDB | Apache-2.0 | Aceita, ADR-021 |
+| fake-indexeddb 6.2.7 | IndexedDB em memória, só nos testes | Apache-2.0 | Aceita, ADR-021 |
 | UUID gerado no cliente | ID da série e do treino e chave de idempotência, em UUID v7 com o pacote `uuid` 14.0.3 (`createClientId` em `apps/ui/src/features/workout/client-id.ts`, US-F03-02) | MIT | Aceita, ADR-014 |
 
 ## Dados guardados
 
+Banco `heavy-duty`, versão 1, com quatro tabelas (`apps/ui/src/sync/local-db.ts`):
+
 | Tabela local | Conteúdo | Quando sai |
 |---|---|---|
-| `pendingSets` | Série com ID, treino, exercício, carga, repetições ou tempo e horário | Quando a API confirma o recebimento |
-| `activeWorkout` | Letra, exercício atual, séries feitas, exercícios pulados, fim do descanso | Quando o treino termina ou é encerrado |
-| `programCache` | Programa ativo e valores do último treino de cada exercício | Quando a API devolve uma versão nova |
+| `pendingSets` | Série da fila: `seq` (ordem de registro), `id` único, treino, corpo do envio e horário da entrada | Quando a API confirma (200 ou 201) ou recusa a série (400, 409 ou 422) |
+| `rejectedSets` | Série que a API recusou por regra de domínio, com `code` e `message` | Quando o atleta toca em "Dispensar" |
+| `activeWorkout` | Uma linha: o estado inteiro do treino em andamento (letra, posição, fase, fim do descanso, séries feitas) e o instante da gravação | Quando o atleta toca em "Fechar" ou passadas 2 h desde a última gravação |
+| `programCache` | Uma linha: a última resposta 200 de `GET /api/today` | Quando a API devolve uma resposta 200 nova, em `signOut` e no 401 de `GET /api/today` |
 
 ## Interfaces
 
@@ -43,7 +47,10 @@ O armazenamento local não é fonte da verdade. Quando a API confirma uma série
 
 1. A série entra na fila antes do envio, mesmo com rede. O envio direto sem fila perde a série se a requisição falhar.
 2. O reenvio usa o mesmo ID. A API trata o ID repetido como a mesma série (US-F03-02).
-3. A fila é enviada em ordem de registro. Uma série que a API recusa por regra de domínio sai da fila e aparece para o atleta corrigir.
+3. A fila é enviada em ordem de registro, uma série por vez. Uma série que a API recusa por regra de domínio (400, 409 ou 422) sai da fila, vai para `rejectedSets` e aparece num aviso até o atleta dispensar. O app não reenvia a série recusada. As outras falhas (rede, tempo esgotado, 401, 403, 404, 408, 429 e 5xx) mantêm a série na fila e param a rodada.
 4. A tela mostra quantas séries aguardam envio, sem bloquear o treino (`DESIGN.md`, princípio 4).
+5. Se o IndexedDB não abre ou uma gravação falha, a fila segue só em memória pelo resto da sessão, com o mesmo indicador.
+6. O envio começa ao abrir o app, no evento `online`, na volta ao primeiro plano, depois de cada resposta 200 de `GET /api/today` e a cada 15 s enquanto houver série na fila. Não há Background Sync.
+7. `signOut` apaga `programCache`. A fila, as recusadas e o treino em andamento ficam, porque guardam séries que ainda precisam chegar à API (risco aceito, ADR-021).
 
-A estratégia de conflito (por exemplo, série corrigida no Mac enquanto outra está na fila do celular) é decidida na ADR de sincronização, antes da onda 3.
+A estratégia de sincronização e de conflito está na ADR-021: o servidor vence.

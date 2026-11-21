@@ -26,6 +26,7 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-018](018-backup-diario-com-restic.md) | Backup diário com restic | Aceita |
 | [ADR-019](019-autenticacao-com-chave-de-acesso.md) | Autenticação do app web com chave de acesso | Aceita |
 | [ADR-020](020-autenticacao-do-mcp-com-oauth.md) | Autenticação do MCP com OAuth 2.1 emitido pelo próprio app | Aceita |
+| [ADR-021](021-sincronizacao-da-fila-sem-sinal.md) | Sincronização da fila de séries sem sinal | Aceita |
 
 ## Regras
 

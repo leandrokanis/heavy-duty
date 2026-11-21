@@ -36,6 +36,7 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Passo | Ação do atleta no fluxo da academia que pede um toque: registrar a série, pular o descanso | — | etapa |
 | Ajuste por arrasto | Mudança de carga, repetições ou tempo por arrasto, em passos fixos, sem teclado | `dragAdjust` | slider |
 | Histórico | Conjunto dos treinos registrados | `history` | log |
+| Fila de envio | Séries registradas no celular que aguardam a confirmação da API, guardadas no aparelho e enviadas em ordem de registro. A série que a API recusa por regra de domínio sai da fila e vira aviso | `pendingSets` | buffer, cache |
 | Volume | Soma de carga × repetições por grupo muscular num intervalo. A fórmula para exercício de tempo está em aberto (Q07) | `volume` | — |
 
 ## Acesso

@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { usePathname } from 'next/navigation'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { todayBody } from '@/features/workout/test-today'
+import { clearCachedToday, loadToday } from '@/sync/today-cache'
 import { AuthGate } from './auth-gate'
 
 vi.mock('next/navigation', () => ({ usePathname: vi.fn() }))
@@ -27,6 +29,15 @@ function stubFetch(...responses: (Response | Error)[]) {
 function json(status: number, body: unknown = {}) {
   return new Response(JSON.stringify(body), { status })
 }
+
+async function cacheToday() {
+  stubFetch(json(200, todayBody()))
+  await loadToday()
+}
+
+afterEach(async () => {
+  await clearCachedToday()
+})
 
 function renderGate() {
   return render(
@@ -133,6 +144,66 @@ describe('Given the AuthGate on the MCP authorization screen', () => {
         signIn: (await screen.findByRole('button', { name: 'Entrar' })) !== null,
         child: screen.queryByRole('heading', { name: 'Tela pedida' }),
       }).toEqual({ signIn: true, child: null })
+    })
+  })
+})
+
+describe('Given a cached today on the device', () => {
+  describe('When the session check fails for the network on the home page', () => {
+    it('Then should show the requested screen', async () => {
+      usePathnameMock.mockReturnValue('/')
+      await cacheToday()
+      stubFetch(new TypeError('Failed to fetch'))
+
+      renderGate()
+
+      expect(await screen.findByRole('heading', { name: 'Tela pedida' })).toBeInTheDocument()
+    })
+  })
+
+  describe('When the session check fails for the network on another path', () => {
+    it('Then should show Sem conexão and not the requested screen', async () => {
+      usePathnameMock.mockReturnValue('/autorizar')
+      await cacheToday()
+      stubFetch(new TypeError('Failed to fetch'))
+
+      renderGate()
+
+      expect({
+        offline: (await screen.findByRole('heading', { name: 'Sem conexão' })) !== null,
+        child: screen.queryByRole('heading', { name: 'Tela pedida' }),
+      }).toEqual({ offline: true, child: null })
+    })
+  })
+
+  describe('When the session check answers 401 on the home page', () => {
+    it('Then should show the Entrar button and not the requested screen', async () => {
+      usePathnameMock.mockReturnValue('/')
+      await cacheToday()
+      stubFetch(json(401))
+
+      renderGate()
+
+      expect({
+        signIn: (await screen.findByRole('button', { name: 'Entrar' })) !== null,
+        child: screen.queryByRole('heading', { name: 'Tela pedida' }),
+      }).toEqual({ signIn: true, child: null })
+    })
+  })
+})
+
+describe('Given no cached today', () => {
+  describe('When the session check fails for the network on the home page', () => {
+    it('Then should show Sem conexão, without flashing the requested screen while it reads the device', async () => {
+      usePathnameMock.mockReturnValue('/')
+      stubFetch(new TypeError('Failed to fetch'))
+
+      renderGate()
+
+      expect({
+        offline: (await screen.findByRole('heading', { name: 'Sem conexão' })) !== null,
+        child: screen.queryByRole('heading', { name: 'Tela pedida' }),
+      }).toEqual({ offline: true, child: null })
     })
   })
 })

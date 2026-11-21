@@ -2,25 +2,28 @@
 
 import { Button } from '@base-ui/react/button'
 import { Progress } from '@base-ui/react/progress'
-import { CloudOff } from 'lucide-react'
-import { type Dispatch, useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { clearActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
+import { useSyncQueue } from '@/sync/sync-context'
 import { formatLoadKg } from './format'
+import { PendingSetsIndicator } from './pending-sets-indicator'
+import { RejectedSetsNotice } from './rejected-sets-notice'
 import { RestRing } from './rest-ring'
 import type { TodayExercise } from './today.types'
 import { useScreenWakeLock } from './use-screen-wake-lock'
 import {
   announcementOf,
-  createWorkoutFlow,
   currentExercise,
-  type RecordedSet,
   upcomingExercise,
-  type WorkoutFlowAction,
-  type WorkoutSession,
+  type WorkoutFlowState,
   workoutFlowReducer,
 } from './workout-flow'
-import { postWorkoutSet } from './workout-set-client'
 
-export type WorkoutScreenProps = WorkoutSession & { onFinish: () => void }
+export type WorkoutScreenProps = {
+  // The state to start from: a new workout or one restored from the device.
+  flow: WorkoutFlowState
+  onFinish: () => void
+}
 
 type Measure = { value: string; unit: string }
 
@@ -41,41 +44,25 @@ function MeasureValue({ label, measure }: { label: string; measure: Measure }) {
   )
 }
 
-// Sends each set marked sending once; the rest starts without waiting (FR-005), and a
-// resend goes out with the same id and body (FR-013).
-function useSendRecordedSets(
-  workoutId: string,
-  recorded: readonly RecordedSet[],
-  dispatch: Dispatch<WorkoutFlowAction>,
-) {
-  const inFlight = useRef(new Set<string>())
+// Puts each new set in the queue before anything else (the data that matters), then saves the
+// workout in progress; the rest starts without waiting for the send (FR-001, FR-005, FR-009).
+// A restored flow starts with its sets already in the ref, so they are not queued twice.
+function usePersistWorkout(initial: WorkoutFlowState, state: WorkoutFlowState): () => void {
+  const queue = useSyncQueue()
+  const queued = useRef(new Set(initial.recorded.map(({ id }) => id)))
+  const closed = useRef(false)
   useEffect(() => {
-    for (const { body, status } of recorded) {
-      if (status !== 'sending' || inFlight.current.has(body.id)) continue
-      inFlight.current.add(body.id)
-      postWorkoutSet(workoutId, body).then((result) => {
-        inFlight.current.delete(body.id)
-        dispatch({ type: 'sendResult', setId: body.id, result })
-      })
-    }
-  }, [workoutId, recorded, dispatch])
-}
-
-function UnsentNotice({ count, onResend }: { count: number; onResend: () => void }) {
-  return (
-    <div className="flex items-center gap-(--space-12)">
-      <CloudOff aria-hidden="true" className="size-[20px] opacity-60" />
-      <span className="flex-1 text-[0.9375rem] opacity-60">
-        {count === 1 ? 'Série não enviada' : `${count} séries não enviadas`}
-      </span>
-      <Button
-        className="min-h-(--target-workout) rounded-(--radius-capsule) px-(--space-20) text-[1.0625rem] font-(--font-weight-semibold) active:opacity-60"
-        onClick={onResend}
-      >
-        Reenviar
-      </Button>
-    </div>
-  )
+    if (state === initial) return
+    const fresh = state.recorded.filter(({ id }) => !queued.current.has(id))
+    for (const { id } of fresh) queued.current.add(id)
+    void (async () => {
+      for (const body of fresh) await queue.enqueue(state.session.workoutId, body)
+      if (!closed.current) await saveActiveWorkout(state, Date.now())
+    })()
+  }, [initial, state, queue])
+  return () => {
+    closed.current = true
+  }
 }
 
 const REST_TICK_MS = 250
@@ -139,24 +126,27 @@ function dotClassOf(index: number, recordedCount: number, resting: boolean): str
   return 'bg-[color-mix(in_srgb,CanvasText_20%,transparent)]'
 }
 
-export function WorkoutScreen({ onFinish, ...session }: WorkoutScreenProps) {
-  const [state, dispatch] = useReducer(workoutFlowReducer, session, createWorkoutFlow)
-  useSendRecordedSets(session.workoutId, state.recorded, dispatch)
-  const { day } = session
+export function WorkoutScreen({ flow, onFinish }: WorkoutScreenProps) {
+  const [state, dispatch] = useReducer(workoutFlowReducer, flow)
+  const stopSaving = usePersistWorkout(flow, state)
+  const { day } = state.session
   const exerciseNumber = state.exerciseIndex + 1
   const setNumber = state.setNumber
   const planned: TodayExercise = currentExercise(state)
   const resting = state.phase === 'rest'
   const finished = state.phase === 'finished'
   const endRest = useCallback((nowMs: number) => dispatch({ type: 'restEnd', nowMs }), [])
+  const close = async () => {
+    stopSaving()
+    await clearActiveWorkout()
+    onFinish()
+  }
   const restMsLeft = useRestClock(state.restEndsAtMs, endRest)
   const upcoming = upcomingExercise(state)
   useScreenWakeLock(resting)
   const recordedCount = state.recorded.filter(
-    ({ body }) => body.plannedExerciseId === planned.plannedExerciseId,
+    (body) => body.plannedExerciseId === planned.plannedExerciseId,
   ).length
-  const unsentCount = state.recorded.filter(({ status }) => status === 'failed').length
-  const hasPendingSet = state.recorded.some(({ status }) => status !== 'sent')
   return (
     <main className="flex min-h-dvh flex-col gap-(--space-32) px-(--space-margin-inline) py-(--space-24)">
       <div className="glass flex min-h-(--target-workout) items-center gap-(--space-16) rounded-(--radius-capsule) px-(--space-20)">
@@ -205,14 +195,11 @@ export function WorkoutScreen({ onFinish, ...session }: WorkoutScreenProps) {
         <RestArea msLeft={restMsLeft} planned={planned} upcoming={upcoming} />
       ) : null}
       <div className="mt-auto flex flex-col gap-(--space-16)">
-        {unsentCount > 0 ? (
-          <UnsentNotice count={unsentCount} onResend={() => dispatch({ type: 'resend' })} />
-        ) : null}
+        <RejectedSetsNotice />
+        <PendingSetsIndicator />
         <Button
-          disabled={finished && hasPendingSet}
-          focusableWhenDisabled
-          className="min-h-(--target-workout) w-full rounded-(--radius-capsule) bg-[CanvasText] px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) text-[Canvas] active:opacity-60 data-disabled:opacity-40"
-          onClick={finished ? onFinish : () => dispatch({ type: 'next', nowMs: Date.now() })}
+          className="min-h-(--target-workout) w-full rounded-(--radius-capsule) bg-[CanvasText] px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) text-[Canvas] active:opacity-60"
+          onClick={finished ? close : () => dispatch({ type: 'next', nowMs: Date.now() })}
         >
           {finished ? 'Fechar' : 'Próximo'}
         </Button>

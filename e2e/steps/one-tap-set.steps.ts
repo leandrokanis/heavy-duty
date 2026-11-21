@@ -142,16 +142,14 @@ When('the athlete taps {string} twice in a row', async ({ page, program }, name:
   await request.response()
 })
 
-When(
-  'the API answers again and the athlete taps {string}',
-  async ({ page, program }, name: string) => {
-    await page.unroute(SETS_ROUTE)
-    const request = await captureSend(page, program, () =>
-      page.getByRole('button', { name }).click(),
-    )
-    expect((await request.response())?.status()).toBe(201)
-  },
-)
+When('the API answers again and the queue sends the set', async ({ page, program }) => {
+  await page.unroute(SETS_ROUTE)
+  // The queue retries on a timer too; the online event only spares the test the 15 s wait.
+  const request = await captureSend(page, program, async () => {
+    await page.evaluate(() => window.dispatchEvent(new Event('online')))
+  })
+  expect((await request.response())?.status()).toBe(201)
+})
 
 When(
   'the app sends the set with the id X again with the same values',
