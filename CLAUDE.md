@@ -1,6 +1,6 @@
 # Heavy Duty
 
-Monorepo open source do Heavy Duty, um app pessoal de musculação. A UI (`apps/ui`) é um PWA para registrar o treino no celular. A API (`apps/api`) guarda os dados e expõe um servidor MCP para administrar o app pelo Claude. O produto está descrito em `docs/prd.md`.
+Monorepo open source do Heavy Duty, um app pessoal de musculação. A UI (`apps/ui`) é um PWA em Next.js para registrar o treino no celular. A API (`apps/api`) guarda os dados e expõe um servidor MCP para administrar o app pelo Claude. O produto está descrito em `docs/prd.md`.
 
 Estado atual: só a documentação e a estrutura de pastas existem. Os apps ainda não têm código. O scaffold dos apps faz parte da onda 1 do PRD (F01 e F14).
 
@@ -15,13 +15,13 @@ Estado atual: só a documentação e a estrutura de pastas existem. Os apps aind
 
 | Caminho | Conteúdo |
 |---|---|
-| `apps/ui/` | PWA em React e Vite. Regras em `apps/ui/CLAUDE.md` |
+| `apps/ui/` | PWA em Next.js, com Base UI e Animate UI. Regras em `apps/ui/CLAUDE.md` |
 | `apps/api/` | API em Node e Hono, servidor MCP e SQLite. Regras em `apps/api/CLAUDE.md` |
 | `e2e/` | Testes ponta a ponta com Playwright e playwright-bdd |
 | `DESIGN.md` | Diretrizes de interface (HIG), com referência no iOS 27 e no macOS 27 |
 | `docs/prd.md` | Requisitos de produto: features, stories e cenários de aceite |
 | `docs/gamificacao.md` | Projeto de gamificação (Octalysis) das ondas 5 a 7 |
-| `docs/arquitetura.md` | Componentes, fluxos e decisões pendentes |
+| `docs/arquitetura/` | Modelo C4 (contexto e contêineres), um arquivo por contêiner e o modelo de dados |
 | `docs/adr/` | Registros de decisão de arquitetura (ADR) |
 | `docs/convencoes/` | Código, comentários, testes, escrita técnica e Git |
 | `docs/qualidade.md` | Definição de pronto, verificações automáticas e revisão |
@@ -45,7 +45,7 @@ Enquanto os apps não têm `package.json`, os scripts terminam sem executar nada
 
 1. Escreva comentário só dos tipos de `docs/convencoes/comentarios.md`, Seção 4, com até 3 linhas, em inglês. Não escreva TODO, ID de ticket, autor, data nem código comentado.
 2. Escreva teste com `describe` aninhado no padrão Given/When/Then. O arquivo `.spec.ts` fica ao lado do código testado. Detalhes em `docs/convencoes/testes.md`.
-3. Ponha a unidade no identificador: `loadKg`, `restSeconds`, `durationSeconds`.
+3. Ponha a unidade no identificador: `loadG`, `restSeconds`, `durationSeconds`. Guarde medida como inteiro na menor unidade (gramas, segundos), sem ponto flutuante; a tela converte para kg.
 4. Antes de introduzir uma decisão de arquitetura nova, escreva uma ADR em `docs/adr/` com status `Proposta` e peça a decisão do PO.
 5. Não leia, não escreva e não repita senha, token ou chave. O arquivo `.env` fica fora do Git; o `.env.example` usa marcadores como `<TOKEN>`.
 6. Não crie commit, branch remota nem PR sem pedido explícito.
@@ -57,7 +57,8 @@ Enquanto os apps não têm `package.json`, os scripts terminam sem executar nada
 | Tarefa | Leia antes |
 |---|---|
 | Implementar uma story | a story em `docs/prd.md` e a pasta da story em `docs/specs/` |
-| Criar módulo, rota ou ferramenta MCP | `docs/arquitetura.md` e `docs/convencoes/codigo.md` |
+| Criar módulo, rota ou ferramenta MCP | `docs/arquitetura/api.md` e `docs/convencoes/codigo.md` |
+| Criar ou alterar tabela do banco | `docs/arquitetura/dados.md` |
 | Criar ou alterar tela ou componente de UI | `DESIGN.md` |
 | Implementar janela, progresso, mapa, aviso ou período (ondas 5 a 7) | `docs/gamificacao.md` |
 | Escrever teste | `docs/convencoes/testes.md` |

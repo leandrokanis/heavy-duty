@@ -138,7 +138,7 @@ O português omite o sujeito, e a 3ª pessoa do singular serve para `ele`, `voc�
 
 ### R7. Número, data, hora e unidade
 
-- Decimal com vírgula (`42,5 kg`), milhar com ponto (`1.000`). Dentro de trecho protegido, o número fica como está (`loadKg: 42.5`).
+- Decimal com vírgula (`42,5 kg`), milhar com ponto (`1.000`). Dentro de trecho protegido, o número fica como está (`loadG: 42500`).
 - Data em ISO 8601 (`2026-11-20`) ou com o mês por extenso (`20 de novembro de 2026`).
 - Hora em 24 h (`14h30`).
 - Espaço entre número e unidade (`90 s`, `200 ms`). Símbolo sem plural (`5 kg`).

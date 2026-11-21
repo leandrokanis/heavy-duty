@@ -23,7 +23,7 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Letra | Divisão do programa (A, B, C…) com a lista de exercícios de um dia de treino | `ProgramDay` | treino A, split |
 | Exercício do programa | Exercício dentro de uma letra, com séries, alvo, carga e descanso | `PlannedExercise` | — |
 | Alvo | Repetições (exercício de repetição) ou segundos (exercício de tempo) por série | `targetReps`, `targetSeconds` | — |
-| Carga | Peso usado na série, em kg | `loadKg` | peso |
+| Carga | Peso usado na série. Guardada e trafegada como inteiro em gramas; a tela mostra em kg | `loadG` | peso |
 | Descanso | Intervalo planejado entre séries, em segundos | `restSeconds` | pausa, intervalo |
 
 ## Execução

@@ -1,0 +1,228 @@
+# Modelo de entidade e relacionamento
+
+Este documento descreve as tabelas do banco de dados (`banco-de-dados.md`), as relações entre elas e as regras que o banco garante. Os nomes de domínio estão em `CONTEXT.md`. O modelo segue a ADR-010 (proposta): o estado do jogo é calculado a partir do histórico, e só fica guardado o que não pode mudar quando a fórmula muda.
+
+Estado: modelo planejado. As tabelas nascem por migração, na onda da feature que as usa.
+
+Toda medida é inteira, na menor unidade, para evitar ponto flutuante: carga em gramas (`load_g`; 42,5 kg é `42500`, e o passo de 2,5 kg é `2500`) e tempo em segundos. Nenhuma coluna usa `REAL`.
+
+## Diagrama
+
+```mermaid
+erDiagram
+  MUSCLE_GROUPS ||--o{ MUSCLES : agrupa
+  EXERCISES ||--|{ EXERCISE_MUSCLES : ativa
+  MUSCLES ||--o{ EXERCISE_MUSCLES : "é ativado em"
+  PROGRAMS ||--|{ PROGRAM_DAYS : "divide em"
+  PROGRAM_DAYS ||--|{ PLANNED_EXERCISES : lista
+  EXERCISES ||--o{ PLANNED_EXERCISES : "é planejado em"
+  PROGRAM_DAYS ||--o{ WORKOUTS : "é treinada em"
+  WORKOUTS ||--o{ WORKOUT_SETS : registra
+  EXERCISES ||--o{ WORKOUT_SETS : "é executado em"
+  PLANNED_EXERCISES |o--o{ WORKOUT_SETS : origina
+  WORKOUTS ||--o{ WORKOUT_SKIPS : pula
+  PLANNED_EXERCISES ||--o{ WORKOUT_SKIPS : "é pulado em"
+  PERIODS ||--o{ PERIOD_SNAPSHOTS : congela
+  MUSCLE_GROUPS ||--o{ PERIOD_SNAPSHOTS : "é retratado em"
+  WORKOUTS |o--o{ MEDAL_AWARDS : rende
+  PROGRAM_DAYS |o--o{ NOTIFICATIONS : "é avisada em"
+  MUSCLE_GROUPS |o--o{ NOTIFICATIONS : "é avisado em"
+
+  MUSCLE_GROUPS {
+    text id PK
+    text slug UK
+    text name
+    integer position
+  }
+  MUSCLES {
+    text id PK
+    text muscle_group_id FK
+    text slug UK
+    text name
+  }
+  EXERCISES {
+    text id PK
+    text name
+    text kind "reps ou time"
+    text archived_at "nulo se ativo"
+  }
+  EXERCISE_MUSCLES {
+    text exercise_id PK,FK
+    text muscle_id PK,FK
+    text role "primary ou secondary"
+  }
+  PROGRAMS {
+    text id PK
+    text name
+    text goal "strength, hypertrophy ou endurance"
+    integer is_active
+    text created_at
+  }
+  PROGRAM_DAYS {
+    text id PK
+    text program_id FK
+    text letter "uma letra de A a Z"
+    text label "nome livre da divisão"
+    integer position
+  }
+  PLANNED_EXERCISES {
+    text id PK
+    text program_day_id FK
+    text exercise_id FK
+    integer position
+    integer sets
+    integer target_reps "nulo se time"
+    integer target_seconds "nulo se reps"
+    integer load_g
+    integer rest_seconds
+  }
+  WORKOUTS {
+    text id PK
+    text program_day_id FK
+    text started_at
+    text finished_at
+    text end_reason "completed ou ended_early"
+  }
+  WORKOUT_SETS {
+    text id PK "gerado no cliente, chave de idempotência"
+    text workout_id FK
+    text exercise_id FK
+    text planned_exercise_id FK "nulo se o plano mudou"
+    integer set_number
+    integer load_g
+    integer reps "nulo se time"
+    integer seconds "nulo se reps"
+    text performed_at
+    text corrected_at
+  }
+  WORKOUT_SKIPS {
+    text workout_id PK,FK
+    text planned_exercise_id PK,FK
+    text skipped_at
+  }
+  PERIODS {
+    text id PK
+    text starts_on
+    text ends_on
+    text intention
+  }
+  PERIOD_SNAPSHOTS {
+    text id PK
+    text period_id FK
+    text muscle_group_id FK
+    integer level
+    integer best_level
+    integer windows_used
+    integer windows_total
+    text frozen_at
+  }
+  MEDAL_AWARDS {
+    text id PK
+    text medal_code UK
+    text workout_id FK "nulo se não vier de um treino"
+    text awarded_at
+  }
+  PUSH_SUBSCRIPTIONS {
+    text id PK
+    text endpoint UK
+    text key_p256dh
+    text key_auth
+    text created_at
+  }
+  NOTIFICATIONS {
+    text id PK
+    text kind "window, level_drop ou weekly_digest"
+    text channel "push ou email"
+    text program_day_id FK
+    text muscle_group_id FK
+    text scheduled_for
+    text sent_at
+    text status "pending, sent ou failed"
+    text error
+  }
+  SETTINGS {
+    text key PK
+    text value
+  }
+  BACKUP_RUNS {
+    text id PK
+    text started_at
+    text finished_at
+    text status "succeeded ou failed"
+    integer size_bytes
+    text error
+  }
+```
+
+## Tabelas
+
+### Catálogo (F01, onda 1)
+
+| Tabela | Conteúdo | Regras |
+|---|---|---|
+| `muscle_groups` | Os 11 grupos do catálogo inicial (D30) | `slug` único. O grupo com músculo não pode ser removido |
+| `muscles` | Músculos, cada um num grupo | `muscle_group_id` obrigatório: músculo sem grupo é recusado com "informe o grupo muscular" (US-F01-01) |
+| `exercises` | Exercícios de repetição ou de tempo | `kind` em `reps` ou `time`. Exercício usado no histórico é arquivado (`archived_at`), não apagado |
+| `exercise_muscles` | Músculos que o exercício ativa, com o papel | Pelo menos um músculo `primary` por exercício: sem ele, o cadastro é recusado com "informe ao menos um músculo" (US-F01-02). O secundário conta metade do volume (D30, Q08) |
+
+### Programa (F02, onda 2)
+
+| Tabela | Conteúdo | Regras |
+|---|---|---|
+| `programs` | Programas, com objetivo | Um programa ativo por vez. O objetivo define a janela-base (regra 2 da gamificação) |
+| `program_days` | Letras do programa: uma para corpo inteiro, duas para superior e inferior, três para ABC, e assim por diante | `letter` é uma letra de A a Z, única dentro do programa, até 26 letras. `label` é livre e dá o nome da divisão, como "Superior", "Empurrar" ou "Peito e tríceps". `position` define a ordem do plano |
+| `planned_exercises` | Exercícios de cada letra, com séries, alvo, carga e descanso | `load_g >= 0`, em gramas inteiras. Exatamente um entre `target_reps` e `target_seconds`, conforme o tipo do exercício. `position` única dentro da letra |
+
+### Execução (F03 a F06, ondas 3 e 4)
+
+| Tabela | Conteúdo | Regras |
+|---|---|---|
+| `workouts` | Treinos realizados de uma letra | `end_reason` registra se o treino terminou na última série ou foi encerrado antes (D25) |
+| `workout_sets` | Séries registradas | `id` gerado no cliente: o mesmo `id` não cria outra série (US-F03-02). `load_g >= 0`, em gramas inteiras. Exatamente um entre `reps` e `seconds`. Guarda `exercise_id` e os valores executados, para o histórico não mudar quando o programa muda (US-F02-02) |
+| `workout_skips` | Exercícios pulados num treino (US-F03-05) | Um registro por exercício pulado. Alimenta o resumo "Ficaram de fora" |
+
+### Gamificação (ondas 5 a 7)
+
+| Tabela | Conteúdo | Regras |
+|---|---|---|
+| `periods` | Períodos de 12 semanas, com a frase de intenção | Um período aberto por vez |
+| `period_snapshots` | Retrato congelado de cada grupo no fim do período | Gravado uma vez e nunca alterado, mesmo se a fórmula do jogo mudar (ADR-010) |
+| `medal_awards` | Medalhas conquistadas | `medal_code` único: a medalha se conquista uma vez. A definição das medalhas fica no código do módulo `windows` |
+
+### Avisos (F09 e F17, onda 7)
+
+| Tabela | Conteúdo | Regras |
+|---|---|---|
+| `push_subscriptions` | Inscrições de Web Push do navegador | `endpoint` único. Inscrição recusada pelo serviço de push é apagada |
+| `notifications` | Registro de cada aviso, por canal | Um aviso de janela por letra (D31), nos dois canais (D32). A falha de um canal não muda o outro |
+
+### Sistema (F14, onda 1)
+
+| Tabela | Conteúdo | Regras |
+|---|---|---|
+| `settings` | Configurações em chave e valor, como `email_enabled` e o hash do token de desligar e-mail | Sem segredo em texto puro. O endereço de e-mail do PO e as credenciais ficam em variável de ambiente |
+| `backup_runs` | Uma linha por execução do backup | Gravada também na falha, com o motivo (F14) |
+
+## O que não é tabela
+
+Pela ADR-010, estes dados são calculados pela API a cada leitura, a partir de `workout_sets`, `exercise_muscles`, `programs` e dos parâmetros do jogo:
+
+| Dado calculado | Termo em `CONTEXT.md` |
+|---|---|
+| Abertura e fechamento da janela de cada grupo | Janela de atividade |
+| Volume e volume ajustado por grupo | Volume, Volume ajustado |
+| Pontos, progresso, nível, melhor nível e faixa | Pontos, Progresso, Nível, Melhor nível, Faixa |
+| Perda de nível e memória muscular | Esfriar, Memória muscular |
+| Nível geral e grupo que limita | Nível geral |
+| Recorde por exercício | Recorde |
+| Ranking dos treinos, sequência de semanas e meta semanal | Ranking pessoal, Sequência de semanas, Meta semanal |
+| Sugestão do treino do dia | — (proposta da Q06) |
+
+## Pendências do modelo
+
+| Pendência | Efeito no modelo | Insumo |
+|---|---|---|
+| Método de autenticação | Tabela de credencial ou de sessão, conforme a ADR | H12, NFR02 |
+| Versão do UUID | Formato do `id` de todas as tabelas; UUID v7 ordena por tempo | `docs/convencoes/codigo.md`, Seção 7 |
+| Estratégia de sincronização sem sinal | Campos de controle em `workout_sets`, se houver conflito a resolver | H10, `armazenamento-local.md` |
+| Tempo no volume | Como `seconds` entra no volume e nos pontos | Q07 |

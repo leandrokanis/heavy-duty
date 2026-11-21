@@ -1,14 +1,17 @@
 # Regras de apps/ui
 
-PWA em React e Vite para a persona Atleta (P1). O contexto de uso é a academia: celular apoiado no banco, mãos ocupadas, intervalos de 1 a 2 minutos e talvez sem sinal.
+PWA em Next.js, com Base UI e Animate UI, para a persona Atleta (P1). A arquitetura do contêiner está em `docs/arquitetura/app-web.md`. O contexto de uso é a academia: celular apoiado no banco, mãos ocupadas, intervalos de 1 a 2 minutos e talvez sem sinal.
 
 ## Estrutura planejada
 
 ```text
 src/
+  app/                    rotas do App Router; o fluxo da academia fica em app/(treino)/, renderizado no cliente
+  components/ui/          componentes do Animate UI, sobre o Base UI, adaptados ao DESIGN.md
   features/<feature>/     componentes, hooks e serviços de uma feature (workout, rest…)
-  shared/                 componentes e utilitários usados por duas features ou mais
-  sync/                   fila local (IndexedDB) e envio para a API
+  shared/                 utilitários usados por duas features ou mais
+  sync/                   fila local (IndexedDB, com Dexie) e envio para a API
+  sw.ts                   service worker (Serwist)
   test/factories/         factories fishery: exerciseFactory, mockExercise
 ```
 
@@ -26,9 +29,9 @@ Siga `DESIGN.md` em toda tela e todo componente. Regras que mais erram:
 
 ## Regras de produto que o código segue
 
-1. Cada passo do fluxo da academia pede um toque (meta O5 do PRD). Não peça confirmação extra no fluxo de treino.
+1. Cada passo do fluxo da academia pede um toque (meta O5 do PRD). Só começar e encerrar o treino pedem confirmação (D25).
 2. O fluxo de treino não abre teclado. Carga, repetições e tempo mudam por arrasto, em passos fixos (F04).
-3. Toque duplo em "feito" registra uma série só. Cada série leva uma chave de idempotência gerada no cliente.
+3. Toque duplo em "Próximo" registra uma série só. Cada série leva uma chave de idempotência gerada no cliente.
 4. O registro funciona sem rede. A série vai para a fila local e segue para a API quando a conexão volta (F03, H10).
 5. A carga não fica negativa.
 6. O texto exibido ao usuário é em português do Brasil. Nome de componente, prop e identificador são em inglês.

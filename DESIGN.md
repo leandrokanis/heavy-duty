@@ -343,7 +343,7 @@ O texto exibido ao usuário é em português do Brasil (`docs/convencoes/codigo.
 | Duração | `--duration-` | `--duration-fast`, `--duration-base` |
 | Alvo de toque | `--target-` | `--target-min` (44 px), `--target-workout` (56 px) |
 
-Os tokens ficam em `apps/ui/src/shared/design/tokens.css` [a confirmar no scaffold da onda 1].
+Os tokens ficam no tema do Tailwind CSS, em `apps/ui/src/app/globals.css`, como variáveis CSS (ADR-009) [a confirmar no scaffold da onda 1].
 
 ## 19. Verificação geométrica
 

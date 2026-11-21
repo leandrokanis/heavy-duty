@@ -6,7 +6,7 @@ Estado: sem código. O scaffold faz parte da onda 1 do PRD.
 
 ## Stack
 
-- React e Vite, conforme a ADR-003
+- Next.js com App Router, Base UI e Animate UI, conforme a ADR-009 (proposta), que substitui a ADR-003 quando aceita
 - TypeScript em modo estrito, conforme a ADR-002
 - Vitest e Testing Library para teste de componente
 

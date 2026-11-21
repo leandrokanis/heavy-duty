@@ -13,7 +13,7 @@ Uma story está pronta quando todos os itens abaixo são verdadeiros:
 3. O cenário ponta a ponta da story passa, quando a story tem fluxo na UI.
 4. A revisão de código terminou sem achado crítico aberto.
 5. A decisão de arquitetura nova tem ADR aceita.
-6. A documentação afetada (`CONTEXT.md`, `docs/arquitetura.md`, `CLAUDE.md` do app) está atualizada.
+6. A documentação afetada (`CONTEXT.md`, `docs/arquitetura/`, `CLAUDE.md` do app) está atualizada.
 7. O PR não acrescenta segredo, credencial, backup nem dado pessoal.
 
 ## Verificações automáticas
@@ -42,7 +42,7 @@ O revisor confere o diff contra a branch `main` atualizada, em seis critérios:
 |---|---|
 | Efetividade | A mudança atende os cenários de aceite da story? |
 | Escopo | A mudança faz só o que a issue pede? |
-| Arquitetura | A mudança respeita as ADRs e a estrutura de `docs/arquitetura.md`? |
+| Arquitetura | A mudança respeita as ADRs e a estrutura de `docs/arquitetura/`? |
 | Qualidade | Os testes cobrem caminho feliz e erro? Há falha de segurança ou de tratamento de erro? |
 | Nomes | Os nomes seguem `CONTEXT.md` e `docs/convencoes/codigo.md`? |
 | Estilo | Os comentários seguem o roteiro de `docs/convencoes/comentarios.md`, Seção 10? |

@@ -1,6 +1,6 @@
 # Regras de apps/api
 
-API em Node e Hono com dois canais: HTTP para a UI e MCP para o Claude (persona Planejador, P2). Os dados ficam num arquivo SQLite no servidor do PO.
+API em Node e Hono com dois canais (arquitetura em `docs/arquitetura/api.md`): HTTP para a UI e MCP para o Claude (persona Planejador, P2). Os dados ficam num arquivo SQLite no servidor do PO.
 
 ## Estrutura planejada
 

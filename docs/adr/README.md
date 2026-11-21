@@ -14,6 +14,8 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-006](006-mcp-no-processo-da-api.md) | Servidor MCP no processo da API | Proposta |
 | [ADR-007](007-smtp-proprio.md) | Envio de e-mail por servidor SMTP próprio no kasparov | Proposta |
 | [ADR-008](008-escopo-heavy-duty-nos-pacotes.md) | Escopo @heavy-duty nos pacotes do workspace | Proposta |
+| [ADR-009](009-ui-nextjs-base-ui-animate-ui.md) | UI em Next.js com Base UI e Animate UI | Proposta |
+| [ADR-010](010-estado-do-jogo-derivado.md) | Estado do jogo derivado do histórico de treinos | Proposta |
 
 ## Regras
 

@@ -40,11 +40,13 @@ throw new DomainError('muscle_group_required', 'informe o grupo muscular')
 | Teste | nome do arquivo testado + `.spec` | `exercise.service.spec.ts` |
 | Tipo e componente | PascalCase | `WorkoutSet`, `RestTimer` |
 | Função e variável | camelCase | `logSet`, `nextExercise` |
-| Constante de módulo | UPPER_SNAKE_CASE | `DEFAULT_LOAD_STEP_KG` |
+| Constante de módulo | UPPER_SNAKE_CASE | `DEFAULT_LOAD_STEP_G` |
 | Booleano | prefixo `is`, `has` ou `can` | `isOnline`, `hasPendingSets` |
 | Ferramenta MCP | snake_case, verbo primeiro | `list_programs`, `remove_workout` |
+| Tabela e coluna do banco | snake_case, tabela no plural, unidade no nome da coluna | `workout_sets`, `load_g` |
 
-- O identificador que guarda uma medida DEVE ter a unidade no fim: `loadKg`, `restSeconds`, `durationSeconds`.
+- O identificador que guarda uma medida DEVE ter a unidade no fim: `loadG`, `restSeconds`, `durationSeconds`.
+- A medida DEVE ser guardada e trafegada como inteiro na menor unidade usada pelo domínio, para evitar número de ponto flutuante: carga em gramas, tempo em segundos. A conversão para a unidade de exibição (kg) acontece só na tela.
 - O identificador NÃO DEVERIA ter abreviação fora das unidades e das siglas de `CONTEXT.md`.
 
 ## 6. Estrutura de pastas
@@ -59,7 +61,7 @@ throw new DomainError('muscle_group_required', 'informe o grupo muscular')
 |---|---|
 | Data e hora na API e no banco | ISO 8601 em UTC (`2026-11-20T14:30:00Z`) |
 | Data e hora na tela | fuso e formato do celular, convertidos pela UI |
-| Carga | número em kg, com casa decimal (`42.5`) |
+| Carga | inteiro em gramas (`42500`); a tela mostra em kg (`42,5 kg`) |
 | Tempo e descanso | inteiro em segundos |
 | ID de entidade | string UUID [a confirmar: versão do UUID antes da onda 3] |
 

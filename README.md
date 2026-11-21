@@ -8,7 +8,7 @@ Estado: documentação inicial. Os apps ainda não têm código. O plano de entr
 
 ```text
 apps/
-  ui/        PWA em React e Vite
+  ui/        PWA em Next.js, com Base UI e Animate UI
   api/       API em Node e Hono, servidor MCP e SQLite
 e2e/         testes ponta a ponta com Playwright
 docs/        PRD, arquitetura, ADRs, convenções e qualidade

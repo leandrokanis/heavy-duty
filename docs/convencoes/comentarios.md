@@ -92,7 +92,7 @@ Aponta para uma ADR ou para um documento de `docs/` que explica a decisão.
 
 Diz uma unidade, a referência de uma medida, o sentido de uma expressão regular ou um layout de bits [BAELDUNG].
 
-Se o identificador comporta a informação, o identificador DEVE levá-la e o comentário NÃO DEVE ser escrito. Por exemplo, `loadKg` ou `restSeconds`, e não um comentário que diz "in kg".
+Se o identificador comporta a informação, o identificador DEVE levá-la e o comentário NÃO DEVE ser escrito. Por exemplo, `loadG` ou `restSeconds`, e não um comentário que diz "in grams".
 
 ```ts
 // Matches a story ID such as US-F03-02.
