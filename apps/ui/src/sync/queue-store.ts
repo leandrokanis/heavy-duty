@@ -10,7 +10,9 @@ import type {
 } from './sync.types'
 
 export function itemIdOf(item: NewPendingItem): string {
-  return item.kind === 'set' ? item.body.id : `${item.workoutId}:finish`
+  if (item.kind === 'set') return item.body.id
+  if (item.kind === 'skip') return `${item.workoutId}:skip:${item.body.plannedExerciseId}`
+  return `${item.workoutId}:finish`
 }
 
 // A row saved before the finish existed has no kind.

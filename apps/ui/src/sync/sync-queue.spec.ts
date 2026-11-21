@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { FinishWorkoutBody } from '@/features/workout/workout-finish.types'
 import type { SendOutcome } from '@/features/workout/workout-set.types'
+import type { RecordWorkoutSkipBody } from '@/features/workout/workout-skip.types'
 import { createMemoryQueueStore } from './queue-store'
 import type { PendingItem, QueueStore } from './sync.types'
 import { createSyncQueue } from './sync-queue'
@@ -320,6 +321,87 @@ describe('Given the finish of workout W1 followed by a set of workout W2 in the 
         sent: send.mock.calls.map(([item]) => item.id),
         snapshot: queue.getSnapshot(),
       }).toEqual({ sent: ['workout-1:finish', 'w2-set'], snapshot: { pending: [], rejected: [] } })
+    })
+  })
+})
+
+const SKIP_BODY: RecordWorkoutSkipBody = {
+  plannedExerciseId: 'planned-prancha',
+  skippedAt: '2026-11-21T18:40:00.000Z',
+}
+
+describe('Given two sets, a skip and the finish enqueued while send answers retry', () => {
+  describe('When send starts answering confirmed and flush runs', () => {
+    it('Then should send the items in order, sets, skip, finish, and empty the queue', async () => {
+      let outcome: SendOutcome = RETRY
+      const send = vi.fn(async (_item: PendingItem) => outcome)
+      const queue = createSyncQueue({ store: createMemoryQueueStore(), send, now: () => NOW_MS })
+      await queue.enqueue(WORKOUT_ID, pendingSetBody({ id: 'set-1', setNumber: 1 }))
+      await queue.enqueue(WORKOUT_ID, pendingSetBody({ id: 'set-2', setNumber: 2 }))
+      await queue.enqueueSkip(WORKOUT_ID, SKIP_BODY)
+      await queue.enqueueFinish(WORKOUT_ID, FINISH_BODY)
+      await queue.flush()
+      send.mockClear()
+
+      outcome = CONFIRMED
+      await queue.flush()
+
+      expect({
+        sent: send.mock.calls.map(([item]) => [item.kind, item.id]),
+        pending: queue.getSnapshot().pending,
+      }).toEqual({
+        sent: [
+          ['set', 'set-1'],
+          ['set', 'set-2'],
+          ['skip', `${WORKOUT_ID}:skip:planned-prancha`],
+          ['finish', `${WORKOUT_ID}:finish`],
+        ],
+        pending: [],
+      })
+    })
+  })
+})
+
+describe('Given the skip of an exercise already in the queue', () => {
+  describe('When enqueueSkip runs again for the same workout and exercise', () => {
+    it('Then the queue should hold one skip, with an id apart from the finish', async () => {
+      const queue = createSyncQueue({
+        store: createMemoryQueueStore(),
+        send: () => new Promise<SendOutcome>(() => {}),
+        now: () => NOW_MS,
+      })
+      await queue.enqueueSkip(WORKOUT_ID, SKIP_BODY)
+      await queue.enqueueFinish(WORKOUT_ID, FINISH_BODY)
+
+      await queue.enqueueSkip(WORKOUT_ID, SKIP_BODY)
+
+      expect(queue.getSnapshot().pending.map(({ id }) => id)).toEqual([
+        `${WORKOUT_ID}:skip:planned-prancha`,
+        `${WORKOUT_ID}:finish`,
+      ])
+    })
+  })
+})
+
+describe('Given a skip followed by the finish of the same workout in the queue', () => {
+  describe('When the API refuses the skip with 404', () => {
+    it('Then the skip should leave the queue with no entry in rejected, and the finish should still be sent', async () => {
+      const send = vi.fn(
+        async (item: PendingItem): Promise<SendOutcome> =>
+          item.kind === 'skip'
+            ? { status: 'rejected', code: 'workout_not_found', message: 'treino não encontrado' }
+            : CONFIRMED,
+      )
+      const queue = createSyncQueue({ store: createMemoryQueueStore(), send, now: () => NOW_MS })
+      await queue.enqueueSkip(WORKOUT_ID, SKIP_BODY)
+      await queue.enqueueFinish(WORKOUT_ID, FINISH_BODY)
+
+      await queue.flush()
+
+      expect({
+        sent: send.mock.calls.map(([item]) => item.kind),
+        snapshot: queue.getSnapshot(),
+      }).toEqual({ sent: ['skip', 'finish'], snapshot: { pending: [], rejected: [] } })
     })
   })
 })

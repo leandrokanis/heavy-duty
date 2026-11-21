@@ -52,6 +52,10 @@ Then(
   },
 )
 
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 // Each row of the sheet reads "name", state and "N de M", in that order.
 function rowText(name: string, state: string, sets: string) {
   return `${name}${state}${sets}`
@@ -60,9 +64,15 @@ function rowText(name: string, state: string, sets: string) {
 Then(
   'the sequence sheet should list these exercises in this order:',
   async ({ page }, table: DataTable) => {
+    // The current row also holds the "Pular" button when another exercise is left (US-F03-05).
     const expected = table
       .hashes()
-      .map((row) => rowText(row.exercise ?? '', row.state ?? '', row.sets ?? ''))
+      .map(
+        (row) =>
+          new RegExp(
+            `^${escapeRegExp(rowText(row.exercise ?? '', row.state ?? '', row.sets ?? ''))}(Pular)?$`,
+          ),
+      )
     await expect(dialogOf(page).getByRole('listitem')).toHaveText(expected)
   },
 )

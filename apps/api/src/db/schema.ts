@@ -250,6 +250,28 @@ export const workoutSets = sqliteTable(
   ],
 )
 
+// One row per exercise left out of a workout; like workout_sets, it survives plan changes (FR-022).
+export const workoutSkips = sqliteTable(
+  'workout_skips',
+  {
+    workoutId: text('workout_id')
+      .notNull()
+      .references(() => workouts.id, { onDelete: 'cascade' }),
+    exerciseId: text('exercise_id')
+      .notNull()
+      .references(() => exercises.id, { onDelete: 'restrict' }),
+    plannedExerciseId: text('planned_exercise_id').references(() => plannedExercises.id, {
+      onDelete: 'set null',
+    }),
+    skippedAt: text('skipped_at').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workoutId, table.exerciseId] }),
+    index('workout_skips_exercise_idx').on(table.exerciseId),
+    index('workout_skips_planned_exercise_idx').on(table.plannedExerciseId),
+  ],
+)
+
 export const oauthClients = sqliteTable('oauth_clients', {
   id: text('id').primaryKey(),
   clientName: text('client_name'),

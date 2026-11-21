@@ -20,6 +20,7 @@ const ONE_TAP_SET_SPEC = /one-tap-set\.feature\.spec\.js$/
 const REST_TIMER_SPEC = /rest-timer\.feature\.spec\.js$/
 const OFFLINE_SETS_SPEC = /offline-sets\.feature\.spec\.js$/
 const WORKOUT_SEQUENCE_SPEC = /workout-sequence\.feature\.spec\.js$/
+const SKIP_EXERCISE_SPEC = /skip-exercise\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -55,6 +56,7 @@ export default defineConfig({
         REST_TIMER_SPEC,
         OFFLINE_SETS_SPEC,
         WORKOUT_SEQUENCE_SPEC,
+        SKIP_EXERCISE_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -118,6 +120,15 @@ export default defineConfig({
       testMatch: WORKOUT_SEQUENCE_SPEC,
       fullyParallel: false,
       dependencies: ['offline-sets'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records sets, skips exercises and reads the skips in the shared database, so it runs alone
+    // and one scenario at a time, after the workout sequence.
+    {
+      name: 'skip-exercise',
+      testMatch: SKIP_EXERCISE_SPEC,
+      fullyParallel: false,
+      dependencies: ['workout-sequence'],
       use: { ...devices['Pixel 7'] },
     },
   ],

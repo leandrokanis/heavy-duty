@@ -1,8 +1,14 @@
 import { and, eq } from 'drizzle-orm'
 import type { Database } from '../../db/connection.js'
-import { exercises, plannedExercises, workoutSets, workouts } from '../../db/schema.js'
+import {
+  exercises,
+  plannedExercises,
+  workoutSets,
+  workoutSkips,
+  workouts,
+} from '../../db/schema.js'
 import type { ExerciseKind } from '../catalog/catalog.schemas.js'
-import type { Workout, WorkoutEndReason, WorkoutSet } from './workouts.schemas.js'
+import type { Workout, WorkoutEndReason, WorkoutSet, WorkoutSkip } from './workouts.schemas.js'
 
 export type NewWorkout = {
   id: string
@@ -108,4 +114,44 @@ export function findPlannedExerciseTarget(
     .innerJoin(exercises, eq(plannedExercises.exerciseId, exercises.id))
     .where(eq(plannedExercises.id, plannedExerciseId))
     .get()
+}
+
+const workoutSkipColumns = {
+  workoutId: workoutSkips.workoutId,
+  exerciseId: workoutSkips.exerciseId,
+  plannedExerciseId: workoutSkips.plannedExerciseId,
+  skippedAt: workoutSkips.skippedAt,
+}
+
+export function findWorkoutSkipByPlanned(
+  db: Database,
+  workoutId: string,
+  plannedExerciseId: string,
+): WorkoutSkip | undefined {
+  return db
+    .select(workoutSkipColumns)
+    .from(workoutSkips)
+    .where(
+      and(
+        eq(workoutSkips.workoutId, workoutId),
+        eq(workoutSkips.plannedExerciseId, plannedExerciseId),
+      ),
+    )
+    .get()
+}
+
+export function findWorkoutSkipByExercise(
+  db: Database,
+  workoutId: string,
+  exerciseId: string,
+): WorkoutSkip | undefined {
+  return db
+    .select(workoutSkipColumns)
+    .from(workoutSkips)
+    .where(and(eq(workoutSkips.workoutId, workoutId), eq(workoutSkips.exerciseId, exerciseId)))
+    .get()
+}
+
+export function insertWorkoutSkip(db: Database, skip: WorkoutSkip): void {
+  db.insert(workoutSkips).values(skip).run()
 }

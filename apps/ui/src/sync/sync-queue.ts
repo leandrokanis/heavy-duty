@@ -1,5 +1,6 @@
 import type { FinishWorkoutBody } from '@/features/workout/workout-finish.types'
 import type { RecordWorkoutSetBody, SendOutcome } from '@/features/workout/workout-set.types'
+import type { RecordWorkoutSkipBody } from '@/features/workout/workout-skip.types'
 import { itemIdOf, rejectedOf } from './queue-store'
 import type { NewPendingItem, PendingItem, QueueContents, QueueStore } from './sync.types'
 
@@ -13,6 +14,8 @@ export type SyncQueueOptions = {
 
 export type SyncQueue = {
   enqueue(workoutId: string, body: RecordWorkoutSetBody): Promise<void>
+  // An exercise left out goes after the sets and before the end; the same exercise twice does nothing.
+  enqueueSkip(workoutId: string, body: RecordWorkoutSkipBody): Promise<void>
   // The end of the workout goes after its sets; a second call for the same workout does nothing.
   enqueueFinish(workoutId: string, body: FinishWorkoutBody): Promise<void>
   flush(): Promise<void>
@@ -73,8 +76,9 @@ export function createSyncQueue({ store, send, now = Date.now }: SyncQueueOption
       if (!head) return
       const outcome = await send(head)
       if (outcome.status === 'retry') return
-      // A refused finish leaves in silence: the athlete cannot fix it and it must not block the queue (ADR-022).
-      if (outcome.status === 'confirmed' || head.kind === 'finish') {
+      // A refused finish or skip leaves in silence: the athlete cannot fix it and it must not block
+      // the queue (ADR-022, ADR-023).
+      if (outcome.status === 'confirmed' || head.kind !== 'set') {
         update(({ pending, rejected }) => ({
           pending: pending.filter(({ id }) => id !== head.id),
           rejected,
@@ -103,6 +107,7 @@ export function createSyncQueue({ store, send, now = Date.now }: SyncQueueOption
 
   return {
     enqueue: (workoutId, body) => add({ kind: 'set', workoutId, body, queuedAt: now() }),
+    enqueueSkip: (workoutId, body) => add({ kind: 'skip', workoutId, body, queuedAt: now() }),
     enqueueFinish: (workoutId, body) => add({ kind: 'finish', workoutId, body, queuedAt: now() }),
     flush,
     async dismissRejected() {

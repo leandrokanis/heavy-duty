@@ -264,3 +264,53 @@ describe('Given only the finish waiting in the queue', () => {
     })
   })
 })
+
+const SKIP_BODY = {
+  plannedExerciseId: 'planned-prancha',
+  skippedAt: '2026-11-21T18:40:00.000Z',
+}
+
+describe('Given a pending skip', () => {
+  describe('When the app queue sends it', () => {
+    it('Then should POST its body to the skips of the workout', async () => {
+      const fetchMock = vi.fn(async () => new Response('{}', { status: 201 }))
+      vi.stubGlobal('fetch', fetchMock)
+
+      await sendPendingItem({
+        kind: 'skip',
+        seq: 1,
+        id: `${WORKOUT_ID}:skip:planned-prancha`,
+        workoutId: WORKOUT_ID,
+        body: SKIP_BODY,
+        queuedAt: 1,
+      })
+
+      expect(
+        (fetchMock.mock.calls as unknown as [string, RequestInit][]).map(([url, init]) => [
+          url,
+          init.method,
+          init.body,
+        ]),
+      ).toEqual([[`/api/workouts/${WORKOUT_ID}/skips`, 'POST', JSON.stringify(SKIP_BODY)]])
+    })
+  })
+})
+
+describe('Given two sets and a skip waiting in the queue', () => {
+  describe('When the indicator renders', () => {
+    it('Then should read "2 séries aguardando envio"', async () => {
+      const { queue } = retryingQueue()
+      await queue.enqueue(WORKOUT_ID, pendingSetBody({ id: 'set-1' }))
+      await queue.enqueue(WORKOUT_ID, pendingSetBody({ id: 'set-2', setNumber: 2 }))
+      await queue.enqueueSkip(WORKOUT_ID, SKIP_BODY)
+
+      render(
+        <SyncProvider queue={queue}>
+          <PendingSetsIndicator />
+        </SyncProvider>,
+      )
+
+      expect(screen.getByRole('status').textContent).toBe('2 séries aguardando envio')
+    })
+  })
+})

@@ -22,6 +22,7 @@ import { createSystemStatusRoutes } from './modules/system/system-status.routes.
 import { createTodayRoutes } from './modules/workouts/today.routes.js'
 import { createWorkoutFinishRoutes } from './modules/workouts/workout-finish.routes.js'
 import { createWorkoutSetRoutes } from './modules/workouts/workout-set.routes.js'
+import { createWorkoutSkipRoutes } from './modules/workouts/workout-skip.routes.js'
 import {
   OPENAPI_CONFIG,
   OPENAPI_DOCUMENT_PATH,
@@ -74,6 +75,7 @@ export function createApp(options: AppOptions): OpenAPIHono {
     app.route('/', createTodayRoutes(options.db))
     app.route('/', createWorkoutSetRoutes(options.db))
     app.route('/', createWorkoutFinishRoutes(options.db))
+    app.route('/', createWorkoutSkipRoutes(options.db))
     app.openAPIRegistry.registerComponent(
       'securitySchemes',
       'sessionCookie',

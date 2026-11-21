@@ -96,7 +96,18 @@ A US-F03-04 liga o controle do topo e o encerrar, sobre o mesmo reducer:
 4. O reducer guarda a folha aberta em `sheet` (`none`, `sequence` ou `confirmEnd`). Com folha aberta, o descanso continua contando, mas `restEnd` e `next` não fazem a passagem. A ação `closeSheet` faz a passagem se o descanso acabou, e a guarda de 0,8 s começa nela.
 5. "Encerrar" na folha da sequência troca para a folha de confirmação (`end-sheet.tsx`), com as séries feitas, as séries que faltam, "Encerrar" e "Continuar". A ação `end` leva à fase `ended` com `finish` `ended_early` e o instante do toque; sem série registrada, `finish` fica `null`. A última série que falta leva à fase `finished` com `finish` `completed` e o `performedAt` da série, sem confirmação. Na fase `finished`, a folha abre sem "Encerrar" e sem ida a exercício.
 6. O efeito da `WorkoutScreen` enfileira as séries novas e, depois, o fim (`enqueueFinish`, ID `${workoutId}:finish`). Na fase `ended`, apaga `activeWorkout` e chama `onFinish`, nessa ordem, e a tela das letras recarrega `/api/today`. A fila envia o fim para `POST /api/workouts/{workoutId}/finish` (`workout-finish-client.ts`) com as regras da ADR-022.
-7. `restoreWorkoutFlow` preenche `nextExerciseIndex`, `sheet` e `finish` do estado salvo pela versão anterior e fecha as folhas. A escolha feita no descanso volta como estava.
+7. `restoreWorkoutFlow` preenche `nextExerciseIndex`, `sheet`, `finish` e `skipped` do estado salvo pela versão anterior e fecha as folhas. A escolha feita no descanso e as marcas de pulado voltam como estavam.
+
+## Exercício pulado
+
+A US-F03-05 acrescenta a ação "Pular" sobre o mesmo reducer:
+
+1. A linha do exercício atual na folha da sequência tem o botão "Pular" (`aria-label` "Pular <exercício>", 56 px ou mais de altura). `canSkipOf` decide se o botão existe: precisa haver outro exercício com série por fazer que não esteja pulado, e a fase não pode ser `finished`.
+2. A ação `skip` marca o exercício em `skipped` (`plannedExerciseId` e `skippedAt`). Pular de novo o mesmo exercício troca o instante. Fora do descanso, o reducer mostra a primeira série do exercício seguinte, grava `lastStep` `skip` com a guarda de 0,8 s e anuncia "Tríceps na polia, série 1 de 3". No descanso, marca o exercício que apareceria no fim dele, desfaz a escolha feita na folha, mantém `restEndsAtMs` e `lastStepAtMs`, e anuncia "A seguir: Tríceps na polia".
+3. `nextPositionOf` ignora os exercícios pulados, salvo a escolha feita na folha durante o descanso. O exercício pulado sai da lista de pulados quando o atleta registra uma série dele (`recordSet`). Ir até ele pela folha (`goTo`) não tira a marca.
+4. Na folha, o exercício pulado aparece como botão com o ícone `SkipForward`, o rótulo "Pulado" e "N de M", e leva ao exercício. O exercício atual vence o pulado.
+5. Quando só restam exercícios pulados, a última série registrada leva à fase `finished`. A tela mostra "Treino concluído" e a seção "Ficaram de fora" (`left-out-summary.tsx`) com o nome e "N de M" de cada exercício de `leftOutOf`. A barra "Exercícios" conta só os feitos.
+6. O efeito da `WorkoutScreen` enfileira as séries novas, depois um item `skip` por exercício de `leftOutOf` (`enqueueSkip`, ID `${workoutId}:skip:${plannedExerciseId}`) e, por fim, o fim do treino. Sem `finish`, nada é enfileirado. A fila envia o pulado para `POST /api/workouts/{workoutId}/skips` (`workout-skip-client.ts`) com as regras da ADR-023.
 
 ## Fluxo da série com um toque
 

@@ -28,6 +28,7 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-020](020-autenticacao-do-mcp-com-oauth.md) | Autenticação do MCP com OAuth 2.1 emitido pelo próprio app | Aceita |
 | [ADR-021](021-sincronizacao-da-fila-sem-sinal.md) | Sincronização da fila de séries sem sinal | Aceita |
 | [ADR-022](022-fim-do-treino-na-fila-de-sincronizacao.md) | Fim do treino na fila de sincronização | Aceita |
+| [ADR-023](023-exercicio-pulado-na-fila-de-sincronizacao.md) | Exercício pulado na fila de sincronização | Aceita |
 
 ## Regras
 

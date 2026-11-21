@@ -118,8 +118,30 @@ export const WorkoutSchema = z
   })
   .openapi('Workout')
 
+// skippedAt stays a plain string so the service refuses it with its own code.
+export const RecordWorkoutSkipBodySchema = z
+  .object({
+    plannedExerciseId: z.uuid().openapi({ example: '0193a1b2-0000-7000-8000-000000000402' }),
+    skippedAt: z.string().openapi({ example: '2026-11-21T18:40:00.000Z' }),
+  })
+  .openapi('RecordWorkoutSkipBody')
+
+export const WorkoutSkipSchema = z
+  .object({
+    workoutId: z.string().openapi({ example: '0193a1b2-0000-7000-8000-000000000601' }),
+    exerciseId: z.string().openapi({ example: '0193a1b2-0000-7000-8000-000000000202' }),
+    plannedExerciseId: z
+      .string()
+      .nullable()
+      .openapi({ example: '0193a1b2-0000-7000-8000-000000000402' }),
+    skippedAt: z.string().openapi({ example: '2026-11-21T18:40:00.000Z' }),
+  })
+  .openapi('WorkoutSkip')
+
 export type RecordWorkoutSetBody = z.infer<typeof RecordWorkoutSetBodySchema>
 export type WorkoutSet = z.infer<typeof WorkoutSetSchema>
 export type FinishWorkoutBody = z.infer<typeof FinishWorkoutBodySchema>
 export type WorkoutEndReason = z.infer<typeof WorkoutEndReasonSchema>
 export type Workout = z.infer<typeof WorkoutSchema>
+export type RecordWorkoutSkipBody = z.infer<typeof RecordWorkoutSkipBodySchema>
+export type WorkoutSkip = z.infer<typeof WorkoutSkipSchema>

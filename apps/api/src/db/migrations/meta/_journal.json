@@ -64,6 +64,13 @@
       "when": 1795289589666,
       "tag": "0008_workout_sets_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1795304065345,
+      "tag": "0009_workout_skips",
+      "breakpoints": true
     }
   ]
 }

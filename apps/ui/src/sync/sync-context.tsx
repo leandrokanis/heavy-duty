@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { postWorkoutFinish } from '@/features/workout/workout-finish-client'
 import { postWorkoutSet } from '@/features/workout/workout-set-client'
+import { postWorkoutSkip } from '@/features/workout/workout-skip-client'
 import { openLocalDb } from './local-db'
 import { createDexieQueueStore, createMemoryQueueStore } from './queue-store'
 import type { PendingItem, QueueContents, QueueStore } from './sync.types'
@@ -32,11 +33,16 @@ function createDeferredStore(): QueueStore {
   }
 }
 
-// The queue holds sets and the end of the workout; each kind has its own route.
+// The queue holds sets, the exercises left out and the end of the workout; each kind has its own route.
 export function sendPendingItem(item: PendingItem) {
-  return item.kind === 'set'
-    ? postWorkoutSet(item.workoutId, item.body)
-    : postWorkoutFinish(item.workoutId, item.body)
+  switch (item.kind) {
+    case 'set':
+      return postWorkoutSet(item.workoutId, item.body)
+    case 'skip':
+      return postWorkoutSkip(item.workoutId, item.body)
+    case 'finish':
+      return postWorkoutFinish(item.workoutId, item.body)
+  }
 }
 
 let appQueue: SyncQueue | null = null
