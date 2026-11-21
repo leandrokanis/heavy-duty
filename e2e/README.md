@@ -2,7 +2,7 @@
 
 Testes ponta a ponta com Playwright e playwright-bdd. Os cenários vêm dos cenários de aceite do PRD.
 
-Estado: o scaffold (EN-S0) criou a suíte com os cenários `@EN-S0` em `features/app-shell.feature`. A US-F01-01 acrescentou os cenários `@US-F01-01` em `features/catalog-muscles.feature`, e a US-F01-02, os cenários `@US-F01-02` em `features/catalog-exercises.feature`, os dois contra a API por HTTP e pelo `/mcp`. A US-F14-02 acrescentou o cenário `@US-F14-02` "falha no backup" em `features/system-backup.feature`. A US-F14-01 acrescentou os cenários `@US-F14-01` em `features/auth.feature` e passou a exigir a sessão de acesso nos outros cenários. A US-F02-01 acrescentou os cenários `@US-F02-01` em `features/programs.feature`, contra a API por HTTP e pelo `/mcp`. A US-F02-02 acrescentou os cenários `@US-F02-02` em `features/programs-edit.feature`, que editam o programa por HTTP e pelo `/mcp` e conferem um treino de fixture gravado direto no banco. Os cenários do fluxo da academia entram na onda 3 (F03).
+Estado: o scaffold (EN-S0) criou a suíte com os cenários `@EN-S0` em `features/app-shell.feature`. A US-F01-01 acrescentou os cenários `@US-F01-01` em `features/catalog-muscles.feature`, e a US-F01-02, os cenários `@US-F01-02` em `features/catalog-exercises.feature`, os dois contra a API por HTTP e pelo `/mcp`. A US-F14-02 acrescentou o cenário `@US-F14-02` "falha no backup" em `features/system-backup.feature`. A US-F14-01 acrescentou os cenários `@US-F14-01` em `features/auth.feature` e passou a exigir a sessão de acesso nos outros cenários. A US-F02-01 acrescentou os cenários `@US-F02-01` em `features/programs.feature`, contra a API por HTTP e pelo `/mcp`. A US-F02-02 acrescentou os cenários `@US-F02-02` em `features/programs-edit.feature`, que editam o programa por HTTP e pelo `/mcp` e conferem um treino de fixture gravado direto no banco. A US-F03-01 acrescentou os cenários `@US-F03-01` em `features/today-workout.feature`, os primeiros do fluxo da academia na tela.
 
 ## Estrutura planejada
 
@@ -31,9 +31,10 @@ pnpm --filter @heavy-duty/e2e run test --grep @US-F14-02         # executa o cen
 pnpm --filter @heavy-duty/e2e run test --grep @US-F14-01         # executa os cenários da chave de acesso
 pnpm --filter @heavy-duty/e2e run test --grep @US-F02-01         # executa os cenários do programa
 pnpm --filter @heavy-duty/e2e run test --grep @US-F02-02         # executa os cenários da edição do programa
+pnpm --filter @heavy-duty/e2e run test --grep @US-F03-01         # executa os cenários do treino do dia
 ```
 
-A suíte sobe três servidores (`webServer` em `playwright.config.ts`). Os cenários rodam em quatro projetos, todos com `devices['Pixel 7']` (Chromium): `catalog-muscles`, só com `features/catalog-muscles.feature`; `mobile`, com o restante menos o programa, que depende do primeiro; `programs`, só com `features/programs.feature`, que depende do `mobile`; e `programs-edit`, só com `features/programs-edit.feature`, que depende do `programs`:
+A suíte sobe três servidores (`webServer` em `playwright.config.ts`). Os cenários rodam em cinco projetos, todos com `devices['Pixel 7']` (Chromium): `catalog-muscles`, só com `features/catalog-muscles.feature`; `mobile`, com o restante menos o programa e o treino do dia, que depende do primeiro; `programs`, só com `features/programs.feature`, que depende do `mobile`; `programs-edit`, só com `features/programs-edit.feature`, que depende do `programs`; e `today-workout`, só com `features/today-workout.feature`, que depende do `programs-edit`:
 
 | Servidor | Endereço | Variável da porta | Observação |
 |---|---|---|---|
@@ -85,3 +86,14 @@ Os cenários `@US-F02-02` também mudam o programa ativo. Por isso:
 - O `Background` acrescenta o músculo "vasto lateral" (`quadriceps`) e o exercício "Agachamento" (`reps`) e aceita o 409 do item já cadastrado.
 - Os passos reaproveitam o fixture `program` e os helpers de `steps/program-helpers.ts` (conversão de carga e alvo, criação de programa e de letra), que `programs.steps.ts` também usa.
 - O passo "the next workout should suggest" confere o programa ativo de `GET /api/programs`, de onde o treino do dia (US-F03-01) vai tirar os valores.
+
+Os cenários `@US-F03-01` abrem o treino do dia na tela e mudam o histórico e o programa ativo. Por isso:
+
+- O projeto `today-workout` roda por último e em série (`fullyParallel: false`), depois do `programs-edit`. Com `--grep @US-F03-01`, o Playwright roda também os quatro projetos anteriores, que são dependências.
+- O `Background` apaga os treinos de fixture do banco do e2e com `clearWorkouts()` de `steps/workout-fixtures.ts`; as séries saem por `ON DELETE CASCADE`. Sem a limpeza, o "Supino reto" dos cenários `@US-F02-02` preencheria a carga do exemplo "primeira vez". O banco do e2e é descartável e nasce de novo a cada execução.
+- O cenário "sem programa ativo" desativa os programas direto no banco com `deactivatePrograms()`. A tela mostra "Nenhum programa cadastrado. Monte um programa pelo Claude." mesmo com programas inativos guardados.
+- O `recordWorkout` aceita `startedAt` opcional, com o valor fixo de antes como padrão, para os cenários que dependem da ordem dos treinos.
+- O programa nasce pela API, e o atleta entra com o cookie do worker (`the athlete signed in with a passkey`).
+- O cenário da folha de confirmação mede a altura de "Começar" e "Fechar" com `boundingBox()`: pelo menos 56 px (`DESIGN.md`, Seção 7).
+- O cenário "desistir na folha" confere que a página só mandou `GET` para `/api/*`, sem contar linhas no banco.
+- Uma story da onda 3 que vier depois e precisar do histórico ou do programa ativo DEVE rodar num projeto depois do `today-workout`, ou refazer o estado no próprio `Background`.

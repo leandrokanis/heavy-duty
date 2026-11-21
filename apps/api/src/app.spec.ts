@@ -179,6 +179,23 @@ describe('Given an app in production with a database, a program and no session c
   })
 })
 
+describe('Given an app in production with a database and no session cookie, for the workout of the day', () => {
+  const db = createTestDatabase()
+  runSeed(db)
+  const app = createApp({ nodeEnv: 'production', databaseHealth: () => true, db })
+
+  describe('When GET /api/today is requested', () => {
+    it('Then should respond 401 with code unauthenticated and no training data', async () => {
+      const response = await app.request('/api/today')
+
+      expect({ status: response.status, body: await response.json() }).toEqual({
+        status: 401,
+        body: UNAUTHENTICATED_BODY,
+      })
+    })
+  })
+})
+
 describe('Given an app in development with a database and no session cookie', () => {
   const app = createApp({
     nodeEnv: 'development',
@@ -382,6 +399,25 @@ describe('Given an app in development with a database', () => {
         updatePlannedExercise: editStatuses,
         removePlannedExercise: editStatuses,
       })
+    })
+  })
+
+  describe('When the OpenAPI document is generated for the workout of the day', () => {
+    it('Then should declare GET /api/today under the global session cookie security, with 200, 401 and 500', async () => {
+      const response = await app.request('/api/openapi.json')
+      const document = (await response.json()) as {
+        paths: Record<
+          string,
+          Record<string, { security?: unknown; responses: Record<string, unknown> }>
+        >
+      }
+      const operation = document.paths['/api/today']?.get
+
+      expect({
+        declared: operation !== undefined,
+        security: operation?.security,
+        statuses: Object.keys(operation?.responses ?? {}).sort(),
+      }).toEqual({ declared: true, security: undefined, statuses: ['200', '401', '500'] })
     })
   })
 

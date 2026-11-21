@@ -678,6 +678,82 @@ A entrada é conferida antes das consultas ao banco. O alvo é a exceção, porq
 | 404 | `{ "code": "program_not_found" \| "program_day_not_found" \| "planned_exercise_not_found", "message" }` | O programa, a letra ou o exercício na letra não existe |
 | 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
 
+## Treino do dia
+
+A rota desta seção vem da US-F03-01. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019). O treino do dia não tem ferramenta MCP: o planejador vê o programa com `get_program` (`mcp.md` não muda). O service fica em `apps/api/src/modules/workouts/today.service.ts`.
+
+### GET /api/today
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Mostrar o treino do dia: o programa ativo, as letras na ordem do plano, a letra sugerida para hoje e, em cada exercício do programa, o alvo do programa e a carga preenchida |
+| Story | US-F03-01 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Nenhum. A rota só lê `programs`, `program_days`, `planned_exercises`, `exercises`, `workouts` e `workout_sets`. Abrir o app, abrir a folha de confirmação e começar o treino não gravam nada |
+| Idempotência | Idempotente |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `Today` | Sempre que o banco responde, com ou sem programa ativo |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida. O corpo não tem dado de treino |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+O objeto `Today` tem a forma `{ "program": { "id", "name", "goal" } | null, "suggestedLetter": string | null, "days": [TodayDay] }`. Sem programa ativo, a resposta é `{ "program": null, "suggestedLetter": null, "days": [] }`, e a tela mostra o estado vazio.
+
+O objeto `TodayDay` tem a forma `{ "letter", "label", "estimatedDurationSeconds", "exercises": [TodayExercise] }`, com as letras na ordem do plano e os exercícios na ordem da letra. A letra sem exercício vem com `exercises: []` e `estimatedDurationSeconds: 0`.
+
+O objeto `TodayExercise` tem a forma `{ "exercise": { "id", "slug", "name", "kind" }, "sets", "targetReps", "targetSeconds", "restSeconds", "plannedLoadG", "loadG", "loadSource" }`:
+
+- `plannedLoadG` é a carga do programa, em gramas.
+- `loadG` é a carga preenchida, em gramas: a carga da série mais recente do mesmo exercício no histórico, em qualquer programa e em qualquer letra. Sem série do exercício, é a carga do programa.
+- `loadSource` diz de onde veio a carga preenchida: `last_workout` (histórico) ou `program`.
+- `targetReps` e `targetSeconds` vêm sempre do programa, mesmo que o último treino tenha outro número de repetições.
+- O exercício arquivado no catálogo que continua na letra aparece com o nome do catálogo.
+
+Exemplo, com o Supino reto a 42,5 kg no último treino e a Prancha sem treino:
+
+```json
+{
+  "program": { "id": "0193a1b2-0000-7000-8000-000000000301", "name": "Programa 1", "goal": "hypertrophy" },
+  "suggestedLetter": "A",
+  "days": [
+    {
+      "letter": "A",
+      "label": "Superior",
+      "estimatedDurationSeconds": 675,
+      "exercises": [
+        {
+          "exercise": { "id": "0193a1b2-0000-7000-8000-000000000201", "slug": "supino-reto", "name": "Supino reto", "kind": "reps" },
+          "sets": 3,
+          "targetReps": 10,
+          "targetSeconds": null,
+          "restSeconds": 90,
+          "plannedLoadG": 40000,
+          "loadG": 42500,
+          "loadSource": "last_workout"
+        },
+        {
+          "exercise": { "id": "0193a1b2-0000-7000-8000-000000000202", "slug": "prancha", "name": "Prancha", "kind": "time" },
+          "sets": 3,
+          "targetReps": null,
+          "targetSeconds": 45,
+          "restSeconds": 60,
+          "plannedLoadG": 0,
+          "loadG": 0,
+          "loadSource": "program"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Regras do cálculo:
+
+- **Série mais recente.** A série mais recente é a de `performed_at` mais recente. No empate, vale o maior `set_number` e, depois, o maior `id`. Treino encerrado e treino em andamento contam. A busca é pelo exercício (`exercise_id`), então o vínculo nulo com o exercício do programa não muda a carga.
+- **Letra sugerida.** A letra sugerida é a letra seguinte, na ordem do plano, à letra do treino mais recente do programa ativo (`started_at` mais recente; no empate, o maior `id`). Depois da última letra, a sugestão volta à primeira. Sem treino do programa ativo, ou com a letra do último treino fora do programa, a sugerida é a primeira letra. A sugestão pula letras sem exercício e fica `null` quando nenhuma letra tem exercício. Treino de outro programa não muda a sugestão.
+- **Duração estimada.** A duração estimada é a soma, em cada exercício da letra, de `sets × (execução + restSeconds)`, em segundos inteiros. A execução é `targetSeconds` no exercício de tempo e `targetReps × 3` no exercício de repetição [estimativa: 3 s por repetição, em `SECONDS_PER_REP` de `apps/api/src/modules/workouts/today.config.ts`]. Exemplo: Supino reto 3 × 10 com 90 s de descanso e Prancha 3 × 45 s com 60 s somam `3 × (30 + 90) + 3 × (45 + 60) = 675`.
+
 ## Situação do app
 
 A rota desta seção vem da US-F14-02. A rota existe só quando a API abriu o banco e exige sessão de acesso (US-F14-01). A ferramenta MCP `get_system_status` devolve o mesmo objeto (`mcp.md`), pelo mesmo service `getSystemStatus`, em `apps/api/src/modules/system/system-status.service.ts`.

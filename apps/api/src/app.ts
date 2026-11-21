@@ -19,6 +19,7 @@ import { createProgramRoutes } from './modules/programs/program.routes.js'
 import { createHealthRoutes } from './modules/system/health.routes.js'
 import type { DatabaseHealthProbe } from './modules/system/health.service.js'
 import { createSystemStatusRoutes } from './modules/system/system-status.routes.js'
+import { createTodayRoutes } from './modules/workouts/today.routes.js'
 import {
   OPENAPI_CONFIG,
   OPENAPI_DOCUMENT_PATH,
@@ -68,6 +69,7 @@ export function createApp(options: AppOptions): OpenAPIHono {
     app.route('/', createExerciseRoutes(options.db))
     app.route('/', createProgramRoutes({ db: options.db, now }))
     app.route('/', createSystemStatusRoutes(options.db))
+    app.route('/', createTodayRoutes(options.db))
     app.openAPIRegistry.registerComponent(
       'securitySchemes',
       'sessionCookie',

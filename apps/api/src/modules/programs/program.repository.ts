@@ -80,6 +80,10 @@ export function findProgramRow(db: Database, programId: string): ProgramRow | un
   return db.select(programColumns).from(programs).where(eq(programs.id, programId)).get()
 }
 
+export function findActiveProgramRow(db: Database): ProgramRow | undefined {
+  return db.select(programColumns).from(programs).where(eq(programs.isActive, true)).get()
+}
+
 export function listProgramRows(db: Database): ProgramRow[] {
   return db
     .select(programColumns)
