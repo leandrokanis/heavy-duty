@@ -578,6 +578,77 @@
           }
         }
       },
+      "UpdateProgramInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Programa 1"
+          },
+          "goal": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "strength"
+          }
+        }
+      },
+      "UpdateProgramDayInput": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Empurrar"
+          }
+        }
+      },
+      "UpdatePlannedExerciseInput": {
+        "type": "object",
+        "properties": {
+          "sets": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "example": 4
+          },
+          "targetReps": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "example": 8
+          },
+          "targetSeconds": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "example": null
+          },
+          "loadG": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "example": 42500
+          },
+          "restSeconds": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "example": 120
+          }
+        }
+      },
       "SystemStatus": {
         "type": "object",
         "properties": {
@@ -1457,6 +1528,85 @@
             }
           }
         }
+      },
+      "patch": {
+        "tags": [
+          "programs"
+        ],
+        "summary": "Change the name or the goal of a program; only the fields sent change",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "0193a1b2-0000-7000-8000-000000000301"
+            },
+            "required": true,
+            "name": "programId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProgramInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The changed program",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Program"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Null, empty or blank name (program_name_required), null or empty goal (program_goal_required) or goal other than strength, hypertrophy or endurance (program_goal_invalid)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No program with this id (program_not_found)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/programs/{programId}/days": {
@@ -1639,6 +1789,421 @@
           },
           "422": {
             "description": "The exercise is not in the catalog or is archived (exercise_not_found)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/programs/{programId}/activate": {
+      "post": {
+        "tags": [
+          "programs"
+        ],
+        "summary": "Make a program the only active one; the previous active program stays stored but inactive",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "0193a1b2-0000-7000-8000-000000000301"
+            },
+            "required": true,
+            "name": "programId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The program, now active",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Program"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No program with this id (program_not_found)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/programs/{programId}/days/{letter}": {
+      "patch": {
+        "tags": [
+          "programs"
+        ],
+        "summary": "Change the label of a day; null, empty or blank clears it and the letter stays",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "0193a1b2-0000-7000-8000-000000000301"
+            },
+            "required": true,
+            "name": "programId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "example": "A"
+            },
+            "required": true,
+            "name": "letter",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProgramDayInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The program with the changed day",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Program"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Letter other than A to Z (program_day_letter_invalid)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No program with this id (program_not_found) or no such letter in the program (program_day_not_found)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "programs"
+        ],
+        "summary": "Remove a day with its planned exercises; the other days keep their order and recorded workouts keep their letter and sets",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "0193a1b2-0000-7000-8000-000000000301"
+            },
+            "required": true,
+            "name": "programId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "example": "A"
+            },
+            "required": true,
+            "name": "letter",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The program without the day",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Program"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Letter other than A to Z (program_day_letter_invalid)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No program with this id (program_not_found) or no such letter in the program (program_day_not_found)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/programs/{programId}/days/{letter}/exercises/{exerciseSlug}": {
+      "patch": {
+        "tags": [
+          "programs"
+        ],
+        "summary": "Change sets, target, load in grams or rest in seconds of a planned exercise; only the fields sent change and recorded workouts keep their values",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "0193a1b2-0000-7000-8000-000000000301"
+            },
+            "required": true,
+            "name": "programId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "example": "A"
+            },
+            "required": true,
+            "name": "letter",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "example": "supino-reto"
+            },
+            "required": true,
+            "name": "exerciseSlug",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlannedExerciseInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The program with the changed planned exercise",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Program"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid letter (program_day_letter_invalid), sets not an integer from 1 (planned_exercise_sets_invalid), load not an integer from 0 (planned_exercise_load_invalid), rest not an integer from 0 (planned_exercise_rest_invalid), reps on a time exercise (planned_exercise_target_time), seconds on a reps exercise (planned_exercise_target_reps) or target not an integer from 1 (planned_exercise_target_invalid); null counts as invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No program with this id (program_not_found), no such letter in the program (program_day_not_found) or the exercise is not in the day (planned_exercise_not_found)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "programs"
+        ],
+        "summary": "Remove a planned exercise from a day; the other exercises keep their order and recorded workouts keep their sets",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "0193a1b2-0000-7000-8000-000000000301"
+            },
+            "required": true,
+            "name": "programId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "example": "A"
+            },
+            "required": true,
+            "name": "letter",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "example": "supino-reto"
+            },
+            "required": true,
+            "name": "exerciseSlug",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The program without the planned exercise",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Program"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Letter other than A to Z (program_day_letter_invalid)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No program with this id (program_not_found), no such letter in the program (program_day_not_found) or the exercise is not in the day (planned_exercise_not_found)",
             "content": {
               "application/json": {
                 "schema": {

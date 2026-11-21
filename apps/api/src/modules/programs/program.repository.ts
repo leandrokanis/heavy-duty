@@ -62,6 +62,20 @@ export function insertActiveProgram(db: Database, program: NewProgram): void {
   })
 }
 
+// Deactivate first: the partial unique index refuses two active programs at once.
+export function markProgramActive(db: Database, programId: string): void {
+  db.update(programs).set({ isActive: false }).where(eq(programs.isActive, true)).run()
+  db.update(programs).set({ isActive: true }).where(eq(programs.id, programId)).run()
+}
+
+export function updateProgramRow(
+  db: Database,
+  programId: string,
+  changes: Partial<Pick<NewProgram, 'name' | 'goal'>>,
+): void {
+  db.update(programs).set(changes).where(eq(programs.id, programId)).run()
+}
+
 export function findProgramRow(db: Database, programId: string): ProgramRow | undefined {
   return db.select(programColumns).from(programs).where(eq(programs.id, programId)).get()
 }
@@ -96,6 +110,19 @@ export function insertProgramDay(db: Database, day: NewProgramDay): void {
   db.insert(programDays)
     .values({ ...day, position: (last?.position ?? 0) + 1 })
     .run()
+}
+
+export function updateProgramDayLabel(
+  db: Database,
+  programDayId: string,
+  label: string | null,
+): void {
+  db.update(programDays).set({ label }).where(eq(programDays.id, programDayId)).run()
+}
+
+// Planned exercises of the day go by ON DELETE CASCADE; positions are not renumbered.
+export function deleteProgramDay(db: Database, programDayId: string): void {
+  db.delete(programDays).where(eq(programDays.id, programDayId)).run()
 }
 
 export function listProgramDayRows(db: Database, programIds: readonly string[]): ProgramDayRow[] {
@@ -170,4 +197,44 @@ export function listPlannedExerciseRows(
     .where(inArray(plannedExercises.programDayId, [...programDayIds]))
     .orderBy(asc(plannedExercises.position))
     .all()
+}
+
+export type PlannedExerciseRef = { id: string; exercise: ExerciseRow }
+
+export type PlannedExerciseChanges = Partial<
+  Pick<NewPlannedExercise, 'sets' | 'targetReps' | 'targetSeconds' | 'loadG' | 'restSeconds'>
+>
+
+// No archived filter: an exercise archived after it joined the plan stays editable.
+export function findPlannedExerciseRow(
+  db: Database,
+  programDayId: string,
+  exerciseSlug: string,
+): PlannedExerciseRef | undefined {
+  return db
+    .select({
+      id: plannedExercises.id,
+      exercise: {
+        id: exercises.id,
+        slug: exercises.slug,
+        name: exercises.name,
+        kind: exercises.kind,
+      },
+    })
+    .from(plannedExercises)
+    .innerJoin(exercises, eq(plannedExercises.exerciseId, exercises.id))
+    .where(and(eq(plannedExercises.programDayId, programDayId), eq(exercises.slug, exerciseSlug)))
+    .get()
+}
+
+export function updatePlannedExerciseRow(
+  db: Database,
+  plannedExerciseId: string,
+  changes: PlannedExerciseChanges,
+): void {
+  db.update(plannedExercises).set(changes).where(eq(plannedExercises.id, plannedExerciseId)).run()
+}
+
+export function deletePlannedExercise(db: Database, plannedExerciseId: string): void {
+  db.delete(plannedExercises).where(eq(plannedExercises.id, plannedExerciseId)).run()
 }

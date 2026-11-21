@@ -130,3 +130,90 @@ describe('Given a signed-in app in development', () => {
     })
   })
 })
+
+async function addPlannedThroughMcp(app: App, programId: string, planned: Record<string, unknown>) {
+  await callTool(app, 'add_planned_exercise', { programId, letter: 'A', ...planned })
+}
+
+const SUPINO_RETO_INPUT = {
+  exerciseSlug: 'supino-reto',
+  sets: 3,
+  targetReps: 10,
+  loadG: 40000,
+  restSeconds: 90,
+}
+
+describe("Given letter 'A' with supino-reto at loadG 40000 built through /mcp", () => {
+  describe('When update_planned_exercise sets loadG 42500 through /mcp', () => {
+    it('Then should return the program as structured content and GET /api/programs/{id} should show supino-reto with loadG 42500', async () => {
+      const { app } = createProgramTestApp({ nodeEnv: 'development' })
+      const programId = await createProgramWithDayA(app)
+      await addPlannedThroughMcp(app, programId, SUPINO_RETO_INPUT)
+
+      const updated = await callTool(app, 'update_planned_exercise', {
+        programId,
+        letter: 'A',
+        exerciseSlug: 'supino-reto',
+        loadG: 42500,
+      })
+      const fetched = await (await app.request(`/api/programs/${programId}`)).json()
+      const expected = {
+        ...PROGRAM_WITH_SUPINO_RETO,
+        days: [{ letter: 'A', label: null, exercises: [{ ...SUPINO_RETO_PLANNED, loadG: 42500 }] }],
+      }
+
+      expect({
+        structuredContent: updated?.structuredContent,
+        text: JSON.parse(updated?.content?.[0]?.text ?? 'null'),
+        fetched,
+      }).toEqual({ structuredContent: expected, text: expected, fetched: expected })
+    })
+  })
+})
+
+describe("Given letter 'A' with supino-reto and prancha built through /mcp", () => {
+  it.each([
+    {
+      call: 'update_planned_exercise with targetReps for prancha',
+      tool: 'update_planned_exercise',
+      args: { letter: 'A', exerciseSlug: 'prancha', targetReps: 10 },
+      error: { code: 'planned_exercise_target_time', message: 'este exercício é medido por tempo' },
+    },
+    {
+      call: 'remove_planned_exercise without exerciseSlug',
+      tool: 'remove_planned_exercise',
+      args: { letter: 'A' },
+      error: { code: 'planned_exercise_exercise_required', message: 'informe o exercício' },
+    },
+    {
+      call: 'update_planned_exercise without exerciseSlug',
+      tool: 'update_planned_exercise',
+      args: { letter: 'A', loadG: 42500 },
+      error: { code: 'planned_exercise_exercise_required', message: 'informe o exercício' },
+    },
+    {
+      call: 'activate_program without programId',
+      tool: 'activate_program',
+      args: { programId: undefined },
+      error: { code: 'program_not_found', message: 'programa não encontrado' },
+    },
+  ])(
+    'When $call / Then should return an error result with $error.code',
+    async ({ tool, args, error }) => {
+      const { app } = createProgramTestApp({ nodeEnv: 'development' })
+      const programId = await createProgramWithDayA(app)
+      await addPlannedThroughMcp(app, programId, SUPINO_RETO_INPUT)
+      await addPlannedThroughMcp(app, programId, {
+        exerciseSlug: 'prancha',
+        sets: 3,
+        targetSeconds: 45,
+        loadG: 0,
+        restSeconds: 60,
+      })
+
+      const result = await callTool(app, tool, { programId, ...args })
+
+      expect(errorBody(result)).toEqual({ isError: true, body: error })
+    },
+  )
+})

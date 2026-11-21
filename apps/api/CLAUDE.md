@@ -29,7 +29,7 @@ Módulos previstos: `auth` (chave de acesso, sessão de acesso, link de cadastro
 4. Nome de ferramenta MCP em `snake_case`, com verbo primeiro: `list_programs`, `add_exercise`, `remove_workout`.
 5. Datas trafegam e ficam no banco em ISO 8601, em UTC. A conversão para o fuso do usuário é da UI.
 6. A gravação de série aceita uma chave de idempotência. A mesma chave grava uma série só.
-7. Editar o programa não altera treino já registrado (US-F02-02). O treino guarda os valores executados, não uma referência ao programa.
+7. Editar o programa não altera treino já registrado (US-F02-02). O treino guarda a letra treinada e os valores executados de cada série. O vínculo do treino com a letra e o da série com o exercício do programa ficam nulos quando o plano muda (`ON DELETE SET NULL`).
 8. Erro de domínio retorna `code` em inglês (`muscle_group_required`) e `message` em português, com o texto do cenário do PRD.
    O service lança `DomainError` (`src/errors/domain-error.ts`) com `code`, `message` e `kind`. Cada canal traduz o erro num lugar só: o `handleError` HTTP converte `kind` em status (`invalid` 400, `unauthenticated` 401, `not_found` 404, `not_found_reference` 422, `conflict` 409), e a ferramenta MCP usa `runTool` (`src/mcp/tools/tool-result.ts`) para devolver `isError: true` com `{ code, message }`. Não valide no schema Zod o campo que o PRD recusa com mensagem própria: o schema aceita o campo opcional, e o service recusa.
    Use `not_found` para o recurso do caminho da rota que não existe, como o programa ou a letra. Use `not_found_reference` para a referência no corpo que não existe, como o exercício ou o músculo.

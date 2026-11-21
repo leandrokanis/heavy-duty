@@ -51,6 +51,14 @@ export const CreateProgramInputSchema = z
   })
   .openapi('CreateProgramInput')
 
+// Nullable so a null reaches the service and gets the domain error of the field.
+export const UpdateProgramInputSchema = z
+  .object({
+    name: z.string().nullable().optional().openapi({ example: 'Programa 1' }),
+    goal: z.string().nullable().optional().openapi({ example: 'strength' }),
+  })
+  .openapi('UpdateProgramInput')
+
 // A null label is the label the client read back from a day without one.
 export const AddProgramDayInputSchema = z
   .object({
@@ -72,6 +80,23 @@ export const AddPlannedExerciseInputSchema = z
   })
   .openapi('AddPlannedExerciseInput')
 
+// An absent label keeps the name; null, empty or blank clears it.
+export const UpdateProgramDayInputSchema = z
+  .object({ label: z.string().nullable().optional().openapi({ example: 'Empurrar' }) })
+  .openapi('UpdateProgramDayInput')
+
+// Every field is optional and nullable: an absent field keeps its value, and a null
+// reaches the service, which refuses it with the domain error of the measure.
+export const UpdatePlannedExerciseInputSchema = z
+  .object({
+    sets: z.number().nullable().optional().openapi({ example: 4 }),
+    targetReps: z.number().nullable().optional().openapi({ example: 8 }),
+    targetSeconds: z.number().nullable().optional().openapi({ example: null }),
+    loadG: z.number().nullable().optional().openapi({ example: 42500 }),
+    restSeconds: z.number().nullable().optional().openapi({ example: 120 }),
+  })
+  .openapi('UpdatePlannedExerciseInput')
+
 export const ProgramIdParamsSchema = z.object({
   programId: z.string().openapi({
     param: { name: 'programId', in: 'path' },
@@ -83,10 +108,19 @@ export const ProgramDayParamsSchema = ProgramIdParamsSchema.extend({
   letter: z.string().openapi({ param: { name: 'letter', in: 'path' }, example: 'A' }),
 })
 
+export const PlannedExerciseParamsSchema = ProgramDayParamsSchema.extend({
+  exerciseSlug: z
+    .string()
+    .openapi({ param: { name: 'exerciseSlug', in: 'path' }, example: 'supino-reto' }),
+})
+
 export type Goal = z.infer<typeof GoalSchema>
 export type PlannedExercise = z.infer<typeof PlannedExerciseSchema>
 export type ProgramDay = z.infer<typeof ProgramDaySchema>
 export type Program = z.infer<typeof ProgramSchema>
 export type CreateProgramInput = z.infer<typeof CreateProgramInputSchema>
+export type UpdateProgramInput = z.infer<typeof UpdateProgramInputSchema>
 export type AddProgramDayInput = z.infer<typeof AddProgramDayInputSchema>
+export type UpdateProgramDayInput = z.infer<typeof UpdateProgramDayInputSchema>
 export type AddPlannedExerciseInput = z.infer<typeof AddPlannedExerciseInputSchema>
+export type UpdatePlannedExerciseInput = z.infer<typeof UpdatePlannedExerciseInputSchema>

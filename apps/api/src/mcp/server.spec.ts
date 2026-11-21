@@ -69,7 +69,7 @@ describe('Given an app in development with a database', () => {
   })
 
   describe('When tools/list is called on /mcp', () => {
-    it('Then should return the catalog tools, the five program tools and get_system_status, none destructive', async () => {
+    it('Then should return the catalog tools, the eleven program tools and get_system_status, with only remove_program_day and remove_planned_exercise destructive', async () => {
       await postJsonRpc(app, INITIALIZE_REQUEST)
       const listed = await postJsonRpc(app, { id: 2, method: 'tools/list', params: {} })
       const tools = (listed.result?.tools ?? []) as ListedTool[]
@@ -138,6 +138,48 @@ describe('Given an app in development with a database', () => {
           hasSchemas: true,
           readOnly: false,
           destructive: false,
+        },
+        {
+          name: 'update_program',
+          hasDescription: true,
+          hasSchemas: true,
+          readOnly: false,
+          destructive: false,
+        },
+        {
+          name: 'activate_program',
+          hasDescription: true,
+          hasSchemas: true,
+          readOnly: false,
+          destructive: false,
+        },
+        {
+          name: 'update_program_day',
+          hasDescription: true,
+          hasSchemas: true,
+          readOnly: false,
+          destructive: false,
+        },
+        {
+          name: 'remove_program_day',
+          hasDescription: true,
+          hasSchemas: true,
+          readOnly: false,
+          destructive: true,
+        },
+        {
+          name: 'update_planned_exercise',
+          hasDescription: true,
+          hasSchemas: true,
+          readOnly: false,
+          destructive: false,
+        },
+        {
+          name: 'remove_planned_exercise',
+          hasDescription: true,
+          hasSchemas: true,
+          readOnly: false,
+          destructive: true,
         },
         {
           name: 'get_program',

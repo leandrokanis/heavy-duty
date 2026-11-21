@@ -14,6 +14,7 @@ const apiDatabasePath = API_DATABASE_PATH
 
 const CATALOG_MUSCLES_SPEC = /catalog-muscles\.feature\.spec\.js$/
 const PROGRAMS_SPEC = /programs\.feature\.spec\.js$/
+const PROGRAMS_EDIT_SPEC = /programs-edit\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -40,7 +41,7 @@ export default defineConfig({
     },
     {
       name: 'mobile',
-      testIgnore: [CATALOG_MUSCLES_SPEC, PROGRAMS_SPEC],
+      testIgnore: [CATALOG_MUSCLES_SPEC, PROGRAMS_SPEC, PROGRAMS_EDIT_SPEC],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
     },
@@ -51,6 +52,15 @@ export default defineConfig({
       testMatch: PROGRAMS_SPEC,
       fullyParallel: false,
       dependencies: ['mobile'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // A project of its own keeps the edit scenarios off the active program while the
+    // creation scenarios run: fullyParallel false still runs two files side by side.
+    {
+      name: 'programs-edit',
+      testMatch: PROGRAMS_EDIT_SPEC,
+      fullyParallel: false,
+      dependencies: ['programs'],
       use: { ...devices['Pixel 7'] },
     },
   ],

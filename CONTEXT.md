@@ -30,7 +30,7 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 
 | Termo | Definição | Código | Não usar |
 |---|---|---|---|
-| Treino | Sessão realizada de uma letra, com data e séries registradas | `Workout` | sessão, sessão de treino, sessão de acesso |
+| Treino | Sessão realizada de uma letra, com data e séries registradas. Guarda a letra treinada, que continua no treino mesmo se a letra sair do programa | `Workout` | sessão, sessão de treino, sessão de acesso |
 | Série | Execução registrada de um exercício, com carga e repetições ou tempo | `WorkoutSet` | set |
 | Passo | Ação do atleta no fluxo da academia que pede um toque: registrar a série, pular o descanso | — | etapa |
 | Ajuste por arrasto | Mudança de carga, repetições ou tempo por arrasto, em passos fixos, sem teclado | `dragAdjust` | slider |
