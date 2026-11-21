@@ -55,11 +55,13 @@ apps/ui/src/
     mapa/  periodo/        telas do jogo (ondas 5 a 7)
     admin/                 telas de administração no Mac (proposta para a Q10)
     cadastro/              cadastro da chave de acesso pelo link de cadastro (US-F14-01)
+    autorizar/             tela de autorização do cliente do MCP (US-F16-01)
     ~offline/              página sem conexão
     manifest.ts            manifesto do PWA
   components/ui/           componentes do Animate UI, sobre o Base UI, adaptados ao DESIGN.md
   features/<feature>/      componentes, hooks e serviços de uma feature (auth, workout, rest, game…)
   features/auth/           AuthGate, tela de entrada, tela de cadastro, aviso sem conexão, cliente de /api/auth/*
+  features/mcp-auth/       tela de autorização do MCP e cliente de /api/oauth/authorization
   shared/                  utilitários usados por duas features ou mais
   sync/                    fila do armazenamento local e envio para a API
   sw.ts                    service worker (Serwist)
@@ -78,6 +80,7 @@ apps/ui/src/
 
 7. O `AuthGate` do layout raiz consulta `GET /api/auth/session` e mostra a tela de entrada no lugar da tela pedida, na mesma URL, quando a resposta é 401; depois da entrada, mostra a tela pedida. Enquanto consulta, não mostra nada; na falha de rede ou na API fora do ar, mostra "Sem conexão". `/cadastro` e `/~offline` passam direto (ADR-019). A API é a fronteira de segurança: a tela não traz dado no HTML.
 8. O service worker não guarda resposta de `/api/*` do mesmo domínio: a primeira regra de `runtimeCaching` é `NetworkOnly` para essas rotas, antes do `defaultCache`. A saída (`signOut`) apaga todos os caches cujo nome não contém `precache` (FR-019, FR-020).
-9. O manifesto declara ícones PNG de 192 e 512 px e um de 512 px `maskable`; o layout declara o `apple-touch-icon` de 180 px. Os PNG são versionados e renderizados dos SVG com o Chromium (`apps/ui/README.md`).
+9. A tela `/autorizar` é o `authorization_endpoint` do servidor de autorização do MCP (ADR-020) e fica atrás do `AuthGate`: sem sessão de acesso, a tela de entrada aparece na mesma URL. A tela chama `GET /api/oauth/authorization` com a query do pedido e mostra o host do `redirect_uri` em destaque e o nome declarado pelo cliente como dado secundário, com os botões "Recusar" e "Permitir". O toque duplo manda uma decisão só, e o navegador segue para o `redirectTo` com `window.location.assign`. A prévia 400 mostra a mensagem sem redirecionar; a prévia `error_redirect` redireciona direto; a falha de rede mostra "Sem conexão". O `next.config.ts` manda em `/autorizar` os cabeçalhos `Content-Security-Policy: frame-ancestors 'none'`, `X-Frame-Options: DENY` e `Referrer-Policy: no-referrer`, contra clickjacking e vazamento da query.
+10. O manifesto declara ícones PNG de 192 e 512 px e um de 512 px `maskable`; o layout declara o `apple-touch-icon` de 180 px. Os PNG são versionados e renderizados dos SVG com o Chromium (`apps/ui/README.md`).
 
 As regras de produto e de interface do dia a dia estão em `apps/ui/CLAUDE.md` e em `DESIGN.md`.

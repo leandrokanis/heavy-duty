@@ -18,6 +18,7 @@
     "backup:scheduler": "tsx src/modules/system/backup/scheduler.ts",
     "backup:verify": "tsx src/modules/system/backup/verify.ts",
     "auth:enroll": "tsx src/modules/auth/enroll.ts",
+    "auth:revoke-mcp": "tsx src/modules/auth/revoke-mcp.ts",
     "openapi": "tsx scripts/openapi.ts",
     "openapi:check": "tsx scripts/openapi.ts --check"
   },

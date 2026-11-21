@@ -5,7 +5,7 @@ import { registerTools, type ToolDeps } from './tools/index.js'
 
 export const MCP_PATH = '/mcp'
 
-export function createMcpServer(deps: ToolDeps | undefined): McpServer {
+export function createMcpServer(deps: ToolDeps): McpServer {
   const server = new McpServer(
     { name: 'heavy-duty', version: '0.0.0' },
     { capabilities: { tools: {} } },
@@ -15,7 +15,7 @@ export function createMcpServer(deps: ToolDeps | undefined): McpServer {
 }
 
 // Stateless transport, one server per request, see ADR-006.
-export async function handleMcpRequest(c: Context, deps: ToolDeps | undefined): Promise<Response> {
+export async function handleMcpRequest(c: Context, deps: ToolDeps): Promise<Response> {
   const server = createMcpServer(deps)
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,

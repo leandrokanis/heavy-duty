@@ -7,7 +7,10 @@ const API_PORT = Number(process.env.API_PORT ?? 3101)
 const UPSTREAM_HOST = '127.0.0.1'
 
 function upstreamPort(path: string): number {
-  return path.startsWith('/api/') || path === '/api' || path.startsWith('/mcp')
+  return path.startsWith('/api/') ||
+    path === '/api' ||
+    path.startsWith('/mcp') ||
+    path.startsWith('/.well-known/oauth-')
     ? API_PORT
     : WEB_PORT
 }

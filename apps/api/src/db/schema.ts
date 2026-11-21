@@ -244,3 +244,52 @@ export const workoutSets = sqliteTable(
     index('workout_sets_planned_exercise_idx').on(table.plannedExerciseId),
   ],
 )
+
+export const oauthClients = sqliteTable('oauth_clients', {
+  id: text('id').primaryKey(),
+  clientName: text('client_name'),
+  redirectUris: text('redirect_uris').notNull(),
+  createdAt: text('created_at').notNull(),
+  approvedAt: text('approved_at'),
+})
+
+export const oauthAuthorizationCodes = sqliteTable(
+  'oauth_authorization_codes',
+  {
+    id: text('id').primaryKey(),
+    codeHash: text('code_hash').notNull().unique(),
+    clientId: text('client_id')
+      .notNull()
+      .references(() => oauthClients.id, { onDelete: 'cascade' }),
+    redirectUri: text('redirect_uri').notNull(),
+    codeChallenge: text('code_challenge').notNull(),
+    resource: text('resource').notNull(),
+    createdAt: text('created_at').notNull(),
+    expiresAt: text('expires_at').notNull(),
+    usedAt: text('used_at'),
+  },
+  (table) => [index('oauth_authorization_codes_client_idx').on(table.clientId)],
+)
+
+// One row per approval: rotation and revocation update it in place, see ADR-020.
+export const oauthGrants = sqliteTable(
+  'oauth_grants',
+  {
+    id: text('id').primaryKey(),
+    clientId: text('client_id')
+      .notNull()
+      .references(() => oauthClients.id, { onDelete: 'cascade' }),
+    resource: text('resource').notNull(),
+    accessTokenHash: text('access_token_hash').notNull().unique(),
+    accessExpiresAt: text('access_expires_at').notNull(),
+    refreshTokenHash: text('refresh_token_hash').notNull().unique(),
+    previousRefreshTokenHash: text('previous_refresh_token_hash'),
+    refreshExpiresAt: text('refresh_expires_at').notNull(),
+    createdAt: text('created_at').notNull(),
+    revokedAt: text('revoked_at'),
+  },
+  (table) => [
+    index('oauth_grants_client_idx').on(table.clientId),
+    index('oauth_grants_previous_refresh_idx').on(table.previousRefreshTokenHash),
+  ],
+)

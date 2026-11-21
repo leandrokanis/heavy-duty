@@ -117,3 +117,22 @@ describe.each(['/cadastro', '/~offline'])('Given the AuthGate on %s', (path) => 
     })
   })
 })
+
+describe('Given the AuthGate on the MCP authorization screen', () => {
+  beforeEach(() => {
+    usePathnameMock.mockReturnValue('/autorizar')
+  })
+
+  describe('When the session check answers 401', () => {
+    it('Then should show the Entrar button in place of the authorization screen', async () => {
+      stubFetch(json(401))
+
+      renderGate()
+
+      expect({
+        signIn: (await screen.findByRole('button', { name: 'Entrar' })) !== null,
+        child: screen.queryByRole('heading', { name: 'Tela pedida' }),
+      }).toEqual({ signIn: true, child: null })
+    })
+  })
+})

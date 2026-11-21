@@ -110,3 +110,30 @@ describe('Given NODE_ENV production with an empty APP_ORIGIN, as compose.prod.ya
     })
   })
 })
+
+describe('Given NODE_ENV production and APP_ORIGIN https://hd.example', () => {
+  const base = {
+    NODE_ENV: 'production',
+    DATABASE_PATH: '/data/heavy-duty.sqlite',
+    APP_ORIGIN: 'https://hd.example',
+  }
+
+  describe('When the configuration is loaded without MCP_ALLOWED_HOSTS', () => {
+    it('Then mcpAllowedHosts should hold the loopback defaults and hd.example', () => {
+      expect(loadConfig(base).mcpAllowedHosts).toEqual([
+        'localhost',
+        '127.0.0.1',
+        '[::1]',
+        'hd.example',
+      ])
+    })
+  })
+
+  describe('When MCP_ALLOWED_HOSTS already lists hd.example', () => {
+    it('Then mcpAllowedHosts should not repeat it', () => {
+      const env = { ...base, MCP_ALLOWED_HOSTS: 'hd.example,localhost' }
+
+      expect(loadConfig(env).mcpAllowedHosts).toEqual(['hd.example', 'localhost'])
+    })
+  })
+})

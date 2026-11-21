@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createApp } from '../app.js'
 import { createTestDatabase } from '../test/database.js'
+import { createMcpAuthorizedApp } from '../test/mcp-auth.js'
 
 type JsonRpcResponse = { result?: Record<string, unknown>; error?: unknown }
 
@@ -37,38 +38,33 @@ async function postJsonRpc(
   return (await response.json()) as JsonRpcResponse
 }
 
-describe('Given an app in development', () => {
-  const app = createApp({ nodeEnv: 'development', databaseHealth: () => true })
+describe('Given an app in development without a database', () => {
+  const app = createApp({ nodeEnv: 'development', databaseHealth: () => false })
 
-  describe('When a client initializes a session on /mcp and lists tools', () => {
-    it('Then should return an empty tool list', async () => {
-      const initialized = await postJsonRpc(app, {
-        id: 1,
-        method: 'initialize',
-        params: {
-          protocolVersion: '2025-06-18',
-          capabilities: {},
-          clientInfo: { name: 'heavy-duty-spec', version: '0.0.0' },
+  describe('When a client posts initialize to /mcp', () => {
+    it('Then should respond 404, because no credential can be checked', async () => {
+      const response = await app.request('/mcp', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/json, text/event-stream',
         },
+        body: JSON.stringify({ jsonrpc: '2.0', ...INITIALIZE_REQUEST }),
       })
-      const listed = await postJsonRpc(app, { id: 2, method: 'tools/list', params: {} })
 
-      expect({
-        serverName: (initialized.result?.serverInfo as { name?: string } | undefined)?.name,
-        tools: listed.result?.tools,
-      }).toEqual({ serverName: 'heavy-duty', tools: [] })
+      expect(response.status).toBe(404)
     })
   })
 })
 
-describe('Given an app in development with a database', () => {
-  const app = createApp({
-    nodeEnv: 'development',
-    databaseHealth: () => true,
-    db: createTestDatabase(),
-  })
+describe('Given an app in development with a database and an MCP credential', () => {
+  const db = createTestDatabase()
+  const app = createMcpAuthorizedApp(
+    createApp({ nodeEnv: 'development', databaseHealth: () => true, db }),
+    db,
+  )
 
-  describe('When tools/list is called on /mcp', () => {
+  describe('When initialize and tools/list are called on /mcp', () => {
     it('Then should return the catalog tools, the eleven program tools and get_system_status, with only remove_program_day and remove_planned_exercise destructive', async () => {
       await postJsonRpc(app, INITIALIZE_REQUEST)
       const listed = await postJsonRpc(app, { id: 2, method: 'tools/list', params: {} })

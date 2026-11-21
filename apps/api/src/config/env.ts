@@ -61,14 +61,24 @@ export function resolveAppOrigin(nodeEnv: string, appOrigin: string | undefined)
   return { appOrigin: url.origin, rpId: url.hostname }
 }
 
+// The public host always reaches /mcp, so the domain is configured once, see ADR-020.
+function withAppOriginHost(hosts: readonly string[], appOriginHost: string): readonly string[] {
+  return hosts.includes(appOriginHost) ? hosts : [...hosts, appOriginHost]
+}
+
 export function loadConfig(env: Environment): AppConfig {
   const parsed = EnvironmentSchema.parse(env)
+  const databasePath = resolveDatabasePath(parsed.NODE_ENV, parsed.DATABASE_PATH)
+  const origin = resolveAppOrigin(parsed.NODE_ENV, parsed.APP_ORIGIN)
 
   return {
     nodeEnv: parsed.NODE_ENV,
     port: parsed.PORT,
-    databasePath: resolveDatabasePath(parsed.NODE_ENV, parsed.DATABASE_PATH),
-    mcpAllowedHosts: parseHostList(parsed.MCP_ALLOWED_HOSTS) ?? DEFAULT_MCP_ALLOWED_HOSTS,
-    ...resolveAppOrigin(parsed.NODE_ENV, parsed.APP_ORIGIN),
+    databasePath,
+    mcpAllowedHosts: withAppOriginHost(
+      parseHostList(parsed.MCP_ALLOWED_HOSTS) ?? DEFAULT_MCP_ALLOWED_HOSTS,
+      origin.rpId,
+    ),
+    ...origin,
   }
 }
