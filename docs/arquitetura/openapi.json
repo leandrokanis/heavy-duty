@@ -1085,6 +1085,166 @@
           "succeeded",
           "failed"
         ]
+      },
+      "Today": {
+        "type": "object",
+        "properties": {
+          "program": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "0193a1b2-0000-7000-8000-000000000301"
+              },
+              "name": {
+                "type": "string",
+                "example": "Programa 1"
+              },
+              "goal": {
+                "$ref": "#/components/schemas/Goal"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "goal"
+            ]
+          },
+          "suggestedLetter": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "A"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TodayDay"
+            }
+          }
+        },
+        "required": [
+          "program",
+          "suggestedLetter",
+          "days"
+        ]
+      },
+      "TodayDay": {
+        "type": "object",
+        "properties": {
+          "letter": {
+            "type": "string",
+            "example": "A"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Superior"
+          },
+          "estimatedDurationSeconds": {
+            "type": "integer",
+            "example": 675
+          },
+          "exercises": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TodayExercise"
+            }
+          }
+        },
+        "required": [
+          "letter",
+          "label",
+          "estimatedDurationSeconds",
+          "exercises"
+        ]
+      },
+      "TodayExercise": {
+        "type": "object",
+        "properties": {
+          "exercise": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "0193a1b2-0000-7000-8000-000000000201"
+              },
+              "slug": {
+                "type": "string",
+                "example": "supino-reto"
+              },
+              "name": {
+                "type": "string",
+                "example": "Supino reto"
+              },
+              "kind": {
+                "$ref": "#/components/schemas/ExerciseKind"
+              }
+            },
+            "required": [
+              "id",
+              "slug",
+              "name",
+              "kind"
+            ]
+          },
+          "sets": {
+            "type": "integer",
+            "example": 3
+          },
+          "targetReps": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 10
+          },
+          "targetSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": null
+          },
+          "restSeconds": {
+            "type": "integer",
+            "example": 90
+          },
+          "plannedLoadG": {
+            "type": "integer",
+            "example": 40000
+          },
+          "loadG": {
+            "type": "integer",
+            "example": 42500
+          },
+          "loadSource": {
+            "$ref": "#/components/schemas/LoadSource"
+          }
+        },
+        "required": [
+          "exercise",
+          "sets",
+          "targetReps",
+          "targetSeconds",
+          "restSeconds",
+          "plannedLoadG",
+          "loadG",
+          "loadSource"
+        ]
+      },
+      "LoadSource": {
+        "type": "string",
+        "enum": [
+          "program",
+          "last_workout"
+        ]
       }
     },
     "parameters": {}
@@ -2998,6 +3158,46 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SystemStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/today": {
+      "get": {
+        "tags": [
+          "workouts"
+        ],
+        "summary": "Show the active program days in plan order, the suggested letter and each planned exercise with its prefilled load",
+        "responses": {
+          "200": {
+            "description": "The workout of the day, with a null program and no days when no program is active",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Today"
                 }
               }
             }

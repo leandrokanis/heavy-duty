@@ -25,17 +25,17 @@ O app web não guarda regra de negócio. Validação de domínio, cálculo do jo
 | Next.js 16.4.6, App Router | Rotas, layouts, servidor das páginas; build de produção com `next build --webpack` | MIT | Aceita, ADR-009 |
 | React 19 | Componentes | MIT | Aceita, ADR-009 |
 | TypeScript, modo estrito | Linguagem | Apache-2.0 | Aceita, ADR-002 |
-| Base UI (`@base-ui/react`) | Componentes sem estilo e acessíveis, base do Animate UI | MIT | Aceita, ADR-009 |
+| Base UI (`@base-ui/react`) | Componentes sem estilo e acessíveis, base do Animate UI. A feature `workout` usa o `Drawer` (folha de confirmação) e o `Progress` (barra de exercícios e pontos das séries) | MIT | Aceita, ADR-009 |
 | Animate UI, variante Base UI | Componentes animados copiados para `src/components/ui/` | "MIT + Commons Clause" no `LICENSE.md` oficial (2026-11-21) | Pendente: decisão do PO sobre a licença (ADR-016); nenhum componente copiado |
 | Tailwind CSS 4 | Estilo, com os tokens do `DESIGN.md` no tema | MIT | Aceita, ADR-009 |
 | Motion | Animação, exigida pelo Animate UI | MIT | Aceita, ADR-009 |
 | Serwist (`@serwist/next` 9.5.15) | Service worker: pré-carga, página sem conexão em `/~offline`, recebimento do Web Push | MIT | Aceita, ADR-009 |
 | `@simplewebauthn/browser` 14.0.0 | Cerimônias da chave de acesso no navegador (`startAuthentication`, `startRegistration`) | MIT | Aceita, ADR-019 |
-| TanStack Query | Cache e revalidação dos dados da API no cliente | MIT | Adiado para a onda 3 |
+| TanStack Query | Cache e revalidação dos dados da API no cliente | MIT | Adiado: a US-F03-01 lê `/api/today` com `fetch` simples, uma vez por abertura; a US-F03-03 decide com o cache local |
 | Dexie | Acesso ao IndexedDB (contêiner de armazenamento local) | Apache-2.0 | Adiado para a onda 3 (US-F03-03) |
-| Zod | Validação dos dados que chegam da API | MIT | Adiado para a onda 3 |
+| Zod | Validação dos dados que chegam da API | MIT | Adiado: a US-F03-01 espelha o schema da API em `today.types.ts`; a US-F03-03 decide junto com o TanStack Query |
 | Vitest, jsdom e Testing Library | Teste de componente | MIT | Aceita, `docs/convencoes/testes.md` |
-| Lucide (`lucide-react`) | Conjunto de ícones; o pacote entra com a primeira tela que usar ícone | ISC | Aceita, ADR-016 |
+| Lucide (`lucide-react` 1.70.0) | Conjunto de ícones. Instalado na US-F03-01, com os ícones `X` (fechar a folha) e `Timer` (duração estimada) | ISC | Aceita, ADR-016 |
 
 ## Interfaces
 
@@ -61,6 +61,7 @@ apps/ui/src/
   components/ui/           componentes do Animate UI, sobre o Base UI, adaptados ao DESIGN.md
   features/<feature>/      componentes, hooks e serviços de uma feature (auth, workout, rest, game…)
   features/auth/           AuthGate, tela de entrada, tela de cadastro, aviso sem conexão, cliente de /api/auth/*
+  features/workout/        treino do dia: cliente de /api/today, lista de letras, folha de confirmação, tela de treino e formatação de carga e duração (US-F03-01)
   features/mcp-auth/       tela de autorização do MCP e cliente de /api/oauth/authorization
   shared/                  utilitários usados por duas features ou mais
   sync/                    fila do armazenamento local e envio para a API

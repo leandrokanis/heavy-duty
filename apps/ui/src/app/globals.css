@@ -36,6 +36,10 @@
 
 :root {
   color-scheme: light dark;
+  /* Section 18: provisional glass material on system colours until the PO picks the palette. */
+  --material-glass: blur(20px) saturate(180%);
+  --material-glass-fill: color-mix(in srgb, Canvas 72%, transparent);
+  --color-background-elevated: Canvas;
 }
 
 html {
@@ -51,4 +55,43 @@ body {
   color: CanvasText;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
     env(safe-area-inset-left);
+}
+
+/* Section 10.2: follows the iOS text size; other browsers keep the rem scale. */
+@supports (font: -apple-system-body) {
+  html {
+    /* biome-ignore lint/a11y/useGenericFontNames: the keyword carries the iOS text size; the next line sets the family. */
+    font: -apple-system-body;
+    font-family: var(--font-sans);
+  }
+}
+
+/* Section 12: glass only on the control layer, with an opaque version. */
+.glass {
+  background: var(--material-glass-fill);
+  -webkit-backdrop-filter: var(--material-glass);
+  backdrop-filter: var(--material-glass);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: var(--color-background-elevated);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    background: var(--color-background-elevated);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .glass {
+    background: var(--color-background-elevated);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    outline: 1px solid CanvasText;
+  }
 }

@@ -67,6 +67,8 @@ Os princípios vêm das personas e das metas do PRD. Em conflito entre uma regra
 3. **Sem teclado no treino.** O fluxo de treino NÃO DEVE abrir teclado. Valores mudam por arrasto ou por toque (PRD, F04; Seção 16.3).
 4. **Estado de rede visível.** Quando a série fica na fila local, a tela DEVE mostrar que o envio está pendente, sem bloquear o treino (PRD, US-F03-03).
 5. **Gamificação sem comparação social.** A interface PODE mostrar pontos, níveis, recordes, medalhas e ranking pessoal, mas NÃO DEVE comparar o atleta com outras pessoas (PRD, D23; `docs/gamificacao.md`).
+6. **Sem texto de instrução no fluxo da academia.** As telas do fluxo da academia NÃO DEVEM ter texto de instrução, como "Toque numa letra para começar". O significado vem do rótulo do controle, do ícone e do indicador visual. Rótulo de estado, como "Sugerida", não é instrução (US-F03-01).
+7. **Indicador visual antes de texto.** Progresso e estado DEVERIAM aparecer num indicador visual (barra, pontos, anel) antes de aparecer em texto. O indicador DEVE ter papel e nome acessíveis, como `role="progressbar"` com `aria-valuetext` "1 de 3" (Seção 16.1; US-F03-01).
 
 ## 4. Referência visual: Liquid Glass na web
 
@@ -192,7 +194,8 @@ O HIG não especifica botão de ação central sobre a barra de abas. Se o app a
 ### 10.2. Tamanho e escala
 
 - O tamanho da fonte DEVE estar em `rem` e acompanhar o ajuste de tamanho de texto do usuário.
-- No Safari do iOS, o texto PODE seguir o Dynamic Type por `font: -apple-system-body` na raiz [a confirmar na primeira tela do fluxo da academia, US-F03-01].
+- No Safari do iOS, o texto DEVE seguir o Dynamic Type por `font: -apple-system-body` na raiz, dentro de `@supports (font: -apple-system-body)`. A mesma regra repõe `font-family: var(--font-sans)`, e os outros navegadores mantêm a escala em `rem` (US-F03-01).
+- A conferência do Dynamic Type no iPhone é tarefa manual: o Chromium do e2e não aceita `-apple-system-body`.
 - O texto do corpo NÃO DEVE ficar abaixo de 1 rem (Projeto).
 
 ### 10.3. Números do treino
@@ -343,7 +346,15 @@ O texto exibido ao usuário é em português do Brasil (`docs/convencoes/codigo.
 | Duração | `--duration-` | `--duration-fast`, `--duration-base` |
 | Alvo de toque | `--target-` | `--target-min` (44 px), `--target-workout` (56 px) |
 
-Os tokens ficam no tema do Tailwind CSS, em `apps/ui/src/app/globals.css`, como variáveis CSS no bloco `@theme static` (ADR-009). O arquivo declara só os tokens com valor neste documento: espaço (Seções 5.2 e 5.3), alvo de toque (Seção 7), raio de cápsula e de círculo (Seção 13), fonte (Seção 10) e `--duration-base` (Seção 15). Cor, material, `--radius-card`, `--radius-control`, `--font-size-display` e `--duration-fast` entram quando o documento definir o valor [a confirmar: paleta e escala tipográfica escolhidas pelo PO].
+Os tokens ficam no tema do Tailwind CSS, em `apps/ui/src/app/globals.css`, como variáveis CSS no bloco `@theme static` (ADR-009). O arquivo declara só os tokens com valor neste documento: espaço (Seções 5.2 e 5.3), alvo de toque (Seção 7), raio de cápsula e de círculo (Seção 13), fonte (Seção 10) e `--duration-base` (Seção 15). Cor, `--radius-card`, `--radius-control`, `--font-size-display` e `--duration-fast` entram quando o documento definir o valor [a confirmar: paleta e escala tipográfica escolhidas pelo PO].
+
+Os tokens de material são provisórios e ficam no `:root` de `globals.css`, a partir das cores do sistema, até o PO escolher a paleta [a confirmar: valores do PO]. A folha de confirmação e o controle do topo da tela de treino (US-F03-01) usam a classe `.glass`, com a versão opaca da Seção 12:
+
+| Token | Valor provisório |
+|---|---|
+| `--material-glass` | `blur(20px) saturate(180%)`, usado no `backdrop-filter` |
+| `--material-glass-fill` | `color-mix(in srgb, Canvas 72%, transparent)` |
+| `--color-background-elevated` | `Canvas`, o fundo opaco da Seção 12 |
 
 ## 19. Verificação geométrica
 

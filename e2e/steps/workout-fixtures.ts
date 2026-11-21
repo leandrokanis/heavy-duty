@@ -33,6 +33,7 @@ export function recordWorkout(
   programId: string,
   letter: string,
   sets: readonly WorkoutSetInput[],
+  startedAt: string = STARTED_AT,
 ): string {
   return withDatabase((db) => {
     const workoutId = randomUUID()
@@ -43,7 +44,7 @@ export function recordWorkout(
         .get(programId, letter) as { id: string } | undefined
       db.prepare(
         'INSERT INTO workouts (id, program_id, program_day_id, letter, started_at) VALUES (?, ?, ?, ?, ?)',
-      ).run(workoutId, programId, day?.id ?? null, letter, STARTED_AT)
+      ).run(workoutId, programId, day?.id ?? null, letter, startedAt)
       sets.forEach((set, index) => {
         const exercise = db
           .prepare('SELECT id FROM exercises WHERE slug = ?')
@@ -67,7 +68,7 @@ export function recordWorkout(
           set.loadG,
           set.reps ?? null,
           set.seconds ?? null,
-          STARTED_AT,
+          startedAt,
         )
       })
       db.exec('COMMIT')
@@ -95,5 +96,19 @@ export function readWorkout(workoutId: string): RecordedWorkout | undefined {
       )
       .all(workoutId) as RecordedWorkout['sets']
     return { letter: workout.letter, startedAt: workout.startedAt, sets }
+  })
+}
+
+// The e2e database is thrown away on every run, so the workout of the day scenarios
+// start from an empty history instead of the fixture workouts of US-F02-02.
+export function clearWorkouts(): void {
+  withDatabase((db) => {
+    db.exec('DELETE FROM workouts')
+  })
+}
+
+export function deactivatePrograms(): void {
+  withDatabase((db) => {
+    db.exec('UPDATE programs SET is_active = 0 WHERE is_active = 1')
   })
 }
