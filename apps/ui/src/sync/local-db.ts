@@ -1,11 +1,11 @@
 import Dexie, { type Table } from 'dexie'
-import type { ActiveWorkoutRow, PendingSet, ProgramCacheRow, RejectedSet } from './sync.types'
+import type { ActiveWorkoutRow, PendingItem, ProgramCacheRow, RejectedSet } from './sync.types'
 
 export const LOCAL_DB_NAME = 'heavy-duty'
 
 // Schema of docs/arquitetura/armazenamento-local.md; a version bump needs its own migration.
 export class LocalDb extends Dexie {
-  pendingSets!: Table<PendingSet, number>
+  pendingSets!: Table<PendingItem, number>
   rejectedSets!: Table<RejectedSet, string>
   activeWorkout!: Table<ActiveWorkoutRow, string>
   programCache!: Table<ProgramCacheRow, string>

@@ -1,9 +1,10 @@
 import { act, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { PendingSetsIndicator } from '@/features/workout/pending-sets-indicator'
 import type { SendOutcome } from '@/features/workout/workout-set.types'
 import { createMemoryQueueStore } from './queue-store'
 import { SYNC_RETRY_INTERVAL_MS } from './sync.config'
-import { SyncProvider, useSyncSnapshot } from './sync-context'
+import { SyncProvider, sendPendingItem, useSyncSnapshot } from './sync-context'
 import { createSyncQueue, type SyncQueue } from './sync-queue'
 import { pendingSetBody } from './test-sets'
 
@@ -169,6 +170,97 @@ describe('Given the provider mounts', () => {
       )
 
       expect(screen.getByRole('status')).toHaveTextContent('0 pending')
+    })
+  })
+})
+
+describe('Given a pending set and the pending finish of a workout', () => {
+  describe('When the app queue sends each of them', () => {
+    it('Then should POST the set to the sets of the workout and the finish to the finish of the workout, with their own bodies', async () => {
+      const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }))
+      vi.stubGlobal('fetch', fetchMock)
+      const set = pendingSetBody()
+      const finish = { finishedAt: '2026-11-21T19:20:00.000Z', endReason: 'ended_early' as const }
+
+      await sendPendingItem({
+        kind: 'set',
+        seq: 1,
+        id: set.id,
+        workoutId: WORKOUT_ID,
+        body: set,
+        queuedAt: 1,
+      })
+      await sendPendingItem({
+        kind: 'finish',
+        seq: 2,
+        id: `${WORKOUT_ID}:finish`,
+        workoutId: WORKOUT_ID,
+        body: finish,
+        queuedAt: 2,
+      })
+
+      expect(
+        (fetchMock.mock.calls as unknown as [string, RequestInit][]).map(([url, init]) => [
+          url,
+          init.method,
+          init.body,
+        ]),
+      ).toEqual([
+        [`/api/workouts/${WORKOUT_ID}/sets`, 'POST', JSON.stringify(set)],
+        [`/api/workouts/${WORKOUT_ID}/finish`, 'POST', JSON.stringify(finish)],
+      ])
+    })
+  })
+})
+
+const FINISH_BODY = { finishedAt: '2026-11-21T19:20:00.000Z', endReason: 'ended_early' as const }
+
+function retryingQueue() {
+  const send = vi.fn<() => Promise<SendOutcome>>().mockResolvedValue({ status: 'retry' })
+  return { send, queue: createSyncQueue({ store: createMemoryQueueStore(), send }) }
+}
+
+describe('Given two sets and a finish waiting in the queue', () => {
+  describe('When the indicator renders', () => {
+    it('Then should read "2 séries aguardando envio"', async () => {
+      const { queue } = retryingQueue()
+      await queue.enqueue(WORKOUT_ID, pendingSetBody({ id: 'set-1' }))
+      await queue.enqueue(WORKOUT_ID, pendingSetBody({ id: 'set-2', setNumber: 2 }))
+      await queue.enqueueFinish(WORKOUT_ID, FINISH_BODY)
+
+      render(
+        <SyncProvider queue={queue}>
+          <PendingSetsIndicator />
+        </SyncProvider>,
+      )
+
+      expect(screen.getByRole('status').textContent).toBe('2 séries aguardando envio')
+    })
+  })
+})
+
+describe('Given only the finish waiting in the queue', () => {
+  describe('When the indicator renders and the retry interval elapses', () => {
+    it('Then should show no indicator and still send the finish again', async () => {
+      vi.useFakeTimers()
+      const { queue, send } = retryingQueue()
+      await queue.enqueueFinish(WORKOUT_ID, FINISH_BODY)
+      await queue.flush()
+      send.mockClear()
+
+      render(
+        <SyncProvider queue={queue}>
+          <PendingSetsIndicator />
+        </SyncProvider>,
+      )
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(SYNC_RETRY_INTERVAL_MS)
+      })
+
+      expect({
+        indicator: screen.queryByRole('status'),
+        resent: send.mock.calls.length > 0,
+      }).toEqual({ indicator: null, resent: true })
     })
   })
 })

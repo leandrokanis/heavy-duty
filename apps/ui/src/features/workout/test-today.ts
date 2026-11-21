@@ -41,6 +41,18 @@ export const TRICEPS_POLIA: TodayExercise = {
   loadSource: 'program',
 }
 
+export const CRUCIFIXO: TodayExercise = {
+  plannedExerciseId: 'planned-crucifixo',
+  exercise: { id: 'exercise-crucifixo', slug: 'crucifixo', name: 'Crucifixo', kind: 'reps' },
+  sets: 3,
+  targetReps: 12,
+  targetSeconds: null,
+  restSeconds: 60,
+  plannedLoadG: 14000,
+  loadG: 14000,
+  loadSource: 'program',
+}
+
 export function todayDay(
   letter: string,
   label: string | null,

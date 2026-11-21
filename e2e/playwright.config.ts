@@ -19,6 +19,7 @@ const TODAY_WORKOUT_SPEC = /today-workout\.feature\.spec\.js$/
 const ONE_TAP_SET_SPEC = /one-tap-set\.feature\.spec\.js$/
 const REST_TIMER_SPEC = /rest-timer\.feature\.spec\.js$/
 const OFFLINE_SETS_SPEC = /offline-sets\.feature\.spec\.js$/
+const WORKOUT_SEQUENCE_SPEC = /workout-sequence\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -53,6 +54,7 @@ export default defineConfig({
         ONE_TAP_SET_SPEC,
         REST_TIMER_SPEC,
         OFFLINE_SETS_SPEC,
+        WORKOUT_SEQUENCE_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -107,6 +109,15 @@ export default defineConfig({
       testMatch: OFFLINE_SETS_SPEC,
       fullyParallel: false,
       dependencies: ['rest-timer'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records sets, ends workouts and reads their end in the shared database, so it runs alone
+    // and one scenario at a time, after the offline sets.
+    {
+      name: 'workout-sequence',
+      testMatch: WORKOUT_SEQUENCE_SPEC,
+      fullyParallel: false,
+      dependencies: ['offline-sets'],
       use: { ...devices['Pixel 7'] },
     },
   ],

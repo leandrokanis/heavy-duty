@@ -8,10 +8,11 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react'
+import { postWorkoutFinish } from '@/features/workout/workout-finish-client'
 import { postWorkoutSet } from '@/features/workout/workout-set-client'
 import { openLocalDb } from './local-db'
 import { createDexieQueueStore, createMemoryQueueStore } from './queue-store'
-import type { QueueContents, QueueStore } from './sync.types'
+import type { PendingItem, QueueContents, QueueStore } from './sync.types'
 import { createSyncQueue, type SyncQueue } from './sync-queue'
 import { useSyncTriggers } from './use-sync-triggers'
 
@@ -31,13 +32,20 @@ function createDeferredStore(): QueueStore {
   }
 }
 
+// The queue holds sets and the end of the workout; each kind has its own route.
+export function sendPendingItem(item: PendingItem) {
+  return item.kind === 'set'
+    ? postWorkoutSet(item.workoutId, item.body)
+    : postWorkoutFinish(item.workoutId, item.body)
+}
+
 let appQueue: SyncQueue | null = null
 
 // One queue per page, so a remount or a StrictMode double render never sends from two queues.
 function getAppQueue(): SyncQueue {
   appQueue ??= createSyncQueue({
     store: typeof indexedDB === 'undefined' ? createMemoryQueueStore() : createDeferredStore(),
-    send: postWorkoutSet,
+    send: sendPendingItem,
   })
   return appQueue
 }

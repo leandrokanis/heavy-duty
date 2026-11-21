@@ -20,6 +20,7 @@ import { createHealthRoutes } from './modules/system/health.routes.js'
 import type { DatabaseHealthProbe } from './modules/system/health.service.js'
 import { createSystemStatusRoutes } from './modules/system/system-status.routes.js'
 import { createTodayRoutes } from './modules/workouts/today.routes.js'
+import { createWorkoutFinishRoutes } from './modules/workouts/workout-finish.routes.js'
 import { createWorkoutSetRoutes } from './modules/workouts/workout-set.routes.js'
 import {
   OPENAPI_CONFIG,
@@ -72,6 +73,7 @@ export function createApp(options: AppOptions): OpenAPIHono {
     app.route('/', createSystemStatusRoutes(options.db))
     app.route('/', createTodayRoutes(options.db))
     app.route('/', createWorkoutSetRoutes(options.db))
+    app.route('/', createWorkoutFinishRoutes(options.db))
     app.openAPIRegistry.registerComponent(
       'securitySchemes',
       'sessionCookie',

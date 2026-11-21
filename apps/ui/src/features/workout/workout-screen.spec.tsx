@@ -1,15 +1,14 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { clearActiveWorkout, loadActiveWorkout } from '@/sync/active-workout-store'
 import { createMemoryQueueStore } from '@/sync/queue-store'
 import { SYNC_RETRY_INTERVAL_MS } from '@/sync/sync.config'
-import { SyncProvider } from '@/sync/sync-context'
-import { createSyncQueue, type SendSet, type SyncQueue } from '@/sync/sync-queue'
-import { PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayDay } from './test-today'
-import { createWorkoutFlow, workoutFlowReducer } from './workout-flow'
+import { SyncProvider, sendPendingItem } from '@/sync/sync-context'
+import { createSyncQueue, type SendItem, type SyncQueue } from '@/sync/sync-queue'
+import { CRUCIFIXO, PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayDay } from './test-today'
+import { createWorkoutFlow, type WorkoutFlowState, workoutFlowReducer } from './workout-flow'
 import { WorkoutScreen } from './workout-screen'
 import type { SendOutcome } from './workout-set.types'
-import { postWorkoutSet } from './workout-set-client'
 
 const WORKOUT_ID = '0193a1b2-0000-7000-8000-000000000601'
 const STARTED_AT = '2026-11-21T18:30:00.000Z'
@@ -27,7 +26,7 @@ function flowOf(exercises = [SUPINO_RETO, PRANCHA]) {
 function renderWorkout(
   exercises = [SUPINO_RETO, PRANCHA],
   onFinish = vi.fn(),
-  send: SendSet = postWorkoutSet,
+  send: SendItem = sendPendingItem,
   flow = flowOf(exercises),
 ): { queue: SyncQueue } {
   const queue = createSyncQueue({ store: createMemoryQueueStore(), send })
@@ -68,6 +67,11 @@ function buttonState(name: string) {
   return button.hasAttribute('disabled') || button.getAttribute('aria-disabled') === 'true'
     ? 'disabled'
     : 'enabled'
+}
+
+// The queue also holds the finish of the workout; this counts the sets only.
+function pendingSetCount(queue: SyncQueue): number {
+  return queue.getSnapshot().pending.filter(({ kind }) => kind === 'set').length
 }
 
 function tapNext() {
@@ -532,7 +536,10 @@ describe('Given a letter with triceps-polia of one set', () => {
       await act(async () => tapNext())
 
       expect({
-        sent: sentBodies(fetchMock).map(({ setNumber }) => setNumber),
+        // The finish of the workout follows the set to its own route; only sets count here.
+        sent: sentBodies(fetchMock)
+          .filter((body) => 'setNumber' in body)
+          .map(({ setNumber }) => setNumber),
         resting: screen.queryByRole('timer', { name: 'Descanso' }) !== null,
         title: screen.getByRole('heading', { level: 1 }).textContent,
         next: screen.queryByRole('button', { name: 'Próximo' }),
@@ -561,7 +568,7 @@ describe('Given the last set of the day with the network failing', () => {
       const beforeClose = {
         close: buttonState('Fechar'),
         saved: (await loadActiveWorkout(Date.now()))?.phase,
-        pending: queue.getSnapshot().pending.length,
+        pending: pendingSetCount(queue),
       }
 
       await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Fechar' })))
@@ -569,7 +576,7 @@ describe('Given the last set of the day with the network failing', () => {
       expect({
         beforeClose,
         saved: await loadActiveWorkout(Date.now()),
-        pending: queue.getSnapshot().pending.length,
+        pending: pendingSetCount(queue),
         onFinish: onFinish.mock.calls.length,
       }).toEqual({
         beforeClose: { close: 'enabled', saved: 'finished', pending: 1 },
@@ -577,6 +584,419 @@ describe('Given the last set of the day with the network failing', () => {
         pending: 1,
         onFinish: 1,
       })
+    })
+  })
+})
+
+// Letter 'A' of the US-F03-04 fixture: supino-reto, crucifixo and triceps-polia, 3 sets each.
+const THREE_EXERCISES = [SUPINO_RETO, CRUCIFIXO, TRICEPS_POLIA]
+
+// A flow brought to the given number of recorded sets by taps one second apart, skipping each rest.
+function flowAfterSets(exercises: typeof THREE_EXERCISES, count: number): WorkoutFlowState {
+  let state = flowOf(exercises)
+  let nowMs = T0
+  for (let set = 0; set < count; set += 1) {
+    state = workoutFlowReducer(state, { type: 'next', nowMs })
+    nowMs += 1000
+    if (state.phase === 'rest') {
+      state = workoutFlowReducer(state, { type: 'next', nowMs })
+      nowMs += 1000
+    }
+  }
+  return state
+}
+
+const TOP_CONTROL_ON_CRUCIFIXO = 'Sequência do treino, letra A, exercício 2 de 3'
+
+describe('Given the 3 sets of supino-reto recorded and set 1 of crucifixo on screen', () => {
+  describe('When the athlete taps the top control', () => {
+    it('Then a dialog should list supino-reto as done, crucifixo as current and triceps-polia as to do, in that order, with an Encerrar button', async () => {
+      renderWorkout(THREE_EXERCISES, vi.fn(), sendPendingItem, flowAfterSets(THREE_EXERCISES, 3))
+
+      fireEvent.click(screen.getByRole('button', { name: TOP_CONTROL_ON_CRUCIFIXO }))
+
+      const dialog = await screen.findByRole('dialog')
+      expect({
+        items: within(dialog)
+          .getAllByRole('listitem')
+          .map((item) => item.textContent),
+        end: within(dialog).queryByRole('button', { name: 'Encerrar' }) !== null,
+      }).toEqual({
+        items: [
+          'Supino retoFeito3 de 3',
+          'CrucifixoAtual0 de 3',
+          'Tríceps na poliaPor fazer0 de 3',
+        ],
+        end: true,
+      })
+    })
+  })
+
+  describe('When the athlete opens the sheet and closes it', () => {
+    it('Then the focus should return to the top control', async () => {
+      renderWorkout(THREE_EXERCISES, vi.fn(), sendPendingItem, flowAfterSets(THREE_EXERCISES, 3))
+      const topControl = screen.getByRole('button', { name: TOP_CONTROL_ON_CRUCIFIXO })
+      fireEvent.click(topControl)
+      const dialog = await screen.findByRole('dialog')
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Fechar' }))
+
+      await waitFor(() => expect(document.activeElement).toBe(topControl))
+    })
+  })
+})
+
+async function openSequence(name: string) {
+  fireEvent.click(screen.getByRole('button', { name }))
+  await act(async () => {})
+  return screen.getByRole('dialog')
+}
+
+describe('Given the 90 s rest after set 1 of supino-reto, with the letter supino-reto, crucifixo and triceps-polia', () => {
+  describe('When the athlete picks triceps-polia in the sequence sheet', () => {
+    it('Then the ring should keep the time left, A seguir should show triceps-polia, and when the rest ends the screen should show triceps-polia with 20 kg and 12 rep', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch(created())
+      renderWorkout(THREE_EXERCISES)
+      await act(async () => tapNext())
+      await act(async () => vi.advanceTimersByTime(10_000))
+
+      const dialog = await openSequence('Sequência do treino, letra A, exercício 1 de 3')
+      fireEvent.click(within(dialog).getByRole('button', { name: /Tríceps na polia/ }))
+      await act(async () => {})
+      const afterPick = {
+        dialog: screen.queryByRole('dialog'),
+        clock: restClock(),
+        upNext: screen.queryByText('A seguir') !== null,
+        upNextName: screen.queryByText('Tríceps na polia') !== null,
+      }
+      await act(async () => vi.advanceTimersByTime(80_000))
+
+      expect({
+        afterPick,
+        title: screen.getByRole('heading', { level: 1 }).textContent,
+        load: screen.getByRole('group', { name: 'Carga' }).textContent,
+        target: screen.getByRole('group', { name: 'Alvo' }).textContent,
+        announcement: screen.getByRole('status').textContent,
+      }).toEqual({
+        afterPick: { dialog: null, clock: '1:20', upNext: true, upNextName: true },
+        title: 'Tríceps na polia',
+        load: '20kg',
+        target: '12rep',
+        announcement: 'Tríceps na polia, série 1 de 3',
+      })
+    })
+  })
+
+  describe('When the athlete picks triceps-polia and then taps Próximo', () => {
+    it('Then the rest should be skipped and triceps-polia should show with Próximo enabled', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch(created())
+      renderWorkout(THREE_EXERCISES)
+      await act(async () => tapNext())
+      await act(async () => vi.advanceTimersByTime(10_000))
+      const dialog = await openSequence('Sequência do treino, letra A, exercício 1 de 3')
+      fireEvent.click(within(dialog).getByRole('button', { name: /Tríceps na polia/ }))
+      await act(async () => vi.advanceTimersByTime(1000))
+
+      act(() => tapNext())
+
+      expect({
+        title: screen.getByRole('heading', { level: 1 }).textContent,
+        next: buttonState('Próximo'),
+        resting: screen.queryByRole('timer', { name: 'Descanso' }),
+      }).toEqual({ title: 'Tríceps na polia', next: 'enabled', resting: null })
+    })
+  })
+})
+
+describe('Given set 2 of supino-reto on screen after a skipped rest', () => {
+  describe('When the athlete picks triceps-polia in the sequence sheet and opens it again', () => {
+    it('Then triceps-polia should show with Próximo enabled and supino-reto should read Por fazer with 1 de 3', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch(created())
+      renderWorkout(THREE_EXERCISES)
+      await act(async () => tapNext())
+      await act(async () => vi.advanceTimersByTime(1000))
+      act(() => tapNext())
+      const dialog = await openSequence('Sequência do treino, letra A, exercício 1 de 3')
+
+      fireEvent.click(within(dialog).getByRole('button', { name: /Tríceps na polia/ }))
+      await act(async () => {})
+      const afterPick = {
+        title: screen.getByRole('heading', { level: 1 }).textContent,
+        next: buttonState('Próximo'),
+        sets: valueTextOf('Séries'),
+      }
+      const reopened = await openSequence('Sequência do treino, letra A, exercício 1 de 3')
+
+      expect({
+        afterPick,
+        supino: within(reopened).getAllByRole('listitem')[0]?.textContent,
+      }).toEqual({
+        afterPick: { title: 'Tríceps na polia', next: 'enabled', sets: '1 de 3' },
+        supino: 'Supino retoPor fazer1 de 3',
+      })
+    })
+  })
+})
+
+describe('Given the athlete picked triceps-polia in the sequence sheet outside the rest', () => {
+  describe('When Próximo is tapped 500 ms after the pick', () => {
+    it('Then no set should be sent and the live region should announce Tríceps na polia, série 1 de 3', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const fetchMock = stubFetch(created())
+      renderWorkout(THREE_EXERCISES)
+      await act(async () => tapNext())
+      await act(async () => vi.advanceTimersByTime(1000))
+      act(() => tapNext())
+      const dialog = await openSequence('Sequência do treino, letra A, exercício 1 de 3')
+      fireEvent.click(within(dialog).getByRole('button', { name: /Tríceps na polia/ }))
+      await act(async () => vi.advanceTimersByTime(500))
+      fetchMock.mockClear()
+
+      await act(async () => tapNext())
+
+      expect({
+        sent: fetchMock.mock.calls.length,
+        announcement: screen.getByRole('status').textContent,
+      }).toEqual({ sent: 0, announcement: 'Tríceps na polia, série 1 de 3' })
+    })
+  })
+})
+
+// Records the given number of sets with taps one second apart; each rest is skipped by the next
+// tap, so the last set recorded leaves the rest counting.
+async function tapSets(count: number) {
+  for (let set = 0; set < count; set += 1) {
+    if (set > 0) {
+      await act(async () => tapNext())
+      await act(async () => vi.advanceTimersByTime(1000))
+    }
+    await act(async () => tapNext())
+    await act(async () => vi.advanceTimersByTime(1000))
+  }
+}
+
+const NEVER_SENT: SendItem = async () => ({ status: 'retry' })
+
+describe('Given 4 of 9 sets recorded', () => {
+  describe('When the athlete taps Encerrar in the sequence sheet and then Encerrar in the confirmation', () => {
+    it('Then the confirmation should show 4 sets done and 5 left, the queue should hold the 4 sets followed by a finish ended_early at the confirmation instant, the workout in progress should be cleared and onFinish should be called', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const onFinish = vi.fn()
+      const { queue } = renderWorkout(THREE_EXERCISES, onFinish, NEVER_SENT)
+      await tapSets(4)
+      const confirmMs = Date.now()
+
+      const sequence = await openSequence('Sequência do treino, letra A, exercício 2 de 3')
+      fireEvent.click(within(sequence).getByRole('button', { name: 'Encerrar' }))
+      await act(async () => {})
+      const confirmation = screen.getByRole('dialog')
+      const counts = within(confirmation)
+        .getAllByText(/^\d+ séries? (feitas?|que faltam?)$/)
+        .map((node) => node.textContent)
+      await act(async () => {
+        fireEvent.click(within(confirmation).getByRole('button', { name: 'Encerrar' }))
+      })
+
+      expect({
+        counts,
+        pending: queue
+          .getSnapshot()
+          .pending.map(({ kind, body }) => [kind, kind === 'finish' ? body : undefined]),
+        saved: await loadActiveWorkout(Date.now()),
+        finished: onFinish.mock.calls.length,
+      }).toEqual({
+        counts: ['4 séries feitas', '5 séries que faltam'],
+        pending: [
+          ['set', undefined],
+          ['set', undefined],
+          ['set', undefined],
+          ['set', undefined],
+          ['finish', { finishedAt: new Date(confirmMs).toISOString(), endReason: 'ended_early' }],
+        ],
+        saved: null,
+        finished: 1,
+      })
+    })
+  })
+})
+
+describe('Given the end confirmation open after 4 of 9 sets recorded', () => {
+  describe('When the athlete taps Continuar', () => {
+    it('Then the confirmation should close, no set or finish should be queued beyond the 4 sets and the workout should go on', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const onFinish = vi.fn()
+      const { queue } = renderWorkout(THREE_EXERCISES, onFinish, NEVER_SENT)
+      await tapSets(4)
+      const sequence = await openSequence('Sequência do treino, letra A, exercício 2 de 3')
+      fireEvent.click(within(sequence).getByRole('button', { name: 'Encerrar' }))
+      await act(async () => {})
+
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Continuar' }))
+      await act(async () => {})
+
+      expect({
+        dialog: screen.queryByRole('dialog'),
+        kinds: queue.getSnapshot().pending.map(({ kind }) => kind),
+        saved: (await loadActiveWorkout(Date.now()))?.recorded.length,
+        onFinish: onFinish.mock.calls.length,
+      }).toEqual({ dialog: null, kinds: ['set', 'set', 'set', 'set'], saved: 4, onFinish: 0 })
+    })
+  })
+})
+
+describe('Given the end confirmation open during the 60 s rest after set 4, with the rest running out under it', () => {
+  describe('When the athlete taps Continuar', () => {
+    it('Then no set should be recorded, the rest should stay on screen until the sheet closes and set 2 of crucifixo should show only then', async () => {
+      vi.useFakeTimers({ now: T0 })
+      renderWorkout(THREE_EXERCISES, vi.fn(), NEVER_SENT)
+      await tapSets(4)
+      const sequence = await openSequence('Sequência do treino, letra A, exercício 2 de 3')
+      fireEvent.click(within(sequence).getByRole('button', { name: 'Encerrar' }))
+      await act(async () => vi.advanceTimersByTime(70_000))
+      // The modal sheet hides the screen from the accessibility tree, so the queries look for hidden nodes.
+      const underSheet = {
+        resting: screen.queryByRole('timer', { name: 'Descanso', hidden: true }) !== null,
+        sets: document
+          .querySelector('[role="progressbar"][aria-label="Séries"]')
+          ?.getAttribute('aria-valuetext'),
+      }
+
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Continuar' }))
+      await act(async () => vi.advanceTimersByTime(300))
+
+      expect({
+        underSheet,
+        resting: screen.queryByRole('timer', { name: 'Descanso' }) !== null,
+        title: screen.getByRole('heading', { level: 1 }).textContent,
+        sets: valueTextOf('Séries'),
+        saved: (await loadActiveWorkout(Date.now()))?.recorded.length,
+      }).toEqual({
+        underSheet: { resting: true, sets: '1 de 3' },
+        resting: false,
+        title: 'Crucifixo',
+        sets: '2 de 3',
+        saved: 4,
+      })
+    })
+  })
+})
+
+describe('Given no set recorded', () => {
+  describe('When the athlete confirms Encerrar', () => {
+    it('Then nothing should be queued, the workout in progress should be cleared and onFinish should be called', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const onFinish = vi.fn()
+      const { queue } = renderWorkout(THREE_EXERCISES, onFinish, NEVER_SENT)
+      const sequence = await openSequence('Sequência do treino, letra A, exercício 1 de 3')
+      fireEvent.click(within(sequence).getByRole('button', { name: 'Encerrar' }))
+      await act(async () => {})
+
+      await act(async () => {
+        fireEvent.click(
+          within(screen.getByRole('dialog')).getByRole('button', { name: 'Encerrar' }),
+        )
+      })
+
+      expect({
+        pending: queue.getSnapshot().pending,
+        saved: await loadActiveWorkout(Date.now()),
+        onFinish: onFinish.mock.calls.length,
+      }).toEqual({ pending: [], saved: null, onFinish: 1 })
+    })
+  })
+})
+
+// One exercise of 2 sets: the second set is the last missing set of the day.
+const TRICEPS_TWO_SETS = { ...TRICEPS_POLIA, sets: 2 }
+
+describe('Given the last missing set of the day on screen', () => {
+  describe('When the athlete taps Próximo', () => {
+    it('Then the screen should show Treino concluído with no confirmation and the queue should hold the 2 sets followed by a finish completed at the performedAt of the last set', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const { queue } = renderWorkout([TRICEPS_TWO_SETS], vi.fn(), NEVER_SENT)
+      await tapSets(2)
+      await act(async () => vi.advanceTimersByTime(300))
+
+      const pending = queue.getSnapshot().pending
+      const lastSet = pending.filter(({ kind }) => kind === 'set').at(-1)
+      expect({
+        title: screen.getByRole('heading', { level: 1 }).textContent,
+        dialog: screen.queryByRole('dialog'),
+        kinds: pending.map(({ kind }) => kind),
+        finish: pending.at(-1)?.body,
+      }).toEqual({
+        title: 'Treino concluído',
+        dialog: null,
+        kinds: ['set', 'set', 'finish'],
+        finish: {
+          finishedAt: (lastSet?.body as { performedAt: string } | undefined)?.performedAt,
+          endReason: 'completed',
+        },
+      })
+    })
+  })
+})
+
+describe('Given a finished workout restored from the device', () => {
+  describe('When the screen opens', () => {
+    it('Then should show Treino concluído and queue nothing, since the finish comes from the saved state', async () => {
+      const finished = flowAfterSets([TRICEPS_TWO_SETS] as typeof THREE_EXERCISES, 2)
+      const { queue } = renderWorkout([TRICEPS_TWO_SETS], vi.fn(), NEVER_SENT, finished)
+      await act(async () => {})
+
+      expect({
+        title: screen.getByRole('heading', { level: 1 }).textContent,
+        phase: finished.phase,
+        pending: queue.getSnapshot().pending,
+      }).toEqual({ title: 'Treino concluído', phase: 'finished', pending: [] })
+    })
+  })
+})
+
+describe('Given set 1 of supino-reto and set 1 of triceps-polia recorded, with triceps-polia resting', () => {
+  describe('When the athlete picks supino-reto in the sequence sheet and skips the rest', () => {
+    it('Then the set dots should mark 1 recorded set of supino-reto, not the 2 sets of the workout', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch(created(), created())
+      renderWorkout(THREE_EXERCISES)
+      await act(async () => tapNext())
+      await act(async () => vi.advanceTimersByTime(1000))
+      act(() => tapNext())
+      const toTriceps = await openSequence('Sequência do treino, letra A, exercício 1 de 3')
+      fireEvent.click(within(toTriceps).getByRole('button', { name: /Tríceps na polia/ }))
+      await act(async () => vi.advanceTimersByTime(1000))
+      await act(async () => tapNext())
+      await act(async () => vi.advanceTimersByTime(1000))
+      const toSupino = await openSequence('Sequência do treino, letra A, exercício 1 de 3')
+
+      fireEvent.click(within(toSupino).getByRole('button', { name: /Supino reto/ }))
+      await act(async () => vi.advanceTimersByTime(1000))
+      act(() => tapNext())
+
+      expect({
+        title: screen.getByRole('heading', { level: 1 }).textContent,
+        recordedDots: document.querySelectorAll('[data-recorded="true"]').length,
+        sets: valueTextOf('Séries'),
+      }).toEqual({ title: 'Supino reto', recordedDots: 1, sets: '2 de 3' })
+    })
+  })
+})
+
+describe('Given the sequence sheet open', () => {
+  describe('When the athlete presses Escape', () => {
+    it('Then the sheet should close and the focus should return to the top control', async () => {
+      renderWorkout(THREE_EXERCISES, vi.fn(), sendPendingItem, flowAfterSets(THREE_EXERCISES, 3))
+      const topControl = screen.getByRole('button', { name: TOP_CONTROL_ON_CRUCIFIXO })
+      fireEvent.click(topControl)
+      const dialog = await screen.findByRole('dialog')
+
+      fireEvent.keyDown(dialog, { key: 'Escape' })
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(document.activeElement).toBe(topControl)
     })
   })
 })

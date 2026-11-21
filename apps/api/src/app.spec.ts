@@ -266,6 +266,48 @@ describe('Given an app in production with a database, for the set recording rout
   })
 })
 
+describe('Given an app in production with a database, for the workout finish route', () => {
+  const db = createTestDatabase()
+  runSeed(db)
+  const app = createApp({ nodeEnv: 'production', databaseHealth: () => true, db })
+  const path = '/api/workouts/0193a1b2-0000-7000-8000-000000000601/finish'
+  const body = JSON.stringify({ finishedAt: '2026-11-21T19:20:00.000Z', endReason: 'completed' })
+
+  describe('When POST /api/workouts/{workoutId}/finish arrives without a session cookie', () => {
+    it('Then should respond 401 with code unauthenticated', async () => {
+      const response = await app.request(path, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body,
+      })
+
+      expect({ status: response.status, body: await response.json() }).toEqual({
+        status: 401,
+        body: UNAUTHENTICATED_BODY,
+      })
+    })
+  })
+
+  describe('When it arrives with a session cookie and an Origin of another site', () => {
+    it('Then should respond 403 with code forbidden_origin', async () => {
+      const response = await app.request(path, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          cookie: createSessionCookie(db),
+          origin: 'https://evil.example',
+        },
+        body,
+      })
+
+      expect({ status: response.status, body: await response.json() }).toEqual({
+        status: 403,
+        body: { code: 'forbidden_origin', message: 'origem não permitida' },
+      })
+    })
+  })
+})
+
 describe('Given an app in development with a database and no session cookie', () => {
   const app = createApp({
     nodeEnv: 'development',

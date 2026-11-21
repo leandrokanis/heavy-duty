@@ -5,15 +5,19 @@ import { Progress } from '@base-ui/react/progress'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { clearActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
 import { useSyncQueue } from '@/sync/sync-context'
+import { EndSheet } from './end-sheet'
 import { formatLoadKg } from './format'
 import { PendingSetsIndicator } from './pending-sets-indicator'
 import { RejectedSetsNotice } from './rejected-sets-notice'
 import { RestRing } from './rest-ring'
+import { SequenceSheet } from './sequence-sheet'
 import type { TodayExercise } from './today.types'
 import { useScreenWakeLock } from './use-screen-wake-lock'
 import {
   announcementOf,
   currentExercise,
+  exerciseProgressOf,
+  sequenceOf,
   upcomingExercise,
   type WorkoutFlowState,
   workoutFlowReducer,
@@ -44,22 +48,38 @@ function MeasureValue({ label, measure }: { label: string; measure: Measure }) {
   )
 }
 
-// Puts each new set in the queue before anything else (the data that matters), then saves the
-// workout in progress; the rest starts without waiting for the send (FR-001, FR-005, FR-009).
-// A restored flow starts with its sets already in the ref, so they are not queued twice.
-function usePersistWorkout(initial: WorkoutFlowState, state: WorkoutFlowState): () => void {
+// Puts each new set in the queue before anything else (the data that matters), then the end of
+// the workout, then saves the workout in progress; the rest starts without waiting for the send
+// (FR-001, FR-005, FR-009). An ended workout is cleared from the device and handed to onFinish
+// once its sets and its finish are queued (FR-018). A restored flow starts with its sets already
+// in the ref, so they are not queued twice.
+function usePersistWorkout(
+  initial: WorkoutFlowState,
+  state: WorkoutFlowState,
+  onFinish: () => void,
+): () => void {
   const queue = useSyncQueue()
   const queued = useRef(new Set(initial.recorded.map(({ id }) => id)))
+  const finishQueued = useRef(false)
   const closed = useRef(false)
   useEffect(() => {
-    if (state === initial) return
+    if (state === initial && state.phase !== 'ended') return
     const fresh = state.recorded.filter(({ id }) => !queued.current.has(id))
     for (const { id } of fresh) queued.current.add(id)
+    const finish = finishQueued.current ? null : state.finish
+    if (finish) finishQueued.current = true
     void (async () => {
       for (const body of fresh) await queue.enqueue(state.session.workoutId, body)
-      if (!closed.current) await saveActiveWorkout(state, Date.now())
+      if (finish) await queue.enqueueFinish(state.session.workoutId, finish)
+      if (state.phase === 'ended') {
+        closed.current = true
+        await clearActiveWorkout()
+        onFinish()
+      } else if (!closed.current) {
+        await saveActiveWorkout(state, Date.now())
+      }
     })()
-  }, [initial, state, queue])
+  }, [initial, state, queue, onFinish])
   return () => {
     closed.current = true
   }
@@ -128,12 +148,14 @@ function dotClassOf(index: number, recordedCount: number, resting: boolean): str
 
 export function WorkoutScreen({ flow, onFinish }: WorkoutScreenProps) {
   const [state, dispatch] = useReducer(workoutFlowReducer, flow)
-  const stopSaving = usePersistWorkout(flow, state)
+  const stopSaving = usePersistWorkout(flow, state, onFinish)
   const { day } = state.session
-  const exerciseNumber = state.exerciseIndex + 1
+  const exerciseNumber = exerciseProgressOf(state)
+  const topControlRef = useRef<HTMLButtonElement>(null)
   const setNumber = state.setNumber
   const planned: TodayExercise = currentExercise(state)
   const resting = state.phase === 'rest'
+  const totalSets = day.exercises.reduce((total, { sets }) => total + sets, 0)
   const finished = state.phase === 'finished'
   const endRest = useCallback((nowMs: number) => dispatch({ type: 'restEnd', nowMs }), [])
   const close = async () => {
@@ -149,7 +171,12 @@ export function WorkoutScreen({ flow, onFinish }: WorkoutScreenProps) {
   ).length
   return (
     <main className="flex min-h-dvh flex-col gap-(--space-32) px-(--space-margin-inline) py-(--space-24)">
-      <div className="glass flex min-h-(--target-workout) items-center gap-(--space-16) rounded-(--radius-capsule) px-(--space-20)">
+      <Button
+        ref={topControlRef}
+        aria-label={`Sequência do treino, letra ${day.letter}, exercício ${exerciseNumber} de ${day.exercises.length}`}
+        className="glass flex min-h-(--target-workout) items-center gap-(--space-16) rounded-(--radius-capsule) px-(--space-20) active:opacity-60"
+        onClick={() => dispatch({ type: 'openSheet', sheet: 'sequence' })}
+      >
         <span className="text-[1.25rem] font-(--font-weight-semibold)">{day.letter}</span>
         <Progress.Root
           aria-label="Exercícios"
@@ -162,7 +189,7 @@ export function WorkoutScreen({ flow, onFinish }: WorkoutScreenProps) {
             <Progress.Indicator className="bg-[CanvasText]" />
           </Progress.Track>
         </Progress.Root>
-      </div>
+      </Button>
       <h1 className="text-[1.75rem] font-(--font-weight-semibold)">
         {finished ? 'Treino concluído' : planned.exercise.name}
       </h1>
@@ -204,6 +231,27 @@ export function WorkoutScreen({ flow, onFinish }: WorkoutScreenProps) {
           {finished ? 'Fechar' : 'Próximo'}
         </Button>
       </div>
+      <SequenceSheet
+        open={state.sheet === 'sequence'}
+        items={sequenceOf(state)}
+        finished={finished}
+        returnFocusRef={topControlRef}
+        onClose={() => dispatch({ type: 'closeSheet', nowMs: Date.now() })}
+        onPick={(exerciseIndex) => {
+          const nowMs = Date.now()
+          dispatch({ type: 'goTo', exerciseIndex, nowMs })
+          dispatch({ type: 'closeSheet', nowMs })
+        }}
+        onEnd={() => dispatch({ type: 'openSheet', sheet: 'confirmEnd' })}
+      />
+      <EndSheet
+        open={state.sheet === 'confirmEnd'}
+        doneSets={state.recorded.length}
+        leftSets={totalSets - state.recorded.length}
+        returnFocusRef={topControlRef}
+        onConfirm={() => dispatch({ type: 'end', nowMs: Date.now() })}
+        onContinue={() => dispatch({ type: 'closeSheet', nowMs: Date.now() })}
+      />
       {/* Mounted from the start: screen readers skip a live region born with its text. */}
       <p role="status" aria-live="polite" className="sr-only">
         {announcementOf(state)}
