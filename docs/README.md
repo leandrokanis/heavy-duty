@@ -10,6 +10,8 @@ Toda a documentação do projeto está em português do Brasil e segue `convenco
 | `prd.md` | Problema, visão, features, stories, cenários de aceite, riscos e roadmap | Antes de especificar ou implementar uma story |
 | `gamificacao.md` | Projeto de gamificação (Octalysis): regras do jogo, núcleos, jornada, questões em aberto e riscos | Antes de especificar ou implementar uma story das ondas 5 a 7 |
 | `arquitetura/` | Modelo C4 até o nível 2, um arquivo por contêiner, modelo de entidade e relacionamento e decisões pendentes | Antes de criar módulo, rota, ferramenta MCP ou dependência |
+| `arquitetura/contratos.md` | Contrato de cada rota HTTP: objetivo, story, respostas, erros e idempotência | Antes de criar ou alterar rota HTTP |
+| `arquitetura/mcp.md` | Ferramentas do servidor MCP: nome, parâmetros, efeito e service chamado | Antes de criar ou alterar ferramenta MCP |
 | `adr/` | Registros de decisão de arquitetura e o modelo de ADR | Antes de propor uma decisão nova ou mudar uma existente |
 | `convencoes/codigo.md` | Idioma, nomes, estrutura de pastas, formatos de dado e dependências | Ao escrever código |
 | `convencoes/comentarios.md` | Quando um comentário é permitido e como ele é escrito | Ao escrever ou revisar comentário |

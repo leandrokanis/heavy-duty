@@ -2,7 +2,7 @@
 
 Esta pasta descreve a arquitetura do Heavy Duty pelo modelo C4, até o nível 2: o contexto do sistema e os contêineres. Cada contêiner tem um arquivo próprio, com responsabilidade, tecnologias, interfaces e regras. O modelo de dados está em `dados.md`. As decisões tomadas estão nas ADRs de `docs/adr/`, e os requisitos vêm de `docs/prd.md`.
 
-Estado: arquitetura planejada. Nenhum contêiner tem código ainda. Tecnologia marcada como Proposta depende de uma ADR com esse status.
+Estado: o scaffold (EN-S0) criou o app web, a API, o banco e a configuração do túnel e do Compose, sem regra de domínio. Os outros contêineres ainda não têm código. Tecnologia marcada como Proposta ainda não tem ADR aceita.
 
 ## Modelo C4 nesta pasta
 
@@ -112,14 +112,14 @@ C4Container
 
 ## Ambiente de desenvolvimento
 
-O ambiente de desenvolvimento sobe com `docker compose up`, a partir do `compose.yaml` da raiz (ADR-011). Ele tem três serviços: `web` (Next.js com recarga automática), `api` (Hono com recarga automática, MCP e Swagger em `/api/docs`) e `proxy`, que roteia `/api` e `/mcp` para a API e o resto para o app web, como o túnel faz em produção. O banco de desenvolvimento fica em `./data/`, fora do Git.
+O ambiente de desenvolvimento sobe com `docker compose up`, a partir do `compose.yaml` da raiz (ADR-011). Ele tem três serviços: `web` (Next.js com recarga automática, porta 3000), `api` (Hono com recarga automática, MCP e Swagger em `/api/docs`, porta 3001) e `proxy` (Caddy, ADR-015), que roteia `/api` e `/mcp` para a API e o resto para o app web, como o túnel faz em produção. Só o proxy publica porta no host, em `127.0.0.1:8080`, trocável por `PROXY_PORT`. O banco de desenvolvimento fica em `./data/`, fora do Git. A configuração das imagens, do Caddy e do túnel fica em `infra/`.
 
 ## Implantação no kasparov
 
 - O app web, a API, o servidor SMTP e o túnel são processos de longa duração no kasparov. O backup roda uma vez por dia.
 - O túnel roteia por caminho no mesmo domínio: `/api/*` e `/mcp` vão para a API, e o resto vai para o app web. Com um domínio só, o cookie de sessão é do próprio site, e o navegador não precisa de CORS.
 - A configuração sensível vem de variáveis de ambiente, fora do Git (`docs/convencoes/codigo.md`, Seção 11).
-- A forma de empacotar e executar os processos (unidades do systemd ou Docker Compose) está em aberto, na tabela de decisões pendentes.
+- O app web, a API e o túnel rodam com Docker Compose: `compose.yaml` com `compose.prod.yaml`, que acrescenta o `cloudflared` (ADR-015). O servidor SMTP e o backup ainda não têm empacotamento decidido.
 
 ## Fluxos entre contêineres
 
@@ -160,11 +160,9 @@ O ambiente de desenvolvimento sobe com `docker compose up`, a partir do `compose
 | Decisão | Insumo | Prazo |
 |---|---|---|
 | Método de autenticação do app web e do MCP | NFR02, R07, H12 | Antes da onda 1 (app web) e da onda 2 (MCP) |
-| Empacotamento e execução em produção no kasparov: Docker Compose, como no desenvolvimento (ADR-011), ou unidades do systemd | `README.md` desta pasta | Scaffold da onda 1 |
-| Ferramentas de lint e formatação | `docs/convencoes/codigo.md` | Scaffold da onda 1 |
-| Conjunto de ícones: Lucide, ou os ícones animados do Animate UI, que partem do Lucide | `DESIGN.md`, Seção 14 | Scaffold da onda 1 |
+| Licença "MIT + Commons Clause" do Animate UI: aceitar ou substituir a parte do Animate UI na ADR-009 | ADR-016 | Onda 1, decisão do PO |
 | Destino e ferramenta da cópia do backup | NFR03, US-F14-02, `backup.md` | Onda 1 |
-| Estratégia de sincronização sem sinal e versão do UUID | H10, Q09, `armazenamento-local.md` | Antes da onda 3 |
+| Estratégia de sincronização sem sinal | H10, Q09, `armazenamento-local.md` | Antes da onda 3 |
 | Avisos por Web Push no iPhone | Q02, R01 | Antes da onda 7 |
 | Validação da entrega do SMTP próprio | ADR-007, R09 | Antes da onda 7 |
 | Lugar das telas de administração: proposta de rotas `/admin` no mesmo app web | D22, Q10, `app-web.md` | Antes da onda das telas de administração |
@@ -183,3 +181,6 @@ Cada decisão vira uma ADR quando for tomada.
 | `servidor-smtp.md` | Contêiner do servidor SMTP |
 | `tunel.md` | Contêiner do túnel (cloudflared) |
 | `dados.md` | Modelo de entidade e relacionamento |
+| `contratos.md` | Contrato de cada rota HTTP, em português |
+| `mcp.md` | Ferramentas do servidor MCP |
+| `openapi.json` | Documento OpenAPI 3.1 gerado dos schemas (`pnpm --filter @heavy-duty/api openapi`) |

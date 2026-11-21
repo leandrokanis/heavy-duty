@@ -2,7 +2,7 @@
 
 Monorepo open source do Heavy Duty, um app pessoal de musculação. A UI (`apps/ui`) é um PWA em Next.js para registrar o treino no celular. A API (`apps/api`) guarda os dados e expõe um servidor MCP para administrar o app pelo Claude. O produto está descrito em `docs/prd.md`.
 
-Estado atual: só a documentação e a estrutura de pastas existem. Os apps ainda não têm código. O scaffold dos apps faz parte da onda 1 do PRD (F01 e F14).
+Estado atual: o scaffold (EN-S0) criou os quatro pacotes do workspace (`heavy-duty`, `@heavy-duty/ui`, `@heavy-duty/api` e `@heavy-duty/e2e`), o ambiente de desenvolvimento com Docker Compose e a preparação da produção. Os apps ainda não têm regra de domínio. As stories seguem o roadmap da onda 1 do PRD (F01 e F14).
 
 ## Idioma
 
@@ -18,6 +18,8 @@ Estado atual: só a documentação e a estrutura de pastas existem. Os apps aind
 | `apps/ui/` | PWA em Next.js, com Base UI e Animate UI. Regras em `apps/ui/CLAUDE.md` |
 | `apps/api/` | API em Node e Hono, servidor MCP e SQLite. Regras em `apps/api/CLAUDE.md` |
 | `e2e/` | Testes ponta a ponta com Playwright e playwright-bdd |
+| `infra/` | Imagens Docker, `Caddyfile` do proxy de desenvolvimento e configuração do túnel |
+| `compose.yaml`, `compose.prod.yaml` | Ambiente de desenvolvimento (ADR-011) e sobreposição de produção (ADR-015) |
 | `DESIGN.md` | Diretrizes de interface (HIG), com referência no iOS 27 e no macOS 27 |
 | `docs/prd.md` | Requisitos de produto: features, stories e cenários de aceite |
 | `docs/gamificacao.md` | Projeto de gamificação (Octalysis) das ondas 5 a 7 |
@@ -37,9 +39,19 @@ pnpm lint                             # executa o lint de todos os apps
 pnpm typecheck                        # verifica os tipos de todos os apps
 pnpm e2e                              # executa a suíte ponta a ponta
 pnpm --filter @heavy-duty/api test    # executa os testes de um app só
+pnpm --filter @heavy-duty/api openapi:check  # confere o contrato versionado da API
 ```
 
-Enquanto os apps não têm `package.json`, os scripts terminam sem executar nada.
+O ambiente de desenvolvimento sobe com Docker Compose, no projeto `heavy-duty`:
+
+```sh
+docker compose up -d                                   # sobe web, api e proxy em 127.0.0.1:8080
+docker compose logs -f api                             # acompanha o log de um serviço
+docker compose exec api pnpm --filter @heavy-duty/api test  # executa os testes dentro do contêiner
+docker compose down                                    # encerra os serviços e mantém ./data/
+```
+
+Troque a porta do proxy com `PROXY_PORT` e ligue a observação por polling com `DEV_WATCH_POLLING=true`, sem editar o `compose.yaml`.
 
 ## Regras que valem sempre
 

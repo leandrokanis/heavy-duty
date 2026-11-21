@@ -1,0 +1,16 @@
+{
+  "name": "@heavy-duty/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "bddgen && playwright test",
+    "lint": "biome check .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "playwright-bdd": "9.2.1"
+  }
+}

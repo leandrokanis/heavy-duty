@@ -192,7 +192,7 @@ O HIG não especifica botão de ação central sobre a barra de abas. Se o app a
 ### 10.2. Tamanho e escala
 
 - O tamanho da fonte DEVE estar em `rem` e acompanhar o ajuste de tamanho de texto do usuário.
-- No Safari do iOS, o texto PODE seguir o Dynamic Type por `font: -apple-system-body` na raiz [a confirmar no scaffold].
+- No Safari do iOS, o texto PODE seguir o Dynamic Type por `font: -apple-system-body` na raiz [a confirmar na primeira tela do fluxo da academia, US-F03-01].
 - O texto do corpo NÃO DEVE ficar abaixo de 1 rem (Projeto).
 
 ### 10.3. Números do treino
@@ -259,7 +259,7 @@ O contraste de texto sobre vidro DEVE ser medido contra o fundo mais claro e o m
 }
 ```
 
-O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar no scaffold]. A regra com `prefers-contrast` cobre parte dos casos.
+O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar na primeira tela com vidro]. A regra com `prefers-contrast` cobre parte dos casos.
 
 ## 13. Forma e cantos
 
@@ -272,7 +272,7 @@ O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar no sc
 ## 14. Ícones
 
 - O app DEVE usar um conjunto de ícones só, com tamanho, traço e nível de detalhe iguais.
-- O app NÃO DEVE usar SF Symbols. A licença da Apple restringe os símbolos a apps para plataformas Apple [APPLE-SFSYMBOLS]. O conjunto escolhido DEVE ter licença compatível com MIT [a confirmar: Lucide (ISC) ou outro, por ADR no scaffold].
+- O app NÃO DEVE usar SF Symbols. A licença da Apple restringe os símbolos a apps para plataformas Apple [APPLE-SFSYMBOLS]. O conjunto escolhido DEVE ter licença compatível com MIT. O conjunto do app é o Lucide (`lucide-react`, ISC), conforme a ADR-016.
 - O traço do ícone DEVERIA combinar com o peso do texto vizinho.
 - Ícone assimétrico DEVE ser centralizado opticamente, não pela caixa delimitadora.
 - Ícone sem rótulo visível DEVE ter nome acessível (`aria-label`).
@@ -297,7 +297,7 @@ O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar no sc
 - O fim da execução DEVE ter um sinal sonoro de fim, distinto dos outros, e DEVE registrar a série e iniciar o descanso sem pedir toque.
 - Durante a execução, "Próximo" DEVE encerrar a série antes do fim e registrar o tempo feito. "Cancelar" DEVE voltar à série sem registrar.
 - Durante a contagem de 3 segundos, "Próximo" DEVE ficar desativado, para um toque duplo não encerrar a série logo no começo.
-- O anel e os números DEVEM bastar sem som: no iPhone, o som da página pode não tocar com o modo silencioso ligado [a confirmar no scaffold].
+- O anel e os números DEVEM bastar sem som: no iPhone, o som da página pode não tocar com o modo silencioso ligado [a confirmar na US-F03-07].
 - A tela DEVERIA ficar acesa durante a execução e o descanso, com a Screen Wake Lock API onde o navegador aceitar [a confirmar: suporte em 2026].
 
 ## 16. Acessibilidade
@@ -343,7 +343,7 @@ O texto exibido ao usuário é em português do Brasil (`docs/convencoes/codigo.
 | Duração | `--duration-` | `--duration-fast`, `--duration-base` |
 | Alvo de toque | `--target-` | `--target-min` (44 px), `--target-workout` (56 px) |
 
-Os tokens ficam no tema do Tailwind CSS, em `apps/ui/src/app/globals.css`, como variáveis CSS (ADR-009) [a confirmar no scaffold da onda 1].
+Os tokens ficam no tema do Tailwind CSS, em `apps/ui/src/app/globals.css`, como variáveis CSS no bloco `@theme static` (ADR-009). O arquivo declara só os tokens com valor neste documento: espaço (Seções 5.2 e 5.3), alvo de toque (Seção 7), raio de cápsula e de círculo (Seção 13), fonte (Seção 10) e `--duration-base` (Seção 15). Cor, material, `--radius-card`, `--radius-control`, `--font-size-display` e `--duration-fast` entram quando o documento definir o valor [a confirmar: paleta e escala tipográfica escolhidas pelo PO].
 
 ## 19. Verificação geométrica
 

@@ -3,15 +3,21 @@
   "private": true,
   "type": "module",
   "license": "MIT",
+  "packageManager": "pnpm@10.34.9",
   "engines": {
     "node": ">=24"
   },
   "scripts": {
     "dev": "pnpm -r --parallel --if-present run dev",
     "build": "pnpm -r --if-present run build",
-    "test": "pnpm -r --if-present run test",
-    "lint": "pnpm -r --if-present run lint",
+    "test": "pnpm -r --filter '!@heavy-duty/e2e' --if-present run test",
+    "lint": "biome check .",
     "typecheck": "pnpm -r --if-present run typecheck",
     "e2e": "pnpm --filter @heavy-duty/e2e --if-present run test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.8",
+    "@types/node": "26.6.6",
+    "typescript": "6.0.3"
   }
 }

@@ -63,7 +63,7 @@ throw new DomainError('muscle_group_required', 'informe o grupo muscular')
 | Data e hora na tela | fuso e formato do celular, convertidos pela UI |
 | Carga | inteiro em gramas (`42500`); a tela mostra em kg (`42,5 kg`) |
 | Tempo e descanso | inteiro em segundos |
-| ID de entidade | string UUID [a confirmar: versão do UUID antes da onda 3] |
+| ID de entidade | string UUID versão 7, gerada por `createId()` na API (ADR-014) |
 
 ## 8. Erros
 
@@ -73,7 +73,7 @@ throw new DomainError('muscle_group_required', 'informe o grupo muscular')
 
 ## 9. Formatação e lint
 
-- O código DEVE passar no lint e no formatador configurados no scaffold. As ferramentas são definidas por ADR na onda 1 [a confirmar: ESLint com typescript-eslint e Prettier, ou Biome].
+- O código DEVE passar no lint e no formatador do Biome, configurados em `biome.json` (ADR-012). O comando é `pnpm lint`.
 - A configuração DEVERIA ficar na raiz do monorepo, compartilhada pelos pacotes.
 
 ## 10. Dependências

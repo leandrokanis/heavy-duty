@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Nível C4 | 2, contêiner |
-| Pasta | Configuração de infraestrutura [a confirmar no scaffold] |
+| Pasta | `infra/cloudflared/config.yml` e serviço `cloudflared` em `compose.prod.yaml` (ADR-015) |
 | Onde roda | Serviço `cloudflared` no kasparov |
 | ADRs | Definido no PRD (D02); sem ADR própria |
 | Ondas | 1 |
@@ -23,9 +23,9 @@
 
 | Caminho | Destino | Porta local |
 |---|---|---|
-| `/api/*` | API | [a confirmar no scaffold] |
+| `/api/*` | API | 3001 |
 | `/mcp` | API, servidor MCP | mesma da API |
-| todo o resto | App web (Next.js) | [a confirmar no scaffold] |
+| todo o resto | App web (Next.js) | 3000 |
 
 Com um domínio só para tudo, o cookie de sessão é do próprio site, e o app web chama a API sem CORS.
 

@@ -5,7 +5,7 @@
 | Nível C4 | 2, contêiner |
 | Pasta | `apps/api` (`@heavy-duty/api`) |
 | Onde roda | Processo Node.js no kasparov |
-| ADRs | ADR-004, ADR-005, ADR-006 (proposta), ADR-007, ADR-010 |
+| ADRs | ADR-004, ADR-005, ADR-006, ADR-007, ADR-010, ADR-013, ADR-014, ADR-017 |
 | Ondas | 1 em diante |
 
 ## Responsabilidade
@@ -23,15 +23,17 @@
 | Node.js 24 | Ambiente de execução | MIT | Aceita, ADR-004 |
 | TypeScript, modo estrito | Linguagem | Apache-2.0 | Aceita, ADR-002 |
 | Hono 4 e `@hono/node-server` | Rotas HTTP | MIT | Aceita, ADR-004 |
-| `@hono/zod-openapi` e Zod | Validação de entrada e saída; OpenAPI gerado a partir dos schemas | MIT | Proposta [a confirmar no scaffold] |
-| MCP TypeScript SDK (`@modelcontextprotocol/sdk`) | Servidor MCP com Streamable HTTP em `/mcp` | MIT | Proposta, ADR-006 |
-| Drizzle ORM e drizzle-kit | Acesso ao SQLite e migrações | Apache-2.0 | Proposta: decisão pendente da onda 1 |
-| better-sqlite3 | Driver do SQLite | MIT | Proposta: decisão pendente da onda 1 |
+| `@hono/zod-openapi` 1.6.3, Zod 4 e `@hono/swagger-ui` | Validação de entrada e saída; OpenAPI 3.1 gerado a partir dos schemas; Swagger UI em `/api/docs` | MIT | Aceita, ADR-017 |
+| MCP TypeScript SDK (`@modelcontextprotocol/sdk` 1.32.2) | Servidor MCP com Streamable HTTP em `/mcp`, sem estado | MIT | Aceita, ADR-006 |
+| Drizzle ORM e drizzle-kit | Acesso ao SQLite e migrações | Apache-2.0 (ORM), MIT (drizzle-kit) | Aceita, ADR-013 |
+| better-sqlite3 | Driver do SQLite | MIT | Aceita, ADR-013 |
 | croner | Agendador dos avisos e do resumo semanal | MIT | Proposta (onda 7) |
 | web-push | Envio de Web Push com chaves VAPID | MPL-2.0, compatível como dependência | Proposta (onda 7) |
 | Nodemailer | Montagem e envio do e-mail para o servidor SMTP local | MIT-0 [a confirmar] | Proposta (onda 7) |
-| pino | Log estruturado | MIT | Proposta [a confirmar no scaffold] |
+| pino | Log estruturado | MIT | Adiado: entra na primeira story que precisar de log; o scaffold usa `console.error` só em falha |
 | Vitest | Teste unitário e de integração | MIT | Aceita, `docs/convencoes/testes.md` |
+| `uuid` | Gerador de ID em UUID v7 (`createId()`) | MIT | Aceita, ADR-014 |
+| tsx | Execução com recarga em desenvolvimento (`tsx watch`); a produção executa o build do `tsc` | MIT | Aceita, EN-S0 |
 
 ## Componentes (resumo do nível 3)
 
@@ -56,11 +58,11 @@ Cada módulo junta rota, ferramenta MCP, service, repositório e testes (`docs/c
 | Envia | Servidor SMTP local | SMTP na porta local | E-mail de aviso e resumo semanal |
 | Envia | Serviço de push do navegador | Web Push (HTTPS, VAPID) | Aviso de janela e de queda |
 
-O contrato completo de cada rota e de cada ferramenta é gerado dos schemas no scaffold. Esta tabela só mostra exemplos.
+O contrato de cada rota é gerado dos schemas em `docs/arquitetura/openapi.json` e descrito em `contratos.md`; as ferramentas MCP estão em `mcp.md`. Esta tabela só mostra exemplos.
 
 ## Regras que o código segue
 
-1. Toda rota e toda ferramenta MCP exigem autenticação (NFR02). O método depende da ADR de autenticação (H12).
+1. Toda rota e toda ferramenta MCP exigem autenticação (NFR02). O método depende da ADR de autenticação (H12). Até a autenticação existir, `/api/docs`, `/api/openapi.json` e `/mcp` só existem fora de `NODE_ENV=production`; `GET /api/health` é pública porque não devolve dado de treino (ADR-017).
 2. A ferramenta MCP destrutiva declara `destructiveHint: true` e só age depois de confirmação explícita (US-F06-02).
 3. A gravação de série é idempotente pelo ID gerado no cliente: o mesmo ID não cria outra série.
 4. O erro de domínio tem `code` em inglês, em `snake_case`, e `message` em português (`docs/convencoes/codigo.md`, Seção 8).

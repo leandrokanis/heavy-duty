@@ -1,0 +1,14 @@
+# Same path routing as the production tunnel (docs/arquitetura/tunel.md).
+:80 {
+	handle /api/* {
+		reverse_proxy api:3001
+	}
+
+	handle /mcp* {
+		reverse_proxy api:3001
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}

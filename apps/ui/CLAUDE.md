@@ -24,7 +24,8 @@ Siga `DESIGN.md` em toda tela e todo componente. Regras que mais erram:
 - Área de toque de 44 × 44 px ou mais; 56 px nos controles da tela de treino.
 - Vidro (`backdrop-filter`) só na camada de controles e navegação, com versão opaca para `prefers-reduced-transparency` e `prefers-contrast: more`.
 - Cor, espaço, raio e duração vêm de tokens CSS (`--color-*`, `--space-*`, `--radius-*`).
-- Não use fontes SF nem SF Symbols. Use a pilha `system-ui` e o conjunto de ícones único do projeto.
+- Não use fontes SF nem SF Symbols. Use a pilha `system-ui` e os ícones do Lucide (`lucide-react`, ADR-016).
+- Não copie componente do Animate UI enquanto o PO não decidir sobre a licença "MIT + Commons Clause" (ADR-016). Até lá, use o Base UI com os tokens.
 - Meça alinhamento e espaçamento com `getBoundingClientRect()` antes de afirmar que estão corretos.
 
 ## Regras de produto que o código segue
@@ -49,4 +50,5 @@ pnpm --filter @heavy-duty/ui dev
 pnpm --filter @heavy-duty/ui test
 pnpm --filter @heavy-duty/ui lint
 pnpm --filter @heavy-duty/ui typecheck
+pnpm --filter @heavy-duty/ui build    # build de produção com webpack, gera o service worker
 ```

@@ -18,7 +18,7 @@ Uma story está pronta quando todos os itens abaixo são verdadeiros:
 
 ## Verificações automáticas
 
-A integração contínua ainda não existe. Ela entra no scaffold da onda 1 [a confirmar: GitHub Actions].
+A integração contínua ainda não existe. Ela fica para quando o repositório tiver remote, porque sem remote o workflow não roda nem pode ser verificado [a confirmar: GitHub Actions]. Até lá, quem abre o PR executa os comandos desta tabela e relata a saída.
 
 | Verificação | Comando | Quando |
 |---|---|---|
@@ -26,6 +26,8 @@ A integração contínua ainda não existe. Ela entra no scaffold da onda 1 [a c
 | Tipos | `pnpm typecheck` | Todo PR |
 | Testes unitários, de integração e de componente | `pnpm test` | Todo PR |
 | Testes ponta a ponta | `pnpm e2e` | Todo PR que muda `apps/ui` ou `e2e` |
+| Contrato da API | `pnpm --filter @heavy-duty/api openapi:check` | Todo PR que muda `apps/api` |
+| Ambiente de desenvolvimento | `docker compose up -d --build` e `curl` em `/` e `/api/health` pelo proxy | Todo PR que muda dependência, `compose.yaml` ou `infra/` |
 | Vulnerabilidade em dependência | `pnpm audit --prod` | Todo PR e uma vez por semana |
 | Licença de dependência | `pnpm licenses list` | Todo PR que muda `pnpm-lock.yaml` |
 | Segredo no código | varredura de segredos do GitHub [a confirmar] | Todo push |
