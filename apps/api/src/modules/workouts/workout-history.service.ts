@@ -1,6 +1,5 @@
 import type { Database } from '../../db/connection.js'
-import { DomainError } from '../../errors/domain-error.js'
-import { parseUtcInstant } from './utc-instant.js'
+import { MAX_WORKOUT_RANGE_DAYS, parseUtcRange } from './utc-range.js'
 import {
   findHistoryWorkoutRow,
   type HistorySetRow,
@@ -17,34 +16,8 @@ import type {
   WorkoutHistory,
 } from './workouts.schemas.js'
 
-export const MAX_WORKOUT_RANGE_DAYS = 92
-const DAY_MS = 24 * 60 * 60 * 1000
-
-// The order follows decision 26: format, then the order of the bounds, then the length.
 export function listWorkouts(db: Database, query: ListWorkoutsQuery): WorkoutHistory {
-  const from = parseUtcInstant(query.from)
-  const to = parseUtcInstant(query.to)
-  if (from === undefined || to === undefined) {
-    throw new DomainError(
-      'workout_range_required',
-      'informe o início e o fim do intervalo em UTC',
-      'invalid',
-    )
-  }
-  if (to <= from) {
-    throw new DomainError(
-      'workout_range_inverted',
-      'o fim do intervalo deve ser depois do início',
-      'invalid',
-    )
-  }
-  if (Date.parse(to) - Date.parse(from) > MAX_WORKOUT_RANGE_DAYS * DAY_MS) {
-    throw new DomainError(
-      'workout_range_too_long',
-      `o intervalo deve ter no máximo ${MAX_WORKOUT_RANGE_DAYS} dias`,
-      'invalid',
-    )
-  }
+  const { from, to } = parseUtcRange(query, MAX_WORKOUT_RANGE_DAYS)
   const rows = listWorkoutRowsStartedBetween(db, from, to)
   if (rows.length === 0) {
     return { workouts: [] }

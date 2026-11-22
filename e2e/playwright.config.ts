@@ -27,6 +27,7 @@ const DRAG_ADJUST_SPEC = /drag-adjust\.feature\.spec\.js$/
 const CORRECT_LAST_SET_SPEC = /correct-last-set\.feature\.spec\.js$/
 const LIST_WORKOUTS_SPEC = /list-workouts\.feature\.spec\.js$/
 const EDIT_REMOVE_WORKOUT_SPEC = /edit-remove-workout\.feature\.spec\.js$/
+const GROUP_VOLUME_SPEC = /group-volume\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -69,6 +70,7 @@ export default defineConfig({
         CORRECT_LAST_SET_SPEC,
         LIST_WORKOUTS_SPEC,
         EDIT_REMOVE_WORKOUT_SPEC,
+        GROUP_VOLUME_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -195,6 +197,15 @@ export default defineConfig({
       testMatch: EDIT_REMOVE_WORKOUT_SPEC,
       fullyParallel: false,
       dependencies: ['list-workouts'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records sets in a fixed week of 2025 and reads the volume by muscle group through the
+    // MCP, so it runs alone and one scenario at a time, after the edit and removal of workouts.
+    {
+      name: 'group-volume',
+      testMatch: GROUP_VOLUME_SPEC,
+      fullyParallel: false,
+      dependencies: ['edit-remove-workout'],
       use: { ...devices['Pixel 7'] },
     },
   ],

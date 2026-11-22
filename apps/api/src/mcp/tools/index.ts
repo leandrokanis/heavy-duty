@@ -3,6 +3,7 @@ import type { Database } from '../../db/connection.js'
 import { registerCatalogTools } from './catalog.tools.js'
 import { registerProgramTools } from './programs.tools.js'
 import { registerSystemTools } from './system.tools.js'
+import { registerWindowTools } from './windows.tools.js'
 import { registerWorkoutTools } from './workouts.tools.js'
 
 export type ToolDeps = {
@@ -16,6 +17,7 @@ export const toolRegistrations: readonly ToolRegistration[] = [
   registerCatalogTools,
   registerProgramTools,
   registerSystemTools,
+  registerWindowTools,
   registerWorkoutTools,
 ]
 

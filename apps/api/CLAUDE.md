@@ -17,7 +17,7 @@ src/
   test/factories/             factories fishery
 ```
 
-Módulos previstos: `auth` (chave de acesso, sessão de acesso, link de cadastro), `catalog` (grupo muscular, músculo, exercício), `programs`, `workouts`, `system` (estado do backup). O módulo `windows` entra na onda 5.
+Módulos previstos: `auth` (chave de acesso, sessão de acesso, link de cadastro), `catalog` (grupo muscular, músculo, exercício), `programs`, `workouts`, `system` (estado do backup). O módulo `windows` entra na onda 5, com o volume por grupo muscular (`volume.rules.ts`, função pura, e `windows.config.ts` com os parâmetros).
 
 ## Regras
 
