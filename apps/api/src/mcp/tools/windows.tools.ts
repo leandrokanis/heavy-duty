@@ -1,8 +1,11 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { z } from 'zod'
 import { getMuscleGroupVolume } from '../../modules/windows/volume.service.js'
 import { simulateActivityWindows } from '../../modules/windows/window-simulation.service.js'
+import { listActivityWindows } from '../../modules/windows/window-state.service.js'
 import {
   ActivityWindowSimulationSchema,
+  ActivityWindowsSchema,
   MuscleGroupVolumeQuerySchema,
   MuscleGroupVolumeSchema,
   SimulateActivityWindowsQuerySchema,
@@ -33,5 +36,17 @@ export function registerWindowTools(server: McpServer, { db, now }: ToolDeps): v
       annotations: { readOnlyHint: true },
     },
     (input) => runTool(() => simulateActivityWindows(db, input, now())),
+  )
+
+  server.registerTool(
+    'list_activity_windows',
+    {
+      description:
+        'Get the state of the activity window of each muscle group now, to know which groups are ready to train. Takes no parameter and only reads. Returns now (the clock of the API, a UTC instant in ISO 8601) and the 11 muscle groups in catalog order, each with muscleGroup (slug, name), state, lastTrainedAt, opensAt and closesAt. The window comes from the last training of the group, with the starting parameters: resting (before opensAt), open (from opensAt, inclusive, to closesAt, exclusive), cooling (from closesAt on, with no training of the group since) and none (the group was never trained; lastTrainedAt, opensAt and closesAt are null). A training of a group is a workout with a set of an exercise whose primary muscle is in the group. Read opensAt when resting, closesAt when open and closesAt as the start of the cooling when cooling. The same object that GET /api/windows returns.',
+      inputSchema: z.object({}),
+      outputSchema: ActivityWindowsSchema,
+      annotations: { readOnlyHint: true },
+    },
+    () => runTool(() => listActivityWindows(db, now())),
   )
 }

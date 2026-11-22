@@ -65,7 +65,7 @@ describe('Given an app in development with a database and an MCP credential', ()
   )
 
   describe('When initialize and tools/list are called on /mcp', () => {
-    it('Then should return the catalog tools, the eleven program tools, get_system_status, get_muscle_group_volume, simulate_activity_windows and the workout tools, with only the remove tools and update_workout_set destructive', async () => {
+    it('Then should return the catalog tools, the eleven program tools, get_system_status, get_muscle_group_volume, simulate_activity_windows, list_activity_windows and the workout tools, with only the remove tools and update_workout_set destructive', async () => {
       await postJsonRpc(app, INITIALIZE_REQUEST)
       const listed = await postJsonRpc(app, { id: 2, method: 'tools/list', params: {} })
       const tools = (listed.result?.tools ?? []) as ListedTool[]
@@ -207,6 +207,13 @@ describe('Given an app in development with a database and an MCP credential', ()
         },
         {
           name: 'simulate_activity_windows',
+          hasDescription: true,
+          hasSchemas: true,
+          readOnly: true,
+          destructive: false,
+        },
+        {
+          name: 'list_activity_windows',
           hasDescription: true,
           hasSchemas: true,
           readOnly: true,

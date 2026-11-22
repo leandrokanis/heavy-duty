@@ -1074,6 +1074,56 @@ Ordem da conferência, antes de ler os treinos:
 2. `to` depois de `from` (`workout_range_inverted`).
 3. Intervalo de até 92 dias (`workout_range_too_long`).
 
+## Janelas de atividade
+
+A rota desta seção vem da US-F07-01. Ela existe só quando a API abriu o banco e exige sessão de acesso (US-F14-01). A ferramenta MCP `list_activity_windows` devolve o mesmo objeto (`mcp.md`), pelo mesmo service `listActivityWindows`, em `apps/api/src/modules/windows/window-state.service.ts`. Nenhuma tela usa a rota ainda.
+
+### GET /api/windows
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Mostrar o estado da janela de atividade de cada grupo muscular no instante da consulta |
+| Story | US-F07-01 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Nenhum. A rota só lê as séries, os treinos e os programas |
+| Idempotência | Idempotente para o mesmo histórico e o mesmo instante |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `{ "now", "groups" }` | Sempre que o banco responde |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+`now` é o relógio da API, em ISO 8601, em UTC. `groups` traz os 11 grupos do catálogo, na ordem do catálogo. Cada grupo tem `muscleGroup` (`slug` e `name`), `state`, `lastTrainedAt`, `opensAt` e `closesAt`. Os três instantes vêm em ISO 8601, em UTC, e ficam `null` em `none`.
+
+O estado vem do último treino do grupo, com os parâmetros de `windows.config.ts` (regras da EN01-01):
+
+| `state` | Quando | Instante que interessa |
+|---|---|---|
+| `resting` | `now` é anterior a `opensAt` | `opensAt`, a abertura |
+| `open` | `now` é igual ou posterior a `opensAt` e anterior a `closesAt` | `closesAt`, o fechamento |
+| `cooling` | `now` é igual ou posterior a `closesAt`, sem treino do grupo depois | `closesAt`, o início do esfriamento |
+| `none` | Nenhum treino trabalhou o grupo como músculo principal | Nenhum |
+
+Exemplo, com o peito treinado às 10:00Z e 1.200 kg de volume no objetivo hipertrofia:
+
+```json
+{
+  "now": "2026-11-21T12:00:00.000Z",
+  "groups": [
+    {
+      "muscleGroup": { "slug": "chest", "name": "peito" },
+      "state": "resting",
+      "lastTrainedAt": "2026-11-21T10:00:00.000Z",
+      "opensAt": "2026-11-23T22:00:00.000Z",
+      "closesAt": "2026-11-25T22:00:00.000Z"
+    }
+  ]
+}
+```
+
+O exemplo mostra um grupo só; a resposta traz os 11.
+
 ## Situação do app
 
 A rota desta seção vem da US-F14-02. A rota existe só quando a API abriu o banco e exige sessão de acesso (US-F14-01). A ferramenta MCP `get_system_status` devolve o mesmo objeto (`mcp.md`), pelo mesmo service `getSystemStatus`, em `apps/api/src/modules/system/system-status.service.ts`.

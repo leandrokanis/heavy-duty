@@ -486,3 +486,29 @@ describe('Given the whole history with back trained twice and chest and triceps 
     })
   })
 })
+
+describe('Given back trained 3 days ago and chest trained now', () => {
+  describe('When GET /api/windows and list_activity_windows are called at the same instant', () => {
+    it('Then both responses should be equal', async () => {
+      const { app, record } = await givenCatalogAndProgram()
+      record('2026-11-18T10:00:00.000Z', sets('remada', 3, 40000, 10))
+      record('2026-11-21T10:00:00.000Z', sets('supino-com-halteres', 3, 40000, 10))
+
+      const called = await rpc(app, 'tools/call', { name: 'list_activity_windows', arguments: {} })
+      const fromApi = await (await app.request('/api/windows')).json()
+
+      expect(called.result?.structuredContent).toEqual(fromApi)
+    })
+  })
+
+  describe('When tools/list is called through /mcp', () => {
+    it('Then list_activity_windows should be read only', async () => {
+      const { app } = createProgramTestApp()
+
+      const listed = await rpc(app, 'tools/list', {})
+      const tool = listed.result?.tools?.find(({ name }) => name === 'list_activity_windows')
+
+      expect(tool?.annotations?.readOnlyHint).toBe(true)
+    })
+  })
+})

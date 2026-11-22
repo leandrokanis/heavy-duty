@@ -29,6 +29,7 @@ const LIST_WORKOUTS_SPEC = /list-workouts\.feature\.spec\.js$/
 const EDIT_REMOVE_WORKOUT_SPEC = /edit-remove-workout\.feature\.spec\.js$/
 const GROUP_VOLUME_SPEC = /group-volume\.feature\.spec\.js$/
 const WINDOW_SIMULATION_SPEC = /window-simulation\.feature\.spec\.js$/
+const GROUP_WINDOW_SPEC = /group-window\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -73,6 +74,7 @@ export default defineConfig({
         EDIT_REMOVE_WORKOUT_SPEC,
         GROUP_VOLUME_SPEC,
         WINDOW_SIMULATION_SPEC,
+        GROUP_WINDOW_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -217,6 +219,15 @@ export default defineConfig({
       testMatch: WINDOW_SIMULATION_SPEC,
       fullyParallel: false,
       dependencies: ['group-volume'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records a workout relative to the real clock and reads the window state through the
+    // MCP, so it runs alone and one scenario at a time, after the window simulation.
+    {
+      name: 'group-window',
+      testMatch: GROUP_WINDOW_SPEC,
+      fullyParallel: false,
+      dependencies: ['window-simulation'],
       use: { ...devices['Pixel 7'] },
     },
   ],

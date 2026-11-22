@@ -4,6 +4,7 @@ import {
   simulateGroupWindows,
   summarizeWindows,
   windowOf,
+  windowStateOf,
 } from './window.rules.js'
 import { GAME_PARAMETERS } from './windows.config.js'
 
@@ -234,6 +235,27 @@ describe('Given five trainings of a group with 2 used windows, 1 missed, 1 repla
       )
 
       expect(summarizeWindows(trainings.slice(3)).windowsUsed).toBe(1)
+    })
+  })
+})
+
+describe('Given a training whose window opens at 2025-03-05T22:00Z and closes at 2025-03-07T22:00Z', () => {
+  const training = { trainedAtMs: TRAINED_AT_MS, goal: 'hypertrophy' as const, volumeG: 1200000 }
+
+  describe.each([
+    { case: 'just before the opening', now: '2025-03-05T21:59:59.999Z', state: 'resting' },
+    { case: 'exactly at the opening', now: '2025-03-05T22:00:00.000Z', state: 'open' },
+    { case: 'just before the closing', now: '2025-03-07T21:59:59.999Z', state: 'open' },
+    { case: 'exactly at the closing', now: '2025-03-07T22:00:00.000Z', state: 'cooling' },
+  ])('When the state is read $case', ({ now, state }) => {
+    it(`Then should be ${state}`, () => {
+      expect(windowStateOf(training, GAME_PARAMETERS, Date.parse(now))).toBe(state)
+    })
+  })
+
+  describe('When the group has no training', () => {
+    it('Then should be none', () => {
+      expect(windowStateOf(undefined, GAME_PARAMETERS, TRAINED_AT_MS)).toBe('none')
     })
   })
 })

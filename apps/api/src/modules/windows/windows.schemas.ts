@@ -133,3 +133,29 @@ export const ActivityWindowSimulationSchema = z
 
 export type SimulateActivityWindowsQuery = z.infer<typeof SimulateActivityWindowsQuerySchema>
 export type ActivityWindowSimulation = z.infer<typeof ActivityWindowSimulationSchema>
+
+export const WindowStateSchema = z
+  .enum(['resting', 'open', 'cooling', 'none'])
+  .openapi('WindowState')
+
+export const GroupWindowSchema = z
+  .object({
+    muscleGroup: z.object({
+      slug: z.string().openapi({ example: 'chest' }),
+      name: z.string().openapi({ example: 'peito' }),
+    }),
+    state: WindowStateSchema,
+    lastTrainedAt: z.string().nullable().openapi({ example: '2026-11-21T10:00:00.000Z' }),
+    opensAt: z.string().nullable().openapi({ example: '2026-11-23T06:00:00.000Z' }),
+    closesAt: z.string().nullable().openapi({ example: '2026-11-25T06:00:00.000Z' }),
+  })
+  .openapi('GroupWindow')
+
+export const ActivityWindowsSchema = z
+  .object({
+    now: z.string().openapi({ example: '2026-11-21T12:00:00.000Z' }),
+    groups: z.array(GroupWindowSchema),
+  })
+  .openapi('ActivityWindows')
+
+export type ActivityWindows = z.infer<typeof ActivityWindowsSchema>

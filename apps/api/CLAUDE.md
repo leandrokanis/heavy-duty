@@ -17,7 +17,7 @@ src/
   test/factories/             factories fishery
 ```
 
-Módulos previstos: `auth` (chave de acesso, sessão de acesso, link de cadastro), `catalog` (grupo muscular, músculo, exercício), `programs`, `workouts`, `system` (estado do backup). O módulo `windows` entra na onda 5, com o volume por grupo muscular (`volume.rules.ts`, função pura, e `windows.config.ts` com os parâmetros) e a simulação das janelas (`window.rules.ts` e `window-parameters.ts`, funções puras, e o service `simulateActivityWindows`).
+Módulos previstos: `auth` (chave de acesso, sessão de acesso, link de cadastro), `catalog` (grupo muscular, músculo, exercício), `programs`, `workouts`, `system` (estado do backup). O módulo `windows` entra na onda 5, com o volume por grupo muscular (`volume.rules.ts`, função pura, e `windows.config.ts` com os parâmetros) e a simulação das janelas (`window.rules.ts` e `window-parameters.ts`, funções puras, e o service `simulateActivityWindows`) e o estado atual da janela (`windowStateOf` e o service `listActivityWindows`, pela rota `GET /api/windows` e pela ferramenta `list_activity_windows`).
 
 ## Regras
 

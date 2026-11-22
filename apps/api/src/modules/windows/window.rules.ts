@@ -42,6 +42,21 @@ export function windowOf(
   }
 }
 
+export type WindowState = 'resting' | 'open' | 'cooling' | 'none'
+
+const STATE_OF_POSITION = { early: 'resting', in_window: 'open', late: 'cooling' } as const
+
+export function windowStateOf(
+  lastTraining: Pick<GroupTraining, 'trainedAtMs' | 'goal' | 'volumeG'> | undefined,
+  parameters: GameParameters,
+  nowMs: number,
+): WindowState {
+  if (!lastTraining) {
+    return 'none'
+  }
+  return STATE_OF_POSITION[positionIn(windowOf(lastTraining, parameters), nowMs)]
+}
+
 // Only a primary muscle makes a group trained; a secondary one adds volume but opens no window.
 export function groupTrainingsOf(
   sets: WindowSet[],

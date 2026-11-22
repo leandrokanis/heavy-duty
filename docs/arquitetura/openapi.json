@@ -1703,6 +1703,87 @@
           "performedAt",
           "correctedAt"
         ]
+      },
+      "ActivityWindows": {
+        "type": "object",
+        "properties": {
+          "now": {
+            "type": "string",
+            "example": "2026-11-21T12:00:00.000Z"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupWindow"
+            }
+          }
+        },
+        "required": [
+          "now",
+          "groups"
+        ]
+      },
+      "GroupWindow": {
+        "type": "object",
+        "properties": {
+          "muscleGroup": {
+            "type": "object",
+            "properties": {
+              "slug": {
+                "type": "string",
+                "example": "chest"
+              },
+              "name": {
+                "type": "string",
+                "example": "peito"
+              }
+            },
+            "required": [
+              "slug",
+              "name"
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/WindowState"
+          },
+          "lastTrainedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-11-21T10:00:00.000Z"
+          },
+          "opensAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-11-23T06:00:00.000Z"
+          },
+          "closesAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-11-25T06:00:00.000Z"
+          }
+        },
+        "required": [
+          "muscleGroup",
+          "state",
+          "lastTrainedAt",
+          "opensAt",
+          "closesAt"
+        ]
+      },
+      "WindowState": {
+        "type": "string",
+        "enum": [
+          "resting",
+          "open",
+          "cooling",
+          "none"
+        ]
       }
     },
     "parameters": {}
@@ -4164,6 +4245,46 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/windows": {
+      "get": {
+        "tags": [
+          "windows"
+        ],
+        "summary": "Get the state of the activity window of each muscle group now: resting, open, cooling or none",
+        "responses": {
+          "200": {
+            "description": "The 11 muscle groups in catalog order, each with its state and the instants of its last training and window, null when the group was never trained",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityWindows"
                 }
               }
             }
