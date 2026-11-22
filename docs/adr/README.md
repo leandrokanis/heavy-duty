@@ -29,6 +29,7 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-021](021-sincronizacao-da-fila-sem-sinal.md) | Sincronização da fila de séries sem sinal | Aceita |
 | [ADR-022](022-fim-do-treino-na-fila-de-sincronizacao.md) | Fim do treino na fila de sincronização | Aceita |
 | [ADR-023](023-exercicio-pulado-na-fila-de-sincronizacao.md) | Exercício pulado na fila de sincronização | Aceita |
+| [ADR-024](024-componentes-do-animate-ui-com-commons-clause.md) | Componentes do Animate UI com a licença MIT + Commons Clause | Aceita |
 | [ADR-025](025-correcao-da-serie-na-fila-de-sincronizacao.md) | Correção da série na fila de sincronização | Aceita |
 | [ADR-026](026-confirmacao-em-duas-chamadas-no-mcp.md) | Confirmação em duas chamadas nas ferramentas do MCP que alteram o histórico | Aceita |
 

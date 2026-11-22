@@ -65,7 +65,7 @@ O índice está em `docs/README.md`. Para contribuir, leia `CONTRIBUTING.md`.
 
 ## Licença
 
-MIT. O texto está em `LICENSE`.
+MIT, exceto os componentes copiados do Animate UI, que mantêm a licença MIT + Commons Clause (ADR-024). O texto da licença MIT está em `LICENSE`, e a lista dos arquivos de terceiros, com a licença de cada um, está em `THIRD_PARTY_NOTICES.md`.
 
 ## Apoio de IA
 
