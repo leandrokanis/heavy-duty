@@ -1,5 +1,5 @@
 # Development image for the web and api services (ADR-011).
-FROM node:24.22.2-bookworm-slim
+FROM node:26.13.1-bookworm-slim
 
 # better-sqlite3 compiles its native addon when no prebuilt binary matches.
 RUN apt-get update \

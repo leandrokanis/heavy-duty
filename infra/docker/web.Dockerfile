@@ -1,5 +1,5 @@
 # Production image of the web app (ADR-015).
-FROM node:24.22.2-bookworm-slim AS base
+FROM node:26.13.1-bookworm-slim AS base
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
     NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable
@@ -15,7 +15,7 @@ RUN pnpm --filter @heavy-duty/ui build \
   && cp -r apps/ui/.next /out/.next \
   && cp -r apps/ui/public/. /out/public/
 
-FROM node:24.22.2-bookworm-slim AS runtime
+FROM node:26.13.1-bookworm-slim AS runtime
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app

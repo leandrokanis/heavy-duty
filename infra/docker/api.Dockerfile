@@ -2,7 +2,7 @@
 # Build with an explicit target: api or backup.
 FROM restic/restic:0.18.1 AS restic
 
-FROM node:24.22.2-bookworm-slim AS base
+FROM node:26.13.1-bookworm-slim AS base
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable
 WORKDIR /app
@@ -20,7 +20,7 @@ RUN pnpm --filter @heavy-duty/api build \
   && pnpm --filter @heavy-duty/api deploy --prod --legacy /out \
   && cp -r apps/api/dist /out/dist
 
-FROM node:24.22.2-bookworm-slim AS api
+FROM node:26.13.1-bookworm-slim AS api
 ENV NODE_ENV=production \
     PORT=3001 \
     DATABASE_PATH=/app/data/heavy-duty.sqlite
@@ -31,7 +31,7 @@ USER node
 EXPOSE 3001
 CMD ["sh", "-c", "node dist/db/migrate.js && node dist/db/seed.js && exec node dist/server.js"]
 
-FROM node:24.22.2-bookworm-slim AS backup
+FROM node:26.13.1-bookworm-slim AS backup
 # restic needs the CA certificates for a remote repository over HTTPS.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates \
