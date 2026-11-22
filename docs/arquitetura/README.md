@@ -76,7 +76,8 @@ C4Container
   }
 
   System_Boundary(kasparov, "Heavy Duty, no servidor kasparov") {
-    Container(tunnel, "Túnel", "cloudflared", "Publica com HTTPS e roteia por caminho")
+    Container(tunnel, "Túnel", "cloudflared", "Publica com HTTPS, sem porta aberta")
+    Container(proxy, "Proxy", "Caddy", "Roteia por caminho")
     Container(web, "App web", "Next.js, Base UI, Animate UI", "Telas do treino, do jogo e da administração")
     Container(api, "API", "Node.js, Hono, MCP SDK", "Regras de negócio, HTTP, MCP, cálculo do jogo e avisos")
     ContainerDb(db, "Banco de dados", "SQLite em WAL", "Fonte da verdade dos dados")
@@ -86,8 +87,9 @@ C4Container
 
   Rel(atleta, tunnel, "Usa o app", "HTTPS")
   Rel(claude, tunnel, "Chama ferramentas", "MCP, /mcp")
-  Rel(tunnel, web, "Encaminha as páginas", "HTTP local")
-  Rel(tunnel, api, "Encaminha /api e /mcp", "HTTP local")
+  Rel(tunnel, proxy, "Encaminha", "HTTP local")
+  Rel(proxy, web, "Encaminha as páginas", "HTTP local")
+  Rel(proxy, api, "Encaminha /api e /mcp", "HTTP local")
   Rel(web, api, "Lê e grava", "JSON por /api")
   Rel(web, local, "Guarda a fila de séries", "IndexedDB")
   Rel(api, db, "Lê e grava", "Drizzle ORM")
@@ -108,18 +110,18 @@ C4Container
 | Banco de dados | Catálogo, programas, treinos, retratos e registros do sistema | SQLite em WAL, com Drizzle ORM | `banco-de-dados.md` |
 | Backup | Cópia diária do banco para fora do disco principal | Agendador Node.js com restic, no serviço `backup` do Compose (Aceita, ADR-018) | `backup.md` |
 | Servidor SMTP | Entrega os e-mails de aviso e o resumo semanal, a partir da onda 7 | Postfix e OpenDKIM (Aceita, ADR-007) | `servidor-smtp.md` |
-| Túnel | Publica o app com HTTPS e roteia `/api` e `/mcp` para a API | cloudflared | `tunel.md` |
+| Túnel e proxy | Publica o app com HTTPS e roteia `/api` e `/mcp` para a API | cloudflared e Caddy (ADR-028) | `tunel.md` |
 
 ## Ambiente de desenvolvimento
 
-O ambiente de desenvolvimento sobe com `docker compose up`, a partir do `compose.yaml` da raiz (ADR-011). Ele tem três serviços: `web` (Next.js com recarga automática, porta 3000), `api` (Hono com recarga automática, MCP e Swagger em `/api/docs`, porta 3001) e `proxy` (Caddy, ADR-015), que roteia `/api` e `/mcp` para a API e o resto para o app web, como o túnel faz em produção. Só o proxy publica porta no host, em `127.0.0.1:8080`, trocável por `PROXY_PORT`. O banco de desenvolvimento fica em `./data/`, fora do Git. O serviço `backup` fica no profile `backup` e sobe com `docker compose --profile backup up -d backup`, com o repositório do restic no volume `backup-dev-repo` (ADR-018). A configuração das imagens, do Caddy e do túnel fica em `infra/`.
+O ambiente de desenvolvimento sobe com `docker compose up`, a partir do `compose.yaml` da raiz (ADR-011). Ele tem três serviços: `web` (Next.js com recarga automática, porta 3000), `api` (Hono com recarga automática, MCP e Swagger em `/api/docs`, porta 3001) e `proxy` (Caddy, ADR-028), que roteia `/api` e `/mcp` para a API e o resto para o app web, com o mesmo `Caddyfile` da produção. Só o proxy publica porta no host, em `127.0.0.1:8080`, trocável por `PROXY_PORT`. O banco de desenvolvimento fica em `./data/`, fora do Git. O serviço `backup` fica no profile `backup` e sobe com `docker compose --profile backup up -d backup`, com o repositório do restic no volume `backup-dev-repo` (ADR-018). A configuração das imagens e do Caddy fica em `infra/`.
 
 ## Implantação no kasparov
 
 - O app web, a API, o servidor SMTP, o túnel e o agendador do backup são processos de longa duração no kasparov. O backup executa uma vez por dia, às 03:00 do fuso configurado.
 - O túnel roteia por caminho no mesmo domínio: `/api/*` e `/mcp` vão para a API, e o resto vai para o app web. Com um domínio só, o cookie de sessão é do próprio site, e o navegador não precisa de CORS.
 - A configuração sensível vem de variáveis de ambiente, fora do Git (`docs/convencoes/codigo.md`, Seção 11).
-- O app web, a API, o túnel e o backup rodam com Docker Compose: `compose.yaml` com `compose.prod.yaml`, que acrescenta o `cloudflared` (ADR-015) e liga o serviço `backup` (ADR-018). O servidor SMTP ainda não tem empacotamento decidido.
+- O app web, a API, o proxy, o túnel e o backup rodam no Coolify, com a pilha `compose.coolify.yaml` e as imagens que o GitHub Actions testa e publica no GHCR (ADR-028). O deploy acontece depois do CI verde na `main` (`implantacao.md`). O servidor SMTP ainda não tem empacotamento decidido.
 
 ## Fluxos entre contêineres
 
@@ -178,7 +180,8 @@ Cada decisão vira uma ADR quando for tomada.
 | `banco-de-dados.md` | Contêiner do banco de dados (SQLite) |
 | `backup.md` | Contêiner do backup |
 | `servidor-smtp.md` | Contêiner do servidor SMTP |
-| `tunel.md` | Contêiner do túnel (cloudflared) |
+| `tunel.md` | Contêiner do túnel (cloudflared) e do proxy (Caddy) |
+| `implantacao.md` | CI, imagens no GHCR e pilha no Coolify do kasparov |
 | `dados.md` | Modelo de entidade e relacionamento |
 | `contratos.md` | Contrato de cada rota HTTP, em português |
 | `mcp.md` | Ferramentas do servidor MCP |

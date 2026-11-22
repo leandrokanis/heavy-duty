@@ -101,7 +101,7 @@ describe('Given APP_ORIGIN with a port outside production', () => {
   })
 })
 
-describe('Given NODE_ENV production with an empty APP_ORIGIN, as compose.prod.yaml passes without .env', () => {
+describe('Given NODE_ENV production with an empty APP_ORIGIN', () => {
   const env = { NODE_ENV: 'production', DATABASE_PATH: '/data/heavy-duty.sqlite', APP_ORIGIN: '' }
 
   describe('When the configuration is loaded', () => {

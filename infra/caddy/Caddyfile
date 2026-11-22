@@ -1,4 +1,4 @@
-# Same path routing as the production tunnel (docs/arquitetura/tunel.md).
+# Path routing of development and of the production image (ADR-028, docs/arquitetura/tunel.md).
 :80 {
 	handle /api/* {
 		reverse_proxy api:3001

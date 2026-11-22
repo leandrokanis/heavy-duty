@@ -20,7 +20,7 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-012](012-lint-e-formatacao-com-biome.md) | Lint e formatação com Biome | Aceita |
 | [ADR-013](013-sqlite-com-drizzle-e-better-sqlite3.md) | Acesso ao SQLite com Drizzle ORM e better-sqlite3 | Aceita |
 | [ADR-014](014-id-em-uuid-v7.md) | ID de entidade em UUID v7 | Aceita |
-| [ADR-015](015-empacotamento-com-docker-compose-e-cloudflared.md) | Empacotamento de produção com Docker Compose e cloudflared | Aceita |
+| [ADR-015](015-empacotamento-com-docker-compose-e-cloudflared.md) | Empacotamento de produção com Docker Compose e cloudflared | Substituída por ADR-028 |
 | [ADR-016](016-icones-lucide.md) | Ícones do Lucide | Aceita |
 | [ADR-017](017-contrato-da-api-com-zod-openapi.md) | Contrato da API com zod-openapi e Swagger UI | Aceita |
 | [ADR-018](018-backup-diario-com-restic.md) | Backup diário com restic | Aceita |
@@ -33,6 +33,7 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-025](025-correcao-da-serie-na-fila-de-sincronizacao.md) | Correção da série na fila de sincronização | Aceita |
 | [ADR-026](026-confirmacao-em-duas-chamadas-no-mcp.md) | Confirmação em duas chamadas nas ferramentas do MCP que alteram o histórico | Aceita |
 | [ADR-027](027-codigo-do-animate-ui-copiado-do-repositorio-oficial.md) | Código do Animate UI copiado do repositório oficial | Aceita |
+| [ADR-028](028-producao-no-coolify-com-imagens-do-github-actions.md) | Produção no Coolify com imagens do GitHub Actions | Aceita |
 
 ## Regras
 

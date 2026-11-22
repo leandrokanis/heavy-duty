@@ -11,7 +11,8 @@ apps/
   ui/        @heavy-duty/ui: PWA em Next.js, com Base UI
   api/       @heavy-duty/api: API em Node e Hono, servidor MCP e SQLite
 e2e/         @heavy-duty/e2e: testes ponta a ponta com Playwright e playwright-bdd
-infra/       imagens Docker, proxy de desenvolvimento (Caddy) e túnel (cloudflared)
+infra/       imagens Docker e roteamento por caminho (Caddy)
+.github/     CI no GitHub Actions e Dependabot
 docs/        PRD, arquitetura, ADRs, convenções e qualidade
 ```
 
@@ -58,6 +59,10 @@ pnpm typecheck
 pnpm test
 pnpm e2e
 ```
+
+## Produção
+
+A produção roda no Coolify do servidor kasparov, com a pilha `compose.coolify.yaml` (ADR-028). Todo PR passa pelo CI no GitHub Actions. O merge na `main`, com o CI verde, publica as imagens no GitHub Container Registry e dispara o deploy no Coolify. A configuração, as variáveis e a operação estão em `docs/arquitetura/implantacao.md`.
 
 ## Documentação
 

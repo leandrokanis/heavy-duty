@@ -18,8 +18,9 @@ Estado atual: o scaffold (EN-S0) criou os quatro pacotes do workspace (`heavy-du
 | `apps/ui/` | PWA em Next.js, com Base UI e Animate UI. Regras em `apps/ui/CLAUDE.md` |
 | `apps/api/` | API em Node e Hono, servidor MCP e SQLite. Regras em `apps/api/CLAUDE.md` |
 | `e2e/` | Testes ponta a ponta com Playwright e playwright-bdd |
-| `infra/` | Imagens Docker, `Caddyfile` do proxy de desenvolvimento e configuração do túnel |
-| `compose.yaml`, `compose.prod.yaml` | Ambiente de desenvolvimento (ADR-011) e sobreposição de produção (ADR-015) |
+| `infra/` | Imagens Docker e `Caddyfile` do roteamento por caminho, usado no desenvolvimento e na produção |
+| `compose.yaml`, `compose.coolify.yaml` | Ambiente de desenvolvimento (ADR-011) e pilha de produção no Coolify (ADR-028) |
+| `.github/` | CI e deploy (`workflows/ci.yml`), Dependabot e modelo de PR |
 | `DESIGN.md` | Diretrizes de interface (HIG), com referência no iOS 27 e no macOS 27 |
 | `docs/prd.md` | Requisitos de produto: features, stories e cenários de aceite |
 | `docs/prototipo/` | Protótipo navegável do app, uma pasta por versão (`v1/`), referência visual das telas |
@@ -83,6 +84,7 @@ Use `http://localhost:8080`, não `http://127.0.0.1:8080`: a chave de acesso nã
 | Escrever ou revisar comentário | `docs/convencoes/comentarios.md` |
 | Escrever ou revisar documentação | `docs/convencoes/escrita-tecnica.md` |
 | Fazer commit ou abrir PR | `docs/convencoes/git.md` e `docs/qualidade.md` |
+| Mudar o CI, um Dockerfile ou a produção | `docs/arquitetura/implantacao.md` e a ADR-028 |
 | Tomar decisão de arquitetura | `docs/adr/README.md` |
 
 ## Fluxo de uma story

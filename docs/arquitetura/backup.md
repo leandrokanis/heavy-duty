@@ -5,7 +5,7 @@
 | Nível C4 | 2, contêiner |
 | Pasta | `apps/api/src/modules/system/backup/`, com a configuração em `apps/api/src/config/backup-env.ts` |
 | Onde roda | Serviço `backup` do Docker Compose no kasparov, processo Node de longa duração separado da API |
-| ADRs | ADR-005, ADR-015, ADR-018 |
+| ADRs | ADR-005, ADR-018, ADR-028 |
 | Ondas | 1 |
 
 ## Responsabilidade
@@ -20,7 +20,7 @@
 |---|---|---|---|
 | Node.js 24 e better-sqlite3 | Cópia consistente com `VACUUM INTO` e registro em `backup_runs` | MIT | Aceita, ADR-005 e ADR-018 |
 | restic 0.18.1 | Envio da cópia ao repositório cifrado, com deduplicação | BSD-2-Clause (arquivo `LICENSE` da tag `v0.18.1` de `restic/restic`) | Aceita, ADR-018 |
-| Docker Compose | Agendador sempre ativo no serviço `backup`, com a mesma definição de serviços da produção | Apache-2.0 | Aceita, ADR-015 |
+| Docker Compose e Coolify | Agendador sempre ativo no serviço `backup` da pilha `compose.coolify.yaml` | Apache-2.0 | Aceita, ADR-028 |
 
 O backup roda como processo separado, e não dentro da API, para funcionar mesmo com a API parada. O binário do restic vem da imagem oficial `restic/restic:0.18.1`, em `/usr/bin/restic`, conferida no build de 2026-11-21.
 
@@ -63,7 +63,7 @@ docker compose --profile backup down                                            
 | Variável | Uso | Padrão |
 |---|---|---|
 | `DATABASE_PATH` | Arquivo do banco. Obrigatória em produção, com a mesma regra da API | `data/heavy-duty.dev.sqlite` fora de produção |
-| `RESTIC_REPOSITORY` | Repositório do restic. Exemplo: `<RESTIC_REPOSITORY>` | `/backup/restic` no `compose.prod.yaml` |
+| `RESTIC_REPOSITORY` | Repositório do restic. Exemplo: `<RESTIC_REPOSITORY>` | `/backup/restic` no `compose.coolify.yaml` |
 | `RESTIC_PASSWORD_FILE` | Arquivo com a senha do repositório, montado só leitura. Use na produção | — |
 | `RESTIC_PASSWORD` | Senha do repositório em texto. Use só no desenvolvimento. Exemplo: `<RESTIC_PASSWORD>` | — |
 | `RESTIC_BINARY` | Executável do restic | `restic` |
@@ -78,38 +78,48 @@ No desenvolvimento, o `compose.yaml` usa um repositório no volume `backup-dev-r
 
 ## Inicialização do repositório na produção
 
-O backup não cria o repositório na produção. Um repositório inexistente vira uma falha registrada. O PO executa os passos uma vez, no kasparov:
+O backup não cria o repositório na produção. Um repositório inexistente vira uma falha registrada. O PO executa os passos uma vez, no kasparov, dentro da configuração inicial de `implantacao.md`. Os comandos usam os caminhos padrão das variáveis; troque se o recurso no Coolify usar outros.
 
-1. Monte o destino fora do disco principal na pasta de `HEAVY_DUTY_BACKUP_DIR`.
-2. Crie o arquivo da senha em `HEAVY_DUTY_RESTIC_PASSWORD_FILE`, com permissão de leitura só para o dono. Guarde uma cópia da senha fora do kasparov: sem a senha, as cópias ficam irrecuperáveis.
+1. Monte o destino fora do disco principal na pasta de `HEAVY_DUTY_BACKUP_DIR`, com dono UID 1000, o usuário `node` da imagem.
+2. Crie o arquivo da senha em `HEAVY_DUTY_RESTIC_PASSWORD_FILE`, com dono UID 1000 e permissão `600`. Guarde uma cópia da senha fora do kasparov: sem a senha, as cópias ficam irrecuperáveis.
 3. Crie o repositório com a imagem do backup:
 
    ```sh
-   docker compose -f compose.yaml -f compose.prod.yaml run --rm backup restic init
+   docker run --rm \
+     -v /srv/heavy-duty/backup:/backup \
+     -v /srv/heavy-duty/secrets/restic-password:/run/secrets/restic-password:ro \
+     -e RESTIC_REPOSITORY=/backup/restic -e RESTIC_PASSWORD_FILE=/run/secrets/restic-password \
+     ghcr.io/leandrokanis/heavy-duty-backup:main restic init
    ```
 
-4. Suba o serviço com `docker compose -f compose.yaml -f compose.prod.yaml up -d backup`.
-5. Execute `docker compose -f compose.yaml -f compose.prod.yaml exec backup node dist/modules/system/backup/run.js` e confira `get_system_status` pelo Claude.
+4. Faça o deploy do recurso no Coolify, que sobe o serviço `backup`.
+5. No terminal do contêiner `backup`, execute `node dist/modules/system/backup/run.js` e confira `get_system_status` pelo Claude.
 
 ## Restauração
 
 O PO restaura o banco com a API parada:
 
-1. Pare a API e o backup: `docker compose -f compose.yaml -f compose.prod.yaml stop api backup`.
-2. Crie a pasta `/tmp/heavy-duty-restore` no host, com dono de UID 1000, o usuário `node` da imagem. Restaure a cópia mais recente nessa pasta:
+1. Pare o recurso no Coolify.
+2. Crie a pasta `/tmp/heavy-duty-restore` no host, com dono UID 1000. Restaure a cópia mais recente nessa pasta:
 
    ```sh
-   docker compose -f compose.yaml -f compose.prod.yaml run --rm -v /tmp/heavy-duty-restore:/restore backup restic restore latest --target /restore
+   docker run --rm \
+     -v /srv/heavy-duty/backup:/backup \
+     -v /srv/heavy-duty/secrets/restic-password:/run/secrets/restic-password:ro \
+     -v /tmp/heavy-duty-restore:/restore \
+     -e RESTIC_REPOSITORY=/backup/restic -e RESTIC_PASSWORD_FILE=/run/secrets/restic-password \
+     ghcr.io/leandrokanis/heavy-duty-backup:main restic restore latest --target /restore
    ```
 
 3. Confira o arquivo restaurado:
 
    ```sh
-   docker compose -f compose.yaml -f compose.prod.yaml run --rm -v /tmp/heavy-duty-restore:/restore backup node dist/modules/system/backup/verify.js /restore/heavy-duty.sqlite
+   docker run --rm -v /tmp/heavy-duty-restore:/restore \
+     ghcr.io/leandrokanis/heavy-duty-backup:main node dist/modules/system/backup/verify.js /restore/heavy-duty.sqlite
    ```
 
 4. Com o código 0, guarde o banco atual com outro nome e copie `heavy-duty.sqlite` restaurado para a pasta de `HEAVY_DUTY_DATA_DIR`. Apague os arquivos `-wal` e `-shm` do banco antigo.
-5. Suba a API e o backup: `docker compose -f compose.yaml -f compose.prod.yaml up -d api backup`.
+5. Inicie o recurso no Coolify.
 
 O teste automatizado `restic-store.integration.spec.ts` faz o mesmo caminho com o restic real, dentro do contêiner de desenvolvimento. O primeiro teste de restauração real no kasparov é uma tarefa manual do PO.
 

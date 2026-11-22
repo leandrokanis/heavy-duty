@@ -1,0 +1,100 @@
+# Production stack on the kasparov server, deployed by Coolify (ADR-028).
+# GitHub Actions publishes the images to GHCR; Coolify pulls them and starts the stack.
+# Roll back by setting IMAGE_TAG to a published sha-<commit> tag and redeploying.
+services:
+  api:
+    image: ghcr.io/leandrokanis/heavy-duty-api:${IMAGE_TAG:-main}
+    pull_policy: always
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      DATABASE_PATH: /app/data/heavy-duty.sqlite
+      # Public https origin of the app; the API refuses to start without it (ADR-019).
+      APP_ORIGIN: ${APP_ORIGIN:?set APP_ORIGIN to the public https origin of the app}
+    # Host folder owned by UID 1000, outside the deploy folder, so a redeploy keeps the database.
+    volumes:
+      - ${HEAVY_DUTY_DATA_DIR:-/srv/heavy-duty/data}:/app/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3001/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # Daily backup scheduler; the restic password comes from a host file (ADR-018).
+  backup:
+    image: ghcr.io/leandrokanis/heavy-duty-backup:${IMAGE_TAG:-main}
+    pull_policy: always
+    environment:
+      NODE_ENV: production
+      DATABASE_PATH: /app/data/heavy-duty.sqlite
+      RESTIC_REPOSITORY: /backup/restic
+      RESTIC_PASSWORD_FILE: /run/secrets/restic-password
+      BACKUP_TIME_ZONE: ${BACKUP_TIME_ZONE:-America/Sao_Paulo}
+      BACKUP_DAILY_AT: ${BACKUP_DAILY_AT:-03:00}
+    volumes:
+      - ${HEAVY_DUTY_DATA_DIR:-/srv/heavy-duty/data}:/app/data
+      - ${HEAVY_DUTY_BACKUP_DIR:-/srv/heavy-duty/backup}:/backup
+      - ${HEAVY_DUTY_RESTIC_PASSWORD_FILE:-/srv/heavy-duty/secrets/restic-password}:/run/secrets/restic-password:ro
+    # The API runs the migrations, so the backup starts after the API answers.
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    image: ghcr.io/leandrokanis/heavy-duty-web:${IMAGE_TAG:-main}
+    pull_policy: always
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/manifest.webmanifest').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # Path routing of infra/caddy/Caddyfile, the same as in development (ADR-028).
+  proxy:
+    image: ghcr.io/leandrokanis/heavy-duty-proxy:${IMAGE_TAG:-main}
+    pull_policy: always
+    expose:
+      - "80"
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # Outbound tunnel: no router port is opened (NFR04). The public hostname of the tunnel
+  # points to http://proxy:80 in the Cloudflare dashboard; the paths stay in the Caddyfile.
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.7
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN to the token of the Cloudflare tunnel}
+    depends_on:
+      proxy:
+        condition: service_healthy
+    restart: unless-stopped

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Aceita |
+| Status | Substituída por ADR-028 |
 | Data | 2026-11-21 |
 | Decisor | PO, por delegação no plano do MVP |
 | Requisitos relacionados | NFR04, D02, ADR-011, EN-S0 (FR-035, FR-039, FR-040) |

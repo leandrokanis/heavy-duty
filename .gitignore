@@ -48,6 +48,3 @@ CLAUDE.local.md
 
 # Local development plan and reports (not versioned)
 /specs/
-
-# Cloudflare Tunnel credentials (production, outside Git)
-infra/cloudflared/*.json

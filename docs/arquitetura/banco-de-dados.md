@@ -38,4 +38,4 @@ O estado do jogo (janela, pontos, nível, recorde, ranking) não fica guardado: 
 4. Medida é inteiro na menor unidade, sem ponto flutuante: carga em gramas (`load_g`), tempo em segundos. Nenhuma coluna usa `REAL`.
 5. ID é texto com UUID; data e hora são texto ISO 8601 em UTC.
 6. As restrições de domínio que o banco consegue garantir ficam também no banco, com `CHECK` e chave estrangeira: carga não negativa, tipo de exercício válido, letra única por programa.
-7. Em produção, o arquivo do banco fica fora do repositório e do diretório do código, na pasta do host em `HEAVY_DUTY_DATA_DIR` (`compose.prod.yaml`). O caminho vem de `DATABASE_PATH`, obrigatória em produção. No desenvolvimento, o padrão é `data/heavy-duty.dev.sqlite`, na pasta `./data/` fora do Git (ADR-011).
+7. Em produção, o arquivo do banco fica fora do repositório e do diretório do código, na pasta do host em `HEAVY_DUTY_DATA_DIR` (`compose.coolify.yaml`, ADR-028). O caminho vem de `DATABASE_PATH`, obrigatória em produção. No desenvolvimento, o padrão é `data/heavy-duty.dev.sqlite`, na pasta `./data/` fora do Git (ADR-011).

@@ -18,19 +18,20 @@ Uma story está pronta quando todos os itens abaixo são verdadeiros:
 
 ## Verificações automáticas
 
-A integração contínua ainda não existe. Ela fica para quando o repositório tiver remote, porque sem remote o workflow não roda nem pode ser verificado [a confirmar: GitHub Actions]. Até lá, quem abre o PR executa os comandos desta tabela e relata a saída.
+O workflow `.github/workflows/ci.yml` (ADR-028) roda as verificações marcadas com "CI" em todo PR e todo push para `main` e `mvp`. O merge na `main` só acontece com os checks verdes, e o deploy só acontece depois deles (`docs/arquitetura/implantacao.md`). As outras verificações continuam com quem abre o PR, que executa o comando e relata a saída.
 
-| Verificação | Comando | Quando |
-|---|---|---|
-| Lint | `pnpm lint` | Todo PR |
-| Tipos | `pnpm typecheck` | Todo PR |
-| Testes unitários, de integração e de componente | `pnpm test` | Todo PR |
-| Testes ponta a ponta | `pnpm e2e` | Todo PR que muda `apps/ui` ou `e2e` |
-| Contrato da API | `pnpm --filter @heavy-duty/api openapi:check` | Todo PR que muda `apps/api` |
-| Ambiente de desenvolvimento | `docker compose up -d --build` e `curl` em `/` e `/api/health` pelo proxy | Todo PR que muda dependência, `compose.yaml` ou `infra/` |
-| Vulnerabilidade em dependência | `pnpm audit --prod` | Todo PR e uma vez por semana |
-| Licença de dependência | `pnpm licenses list` | Todo PR que muda `pnpm-lock.yaml` |
-| Segredo no código | varredura de segredos do GitHub [a confirmar] | Todo push |
+| Verificação | Comando | Quando | Onde |
+|---|---|---|---|
+| Lint | `pnpm lint` | Todo PR | CI |
+| Tipos | `pnpm typecheck` | Todo PR | CI |
+| Testes unitários, de integração e de componente | `pnpm test` | Todo PR | CI |
+| Testes ponta a ponta | `pnpm e2e` | Todo PR | CI |
+| Contrato da API | `pnpm --filter @heavy-duty/api openapi:check` | Todo PR | CI |
+| Imagens de produção | Build das imagens e teste de fumaça da pilha `compose.coolify.yaml` | Todo PR | CI |
+| Vulnerabilidade em dependência | `pnpm audit --prod --audit-level high` e alertas do Dependabot | Todo PR e uma vez por semana | CI, sem bloquear o deploy, e Dependabot |
+| Ambiente de desenvolvimento | `docker compose up -d --build` e `curl` em `/` e `/api/health` pelo proxy | Todo PR que muda dependência, `compose.yaml` ou `infra/` | Quem abre o PR |
+| Licença de dependência | `pnpm licenses list` | Todo PR que muda `pnpm-lock.yaml` | Quem abre o PR |
+| Segredo no código | Varredura de segredos do GitHub, com bloqueio no push | Todo push | GitHub |
 
 A meta de cobertura de teste não está definida [a confirmar: definir depois da onda 1, com a primeira medição].
 

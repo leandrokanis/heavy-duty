@@ -1,0 +1,205 @@
+# Continuous integration and deployment (ADR-028, docs/qualidade.md).
+# Every pull request and push to main or mvp runs the checks and builds the images;
+# only a green push to main publishes the images to GHCR and deploys through Coolify.
+name: CI
+
+on:
+  pull_request:
+    branches: [main, mvp]
+  push:
+    branches: [main, mvp]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # A deploy of main is never cancelled halfway; a newer push to a pull request is.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE_PREFIX: ghcr.io/leandrokanis/heavy-duty
+
+jobs:
+  checks:
+    name: Lint, types, tests and API contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@9bbca1e9dc2902adb87e8780fe5c98796985a62d # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm --filter @heavy-duty/api openapi:check
+
+  e2e:
+    name: End-to-end tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@9bbca1e9dc2902adb87e8780fe5c98796985a62d # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @heavy-duty/e2e exec playwright install --with-deps chromium
+      - run: pnpm e2e
+      - name: Keep the Playwright traces of a failed run
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-test-results
+          path: e2e/test-results
+          retention-days: 7
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@9bbca1e9dc2902adb87e8780fe5c98796985a62d # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm audit --prod --audit-level high
+
+  images:
+    name: Production images
+    needs: [checks, e2e]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE_TAG: sha-${{ github.sha }}
+      PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build the api image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/docker/api.Dockerfile
+          target: api
+          load: true
+          tags: ${{ env.IMAGE_PREFIX }}-api:${{ env.IMAGE_TAG }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+
+      - name: Build the backup image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/docker/api.Dockerfile
+          target: backup
+          load: true
+          tags: ${{ env.IMAGE_PREFIX }}-backup:${{ env.IMAGE_TAG }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=backup
+          cache-to: type=gha,scope=backup,mode=max
+
+      - name: Build the web image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/docker/web.Dockerfile
+          load: true
+          tags: ${{ env.IMAGE_PREFIX }}-web:${{ env.IMAGE_TAG }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+
+      - name: Build the proxy image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/docker/proxy.Dockerfile
+          load: true
+          tags: ${{ env.IMAGE_PREFIX }}-proxy:${{ env.IMAGE_TAG }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      # Starts the Coolify stack without the tunnel and checks the routes through the proxy.
+      - name: Smoke test the production stack
+        env:
+          APP_ORIGIN: https://ci.heavy-duty.invalid
+          CLOUDFLARE_TUNNEL_TOKEN: unused-in-ci
+          HEAVY_DUTY_DATA_DIR: ${{ runner.temp }}/heavy-duty/data
+          HEAVY_DUTY_BACKUP_DIR: ${{ runner.temp }}/heavy-duty/backup
+          HEAVY_DUTY_RESTIC_PASSWORD_FILE: ${{ runner.temp }}/heavy-duty/restic-password
+        run: |
+          sudo install -d -o 1000 -g 1000 "$HEAVY_DUTY_DATA_DIR" "$HEAVY_DUTY_BACKUP_DIR"
+          docker compose -f compose.coolify.yaml config --quiet
+          docker compose -f compose.coolify.yaml up -d --pull never --wait --wait-timeout 180 api web proxy
+          proxy() { docker compose -f compose.coolify.yaml exec -T proxy "$@"; }
+          proxy wget -qO- http://127.0.0.1/api/health | tee /dev/stderr | grep -q '"database":"up"'
+          proxy wget -qO- http://127.0.0.1/manifest.webmanifest > /dev/null
+          (proxy wget -qO- http://127.0.0.1/mcp 2>&1 || true) | tee /dev/stderr | grep -q 401
+          docker run --rm "$IMAGE_PREFIX-backup:$IMAGE_TAG" restic version
+
+      - name: Show the logs of a failed smoke test
+        if: failure()
+        env:
+          APP_ORIGIN: https://ci.heavy-duty.invalid
+          CLOUDFLARE_TUNNEL_TOKEN: unused-in-ci
+        run: docker compose -f compose.coolify.yaml logs --no-color
+
+      - name: Log in to GHCR
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The sha tag allows a rollback; the main tag is what Coolify pulls by default.
+      - name: Publish the images
+        if: env.PUBLISH == 'true'
+        run: |
+          for name in api backup web proxy; do
+            docker tag "$IMAGE_PREFIX-$name:$IMAGE_TAG" "$IMAGE_PREFIX-$name:main"
+            docker push "$IMAGE_PREFIX-$name:$IMAGE_TAG"
+            docker push "$IMAGE_PREFIX-$name:main"
+          done
+
+  deploy:
+    name: Deploy to Coolify
+    needs: images
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Trigger the Coolify deployment
+        env:
+          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+        run: |
+          if [ -z "$COOLIFY_WEBHOOK" ] || [ -z "$COOLIFY_TOKEN" ]; then
+            echo "::error::Set the COOLIFY_WEBHOOK and COOLIFY_TOKEN secrets (docs/arquitetura/implantacao.md)."
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error --max-time 60 \
+            --header "Authorization: Bearer $COOLIFY_TOKEN" "$COOLIFY_WEBHOOK"
