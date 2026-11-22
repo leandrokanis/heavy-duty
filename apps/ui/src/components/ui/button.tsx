@@ -16,7 +16,7 @@ type ButtonProps = Omit<MotionButtonProps, 'children' | 'tapBrightness'> & {
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
   primary: 'bg-(--color-accent) text-(--color-on-accent)',
   secondary: 'bg-(--color-fill) text-(--color-label)',
-  destructive: 'bg-(--color-fill) text-(--color-danger)',
+  destructive: 'bg-(--color-background-elevated) text-(--color-danger)',
 }
 
 const SIZE_CLASS: Record<ButtonSize, string> = {
@@ -41,7 +41,7 @@ function Button({
   return (
     <MotionButton
       tapBrightness={variant === 'primary' ? PRIMARY_TAP_BRIGHTNESS : undefined}
-      className={`inline-flex cursor-pointer select-none items-center justify-center gap-(--space-8) rounded-(--radius-capsule) px-(--space-24) font-(--font-weight-semibold) data-disabled:opacity-45 ${SIZE_CLASS[size]} ${VARIANT_CLASS[variant]}${className ? ` ${className}` : ''}`}
+      className={`inline-flex cursor-pointer select-none items-center justify-center gap-(--space-8) rounded-(--radius-capsule) px-(--space-20) font-(--font-weight-semibold) data-disabled:opacity-45 ${SIZE_CLASS[size]} ${VARIANT_CLASS[variant]}${className ? ` ${className}` : ''}`}
       {...props}
     >
       {iconPosition === 'start' ? icon : null}

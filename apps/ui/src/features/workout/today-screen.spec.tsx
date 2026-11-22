@@ -458,6 +458,33 @@ describe('Given a set rejected by the API and a pending set in the queue', () =>
   })
 })
 
+describe('Given a set waiting in the queue and the letters of the day', () => {
+  describe('When the letters show', () => {
+    it('Then the status should come after the heading "Heavy Duty" and before the first letter button', async () => {
+      const queue = createSyncQueue({
+        store: createMemoryQueueStore(),
+        send: async () => ({ status: 'retry' }),
+      })
+      await queue.enqueue('workout-1', pendingSetBody({ id: 'waiting' }))
+      stubFetch(json(200, LETTERS_ACB))
+
+      renderToday(undefined, queue)
+      const firstLetter = await screen.findByRole('button', { name: /^A/ })
+      const heading = screen.getByRole('heading', { name: 'Heavy Duty' })
+      const status = screen.getByRole('status', { name: '1 série aguardando envio' })
+
+      expect({
+        afterHeading: heading.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING,
+        beforeLetter:
+          status.compareDocumentPosition(firstLetter) & Node.DOCUMENT_POSITION_FOLLOWING,
+      }).toEqual({
+        afterHeading: Node.DOCUMENT_POSITION_FOLLOWING,
+        beforeLetter: Node.DOCUMENT_POSITION_FOLLOWING,
+      })
+    })
+  })
+})
+
 describe('Given a set that is still in the queue and an expired session', () => {
   describe('When the athlete signs in and the workout of the day then fails by network', () => {
     it('Then the queue should send the set right after the sign-in', async () => {

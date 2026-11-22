@@ -67,3 +67,20 @@ describe('Given three sets rejected for the same reason', () => {
     })
   })
 })
+
+describe('Given a refused set', () => {
+  describe('When the notice renders', () => {
+    it('Then the icon should be hidden from the accessibility tree and Dispensar should stay a button', async () => {
+      render(
+        <SyncProvider queue={await rejectedQueue(1)}>
+          <RejectedSetsNotice />
+        </SyncProvider>,
+      )
+
+      expect({
+        icon: screen.getByRole('alert').querySelector('svg')?.getAttribute('aria-hidden'),
+        dismiss: screen.getByRole('button', { name: 'Dispensar' }).tagName,
+      }).toEqual({ icon: 'true', dismiss: 'BUTTON' })
+    })
+  })
+})

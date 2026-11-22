@@ -1,7 +1,7 @@
 'use client'
 
 import { Progress } from '@base-ui/react/progress'
-import { ChevronRight, List, Volume2, VolumeX } from 'lucide-react'
+import { Check, ChevronRight, List, Volume2, VolumeX } from 'lucide-react'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { MotionButton } from '@/components/ui/motion-button'
@@ -16,10 +16,10 @@ import { formatSetShort } from './format'
 import { LastSetButton } from './last-set-button'
 import { LeftOutSummary } from './left-out-summary'
 import { LetterBadge } from './letter-badge'
-import { PendingSetsIndicator } from './pending-sets-indicator'
-import { RejectedSetsNotice } from './rejected-sets-notice'
+import { QueueNotices } from './queue-notices'
 import { SequenceSheet } from './sequence-sheet'
 import { SetDots } from './set-dots'
+import { SetPips } from './set-pips'
 import { useSoundPreference } from './sound-preference'
 import { cueBetween } from './timer-cues'
 import { RingSvg, TimerRing } from './timer-ring'
@@ -218,15 +218,7 @@ function UpNext({ upcoming }: { upcoming: TodayExercise }) {
       <span className="min-w-0 truncate font-(--font-weight-semibold) text-(--color-label) text-(length:--font-size-body)">
         {upcoming.exercise.name}
       </span>
-      <span aria-hidden="true" className="inline-flex shrink-0 gap-(--space-4)">
-        {Array.from({ length: upcoming.sets }, (_, index) => (
-          <i
-            // biome-ignore lint/suspicious/noArrayIndexKey: the dots are positions, not items
-            key={index}
-            className="block size-[9px] rounded-(--radius-circle) bg-(--color-fill-strong)"
-          />
-        ))}
-      </span>
+      <SetPips total={upcoming.sets} recorded={0} />
     </p>
   )
 }
@@ -298,7 +290,7 @@ export function WorkoutScreen({
   )
   const title = (
     <h1 className="m-0 text-center font-(--font-weight-bold) text-(length:--font-size-title-1) leading-(--font-leading-title-1) tracking-(--font-tracking-title-1) text-balance">
-      {finished ? 'Treino concluído' : planned.exercise.name}
+      {planned.exercise.name}
     </h1>
   )
   // The toast of the correction is born from the same Salvar that changes the state, so Cancelar
@@ -356,17 +348,42 @@ export function WorkoutScreen({
             ) : null}
           </div>
         </>
+      ) : finished ? (
+        <div className="mt-(--space-32) flex flex-col items-center">
+          <span
+            aria-hidden="true"
+            className="flex size-16 items-center justify-center rounded-(--radius-circle) bg-(--color-success-soft)"
+          >
+            <Check
+              aria-hidden="true"
+              size={32}
+              strokeWidth={2.2}
+              className="text-(--color-success)"
+            />
+          </span>
+          <h1 className="m-0 mt-(--space-8) text-center font-(--font-weight-bold) text-(length:--font-size-large-title) leading-(--font-leading-tight) tracking-(--font-tracking-tight)">
+            Treino concluído
+          </h1>
+          {lastSet ? (
+            <div className="mt-(--space-16)">
+              <LastSetButton
+                ref={lastSetButtonRef}
+                set={lastSet.set}
+                onOpen={() => dispatch({ type: 'openSheet', sheet: 'correction' })}
+              />
+            </div>
+          ) : null}
+          <QueueNotices align="center" className="mt-(--space-16) w-full" />
+          <div className="mt-(--space-24) w-full">
+            <LeftOutSummary items={leftOutOf(state)} />
+          </div>
+        </div>
       ) : (
         <>
           <div className="mt-(--space-32) flex flex-col items-center gap-(--space-16)">
             {dots}
             {title}
           </div>
-          {finished ? (
-            <div className="mt-(--space-24)">
-              <LeftOutSummary items={leftOutOf(state)} />
-            </div>
-          ) : null}
           <div
             className={`flex flex-1 flex-col items-center py-(--space-16) ${
               state.phase === 'set' ? 'mt-(--space-16) justify-start' : 'justify-center'
@@ -406,19 +423,11 @@ export function WorkoutScreen({
                 Som
               </Button>
             ) : null}
-            {finished && lastSet ? (
-              <LastSetButton
-                ref={lastSetButtonRef}
-                set={lastSet.set}
-                onOpen={() => dispatch({ type: 'openSheet', sheet: 'correction' })}
-              />
-            ) : null}
           </div>
         </>
       )}
       <div className="mt-auto flex flex-col gap-(--space-12) pb-(--space-32)">
-        <RejectedSetsNotice />
-        <PendingSetsIndicator />
+        {finished ? null : <QueueNotices align="center" />}
         {resting && upcoming ? <UpNext upcoming={upcoming} /> : null}
         {timerOpen ? (
           <div className="grid grid-cols-[1fr_2fr] gap-(--space-12)">
@@ -482,6 +491,7 @@ export function WorkoutScreen({
       />
       <EndSheet
         open={state.sheet === 'confirmEnd'}
+        items={sequence}
         doneSets={state.recorded.length}
         leftSets={totalSets - state.recorded.length}
         returnFocusRef={topControlRef}

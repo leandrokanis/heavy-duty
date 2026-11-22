@@ -1,6 +1,6 @@
 'use client'
 
-import { CloudOff } from 'lucide-react'
+import { Clock } from 'lucide-react'
 import { useSyncSnapshot } from '@/sync/sync-context'
 
 export function pendingSetsLabel(count: number): string {
@@ -18,10 +18,12 @@ export function PendingSetsIndicator() {
     <div
       role="status"
       aria-label={label}
-      className="flex items-center gap-(--space-12) text-(--color-label)"
+      className="inline-flex items-center gap-(--space-8) rounded-(--radius-capsule) bg-(--color-warning-soft) px-(--space-12) py-(--space-8) text-(--color-label)"
     >
-      <CloudOff aria-hidden="true" className="size-[20px] text-(--color-warning)" />
-      <span className="text-[0.9375rem]">{label}</span>
+      <Clock aria-hidden="true" size={18} className="shrink-0 text-(--color-warning)" />
+      <span className="font-(--font-weight-semibold) text-(length:--font-size-subheadline)">
+        {label}
+      </span>
     </div>
   )
 }
