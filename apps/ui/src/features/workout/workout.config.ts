@@ -6,3 +6,6 @@ export const SEND_TIMEOUT_MS = 10_000
 
 // Estimate: a workout lasts about an hour; two hours cover long pauses without trapping the athlete in an old workout.
 export const RESUME_LIMIT_MS = 2 * 60 * 60 * 1000
+
+// The count before a timed exercise starts, in the prototype of the PO.
+export const COUNTDOWN_MS = 3000

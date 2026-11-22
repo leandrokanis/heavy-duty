@@ -1,6 +1,6 @@
 import { createClientId } from './client-id'
 import type { TodayDay, TodayExercise } from './today.types'
-import { DOUBLE_TAP_GUARD_MS } from './workout.config'
+import { COUNTDOWN_MS, DOUBLE_TAP_GUARD_MS } from './workout.config'
 import type { FinishWorkoutBody } from './workout-finish.types'
 import type { RecordWorkoutSetBody } from './workout-set.types'
 
@@ -20,12 +20,23 @@ export type SkippedMark = { plannedExerciseId: string; skippedAt: string }
 
 export type WorkoutFlowState = {
   session: WorkoutSession
-  phase: 'set' | 'rest' | 'finished' | 'ended'
+  phase: 'set' | 'countdown' | 'timing' | 'rest' | 'finished' | 'ended'
   exerciseIndex: number
   setNumber: number
   restEndsAtMs: number | null
+  // The instant the execution of a timed exercise starts (the count ends); null outside the timer.
+  executionStartsAtMs: number | null
   lastStepAtMs: number | null
-  lastStep: 'record' | 'advance' | 'goTo' | 'skip' | null
+  lastStep:
+    | 'record'
+    | 'advance'
+    | 'goTo'
+    | 'skip'
+    | 'countdown'
+    | 'begin'
+    | 'timerEnd'
+    | 'cancel'
+    | null
   // The exercise picked in the sequence during the rest; null when the order decides.
   nextExerciseIndex: number | null
   // The exercises skipped and not done yet, in the order of the last skip.
@@ -42,6 +53,8 @@ export type WorkoutFlowState = {
 export type WorkoutFlowAction =
   | { type: 'next'; nowMs: number }
   | { type: 'restEnd'; nowMs: number }
+  | { type: 'timerReach'; nowMs: number }
+  | { type: 'cancel'; nowMs: number }
   | { type: 'goTo'; exerciseIndex: number; nowMs: number }
   | { type: 'openSheet'; sheet: Exclude<SheetName, 'none'> }
   | { type: 'closeSheet'; nowMs: number }
@@ -55,6 +68,7 @@ export function createWorkoutFlow(session: WorkoutSession): WorkoutFlowState {
     exerciseIndex: 0,
     setNumber: 1,
     restEndsAtMs: null,
+    executionStartsAtMs: null,
     lastStepAtMs: null,
     lastStep: null,
     nextExerciseIndex: null,
@@ -225,14 +239,53 @@ export function upcomingExercise(state: WorkoutFlowState): TodayExercise | null 
   return state.session.day.exercises[position.exerciseIndex] as TodayExercise
 }
 
+// What the ring or the count shows at an instant, with the step and instant that cue the sound.
+// The value is the count number or the seconds left, 0 outside the timer.
+export type TimerReading = {
+  stage: 'off' | 'countdown' | 'execution'
+  value: number
+  lastStep: WorkoutFlowState['lastStep']
+  atMs: number
+}
+
+export function timerReadingOf(state: WorkoutFlowState, nowMs: number): TimerReading {
+  const { lastStep } = state
+  const deadlineMs = deadlineOf(state)
+  if (state.phase === 'countdown' && deadlineMs !== null) {
+    const number = Math.ceil((deadlineMs - nowMs) / MS_PER_SECOND)
+    return { stage: 'countdown', value: Math.min(3, Math.max(1, number)), lastStep, atMs: nowMs }
+  }
+  if (state.phase === 'timing' && deadlineMs !== null) {
+    const targetSeconds = currentExercise(state).targetSeconds as number
+    const secondsLeft = Math.ceil((deadlineMs - nowMs) / MS_PER_SECOND)
+    const value = Math.min(targetSeconds, Math.max(0, secondsLeft))
+    return { stage: 'execution', value, lastStep, atMs: nowMs }
+  }
+  return { stage: 'off', value: 0, lastStep, atMs: nowMs }
+}
+
+// The instant the phase on screen ends by the clock: the count, the execution or the rest.
+export function deadlineOf(state: WorkoutFlowState): number | null {
+  if (state.phase === 'countdown') return state.executionStartsAtMs
+  if (state.phase === 'timing') {
+    const targetSeconds = currentExercise(state).targetSeconds as number
+    return (state.executionStartsAtMs as number) + targetSeconds * MS_PER_SECOND
+  }
+  return state.phase === 'rest' ? state.restEndsAtMs : null
+}
+
 // Text of the polite live region: the set just recorded, then the set now on screen, if any.
 export function announcementOf(state: WorkoutFlowState): string {
+  if (state.lastStep === 'begin') return 'Começou'
+  if (state.lastStep === 'cancel') return positionText(state)
   if (state.lastStep === 'skip' && state.phase === 'rest') return upcomingText(state)
   if (state.lastStep === 'advance' || state.lastStep === 'goTo' || state.lastStep === 'skip') {
     return positionText(state)
   }
   const last = state.recorded.at(-1)
-  if (state.lastStep !== 'record' || last === undefined) return ''
+  if ((state.lastStep !== 'record' && state.lastStep !== 'timerEnd') || last === undefined) {
+    return ''
+  }
   const planned = state.session.day.exercises.find(
     ({ plannedExerciseId }) => plannedExerciseId === last.plannedExerciseId,
   ) as TodayExercise
@@ -262,19 +315,21 @@ function positionText(state: WorkoutFlowState): string {
     state.setNumber === 1 ||
     state.lastStep === 'goTo' ||
     state.lastStep === 'skip' ||
+    state.lastStep === 'cancel' ||
     last?.plannedExerciseId !== planned.plannedExerciseId
   const numbers = `${state.setNumber} de ${planned.sets}`
   return isNewOnScreen ? `${planned.exercise.name}, série ${numbers}` : `Série ${numbers}`
 }
 
-// Brings a saved state back: a rest that ended with the app closed is over, and no tap of the
-// last session guards against the first tap of this one.
+// Brings a saved state back: a rest that ended with the app closed is over, a timer waits for the
+// screen to settle it, and no tap of the last session guards against the first tap of this one.
 export function restoreWorkoutFlow(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
   const saved: WorkoutFlowState = { ...state, skipped: state.skipped ?? [] }
   const settled = hasRestEnded(saved, nowMs) ? advance(saved, nowMs) : saved
   return {
     ...settled,
     nextExerciseIndex: settled.nextExerciseIndex ?? null,
+    executionStartsAtMs: settled.executionStartsAtMs ?? null,
     sheet: 'none',
     finish: settled.finish ?? null,
     lastStepAtMs: null,
@@ -291,20 +346,33 @@ export function workoutFlowReducer(
       if (state.phase === 'finished' || state.sheet !== 'none' || isGuarded(state, action.nowMs)) {
         return state
       }
-      return state.phase === 'rest' ? advance(state, action.nowMs) : recordSet(state, action.nowMs)
+      if (state.phase === 'countdown') return state
+      if (state.phase === 'rest') return advance(state, action.nowMs)
+      if (state.phase === 'timing') return endEarly(state, action.nowMs)
+      return isTimed(currentExercise(state))
+        ? openCountdown(state, action.nowMs)
+        : recordSet(state, {
+            performedAtMs: action.nowMs,
+            stepAtMs: action.nowMs,
+            lastStep: 'record',
+          })
     case 'restEnd':
       if (state.sheet !== 'none') return state
       return hasRestEnded(state, action.nowMs) ? advance(state, action.nowMs) : state
+    case 'timerReach':
+      return reachTimer(state, action.nowMs)
+    case 'cancel':
+      return cancelTimer(state, action.nowMs)
     case 'goTo':
       return goTo(state, action.exerciseIndex, action.nowMs)
     case 'openSheet':
-      return { ...state, sheet: action.sheet }
+      return isTimerOpen(state) ? state : { ...state, sheet: action.sheet }
     case 'closeSheet':
       return closeSheet(state, action.nowMs)
     case 'skip':
       return skipExercise(state, action.nowMs)
     case 'end':
-      return endWorkout(state, action.nowMs)
+      return isTimerOpen(state) ? state : endWorkout(state, action.nowMs)
   }
 }
 
@@ -391,6 +459,71 @@ function endWorkout(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
   }
 }
 
+// The count turns into the execution at its instant, and the execution ends by itself at its own.
+// One call settles every passage the clock skipped; the guard starts at the tick (decision 32).
+function reachTimer(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
+  const startsAtMs = state.executionStartsAtMs
+  if (startsAtMs === null || nowMs < startsAtMs) return state
+  if (state.phase !== 'countdown' && state.phase !== 'timing') return state
+  const begun: WorkoutFlowState =
+    state.phase === 'countdown'
+      ? { ...state, phase: 'timing', lastStepAtMs: nowMs, lastStep: 'begin' }
+      : state
+  const planned = currentExercise(begun)
+  const endsAtMs = startsAtMs + (planned.targetSeconds as number) * MS_PER_SECOND
+  if (nowMs < endsAtMs) return begun
+  return recordSet(begun, {
+    performedAtMs: endsAtMs,
+    stepAtMs: nowMs,
+    lastStep: 'timerEnd',
+  })
+}
+
+// The athlete ends the execution: the recorded time is the target minus the seconds the ring
+// shows, at least 1 (decision 33).
+function endEarly(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
+  const planned = currentExercise(state)
+  const targetSeconds = planned.targetSeconds as number
+  const endsAtMs = (state.executionStartsAtMs as number) + targetSeconds * MS_PER_SECOND
+  const shownSeconds = Math.ceil((endsAtMs - nowMs) / MS_PER_SECOND)
+  return recordSet(state, {
+    performedAtMs: nowMs,
+    stepAtMs: nowMs,
+    lastStep: 'record',
+    seconds: Math.max(1, targetSeconds - shownSeconds),
+  })
+}
+
+// Back to the same set with nothing recorded; the guard starts here (decision 35).
+function cancelTimer(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
+  if (state.phase !== 'countdown' && state.phase !== 'timing') return state
+  return {
+    ...state,
+    phase: 'set',
+    executionStartsAtMs: null,
+    lastStepAtMs: nowMs,
+    lastStep: 'cancel',
+  }
+}
+
+function isTimerOpen(state: WorkoutFlowState): boolean {
+  return state.phase === 'countdown' || state.phase === 'timing'
+}
+
+function isTimed(planned: TodayExercise): boolean {
+  return planned.exercise.kind === 'time'
+}
+
+function openCountdown(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
+  return {
+    ...state,
+    phase: 'countdown',
+    executionStartsAtMs: nowMs + COUNTDOWN_MS,
+    lastStepAtMs: nowMs,
+    lastStep: 'countdown',
+  }
+}
+
 function isGuarded(state: WorkoutFlowState, nowMs: number): boolean {
   return state.lastStepAtMs !== null && nowMs - state.lastStepAtMs < DOUBLE_TAP_GUARD_MS
 }
@@ -412,14 +545,26 @@ function advance(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
   }
 }
 
-function recordSet(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
+type RecordOptions = {
+  // The instant stored with the set and where the rest starts.
+  performedAtMs: number
+  // The instant of the screen change the athlete sees, where the double-tap guard starts.
+  stepAtMs: number
+  lastStep: 'record' | 'timerEnd'
+  // Set only by a timed exercise ended early; otherwise the target.
+  seconds?: number
+}
+
+function recordSet(state: WorkoutFlowState, options: RecordOptions): WorkoutFlowState {
+  const { performedAtMs, stepAtMs, lastStep } = options
   const planned = currentExercise(state)
   const withSet: WorkoutFlowState = {
     ...state,
-    lastStepAtMs: nowMs,
-    lastStep: 'record',
+    executionStartsAtMs: null,
+    lastStepAtMs: stepAtMs,
+    lastStep,
     skipped: state.skipped.filter((mark) => mark.plannedExerciseId !== planned.plannedExerciseId),
-    recorded: [...state.recorded, setBodyOf(state, planned, nowMs)],
+    recorded: [...state.recorded, setBodyOf(state, planned, performedAtMs, options.seconds)],
   }
   // The last set of the day wins over a 0 s rest: there is no position to advance to.
   if (nextPositionOf(withSet) === null) {
@@ -427,19 +572,24 @@ function recordSet(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
     const finish: FinishWorkoutBody = { finishedAt: last.performedAt, endReason: 'completed' }
     return { ...withSet, phase: 'finished', restEndsAtMs: null, finish }
   }
-  if (planned.restSeconds === 0) return { ...advance(withSet, nowMs), lastStep: 'record' }
-  return { ...withSet, phase: 'rest', restEndsAtMs: nowMs + planned.restSeconds * MS_PER_SECOND }
+  if (planned.restSeconds === 0) return { ...advance(withSet, stepAtMs), lastStep }
+  return {
+    ...withSet,
+    phase: 'rest',
+    restEndsAtMs: performedAtMs + planned.restSeconds * MS_PER_SECOND,
+  }
 }
 
 function setBodyOf(
   state: WorkoutFlowState,
   planned: TodayExercise,
   nowMs: number,
+  seconds?: number,
 ): RecordWorkoutSetBody {
   const { session } = state
   const measure =
     planned.exercise.kind === 'time'
-      ? { seconds: planned.targetSeconds as number }
+      ? { seconds: seconds ?? (planned.targetSeconds as number) }
       : { reps: planned.targetReps as number }
   return {
     id: createClientId(nowMs),

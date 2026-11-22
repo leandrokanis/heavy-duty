@@ -5,10 +5,12 @@ import {
   canSkipOf,
   createWorkoutFlow,
   currentExercise,
+  deadlineOf,
   exerciseProgressOf,
   leftOutOf,
   restoreWorkoutFlow,
   sequenceOf,
+  timerReadingOf,
   upcomingExercise,
   type WorkoutFlowState,
   type WorkoutSession,
@@ -35,6 +37,14 @@ function next(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
 
 function restEnd(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
   return workoutFlowReducer(state, { type: 'restEnd', nowMs })
+}
+
+function timerReach(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
+  return workoutFlowReducer(state, { type: 'timerReach', nowMs })
+}
+
+function cancel(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
+  return workoutFlowReducer(state, { type: 'cancel', nowMs })
 }
 
 function instantOf(id: string): number {
@@ -74,20 +84,421 @@ describe('Given the flow on set 1 of supino-reto showing 42500 g from the last w
 })
 
 describe('Given the flow on set 1 of prancha, 45 s at 0 g', () => {
-  describe('When next arrives at nowMs', () => {
-    it('Then should record 45 seconds and no reps, and rest for 60 s', () => {
-      const state = workoutFlowReducer(createWorkoutFlow(sessionOf([PRANCHA])), {
-        type: 'next',
-        nowMs: T0,
-      })
-      const body = state.recorded[0]
+  describe('When next arrives at T0', () => {
+    it('Then should open the 3 s countdown and record no set', () => {
+      const state = next(createWorkoutFlow(sessionOf([PRANCHA])), T0)
 
       expect({
+        phase: state.phase,
+        executionStartsAtMs: state.executionStartsAtMs,
+        lastStepAtMs: state.lastStepAtMs,
+        lastStep: state.lastStep,
+        recorded: state.recorded.length,
+      }).toEqual({
+        phase: 'countdown',
+        executionStartsAtMs: T0 + 3000,
+        lastStepAtMs: T0,
+        lastStep: 'countdown',
+        recorded: 0,
+      })
+    })
+  })
+})
+
+describe('Given the countdown of prancha opened at T0', () => {
+  const counting = next(createWorkoutFlow(sessionOf([PRANCHA])), T0)
+
+  describe.each([1000, 2999])('When next arrives at T0 + %i ms', (offsetMs) => {
+    it('Then the state should not change', () => {
+      expect(next(counting, T0 + offsetMs)).toEqual(counting)
+    })
+  })
+
+  describe('When timerReach arrives at T0 + 2999 ms', () => {
+    it('Then the state should not change', () => {
+      expect(timerReach(counting, T0 + 2999)).toEqual(counting)
+    })
+  })
+
+  describe('When timerReach arrives at T0 + 3000 ms', () => {
+    it('Then the execution should begin at that instant', () => {
+      const state = timerReach(counting, T0 + 3000)
+
+      expect({
+        phase: state.phase,
+        lastStep: state.lastStep,
+        lastStepAtMs: state.lastStepAtMs,
+      }).toEqual({ phase: 'timing', lastStep: 'begin', lastStepAtMs: T0 + 3000 })
+    })
+  })
+})
+
+describe('Given the execution of prancha begun at T0 + 3000 ms', () => {
+  const timing = timerReach(next(createWorkoutFlow(sessionOf([PRANCHA])), T0), T0 + 3000)
+
+  describe('When timerReach arrives at T0 + 47999 ms', () => {
+    it('Then the state should not change', () => {
+      expect(timerReach(timing, T0 + 47_999)).toEqual(timing)
+    })
+  })
+
+  describe('When timerReach arrives at T0 + 48000 ms', () => {
+    it('Then should record the set with the target at that instant and rest for 60 s', () => {
+      const state = timerReach(timing, T0 + 48_000)
+      const [body] = state.recorded
+
+      expect({
+        set: body && {
+          setNumber: body.setNumber,
+          seconds: body.seconds,
+          loadG: body.loadG,
+          hasReps: 'reps' in body,
+          performedAt: body.performedAt,
+        },
+        phase: state.phase,
         restEndsAtMs: state.restEndsAtMs,
-        loadG: body?.loadG,
-        seconds: body?.seconds,
-        hasReps: body !== undefined && 'reps' in body,
-      }).toEqual({ restEndsAtMs: T0 + 60_000, loadG: 0, seconds: 45, hasReps: false })
+        executionStartsAtMs: state.executionStartsAtMs,
+        lastStep: state.lastStep,
+      }).toEqual({
+        set: {
+          setNumber: 1,
+          seconds: 45,
+          loadG: 0,
+          hasReps: false,
+          performedAt: new Date(T0 + 48_000).toISOString(),
+        },
+        phase: 'rest',
+        restEndsAtMs: T0 + 108_000,
+        executionStartsAtMs: null,
+        lastStep: 'timerEnd',
+      })
+    })
+  })
+})
+
+describe('Given the clock jumped past the end of the timed exercise (screen off)', () => {
+  const counting = next(createWorkoutFlow(sessionOf([PRANCHA, SUPINO_RETO])), T0)
+
+  describe('When one timerReach arrives at T0 + 88000 ms with the count still open', () => {
+    it('Then should record the set at the calculated end and rest from there', () => {
+      const state = timerReach(counting, T0 + 88_000)
+
+      expect({
+        seconds: state.recorded[0]?.seconds,
+        performedAt: state.recorded[0]?.performedAt,
+        phase: state.phase,
+        restEndsAtMs: state.restEndsAtMs,
+        lastStepAtMs: state.lastStepAtMs,
+      }).toEqual({
+        seconds: 45,
+        performedAt: new Date(T0 + 48_000).toISOString(),
+        phase: 'rest',
+        restEndsAtMs: T0 + 108_000,
+        lastStepAtMs: T0 + 88_000,
+      })
+    })
+  })
+
+  describe('When the app returns at T0 + 58000 ms with the execution at 30 s left', () => {
+    it('Then should record 45 s and end the rest at T0 + 108000 ms', () => {
+      const timing = timerReach(counting, T0 + 18_000)
+      const state = timerReach(timing, T0 + 58_000)
+
+      expect({
+        seconds: state.recorded[0]?.seconds,
+        phase: state.phase,
+        restEndsAtMs: state.restEndsAtMs,
+      }).toEqual({ seconds: 45, phase: 'rest', restEndsAtMs: T0 + 108_000 })
+    })
+  })
+})
+
+describe('Given the execution of prancha begun at T0 + 3000 ms and next arriving to end it early', () => {
+  const timing = timerReach(next(createWorkoutFlow(sessionOf([PRANCHA])), T0), T0 + 3000)
+
+  describe.each([
+    { offsetMs: 18_000, seconds: 15 },
+    { offsetMs: 18_500, seconds: 15 },
+    { offsetMs: 3900, seconds: 1 },
+  ])('When next arrives at T0 + $offsetMs ms', ({ offsetMs, seconds }) => {
+    it(`Then should record ${seconds} s at the tap and rest from the tap`, () => {
+      const atMs = T0 + offsetMs
+      const restEndsAtMs = atMs + 60_000
+      const state = next(timing, atMs)
+
+      expect({
+        seconds: state.recorded[0]?.seconds,
+        performedAt: state.recorded[0]?.performedAt,
+        restEndsAtMs: state.restEndsAtMs,
+        lastStep: state.lastStep,
+      }).toEqual({
+        seconds,
+        performedAt: new Date(atMs).toISOString(),
+        restEndsAtMs,
+        lastStep: 'record',
+      })
+    })
+  })
+
+  describe('When next arrives at T0 + 3799 ms, inside the guard of the start', () => {
+    it('Then the state should not change', () => {
+      expect(next(timing, T0 + 3799)).toEqual(timing)
+    })
+  })
+})
+
+describe('Given the timer of prancha open, in the count or in the execution', () => {
+  const counting = next(createWorkoutFlow(sessionOf([PRANCHA])), T0)
+  const timing = timerReach(counting, T0 + 3000)
+
+  describe.each([
+    { name: 'the count', state: counting, atMs: T0 + 1000 },
+    { name: 'the execution', state: timing, atMs: T0 + 20_000 },
+  ])('When cancel arrives during $name', ({ state, atMs }) => {
+    it('Then should go back to set 1 with no set recorded, and guard from the tap', () => {
+      const cancelled = cancel(state, atMs)
+
+      expect({
+        phase: cancelled.phase,
+        setNumber: cancelled.setNumber,
+        executionStartsAtMs: cancelled.executionStartsAtMs,
+        recorded: cancelled.recorded.length,
+        lastStep: cancelled.lastStep,
+        lastStepAtMs: cancelled.lastStepAtMs,
+        tapInsideGuard: next(cancelled, atMs + 799) === cancelled,
+        tapAfterGuard: next(cancelled, atMs + 800).phase,
+      }).toEqual({
+        phase: 'set',
+        setNumber: 1,
+        executionStartsAtMs: null,
+        recorded: 0,
+        lastStep: 'cancel',
+        lastStepAtMs: atMs,
+        tapInsideGuard: true,
+        tapAfterGuard: 'countdown',
+      })
+    })
+  })
+
+  describe('When cancel arrives with no timer open', () => {
+    it('Then the state should not change', () => {
+      const onSet = createWorkoutFlow(sessionOf([PRANCHA]))
+
+      expect(cancel(onSet, T0)).toBe(onSet)
+    })
+  })
+})
+
+describe('Given a timed exercise whose end follows the rules of the rest', () => {
+  const ONE_SET_PRANCHA = { ...PRANCHA, sets: 1 }
+  const NO_REST_PRANCHA = { ...PRANCHA, restSeconds: 0 }
+
+  describe.each([
+    {
+      name: 'end by the clock on a prancha with a 0 s rest',
+      exercises: [NO_REST_PRANCHA, SUPINO_RETO],
+      end: (state: WorkoutFlowState) => timerReach(state, T0 + 48_000),
+      phase: 'set',
+      setNumber: 2,
+    },
+    {
+      name: 'end by the clock on the only set of the letter',
+      exercises: [ONE_SET_PRANCHA],
+      end: (state: WorkoutFlowState) => timerReach(state, T0 + 48_000),
+      phase: 'finished',
+      setNumber: 1,
+    },
+    {
+      name: 'end early on the only set of the letter',
+      exercises: [ONE_SET_PRANCHA],
+      end: (state: WorkoutFlowState) => next(timerReach(state, T0 + 3000), T0 + 20_000),
+      phase: 'finished',
+      setNumber: 1,
+    },
+  ])('When the execution reaches its $name', ({ exercises, end, phase, setNumber }) => {
+    it(`Then the phase should be ${phase}`, () => {
+      const state = end(next(createWorkoutFlow(sessionOf(exercises)), T0))
+      const last = state.recorded.at(-1)
+
+      expect({
+        phase: state.phase,
+        setNumber: state.setNumber,
+        finish: state.finish,
+      }).toEqual({
+        phase,
+        setNumber,
+        finish:
+          phase === 'finished' ? { finishedAt: last?.performedAt, endReason: 'completed' } : null,
+      })
+    })
+  })
+})
+
+describe('Given the timer of a letter with a second exercise open, in the count or in the execution', () => {
+  const counting = next(createWorkoutFlow(sessionOf([PRANCHA, SUPINO_RETO])), T0)
+  const timing = timerReach(counting, T0 + 3000)
+
+  describe.each([
+    { name: 'the count', state: counting },
+    { name: 'the execution', state: timing },
+  ])('When the sequence actions arrive during $name', ({ state }) => {
+    it.each([
+      { type: 'openSheet', sheet: 'sequence' },
+      { type: 'goTo', exerciseIndex: 1, nowMs: T0 + 5000 },
+      { type: 'skip', nowMs: T0 + 5000 },
+      { type: 'end', nowMs: T0 + 5000 },
+    ] as const)('Then $type should not change the state', (action) => {
+      expect(workoutFlowReducer(state, action)).toEqual(state)
+    })
+  })
+})
+
+describe('Given each step of the timer of prancha', () => {
+  const ONE_SET_PRANCHA = { ...PRANCHA, sets: 1 }
+  const counting = next(createWorkoutFlow(sessionOf([PRANCHA])), T0)
+  const timing = timerReach(counting, T0 + 3000)
+
+  describe.each([
+    { name: 'the count opens', state: counting, text: '' },
+    { name: 'the execution begins', state: timing, text: 'Começou' },
+    {
+      name: 'the execution ends by the clock, with a rest',
+      state: timerReach(timing, T0 + 48_000),
+      text: 'Série 1 de 3 registrada',
+    },
+    {
+      name: 'next ends the execution early, with a rest',
+      state: next(timing, T0 + 20_000),
+      text: 'Série 1 de 3 registrada',
+    },
+    {
+      name: 'the execution ends by the clock, with a 0 s rest',
+      state: timerReach(
+        next(createWorkoutFlow(sessionOf([{ ...PRANCHA, restSeconds: 0 }])), T0),
+        T0 + 48_000,
+      ),
+      text: 'Série 1 de 3 registrada. Série 2 de 3',
+    },
+    {
+      name: 'the execution ends by the clock on the last set of the letter',
+      state: timerReach(next(createWorkoutFlow(sessionOf([ONE_SET_PRANCHA])), T0), T0 + 48_000),
+      text: 'Série 1 de 1 registrada. Treino concluído',
+    },
+    {
+      name: 'the athlete cancels',
+      state: cancel(timing, T0 + 20_000),
+      text: 'Prancha, série 1 de 3',
+    },
+  ])('When announcementOf is read after $name', ({ state, text }) => {
+    it(`Then should say "${text}"`, () => {
+      expect(announcementOf(state)).toBe(text)
+    })
+  })
+})
+
+describe('Given a state saved during the execution of prancha, begun at T0 + 3000 ms', () => {
+  const { executionStartsAtMs: _omitted, ...savedWithoutInstant } = timerReach(
+    next(createWorkoutFlow(sessionOf([PRANCHA])), T0),
+    T0 + 3000,
+  )
+  const saved = timerReach(next(createWorkoutFlow(sessionOf([PRANCHA])), T0), T0 + 3000)
+
+  describe('When it is restored at T0 + 90000 ms', () => {
+    const restored = restoreWorkoutFlow(saved, T0 + 90_000)
+
+    it('Then should stay in the execution with no set recorded and no tap guard', () => {
+      expect({
+        phase: restored.phase,
+        executionStartsAtMs: restored.executionStartsAtMs,
+        recorded: restored.recorded.length,
+        lastStepAtMs: restored.lastStepAtMs,
+      }).toEqual({
+        phase: 'timing',
+        executionStartsAtMs: T0 + 3000,
+        recorded: 0,
+        lastStepAtMs: null,
+      })
+    })
+
+    it('Then the next timerReach should record the set at the calculated end', () => {
+      expect(timerReach(restored, T0 + 90_000).recorded[0]?.performedAt).toBe(
+        new Date(T0 + 48_000).toISOString(),
+      )
+    })
+  })
+
+  describe('When a state saved before this story, with no instant, is restored', () => {
+    it('Then executionStartsAtMs should be null', () => {
+      const restored = restoreWorkoutFlow(savedWithoutInstant as WorkoutFlowState, T0)
+
+      expect(restored.executionStartsAtMs).toBeNull()
+    })
+  })
+})
+
+describe('Given the timer of prancha opened at T0, begun at T0 + 3000 ms', () => {
+  const counting = next(createWorkoutFlow(sessionOf([PRANCHA])), T0)
+  const timing = timerReach(counting, T0 + 3000)
+
+  describe.each([
+    { offsetMs: 0, stage: 'countdown', value: 3 },
+    { offsetMs: 999, stage: 'countdown', value: 3 },
+    { offsetMs: 1000, stage: 'countdown', value: 2 },
+    { offsetMs: 2500, stage: 'countdown', value: 1 },
+  ])('When the count is read at T0 + $offsetMs ms', ({ offsetMs, stage, value }) => {
+    it(`Then should read ${value}`, () => {
+      const reading = timerReadingOf(counting, T0 + offsetMs)
+
+      expect({ stage: reading.stage, value: reading.value }).toEqual({ stage, value })
+    })
+  })
+
+  describe.each([
+    { offsetMs: 3000, value: 45 },
+    { offsetMs: 18_500, value: 30 },
+  ])('When the execution is read at T0 + $offsetMs ms', ({ offsetMs, value }) => {
+    it(`Then should read ${value} s left`, () => {
+      const reading = timerReadingOf(timing, T0 + offsetMs)
+
+      expect({ stage: reading.stage, value: reading.value }).toEqual({
+        stage: 'execution',
+        value,
+      })
+    })
+  })
+
+  describe('When the flow is out of the timer', () => {
+    it('Then the reading should be off', () => {
+      expect(timerReadingOf(createWorkoutFlow(sessionOf([PRANCHA])), T0).stage).toBe('off')
+    })
+  })
+
+  describe('When the deadline is read in each phase', () => {
+    it('Then should be the end of the count, of the execution, of the rest, or null on a set', () => {
+      expect({
+        set: deadlineOf(createWorkoutFlow(sessionOf([PRANCHA]))),
+        countdown: deadlineOf(counting),
+        timing: deadlineOf(timing),
+        rest: deadlineOf(timerReach(timing, T0 + 48_000)),
+      }).toEqual({
+        set: null,
+        countdown: T0 + 3000,
+        timing: T0 + 48_000,
+        rest: T0 + 108_000,
+      })
+    })
+  })
+})
+
+describe('Given the flow on set 1 of supino-reto, a rep exercise', () => {
+  describe('When next arrives at T0', () => {
+    it('Then should record the set at once, with no countdown', () => {
+      const state = next(createWorkoutFlow(sessionOf()), T0)
+
+      expect({ phase: state.phase, recorded: state.recorded.length }).toEqual({
+        phase: 'rest',
+        recorded: 1,
+      })
     })
   })
 })
@@ -444,6 +855,13 @@ function recordSets(state: WorkoutFlowState, count: number, fromMs: number) {
   for (let index = 0; index < count; index++) {
     current = next(current, clock)
     clock += STEP_MS
+    if (current.phase === 'countdown') {
+      // A timed exercise ends by the clock, at the end of the execution.
+      const targetSeconds = currentExercise(current).targetSeconds as number
+      clock = (current.executionStartsAtMs as number) + targetSeconds * 1000
+      current = timerReach(current, clock)
+      clock += STEP_MS
+    }
     if (current.phase === 'rest') {
       current = next(current, clock)
       clock += STEP_MS
@@ -1191,7 +1609,8 @@ describe('Given prancha skipped and set 1 of triceps-polia on screen, for the ma
   describe('When goTo arrives for prancha and next records its set', () => {
     it('Then prancha should no longer be skipped and should go on with set 2', () => {
       const onSkipped = goTo(onTriceps, 1, clock + 5000)
-      const recorded = next(onSkipped, clock + 6000)
+      const counting = next(onSkipped, clock + 6000)
+      const recorded = timerReach(counting, (counting.executionStartsAtMs as number) + 45_000)
 
       const back = restEnd(recorded, recorded.restEndsAtMs as number)
 
