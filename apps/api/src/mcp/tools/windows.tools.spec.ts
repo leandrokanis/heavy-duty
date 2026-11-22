@@ -237,3 +237,252 @@ describe('Given an invalid interval', () => {
     })
   })
 })
+
+type SimulatedTrainingRow = {
+  workoutId: string
+  letter: string
+  trainedAt: string
+  goal: string
+  volumeG: number
+  adjustedVolumeG: number
+  relation: string
+  window: { opensAt: string; closesAt: string; outcome: string }
+}
+
+type SimulationResponse = {
+  parameters: Record<string, unknown>
+  from: string | null
+  to: string | null
+  groups: {
+    muscleGroup: { slug: string; name: string }
+    summary: Record<string, unknown>
+    trainings: SimulatedTrainingRow[]
+  }[]
+}
+
+async function simulate(app: App, args: Record<string, unknown> = {}) {
+  const called = await rpc(app, 'tools/call', {
+    name: 'simulate_activity_windows',
+    arguments: args,
+  })
+  return called.result?.structuredContent as SimulationResponse
+}
+
+const MONDAY_7H = '2025-03-03T10:00:00.000Z'
+const THURSDAY_7H = '2025-03-06T10:00:00.000Z'
+
+describe('Given the athlete trained back on Monday and Thursday at 7h in Brasilia', () => {
+  describe('When simulate_activity_windows is called for back through /mcp', () => {
+    it('Then should return both trainings with the window that opens after each and the relation to the previous one', async () => {
+      const { app, record } = await givenCatalogAndProgram()
+      record(MONDAY_7H, sets('remada', 3, 40000, 10))
+      record(THURSDAY_7H, sets('remada', 3, 40000, 10))
+
+      const simulation = await simulate(app, { muscleGroupSlug: 'back' })
+
+      expect(
+        simulation.groups.map(({ muscleGroup, trainings }) => [
+          muscleGroup.slug,
+          trainings.map(({ trainedAt, relation, window }) => [
+            trainedAt,
+            relation,
+            window.opensAt,
+            window.closesAt,
+          ]),
+        ]),
+      ).toEqual([
+        [
+          'back',
+          [
+            [MONDAY_7H, 'first', '2025-03-05T22:00:00.000Z', '2025-03-07T22:00:00.000Z'],
+            [THURSDAY_7H, 'in_window', '2025-03-08T22:00:00.000Z', '2025-03-10T22:00:00.000Z'],
+          ],
+        ],
+      ])
+    })
+
+    it('Then should return the starting parameters', async () => {
+      const { app } = await givenCatalogAndProgram()
+
+      const simulation = await simulate(app)
+
+      expect(simulation.parameters).toEqual({
+        secondaryVolumePercent: 50,
+        goalVolumePercent: { strength: 130, hypertrophy: 100, endurance: 75 },
+        baseOpenHours: { strength: 40, hypertrophy: 40, endurance: 40 },
+        openMinutesPerAdjustedKg: 1,
+        maxOpenHours: 72,
+        openDurationHours: { strength: 48, hypertrophy: 48, endurance: 48 },
+      })
+    })
+  })
+
+  describe('When tools/list is called through /mcp', () => {
+    it('Then simulate_activity_windows should be read only', async () => {
+      const { app } = createProgramTestApp()
+
+      const listed = await rpc(app, 'tools/list', {})
+      const tool = listed.result?.tools?.find(({ name }) => name === 'simulate_activity_windows')
+
+      expect(tool?.annotations?.readOnlyHint).toBe(true)
+    })
+  })
+})
+
+function simulateRaw(app: App, args: Record<string, unknown>) {
+  return rpc(app, 'tools/call', { name: 'simulate_activity_windows', arguments: args })
+}
+
+describe('Given a back training on Monday at 7h in Brasilia', () => {
+  describe('When simulate_activity_windows is called with baseOpenHours.hypertrophy 24', () => {
+    it('Then the window should open 24 h plus the volume time after and the response should show 24', async () => {
+      const { app, record } = await givenCatalogAndProgram()
+      record(MONDAY_7H, sets('remada', 3, 40000, 10))
+
+      const simulation = await simulate(app, { parameters: { baseOpenHours: { hypertrophy: 24 } } })
+
+      expect([
+        simulation.groups[0]?.trainings[0]?.window.opensAt,
+        (simulation.parameters.baseOpenHours as Record<string, number>).hypertrophy,
+      ]).toEqual(['2025-03-05T06:00:00.000Z', 24])
+    })
+
+    it('Then the next simulation without parameters should use the starting ones', async () => {
+      const { app, record } = await givenCatalogAndProgram()
+      record(MONDAY_7H, sets('remada', 3, 40000, 10))
+      await simulate(app, { parameters: { baseOpenHours: { hypertrophy: 24 } } })
+
+      const simulation = await simulate(app)
+
+      expect(simulation.groups[0]?.trainings[0]?.window.opensAt).toBe('2025-03-05T22:00:00.000Z')
+    })
+  })
+})
+
+describe('Given no recorded workout', () => {
+  describe('When simulate_activity_windows is called', () => {
+    it('Then should return no groups and no interval, with no error', async () => {
+      const { app } = await givenCatalogAndProgram()
+
+      const simulation = await simulate(app)
+
+      expect([simulation.groups, simulation.from, simulation.to]).toEqual([[], null, null])
+    })
+  })
+})
+
+describe('Given an invalid parameter', () => {
+  describe('When simulate_activity_windows is called with baseOpenHours.strength 1.5', () => {
+    it('Then should return isError with window_parameters_invalid naming the parameter', async () => {
+      const { app } = await givenCatalogAndProgram()
+
+      const called = await simulateRaw(app, { parameters: { baseOpenHours: { strength: 1.5 } } })
+
+      expect({
+        isError: called.result?.isError,
+        text: JSON.parse(called.result?.content?.[0]?.text ?? 'null'),
+      }).toEqual({
+        isError: true,
+        text: {
+          code: 'window_parameters_invalid',
+          message: 'parâmetro da janela inválido: baseOpenHours.strength',
+        },
+      })
+    })
+  })
+})
+
+const PREVIOUS_THURSDAY_7H = '2025-02-27T10:00:00.000Z'
+const WEEK_FROM = '2025-03-03T03:00:00.000Z'
+const WEEK_TO = '2025-03-10T03:00:00.000Z'
+
+describe('Given a back training before the interval and one in it', () => {
+  describe('When simulate_activity_windows is called with the interval of the week', () => {
+    it('Then should return only the training of the week, in the window of the one before', async () => {
+      const { app, record } = await givenCatalogAndProgram()
+      record(PREVIOUS_THURSDAY_7H, sets('remada', 3, 40000, 10))
+      record(MONDAY_7H, sets('remada', 3, 40000, 10))
+
+      const simulation = await simulate(app, { from: WEEK_FROM, to: WEEK_TO })
+
+      expect({
+        interval: [simulation.from, simulation.to],
+        trainings: simulation.groups.map(({ trainings }) =>
+          trainings.map(({ trainedAt, relation }) => [trainedAt, relation]),
+        ),
+      }).toEqual({
+        interval: [WEEK_FROM, WEEK_TO],
+        trainings: [[[MONDAY_7H, 'in_window']]],
+      })
+    })
+
+    it('Then the summary should count only the windows of the trainings returned', async () => {
+      const { app, record } = await givenCatalogAndProgram()
+      record(PREVIOUS_THURSDAY_7H, sets('remada', 3, 40000, 10))
+      record(MONDAY_7H, sets('remada', 3, 40000, 10))
+
+      const simulation = await simulate(app, { from: WEEK_FROM, to: WEEK_TO })
+
+      expect(simulation.groups[0]?.summary).toEqual({
+        windowsUsed: 0,
+        windowsMissed: 1,
+        trainedEarly: 0,
+        usedPercent: 0,
+      })
+    })
+  })
+})
+
+describe('Given an invalid filter', () => {
+  describe.each([
+    {
+      case: 'only from',
+      args: { from: WEEK_FROM },
+      code: 'workout_range_required',
+      message: 'informe o início e o fim do intervalo em UTC',
+    },
+    {
+      case: 'more than 366 days',
+      args: { from: WEEK_FROM, to: '2026-03-10T03:00:00.000Z' },
+      code: 'workout_range_too_long',
+      message: 'o intervalo deve ter no máximo 366 dias',
+    },
+    {
+      case: 'a muscle group out of the catalog',
+      args: { muscleGroupSlug: 'wings' },
+      code: 'muscle_group_not_found',
+      message: 'grupo muscular não encontrado',
+    },
+  ])('When simulate_activity_windows is called with $case', ({ args, code, message }) => {
+    it(`Then should return isError with ${code}`, async () => {
+      const { app } = await givenCatalogAndProgram()
+
+      const called = await simulateRaw(app, args)
+
+      expect({
+        isError: called.result?.isError,
+        text: JSON.parse(called.result?.content?.[0]?.text ?? 'null'),
+      }).toEqual({ isError: true, text: { code, message } })
+    })
+  })
+})
+
+describe('Given the whole history with back trained twice and chest and triceps once', () => {
+  describe('When simulate_activity_windows is called with no interval', () => {
+    it('Then should return the groups with training in catalog order and the baseline of each', async () => {
+      const { app, record } = await givenCatalogAndProgram()
+      record(PREVIOUS_THURSDAY_7H, sets('remada', 3, 40000, 10))
+      record(MONDAY_7H, sets('remada', 3, 40000, 10))
+      record('2025-03-04T10:00:00.000Z', sets('supino-com-halteres', 3, 40000, 10))
+
+      const simulation = await simulate(app)
+
+      expect(
+        simulation.groups.map(({ muscleGroup, summary }) => [muscleGroup.slug, summary]),
+      ).toEqual([
+        ['chest', { windowsUsed: 0, windowsMissed: 1, trainedEarly: 0, usedPercent: 0 }],
+        ['back', { windowsUsed: 1, windowsMissed: 1, trainedEarly: 0, usedPercent: 50 }],
+      ])
+    })
+  })
+})

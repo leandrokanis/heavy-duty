@@ -28,6 +28,7 @@ const CORRECT_LAST_SET_SPEC = /correct-last-set\.feature\.spec\.js$/
 const LIST_WORKOUTS_SPEC = /list-workouts\.feature\.spec\.js$/
 const EDIT_REMOVE_WORKOUT_SPEC = /edit-remove-workout\.feature\.spec\.js$/
 const GROUP_VOLUME_SPEC = /group-volume\.feature\.spec\.js$/
+const WINDOW_SIMULATION_SPEC = /window-simulation\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -71,6 +72,7 @@ export default defineConfig({
         LIST_WORKOUTS_SPEC,
         EDIT_REMOVE_WORKOUT_SPEC,
         GROUP_VOLUME_SPEC,
+        WINDOW_SIMULATION_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -206,6 +208,15 @@ export default defineConfig({
       testMatch: GROUP_VOLUME_SPEC,
       fullyParallel: false,
       dependencies: ['edit-remove-workout'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records sets in a fixed week of 2025 and simulates the windows through the MCP, so it
+    // runs alone and one scenario at a time, after the volume by muscle group.
+    {
+      name: 'window-simulation',
+      testMatch: WINDOW_SIMULATION_SPEC,
+      fullyParallel: false,
+      dependencies: ['group-volume'],
       use: { ...devices['Pixel 7'] },
     },
   ],

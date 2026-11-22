@@ -1,9 +1,19 @@
 import { and, asc, eq, gte, inArray, lt } from 'drizzle-orm'
 import type { Database } from '../../db/connection.js'
-import { exerciseMuscles, muscleGroups, muscles, workoutSets } from '../../db/schema.js'
+import {
+  exerciseMuscles,
+  muscleGroups,
+  muscles,
+  programs,
+  workoutSets,
+  workouts,
+} from '../../db/schema.js'
 import type { VolumeSet } from './volume.rules.js'
+import type { Goal } from './windows.config.js'
 
 export type PerformedSet = VolumeSet & { performedAt: string }
+
+export type WorkoutPerformedSet = PerformedSet & { workoutId: string; letter: string; goal: Goal }
 
 export type MuscleGroupRow = { slug: string; name: string }
 
@@ -32,6 +42,33 @@ export function listSetsPerformedBetween(
     .from(workoutSets)
     .where(and(gte(workoutSets.performedAt, fromInstant), lt(workoutSets.performedAt, toInstant)))
     .all()
+  return withGroups(db, sets)
+}
+
+// The goal is the current one of the program of the workout, so a goal change recalculates the past.
+export function listWorkoutSets(db: Database): WorkoutPerformedSet[] {
+  const sets = db
+    .select({
+      performedAt: workoutSets.performedAt,
+      loadG: workoutSets.loadG,
+      reps: workoutSets.reps,
+      seconds: workoutSets.seconds,
+      exerciseId: workoutSets.exerciseId,
+      workoutId: workouts.id,
+      letter: workouts.letter,
+      goal: programs.goal,
+    })
+    .from(workoutSets)
+    .innerJoin(workouts, eq(workoutSets.workoutId, workouts.id))
+    .innerJoin(programs, eq(workouts.programId, programs.id))
+    .all()
+  return withGroups(db, sets)
+}
+
+function withGroups<T extends { exerciseId: string }>(
+  db: Database,
+  sets: T[],
+): (Omit<T, 'exerciseId'> & Pick<VolumeSet, 'primaryGroupSlugs' | 'secondaryGroupSlugs'>)[] {
   if (sets.length === 0) {
     return []
   }

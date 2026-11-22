@@ -67,6 +67,8 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Termo | Definição | Código | Não usar |
 |---|---|---|---|
 | Janela de atividade | Intervalo, por grupo muscular, em que treinar o grupo rende mais progresso. O app calcula a abertura e a duração | `ActivityWindow` | janela de treino |
+| Relação com a janela anterior | Posição de um treino do grupo em relação à janela do treino anterior do mesmo grupo: `first` (sem treino anterior), `early` (antes de abrir), `in_window` (aberta) ou `late` (depois de fechar) | `WindowRelation` | — |
+| Desfecho da janela | O que aconteceu com a janela de um treino: `used` (o próximo treino caiu nela), `replaced` (o próximo treino veio antes de abrir), `missed` (fechou sem treino), `open` (aberta agora) ou `pending` (abre depois de agora) | `WindowOutcome` | — |
 | Esfriar | Estado do grupo muscular quando a janela passa sem treino. Enquanto esfria, o grupo perde nível aos poucos | `cooling` | zerar |
 | Progresso | Barra por grupo muscular que cresce com o treino, mais dentro da janela, e esvazia enquanto o grupo esfria. Cheia, sobe o nível do grupo; vazia, o grupo cai um nível | `progress` | — |
 | Volume ajustado | Volume corrigido pela base do objetivo do programa. Entra só no cálculo da janela | `adjustedVolume` | intensidade |
