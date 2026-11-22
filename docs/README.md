@@ -8,6 +8,7 @@ Toda a documentação do projeto está em português do Brasil e segue `convenco
 |---|---|---|
 | `../DESIGN.md` | Diretrizes de interface (HIG) com referência no iOS 27 e no macOS 27 | Antes de criar ou alterar tela ou componente |
 | `prd.md` | Problema, visão, features, stories, cenários de aceite, riscos e roadmap | Antes de especificar ou implementar uma story |
+| `prototipo/` | Protótipo navegável em HTML, uma pasta por versão: layout, cor, tipografia, animação e som das telas | Antes de criar ou alterar tela, junto com o `DESIGN.md` |
 | `gamificacao.md` | Projeto de gamificação (Octalysis): regras do jogo, núcleos, jornada, questões em aberto e riscos | Antes de especificar ou implementar uma story das ondas 5 a 7 |
 | `arquitetura/` | Modelo C4 até o nível 2, um arquivo por contêiner, modelo de entidade e relacionamento e decisões pendentes | Antes de criar módulo, rota, ferramenta MCP ou dependência |
 | `arquitetura/contratos.md` | Contrato de cada rota HTTP: objetivo, story, respostas, erros e idempotência | Antes de criar ou alterar rota HTTP |

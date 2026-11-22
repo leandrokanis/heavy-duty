@@ -22,6 +22,7 @@ Estado atual: o scaffold (EN-S0) criou os quatro pacotes do workspace (`heavy-du
 | `compose.yaml`, `compose.prod.yaml` | Ambiente de desenvolvimento (ADR-011) e sobreposição de produção (ADR-015) |
 | `DESIGN.md` | Diretrizes de interface (HIG), com referência no iOS 27 e no macOS 27 |
 | `docs/prd.md` | Requisitos de produto: features, stories e cenários de aceite |
+| `docs/prototipo/` | Protótipo navegável do app, uma pasta por versão (`v1/`), referência visual das telas |
 | `docs/gamificacao.md` | Projeto de gamificação (Octalysis) das ondas 5 a 7 |
 | `docs/arquitetura/` | Modelo C4 (contexto e contêineres), um arquivo por contêiner e o modelo de dados |
 | `docs/adr/` | Registros de decisão de arquitetura (ADR) |
@@ -76,7 +77,7 @@ Use `http://localhost:8080`, não `http://127.0.0.1:8080`: a chave de acesso nã
 | Implementar uma story | a story em `docs/prd.md` e a pasta local da story em `specs/` |
 | Criar módulo, rota ou ferramenta MCP | `docs/arquitetura/api.md` e `docs/convencoes/codigo.md` |
 | Criar ou alterar tabela do banco | `docs/arquitetura/dados.md` |
-| Criar ou alterar tela ou componente de UI | `DESIGN.md` |
+| Criar ou alterar tela ou componente de UI | `DESIGN.md` e a versão mais recente de `docs/prototipo/` |
 | Implementar janela, progresso, mapa, aviso ou período (ondas 5 a 7) | `docs/gamificacao.md` |
 | Escrever teste | `docs/convencoes/testes.md` |
 | Escrever ou revisar comentário | `docs/convencoes/comentarios.md` |

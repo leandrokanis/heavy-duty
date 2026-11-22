@@ -25,7 +25,8 @@ Siga `DESIGN.md` em toda tela e todo componente. Regras que mais erram:
 - Vidro (`backdrop-filter`) só na camada de controles e navegação, com versão opaca para `prefers-reduced-transparency` e `prefers-contrast: more`.
 - Cor, espaço, raio e duração vêm de tokens CSS (`--color-*`, `--space-*`, `--radius-*`).
 - Não use fontes SF nem SF Symbols. Use a pilha `system-ui` e os ícones do Lucide (`lucide-react`, ADR-016).
-- Não copie componente do Animate UI enquanto o PO não decidir sobre a licença "MIT + Commons Clause" (ADR-016). Até lá, use o Base UI com os tokens.
+- Ao copiar um componente do Animate UI, ponha no topo do arquivo o comentário de licença da ADR-024 e acrescente o arquivo à lista do `THIRD_PARTY_NOTICES.md`. Na primeira cópia, ponha nesse arquivo o texto integral do `LICENSE.md` do repositório oficial.
+- Siga o visual da versão mais recente de `docs/prototipo/`. Token que o protótipo usa e o `DESIGN.md` não define entra primeiro no `DESIGN.md`.
 - Meça alinhamento e espaçamento com `getBoundingClientRect()` antes de afirmar que estão corretos.
 
 ## Regras de produto que o código segue
