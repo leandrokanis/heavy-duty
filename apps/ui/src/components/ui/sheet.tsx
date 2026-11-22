@@ -18,10 +18,10 @@ function SheetRoot({ open, onOpenChange, finalFocus, children }: SheetRootProps)
           data-slot="sheet-backdrop"
           className="sheet-backdrop fixed inset-0 bg-(--color-backdrop)"
         />
-        <Drawer.Viewport className="fixed inset-x-0 bottom-0">
+        <Drawer.Viewport className="fixed inset-x-0 bottom-0 flex justify-center">
           <Drawer.Popup
             finalFocus={finalFocus}
-            className="sheet-popup glass-sheet mr-[calc(var(--space-8)+env(safe-area-inset-right))] mb-[calc(var(--space-8)+env(safe-area-inset-bottom))] ml-[calc(var(--space-8)+env(safe-area-inset-left))] flex max-h-[88dvh] flex-col rounded-(--radius-sheet) px-(--space-20) pt-(--space-8) pb-(--space-24)"
+            className="sheet-popup glass-sheet mr-[calc(var(--space-8)+env(safe-area-inset-right))] mb-[calc(var(--space-8)+env(safe-area-inset-bottom))] ml-[calc(var(--space-8)+env(safe-area-inset-left))] flex max-h-[88dvh] max-w-[640px] flex-1 flex-col rounded-(--radius-sheet) px-(--space-20) pt-(--space-8) pb-(--space-24)"
           >
             <div
               data-slot="sheet-handle"

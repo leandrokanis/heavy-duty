@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDurationMinutes, formatLoadKg, formatRestClock } from './format'
+import { formatDurationMinutes, formatLoadKg, formatRestClock, formatSetShort } from './format'
 
 describe('Given a load in grams', () => {
   describe('When it is formatted in kg', () => {
@@ -33,6 +33,17 @@ describe('Given the rest left in seconds', () => {
       [0, '0:00'],
     ])('Then %i s should read %s', (seconds, expected) => {
       expect(formatRestClock(seconds)).toBe(expected)
+    })
+  })
+})
+
+describe('Given a recorded set', () => {
+  describe('When it is formatted in the short form of the screen', () => {
+    it.each([
+      [{ loadG: 42500, reps: 10 }, '42,5 kg · 10 rep'],
+      [{ loadG: 0, seconds: 45 }, '0 kg · 45 s'],
+    ])('Then %j should read %s', (set, expected) => {
+      expect(formatSetShort(set)).toBe(expected)
     })
   })
 })

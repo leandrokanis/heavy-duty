@@ -1,26 +1,33 @@
 'use client'
 
-import { Button } from '@base-ui/react/button'
 import { Progress } from '@base-ui/react/progress'
-import { Volume2, VolumeX } from 'lucide-react'
+import { ChevronRight, List, Volume2, VolumeX } from 'lucide-react'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { MotionButton } from '@/components/ui/motion-button'
+import { useToast } from '@/components/ui/toast'
 import { clearActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
 import { useSyncQueue } from '@/sync/sync-context'
 import { CorrectionSheet } from './correction-sheet'
 import type { AdjustField } from './drag-adjust'
 import { EndSheet } from './end-sheet'
+import { ExerciseBar } from './exercise-bar'
+import { formatSetShort } from './format'
 import { LastSetButton } from './last-set-button'
 import { LeftOutSummary } from './left-out-summary'
+import { LetterBadge } from './letter-badge'
 import { PendingSetsIndicator } from './pending-sets-indicator'
 import { RejectedSetsNotice } from './rejected-sets-notice'
 import { SequenceSheet } from './sequence-sheet'
+import { SetDots } from './set-dots'
 import { useSoundPreference } from './sound-preference'
 import { cueBetween } from './timer-cues'
-import { TimerRing } from './timer-ring'
+import { RingSvg, TimerRing } from './timer-ring'
 import type { TodayExercise } from './today.types'
 import { defaultTonePlayer, type TonePlayer } from './tone-player'
 import { useScreenWakeLock } from './use-screen-wake-lock'
 import { ValueWheel } from './value-wheel'
+import { TICK_MS } from './workout.config'
 import {
   announcementOf,
   canSkipOf,
@@ -29,6 +36,7 @@ import {
   exerciseProgressOf,
   lastSetOf,
   leftOutOf,
+  nextPositionOf,
   type SetValues,
   sequenceOf,
   shownValuesOf,
@@ -105,8 +113,6 @@ function usePersistWorkout(
   }
 }
 
-const TICK_MS = 250
-
 // Reads the clock on every tick instead of counting ticks, so a phase does not drift and the first
 // tick after the screen wakes up settles a phase that ran out in the background. The deadline is
 // also checked when it arrives, so a restored timer that already ran out settles at once.
@@ -149,14 +155,17 @@ function useTimerCues(reading: TimerReading, tonePlayer: TonePlayer, soundOn: bo
 
 function CountdownArea({ value }: { value: number }) {
   return (
-    <div
-      role="timer"
-      aria-label="Contagem para começar"
-      // A new key per number restarts the animation; with reduced motion it only fades.
-      key={value}
-      className="grid place-items-center py-(--space-24) text-[8rem] leading-none font-(--font-weight-semibold) tabular-nums animate-[rest-end_var(--duration-base)_ease-out]"
-    >
-      {value}
+    <div className="relative mx-auto grid size-[240px] place-items-center">
+      <RingSvg fractionLeft={null} />
+      <div
+        role="timer"
+        aria-label="Contagem para começar"
+        // A new key per number restarts the animation; with reduced motion it only fades.
+        key={value}
+        className="relative animate-[countdown-pop_var(--duration-countdown)_ease-out_both] font-(--font-weight-heavy) text-(length:--font-size-countdown) leading-none tabular-nums"
+      >
+        {value}
+      </div>
     </div>
   )
 }
@@ -176,7 +185,7 @@ function SetArea({
   return (
     <div
       data-cue={afterPassage ? 'rest-end' : undefined}
-      className="flex flex-col gap-(--space-24) data-[cue=rest-end]:animate-[rest-end_var(--duration-base)_ease-out]"
+      className="flex flex-col gap-(--space-16) data-[cue=rest-end]:animate-[rest-end_var(--duration-base)_ease-out]"
     >
       <ValueWheel
         field="loadG"
@@ -194,32 +203,31 @@ function SetArea({
   )
 }
 
-function RestArea({
-  msLeft,
-  planned,
-  upcoming,
-}: {
-  msLeft: number
-  planned: TodayExercise
-  upcoming: TodayExercise | null
-}) {
+// The next exercise above "Próximo", with one small decorative dot per set of it.
+function UpNext({ upcoming }: { upcoming: TodayExercise }) {
   return (
-    <div className="flex flex-col gap-(--space-24)">
-      <TimerRing
-        msLeft={msLeft}
-        totalSeconds={planned.restSeconds}
-        progressLabel="Descanso restante"
-        timerLabel="Descanso"
+    <p className="m-0 flex h-8 items-center justify-center gap-(--space-8)">
+      <ChevronRight
+        aria-hidden="true"
+        size={18}
+        className="shrink-0 text-(--color-label-secondary)"
       />
-      {upcoming ? (
-        <p className="flex flex-col items-center gap-(--space-4)">
-          <span className="text-[0.9375rem] opacity-60">A seguir</span>
-          <span className="text-[1.25rem] font-(--font-weight-semibold)">
-            {upcoming.exercise.name}
-          </span>
-        </p>
-      ) : null}
-    </div>
+      <span className="shrink-0 font-(--font-weight-semibold) text-(--color-label-secondary) text-(length:--font-size-callout)">
+        A seguir
+      </span>
+      <span className="min-w-0 truncate font-(--font-weight-semibold) text-(--color-label) text-(length:--font-size-body)">
+        {upcoming.exercise.name}
+      </span>
+      <span aria-hidden="true" className="inline-flex shrink-0 gap-(--space-4)">
+        {Array.from({ length: upcoming.sets }, (_, index) => (
+          <i
+            // biome-ignore lint/suspicious/noArrayIndexKey: the dots are positions, not items
+            key={index}
+            className="block size-[9px] rounded-(--radius-circle) bg-(--color-fill-strong)"
+          />
+        ))}
+      </span>
+    </p>
   )
 }
 
@@ -228,6 +236,7 @@ const WARNING_SECONDS = 3
 function ExecutionArea({ msLeft, totalSeconds }: { msLeft: number; totalSeconds: number }) {
   return (
     <TimerRing
+      size="execution"
       tone={Math.ceil(msLeft / 1000) <= WARNING_SECONDS ? 'warning' : 'default'}
       msLeft={msLeft}
       totalSeconds={totalSeconds}
@@ -237,12 +246,6 @@ function ExecutionArea({ msLeft, totalSeconds }: { msLeft: number; totalSeconds:
   )
 }
 
-function dotClassOf(index: number, recordedCount: number, resting: boolean): string {
-  if (index < recordedCount) return 'bg-[CanvasText]'
-  if (index === recordedCount && !resting) return 'border-2 border-[CanvasText]'
-  return 'bg-[color-mix(in_srgb,CanvasText_20%,transparent)]'
-}
-
 export function WorkoutScreen({
   flow,
   onFinish,
@@ -250,6 +253,7 @@ export function WorkoutScreen({
 }: WorkoutScreenProps) {
   const [state, dispatch] = useReducer(workoutFlowReducer, flow)
   const stopSaving = usePersistWorkout(flow, state, onFinish)
+  const toast = useToast()
   const { day } = state.session
   const exerciseNumber = exerciseProgressOf(state)
   const topControlRef = useRef<HTMLButtonElement>(null)
@@ -280,121 +284,186 @@ export function WorkoutScreen({
   const recordedCount = state.recorded.filter(
     (body) => body.plannedExerciseId === planned.plannedExerciseId,
   ).length
+  const sequence = sequenceOf(state)
+  const currentDot = currentDotOf(state, recordedCount, planned.sets)
+  const dots = (
+    <Progress.Root
+      aria-label="Séries"
+      getAriaValueText={() => `${setNumber} de ${planned.sets}`}
+      max={planned.sets}
+      value={setNumber}
+    >
+      <SetDots total={planned.sets} recorded={recordedCount} current={currentDot} />
+    </Progress.Root>
+  )
+  const title = (
+    <h1 className="m-0 text-center font-(--font-weight-bold) text-(length:--font-size-title-1) leading-(--font-leading-title-1) tracking-(--font-tracking-title-1) text-balance">
+      {finished ? 'Treino concluído' : planned.exercise.name}
+    </h1>
+  )
+  // The toast of the correction is born from the same Salvar that changes the state, so Cancelar
+  // and Escape never show it.
+  const saveCorrection = (values: SetValues) => {
+    const action = { type: 'correctLastSet', values, nowMs: Date.now() } as const
+    const next = workoutFlowReducer(state, action)
+    const corrected = next.recorded.at(-1)
+    if (next !== state && next.lastStep === 'correct' && corrected) {
+      toast.show(`Série corrigida: ${formatSetShort(corrected)}`, { announce: false })
+    }
+    dispatch(action)
+  }
   return (
-    <main className="flex min-h-dvh flex-col gap-(--space-32) px-(--space-margin-inline) py-(--space-24)">
-      <Button
+    <main className="mx-auto flex min-h-dvh w-full max-w-[640px] flex-col px-(--space-margin-inline)">
+      <MotionButton
         ref={topControlRef}
+        tapScale={1}
         aria-label={`Sequência do treino, letra ${day.letter}, exercício ${exerciseNumber} de ${day.exercises.length}`}
-        className="glass flex min-h-(--target-workout) items-center gap-(--space-16) rounded-(--radius-capsule) px-(--space-20) active:opacity-60 data-[disabled]:opacity-40"
+        className="mx-auto flex min-h-(--target-workout) cursor-pointer select-none items-center gap-(--space-12) rounded-(--radius-capsule) pt-(--space-4) pr-(--space-12) pb-(--space-4) pl-(--space-8) transition-colors duration-(--duration-fast) data-disabled:opacity-45 data-pressed:bg-(--color-fill)"
         disabled={timerOpen}
         focusableWhenDisabled
         onClick={() => dispatch({ type: 'openSheet', sheet: 'sequence' })}
       >
-        <span className="text-[1.25rem] font-(--font-weight-semibold)">{day.letter}</span>
+        <LetterBadge letter={day.letter} size={30} />
         <Progress.Root
           aria-label="Exercícios"
-          className="flex-1"
           getAriaValueText={() => `${exerciseNumber} de ${day.exercises.length}`}
           max={day.exercises.length}
           value={exerciseNumber}
         >
-          <Progress.Track className="h-[6px] overflow-hidden rounded-(--radius-capsule) bg-[color-mix(in_srgb,CanvasText_15%,transparent)]">
-            <Progress.Indicator className="bg-[CanvasText]" />
-          </Progress.Track>
+          <ExerciseBar items={sequence} />
         </Progress.Root>
-      </Button>
-      <h1 className="text-[1.75rem] font-(--font-weight-semibold)">
-        {finished ? 'Treino concluído' : planned.exercise.name}
-      </h1>
-      <Progress.Root
-        aria-label="Séries"
-        getAriaValueText={() => `${setNumber} de ${planned.sets}`}
-        max={planned.sets}
-        value={setNumber}
-      >
-        <div aria-hidden="true" className="flex gap-(--space-8)">
-          {Array.from({ length: planned.sets }, (_, index) => (
-            <span
-              // biome-ignore lint/suspicious/noArrayIndexKey: the dots are positions, not items
-              key={index}
-              data-recorded={index < recordedCount ? 'true' : undefined}
-              className={`size-[10px] rounded-(--radius-circle) ${dotClassOf(index, recordedCount, resting)}`}
-            />
-          ))}
-        </div>
-      </Progress.Root>
-      {finished ? <LeftOutSummary items={leftOutOf(state)} /> : null}
-      {state.phase === 'set' ? (
-        <SetArea
-          // A new key per set restarts the rest-end animation on every passage.
-          key={`${state.exerciseIndex}-${setNumber}`}
-          planned={planned}
-          values={shownValuesOf(state)}
-          afterPassage={state.lastStepAtMs !== null}
-          onAdjust={(field, steps) => dispatch({ type: 'adjust', field, steps })}
-        />
-      ) : null}
-      {reading.stage === 'countdown' ? <CountdownArea value={reading.value} /> : null}
-      {reading.stage === 'execution' ? (
-        <ExecutionArea
-          msLeft={Math.max(0, (deadlineOf(state) as number) - nowMs)}
-          totalSeconds={shownValuesOf(state).seconds as number}
-        />
-      ) : null}
-      {resting && restMsLeft !== null ? (
-        <RestArea msLeft={restMsLeft} planned={planned} upcoming={upcoming} />
-      ) : null}
-      {lastSet ? (
-        <LastSetButton
-          ref={lastSetButtonRef}
-          set={lastSet.set}
-          onOpen={() => dispatch({ type: 'openSheet', sheet: 'correction' })}
-        />
-      ) : null}
-      <div className="mt-auto flex flex-col gap-(--space-16)">
+        <List aria-hidden="true" size={18} className="shrink-0 text-(--color-label-secondary)" />
+      </MotionButton>
+      {resting ? (
+        <>
+          <div className="mt-(--space-32)">{title}</div>
+          <div className="flex flex-1 flex-col items-center justify-center gap-(--space-16) py-(--space-16)">
+            {restMsLeft !== null ? (
+              <TimerRing
+                msLeft={restMsLeft}
+                totalSeconds={planned.restSeconds}
+                progressLabel="Descanso restante"
+                timerLabel="Descanso"
+              />
+            ) : null}
+            {dots}
+            {lastSet ? (
+              <LastSetButton
+                ref={lastSetButtonRef}
+                set={lastSet.set}
+                onOpen={() => dispatch({ type: 'openSheet', sheet: 'correction' })}
+              />
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="mt-(--space-32) flex flex-col items-center gap-(--space-16)">
+            {dots}
+            {title}
+          </div>
+          {finished ? (
+            <div className="mt-(--space-24)">
+              <LeftOutSummary items={leftOutOf(state)} />
+            </div>
+          ) : null}
+          <div
+            className={`flex flex-1 flex-col items-center py-(--space-16) ${
+              state.phase === 'set' ? 'mt-(--space-16) justify-start' : 'justify-center'
+            } gap-(--space-24)`}
+          >
+            {state.phase === 'set' ? (
+              <div className="w-full">
+                <SetArea
+                  // A new key per set restarts the rest-end animation on every passage.
+                  key={`${state.exerciseIndex}-${setNumber}`}
+                  planned={planned}
+                  values={shownValuesOf(state)}
+                  afterPassage={state.lastStepAtMs !== null}
+                  onAdjust={(field, steps) => dispatch({ type: 'adjust', field, steps })}
+                />
+              </div>
+            ) : null}
+            {reading.stage === 'countdown' ? <CountdownArea value={reading.value} /> : null}
+            {reading.stage === 'execution' ? (
+              <ExecutionArea
+                msLeft={Math.max(0, (deadlineOf(state) as number) - nowMs)}
+                totalSeconds={shownValuesOf(state).seconds as number}
+              />
+            ) : null}
+            {timerOpen ? (
+              <Button
+                variant="secondary"
+                size="workout"
+                aria-pressed={soundOn}
+                icon={soundOn ? Volume2 : VolumeX}
+                onClick={() => {
+                  // Turning the sound on is a tap, so the browser lets the audio play from here.
+                  if (!soundOn) tonePlayer.unlock()
+                  setSoundOn(!soundOn)
+                }}
+              >
+                Som
+              </Button>
+            ) : null}
+            {finished && lastSet ? (
+              <LastSetButton
+                ref={lastSetButtonRef}
+                set={lastSet.set}
+                onOpen={() => dispatch({ type: 'openSheet', sheet: 'correction' })}
+              />
+            ) : null}
+          </div>
+        </>
+      )}
+      <div className="mt-auto flex flex-col gap-(--space-12) pb-(--space-32)">
         <RejectedSetsNotice />
         <PendingSetsIndicator />
+        {resting && upcoming ? <UpNext upcoming={upcoming} /> : null}
         {timerOpen ? (
-          <div className="flex gap-(--space-16)">
+          <div className="grid grid-cols-[1fr_2fr] gap-(--space-12)">
             <Button
-              className="glass flex min-h-(--target-workout) flex-1 items-center justify-center rounded-(--radius-capsule) px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) active:opacity-60"
+              variant="secondary"
+              size="large"
               onClick={() => dispatch({ type: 'cancel', nowMs: Date.now() })}
             >
               Cancelar
             </Button>
             <Button
-              aria-pressed={soundOn}
+              size="large"
+              icon={ChevronRight}
+              iconPosition="end"
+              disabled={state.phase === 'countdown'}
+              focusableWhenDisabled
               onClick={() => {
-                // Turning the sound on is a tap, so the browser lets the audio play from here.
-                if (!soundOn) tonePlayer.unlock()
-                setSoundOn(!soundOn)
+                tonePlayer.unlock()
+                dispatch({ type: 'next', nowMs: Date.now() })
               }}
-              className="glass flex min-h-(--target-workout) items-center gap-(--space-8) rounded-(--radius-capsule) px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) active:opacity-60"
             >
-              {soundOn ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
-              Som
+              Próximo
             </Button>
           </div>
-        ) : null}
-        <Button
-          className="min-h-(--target-workout) w-full rounded-(--radius-capsule) bg-[CanvasText] px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) text-[Canvas] active:opacity-60 data-[disabled]:opacity-40"
-          disabled={state.phase === 'countdown'}
-          focusableWhenDisabled
-          onClick={
-            finished
-              ? close
-              : () => {
-                  tonePlayer.unlock()
-                  dispatch({ type: 'next', nowMs: Date.now() })
-                }
-          }
-        >
-          {finished ? 'Fechar' : 'Próximo'}
-        </Button>
+        ) : finished ? (
+          <Button size="large" onClick={close}>
+            Fechar
+          </Button>
+        ) : (
+          <Button
+            size="large"
+            icon={ChevronRight}
+            iconPosition="end"
+            onClick={() => {
+              tonePlayer.unlock()
+              dispatch({ type: 'next', nowMs: Date.now() })
+            }}
+          >
+            Próximo
+          </Button>
+        )}
       </div>
       <SequenceSheet
         open={state.sheet === 'sequence'}
-        items={sequenceOf(state)}
+        items={sequence}
         finished={finished}
         canSkip={canSkipOf(state)}
         returnFocusRef={topControlRef}
@@ -427,7 +496,7 @@ export function WorkoutScreen({
           set={lastSet.set}
           returnFocusRef={lastSetButtonRef}
           onCancel={() => dispatch({ type: 'closeSheet', nowMs: Date.now() })}
-          onSave={(values) => dispatch({ type: 'correctLastSet', values, nowMs: Date.now() })}
+          onSave={saveCorrection}
         />
       ) : null}
       {/* Mounted from the start: screen readers skip a live region born with its text. */}
@@ -436,4 +505,21 @@ export function WorkoutScreen({
       </p>
     </main>
   )
+}
+
+// The dot of the set the athlete is on: the one after the sets done. In the rest it is the next
+// set, but only when that set belongs to the same exercise; the finished workout has none.
+function currentDotOf(
+  state: WorkoutFlowState,
+  recordedCount: number,
+  setsTotal: number,
+): number | null {
+  if (state.phase === 'finished') return null
+  if (state.phase === 'rest') {
+    const position = nextPositionOf(state)
+    return position !== null && position.exerciseIndex === state.exerciseIndex
+      ? position.setNumber - 1
+      : null
+  }
+  return recordedCount < setsTotal ? recordedCount : null
 }

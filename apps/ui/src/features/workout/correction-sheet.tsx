@@ -1,8 +1,8 @@
 'use client'
 
-import { Button } from '@base-ui/react/button'
-import { Drawer } from '@base-ui/react/drawer'
 import { type RefObject, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Sheet } from '@/components/ui/sheet'
 import { adjustValue } from './drag-adjust'
 import type { ExerciseKind } from './today.types'
 import { ValueWheel } from './value-wheel'
@@ -20,9 +20,6 @@ export type CorrectionSheetProps = {
   onSave: (values: SetValues) => void
 }
 
-const SECONDARY_BUTTON_CLASS =
-  'min-h-(--target-workout) w-full rounded-(--radius-capsule) bg-[color-mix(in_srgb,CanvasText_12%,transparent)] px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) active:opacity-60'
-
 export function CorrectionSheet({
   open,
   exerciseName,
@@ -33,30 +30,21 @@ export function CorrectionSheet({
   onSave,
 }: CorrectionSheetProps) {
   return (
-    <Drawer.Root
+    <Sheet.Root
       open={open}
+      finalFocus={returnFocusRef}
       onOpenChange={(next) => {
         if (!next) onCancel()
       }}
     >
-      <Drawer.Portal>
-        <Drawer.Backdrop className="fixed inset-0 bg-black/30" />
-        <Drawer.Viewport className="fixed inset-x-0 bottom-0">
-          <Drawer.Popup
-            finalFocus={returnFocusRef}
-            className="glass flex flex-col gap-(--space-24) rounded-t-[28px] px-(--space-margin-inline) pt-(--space-20) pb-[calc(var(--space-24)+env(safe-area-inset-bottom))]"
-          >
-            <CorrectionForm
-              exerciseName={exerciseName}
-              kind={kind}
-              set={set}
-              onCancel={onCancel}
-              onSave={onSave}
-            />
-          </Drawer.Popup>
-        </Drawer.Viewport>
-      </Drawer.Portal>
-    </Drawer.Root>
+      <CorrectionForm
+        exerciseName={exerciseName}
+        kind={kind}
+        set={set}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    </Sheet.Root>
   )
 }
 
@@ -72,29 +60,34 @@ function CorrectionForm({
   const [measure, setMeasure] = useState((kind === 'reps' ? set.reps : set.seconds) as number)
   return (
     <>
-      <div className="flex flex-col gap-(--space-4)">
-        <Drawer.Title className="text-[1.75rem] font-(--font-weight-semibold)">
-          Corrigir última série
-        </Drawer.Title>
-        <p className="text-[1.0625rem] opacity-70">{`${exerciseName} · série ${set.setNumber}`}</p>
-      </div>
-      <ValueWheel
-        field="loadG"
-        label="Carga"
-        value={loadG}
-        onAdjust={(steps) => setLoadG((value) => adjustValue('loadG', value, steps))}
-      />
-      <ValueWheel
-        field={kind === 'reps' ? 'reps' : 'seconds'}
-        label={kind === 'reps' ? 'Repetições' : 'Tempo'}
-        value={measure}
-        onAdjust={(steps) =>
-          setMeasure((value) => adjustValue(kind === 'reps' ? 'reps' : 'seconds', value, steps))
-        }
-      />
-      <div className="flex flex-col gap-(--space-12)">
+      <Sheet.Title>Corrigir última série</Sheet.Title>
+      <p className="m-0 mt-(--space-4) text-(--color-label-secondary) text-(length:--font-size-callout)">{`${exerciseName} · série ${set.setNumber}`}</p>
+      <Sheet.Body>
+        <div className="mt-(--space-16) flex flex-col gap-(--space-12)">
+          <ValueWheel
+            field="loadG"
+            label="Carga"
+            surface="fill"
+            value={loadG}
+            onAdjust={(steps) => setLoadG((value) => adjustValue('loadG', value, steps))}
+          />
+          <ValueWheel
+            field={kind === 'reps' ? 'reps' : 'seconds'}
+            label={kind === 'reps' ? 'Repetições' : 'Tempo'}
+            surface="fill"
+            value={measure}
+            onAdjust={(steps) =>
+              setMeasure((value) => adjustValue(kind === 'reps' ? 'reps' : 'seconds', value, steps))
+            }
+          />
+        </div>
+      </Sheet.Body>
+      <Sheet.Actions>
+        <Button variant="secondary" size="workout" onClick={onCancel}>
+          Cancelar
+        </Button>
         <Button
-          className="min-h-(--target-workout) w-full rounded-(--radius-capsule) bg-[CanvasText] px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) text-[Canvas] active:opacity-60"
+          size="workout"
           onClick={() =>
             onSave({
               loadG,
@@ -105,10 +98,7 @@ function CorrectionForm({
         >
           Salvar
         </Button>
-        <Button className={SECONDARY_BUTTON_CLASS} onClick={onCancel}>
-          Cancelar
-        </Button>
-      </div>
+      </Sheet.Actions>
     </>
   )
 }

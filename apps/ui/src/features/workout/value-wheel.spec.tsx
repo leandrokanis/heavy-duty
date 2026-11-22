@@ -265,3 +265,44 @@ describe('Given a load wheel under the mouse', () => {
     })
   })
 })
+
+describe('Given a load wheel in the prototype layout', () => {
+  describe('When the athlete taps the buttons', () => {
+    it('Then the icons of Diminuir carga and Aumentar carga should be decorative', () => {
+      renderLoad(40_000)
+
+      expect(
+        ['Diminuir carga', 'Aumentar carga'].map((name) =>
+          screen.getByRole('button', { name }).querySelector('svg')?.getAttribute('aria-hidden'),
+        ),
+      ).toEqual(['true', 'true'])
+    })
+  })
+
+  describe('When the pointer goes down and moves', () => {
+    it('Then the value area should be marked as dragging until the pointer goes up', () => {
+      renderLoad(40_000)
+
+      fireEvent.pointerDown(wheelOf(), { clientY: 100, pointerId: 1 })
+      fireEvent.pointerMove(wheelOf(), { clientY: 110, pointerId: 1 })
+      const during = wheelOf().hasAttribute('data-dragging')
+      fireEvent.pointerUp(wheelOf(), { clientY: 110, pointerId: 1 })
+
+      expect({ during, after: wheelOf().hasAttribute('data-dragging') }).toEqual({
+        during: true,
+        after: false,
+      })
+    })
+
+    it('Then the drag tint should sit on the faded layer, not on the focusable value area', () => {
+      renderLoad(40_000)
+
+      const fadedLayer = wheelOf().firstElementChild
+      expect({
+        areaTinted: wheelOf().className.includes('accent-soft'),
+        fadedLayerTinted: fadedLayer?.className.includes('accent-soft'),
+        fadedLayerMasked: fadedLayer?.className.includes('mask-image'),
+      }).toEqual({ areaTinted: false, fadedLayerTinted: true, fadedLayerMasked: true })
+    })
+  })
+})

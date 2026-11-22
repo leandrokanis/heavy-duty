@@ -165,3 +165,20 @@ describe('Given the correction sheet open on set 1 of prancha at 45 s', () => {
     })
   })
 })
+
+describe('Given the correction sheet in the prototype layout', () => {
+  describe('When it is on screen', () => {
+    it('Then the dialog should be named Corrigir última série', () => {
+      renderSupino()
+
+      expect(screen.getByRole('dialog', { name: 'Corrigir última série' })).toBeInTheDocument()
+    })
+
+    it('Then Cancelar and Salvar should be the last two buttons, in that order', () => {
+      renderSupino()
+      const buttons = screen.getAllByRole('button')
+
+      expect(buttons.slice(-2).map((button) => button.textContent)).toEqual(['Cancelar', 'Salvar'])
+    })
+  })
+})

@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { TOAST_EXIT_MS, TOAST_VISIBLE_MS, ToastProvider } from '@/components/ui/toast'
 import { clearActiveWorkout, loadActiveWorkout } from '@/sync/active-workout-store'
 import { createMemoryQueueStore } from '@/sync/queue-store'
 import { SYNC_RETRY_INTERVAL_MS } from '@/sync/sync.config'
@@ -2201,6 +2202,319 @@ describe('Given the correction sheet open with the load lowered to 42,5 kg and c
       await act(async () => tapNext())
 
       expect(shownOf('Carga')).toBe('45 quilos')
+    })
+  })
+})
+
+// The segments of the progressbar "Exercícios", read from the DOM: a modal sheet hides the page from roles.
+function segmentStatuses(): (string | undefined)[] {
+  return Array.from(
+    document.querySelectorAll<HTMLElement>(
+      '[role="progressbar"][aria-label="Exercícios"] [data-status]',
+    ),
+  ).map((segment) => segment.dataset.status)
+}
+
+function dotsOfSets(): HTMLElement[] {
+  return Array.from(
+    document.querySelectorAll<HTMLElement>('[role="progressbar"][aria-label="Séries"] [data-dot]'),
+  )
+}
+
+describe('Given the top control of the prototype layout', () => {
+  describe('When 3 sets of supino-reto are recorded and crucifixo is on screen', () => {
+    it('Then the bar should have a segment per exercise: done, current and to do', () => {
+      renderWorkout(THREE_EXERCISES, vi.fn(), NEVER_SENT, flowAfterSets(THREE_EXERCISES, 3))
+
+      expect(segmentStatuses()).toEqual(['done', 'current', 'todo'])
+    })
+
+    it('Then the list icon should be decorative', () => {
+      renderWorkout(THREE_EXERCISES, vi.fn(), NEVER_SENT, flowAfterSets(THREE_EXERCISES, 3))
+
+      expect(
+        screen.getByRole('button', { name: TOP_CONTROL_ON_CRUCIFIXO }).querySelector('svg'),
+      ).toHaveAttribute('aria-hidden', 'true')
+    })
+  })
+
+  describe('When the athlete skips crucifixo in the sequence sheet', () => {
+    it('Then its segment should be skipped and triceps-polia should be the current one', async () => {
+      vi.useFakeTimers({ now: T0 + 60_000 })
+      renderWorkout(THREE_EXERCISES, vi.fn(), NEVER_SENT, flowAfterSets(THREE_EXERCISES, 3))
+      const dialog = await openSequence(TOP_CONTROL_ON_CRUCIFIXO)
+
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Pular Crucifixo' }))
+      })
+      await act(async () => vi.advanceTimersByTime(500))
+
+      expect(segmentStatuses()).toEqual(['done', 'skipped', 'current'])
+    })
+  })
+})
+
+describe('Given the set screen of the prototype layout', () => {
+  describe('When set 1 of supino-reto is on screen', () => {
+    it('Then the first dot should be the current one and Próximo should end with a decorative arrow', () => {
+      renderWorkout(LETTER_A)
+
+      expect({
+        current: dotsOfSets().map((dot) => dot.hasAttribute('data-current')),
+        arrow: screen.getByRole('button', { name: 'Próximo' }).querySelector('svg'),
+      }).toEqual({
+        current: [true, false, false],
+        arrow: expect.objectContaining({}),
+      })
+      expect(screen.getByRole('button', { name: 'Próximo' }).querySelector('svg')).toHaveAttribute(
+        'aria-hidden',
+        'true',
+      )
+    })
+  })
+})
+
+describe('Given the rest of the prototype layout', () => {
+  describe('When set 1 of supino-reto is recorded and set 2 is next', () => {
+    it('Then the dot of set 2 should be the current one', async () => {
+      stubFetch('pending')
+      renderWorkout(LETTER_A)
+      await act(async () => tapNext())
+
+      expect(dotsOfSets().map((dot) => dot.hasAttribute('data-current'))).toEqual([
+        false,
+        true,
+        false,
+      ])
+    })
+  })
+
+  describe('When the last set of supino-reto is recorded and triceps-polia is next', () => {
+    it('Then no dot should be current and A seguir should show one hidden dot per set of triceps-polia', async () => {
+      vi.useFakeTimers({ now: T0 + 60_000 })
+      stubFetch('pending')
+      renderWorkout(
+        LETTER_A,
+        vi.fn(),
+        sendPendingItem,
+        flowAfterSets(LETTER_A as typeof THREE_EXERCISES, 2),
+      )
+      await act(async () => tapNext())
+
+      const upNext = screen.getByText('A seguir').closest('p') as HTMLElement
+      const miniDots = upNext.querySelector('span[aria-hidden="true"]')
+      expect({
+        current: dotsOfSets().filter((dot) => dot.hasAttribute('data-current')).length,
+        miniDots: miniDots?.children.length,
+        name: within(upNext).getByText('Tríceps na polia') !== null,
+        heading: screen.getByRole('heading', { level: 1 }).textContent,
+      }).toEqual({ current: 0, miniDots: 3, name: true, heading: 'Supino reto' })
+    })
+  })
+})
+
+describe('Given the timed exercise of the prototype layout', () => {
+  describe('When the count shows', () => {
+    it('Then the screen should have no execution progressbar and the count ring should be decorative', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch('pending')
+      renderWorkout(ONLY_PRANCHA)
+      await act(async () => tapNext())
+
+      const count = screen.getByRole('timer', { name: 'Contagem para começar' })
+      expect({
+        progressbar: screen.queryByRole('progressbar', { name: 'Execução restante' }),
+        ring: count.parentElement?.querySelector('svg')?.getAttribute('aria-hidden'),
+      }).toEqual({ progressbar: null, ring: 'true' })
+    })
+
+    it('Then Cancelar should come before Próximo in the same row and Som should sit outside that row', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch('pending')
+      renderWorkout(ONLY_PRANCHA)
+      await act(async () => tapNext())
+
+      const cancel = screen.getByRole('button', { name: 'Cancelar' })
+      const next = screen.getByRole('button', { name: 'Próximo' })
+      const sound = screen.getByRole('button', { name: 'Som' })
+      expect({
+        sameRow: cancel.parentElement === next.parentElement,
+        order: cancel.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING,
+        soundOutside: !cancel.parentElement?.contains(sound),
+        soundIcon: sound.querySelector('svg')?.getAttribute('aria-hidden'),
+      }).toEqual({
+        sameRow: true,
+        order: Node.DOCUMENT_POSITION_FOLLOWING,
+        soundOutside: true,
+        soundIcon: 'true',
+      })
+    })
+  })
+})
+
+function renderWithToast(flow: WorkoutFlowState, exercises = [SUPINO_45, PRANCHA]) {
+  const queue = createSyncQueue({ store: createMemoryQueueStore(), send: NEVER_SENT })
+  render(
+    <ToastProvider>
+      <SyncProvider queue={queue}>
+        <WorkoutScreen flow={flow} onFinish={vi.fn()} />
+      </SyncProvider>
+    </ToastProvider>,
+  )
+  return exercises
+}
+
+function floatingToast(): HTMLElement | null {
+  return document.querySelector('[data-slot="toast"]')
+}
+
+describe('Given the rest after set 1 of supino at 45 kg with a floating toast available', () => {
+  async function openAndSave(steps: number) {
+    await act(async () => tapNext())
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: LAST_SET_AT_45 }))
+    })
+    const dialog = screen.getByRole('dialog', { name: 'Corrigir última série' })
+    for (let step = 0; step < steps; step += 1) {
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Diminuir carga' }))
+      })
+    }
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }))
+    })
+  }
+
+  describe('When the athlete lowers the load one step and taps Salvar', () => {
+    it('Then the toast should show the new values hidden from the accessibility tree and the live region should announce them', async () => {
+      vi.useFakeTimers({ now: T0 })
+      renderWithToast(flowOf([SUPINO_45, PRANCHA]))
+
+      await openAndSave(1)
+
+      const toast = floatingToast()
+      expect({
+        text: toast?.textContent,
+        hidden: toast?.closest('[aria-hidden="true"]') !== null,
+        inStatus: toast?.closest('[role="status"]') !== null,
+        announced: liveRegionText(),
+      }).toEqual({
+        text: 'Série corrigida: 42,5 kg · 10 rep',
+        hidden: true,
+        inStatus: false,
+        announced: 'Série corrigida: 42,5 quilos, 10 repetições',
+      })
+    })
+
+    it('Then the toast should leave after the visible time and the exit time', async () => {
+      vi.useFakeTimers({ now: T0 })
+      renderWithToast(flowOf([SUPINO_45, PRANCHA]))
+      await openAndSave(1)
+
+      await act(async () => vi.advanceTimersByTime(TOAST_VISIBLE_MS + TOAST_EXIT_MS))
+
+      expect(floatingToast()).toBeNull()
+    })
+  })
+
+  describe('When the athlete taps Salvar with no change', () => {
+    it('Then the toast should show the same values', async () => {
+      vi.useFakeTimers({ now: T0 })
+      renderWithToast(flowOf([SUPINO_45, PRANCHA]))
+
+      await openAndSave(0)
+
+      expect(floatingToast()?.textContent).toBe('Série corrigida: 45 kg · 10 rep')
+    })
+  })
+
+  describe('When the athlete taps Cancelar or presses Escape', () => {
+    it('Then no toast should show', async () => {
+      vi.useFakeTimers({ now: T0 })
+      renderWithToast(flowOf([SUPINO_45, PRANCHA]))
+      await act(async () => tapNext())
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: LAST_SET_AT_45 }))
+      })
+      const dialog = screen.getByRole('dialog', { name: 'Corrigir última série' })
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }))
+      })
+      await act(async () => vi.advanceTimersByTime(500))
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: LAST_SET_AT_45 }))
+      })
+      await act(async () => {
+        fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+      })
+
+      expect(floatingToast()).toBeNull()
+    })
+  })
+
+  describe('When the workout opens restored with the last step already a correction', () => {
+    it('Then no toast should show', () => {
+      vi.useFakeTimers({ now: T0 })
+      let state = flowOf([SUPINO_45, PRANCHA])
+      state = workoutFlowReducer(state, { type: 'next', nowMs: T0 })
+      state = workoutFlowReducer(state, { type: 'openSheet', sheet: 'correction' })
+      state = workoutFlowReducer(state, {
+        type: 'correctLastSet',
+        values: { loadG: 42_500, reps: 10, seconds: null },
+        nowMs: T0 + 1000,
+      })
+
+      renderWithToast(state)
+
+      expect(floatingToast()).toBeNull()
+    })
+  })
+
+  describe('When the rest ends while the correction sheet is open and the athlete taps Salvar', () => {
+    it('Then the toast should show the corrected values over the next set', async () => {
+      vi.useFakeTimers({ now: T0 })
+      renderWithToast(flowOf([SUPINO_45, PRANCHA]))
+      await act(async () => tapNext())
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: LAST_SET_AT_45 }))
+      })
+      await act(async () => vi.advanceTimersByTimeAsync(95_000))
+      const dialog = screen.getByRole('dialog', { name: 'Corrigir última série' })
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Diminuir carga' }))
+      })
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }))
+      })
+
+      expect(floatingToast()?.textContent).toBe('Série corrigida: 42,5 kg · 10 rep')
+    })
+  })
+})
+
+describe('Given the screen Treino concluído of the prototype layout', () => {
+  describe('When the last set of the day is recorded with sets still in the queue', () => {
+    it('Then Fechar should have no icon, no dot should be current and the queue indicator should come before Fechar', async () => {
+      vi.useFakeTimers({ now: T0 })
+      renderWorkout([TRICEPS_TWO_SETS], vi.fn(), NEVER_SENT)
+      await tapSets(2)
+      await act(async () => vi.advanceTimersByTime(300))
+
+      const close = screen.getByRole('button', { name: 'Fechar' })
+      const indicator = screen.getByText(/aguardando envio/)
+      expect({
+        icon: close.querySelector('svg'),
+        current: dotsOfSets().filter((dot) => dot.hasAttribute('data-current')).length,
+        indicatorFirst: indicator.compareDocumentPosition(close) & Node.DOCUMENT_POSITION_FOLLOWING,
+        sameArea: close.parentElement?.contains(indicator),
+        heading: screen.getByRole('heading', { level: 1 }).textContent,
+      }).toEqual({
+        icon: null,
+        current: 0,
+        indicatorFirst: Node.DOCUMENT_POSITION_FOLLOWING,
+        sameArea: true,
+        heading: 'Treino concluído',
+      })
     })
   })
 })

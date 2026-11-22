@@ -79,9 +79,11 @@ export function TodayScreen() {
   return (
     <main
       aria-busy={result === null || flow === 'pending' ? 'true' : undefined}
-      className="flex min-h-dvh flex-col gap-(--space-24) px-(--space-margin-inline) py-(--space-24)"
+      className="mx-auto flex min-h-dvh w-full max-w-[640px] flex-col gap-(--space-24) px-(--space-margin-inline) pt-(--space-12) pb-(--space-24)"
     >
-      <h1 className="text-[2rem] font-(--font-weight-semibold)">Heavy Duty</h1>
+      <h1 className="m-0 font-(--font-weight-bold) text-(length:--font-size-large-title) leading-(--font-leading-tight) tracking-(--font-tracking-tight)">
+        Heavy Duty
+      </h1>
       {result?.status === 'ok' ? (
         <TodayContent
           today={result.today}
@@ -123,7 +125,13 @@ function startSession(programId: string, day: TodayDay): WorkoutSession {
 
 function TodayContent({ today, onSelect }: { today: Today; onSelect: (day: TodayDay) => void }) {
   const emptyState = emptyStateOf(today)
-  if (emptyState) return <p>{emptyState}</p>
+  if (emptyState) {
+    return (
+      <p className="m-0 rounded-(--radius-card) bg-(--color-background-grouped) px-(--space-20) py-(--space-24) text-center text-(--color-label-secondary)">
+        {emptyState}
+      </p>
+    )
+  }
   return (
     <LetterList days={today.days} suggestedLetter={today.suggestedLetter} onSelect={onSelect} />
   )
@@ -131,12 +139,15 @@ function TodayContent({ today, onSelect }: { today: Today; onSelect: (day: Today
 
 function LetterListSkeleton() {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-(--target-gap)">
+    <div
+      aria-hidden="true"
+      className="flex flex-col overflow-hidden rounded-(--radius-card) bg-(--color-background-grouped)"
+    >
       {['first', 'second', 'third'].map((row) => (
-        <div
-          key={row}
-          className="min-h-(--target-workout) rounded-(--radius-capsule) bg-[color-mix(in_srgb,CanvasText_8%,transparent)]"
-        />
+        <div key={row} className="flex h-[72px] items-center gap-(--space-16) px-(--space-16)">
+          <span className="size-11 shrink-0 rounded-(--radius-circle) bg-(--color-fill)" />
+          <span className="h-[14px] w-2/5 rounded-(--radius-capsule) bg-(--color-fill)" />
+        </div>
       ))}
     </div>
   )

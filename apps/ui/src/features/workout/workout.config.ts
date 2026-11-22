@@ -15,3 +15,6 @@ export const DRAG_STEP_PX = 22
 
 // The prototype wheel changes one step per 40 px of mouse wheel.
 export const WHEEL_STEP_PX = 40
+
+// Step of the phase clock: the ring stroke moves linearly over the same time (--duration-tick).
+export const TICK_MS = 250

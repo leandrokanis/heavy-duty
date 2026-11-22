@@ -7,7 +7,7 @@ PWA em Next.js, com Base UI e Animate UI, para a persona Atleta (P1). A arquitet
 ```text
 src/
   app/                    rotas do App Router; o fluxo da academia fica em app/(treino)/, renderizado no cliente
-  components/ui/          componentes base: `MotionButton` (derivado do Animate UI, sob a licença do `THIRD_PARTY_NOTICES.md`), `Button`, `IconButton`, `Sheet` e `Toast` (código próprio)
+  components/ui/          componentes base: `MotionButton` (derivado do Animate UI, sob a licença do `THIRD_PARTY_NOTICES.md`), `Button`, `IconButton`, `Sheet` e `Toast` (código próprio; `show(message, { announce: false })` mostra um aviso só visual, fora da região `role="status"`, quando outra região viva já anuncia o fato)
   features/<feature>/     componentes, hooks e serviços de uma feature (workout, rest…)
   shared/                 utilitários usados por duas features ou mais
   sync/                   fila local (IndexedDB, com Dexie) e envio para a API

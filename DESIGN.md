@@ -372,8 +372,10 @@ O aviso flutuante (`Toast`) confirma uma ação sem tomar o foco nem o toque. El
 
 - O aviso é uma cápsula de vidro (`.glass`), centralizada na horizontal, acima da área de ação.
 - O aviso fica visível por 2,6 s (`--duration-toast`) e sai em até 300 ms.
+- A base do aviso fica 16 px acima do topo de "Próximo", que fica a 32 px da borda de baixo: 112 px acima da borda, sem área segura.
 - O aviso NÃO DEVE receber toque nem foco. O toque passa para o controle de baixo (`pointer-events: none`), porque um aviso sobre "Próximo" não pode custar um toque.
 - O texto do aviso entra numa região `role="status"` montada desde a abertura da tela. O aviso NÃO DEVE repetir um texto que outra região viva já anuncia.
+- Quando outra região viva anuncia o mesmo fato, o texto do aviso fica fora da região `role="status"` e fora da árvore de acessibilidade (`aria-hidden="true"`). É o caso do aviso da correção da última série, que a região viva da tela de treino já anuncia.
 
 O texto exibido ao usuário é em português do Brasil (`docs/convencoes/codigo.md`, Seção 3).
 
@@ -415,13 +417,13 @@ Na coluna "Contraste alto", "igual" mantém o valor do tema. Dois valores entre 
 | `--color-on-accent` | `#FFFFFF` | `#0A0F22` | igual | Texto e ícone sobre a cor de destaque | Protótipo v1, `--accent-fg` |
 | `--color-accent-soft` | `rgba(47,85,228,.12)` | `rgba(123,150,255,.16)` | igual | Fundo do valor da roda durante o arrasto | Protótipo v1, `--accent-soft` |
 | `--color-success` | `#1E8A4C` | `#41C47F` | igual | Ícone de série registrada e de envio concluído | Protótipo v1, `--success` |
-| `--color-warning` | `#A86200` | `#F0A63A` | igual | Ícone de envio pendente e anel dos últimos 3 s | Protótipo v1, `--warning` |
+| `--color-warning` | `#A86200` | `#F0A63A` | igual | Ícone de envio pendente, anel e tempo do cronômetro nos últimos 3 s | Protótipo v1, `--warning` |
 | `--color-danger` | `#C9302C` | `#FF6B62` | igual | Mensagem de erro e ação destrutiva | Protótipo v1, `--danger` |
 | `--color-backdrop` | `rgba(8,10,16,.32)` | `rgba(8,10,16,.32)` | igual | Fundo escurecido atrás da folha | Protótipo v1, `.backdrop` |
 
 Regras de uso da cor, além das da Seção 11.1:
 
-- Sucesso e atenção marcam só ícone e indicador. Texto normal usa `--color-label` (Seção 11.3).
+- Sucesso e atenção marcam só ícone e indicador. Texto normal usa `--color-label` (Seção 11.3). A exceção é o tempo do cronômetro nos últimos 3 s, em `--color-warning`: é texto grande (4 rem, peso 700) e mede 4,29:1 no tema claro, acima do mínimo de 3:1 do texto grande.
 - O texto sobre vidro usa só `--color-label`. O texto secundário sobre vidro mede 3,20:1 no tema claro e 2,49:1 no escuro, abaixo do mínimo.
 - O texto de erro sobre `--color-fill` mede 4,30:1 no tema claro, abaixo de 4,5:1. A ação destrutiva da folha precisa de outro fundo ou de outro estilo antes de entrar em tela (EN-S1-03).
 
@@ -457,14 +459,14 @@ Os tamanhos usam `rem` e seguem o Dynamic Type no iPhone (Seção 10.2). O corpo
 | `--font-size-large-title` | `2.125rem` | "Heavy Duty" na entrada e título de tela | Protótipo v1 |
 | `--font-size-title-1` | `1.75rem` | Nome do exercício | Protótipo v1 |
 | `--font-size-title-2` | `1.375rem` | Título da folha | Protótipo v1 |
-| `--font-size-title-3` | `1.25rem` | Valores da última série | Protótipo v1 |
-| `--font-size-headline` | `1.0625rem` | Título de linha | Protótipo v1 |
+| `--font-size-title-3` | `1.25rem` | Valores da última série e valores vizinhos da roda | Protótipo v1 |
+| `--font-size-headline` | `1.0625rem` | Título de linha e número dos pontos das séries | Protótipo v1 |
 | `--font-size-body` | `1rem` | Texto corrido | Seção 10.2 |
-| `--font-size-callout` | `0.9375rem` | Subtítulo | Protótipo v1 |
+| `--font-size-callout` | `0.9375rem` | Subtítulo e letra do círculo de 30 px | Protótipo v1 |
 | `--font-size-subheadline` | `0.875rem` | Aviso flutuante e metadados | Protótipo v1 |
 | `--font-size-footnote` | `0.8125rem` | Rótulo da roda e título de seção | Protótipo v1 |
 | `--font-size-button-large` | `1.1875rem` | "Entrar" e "Próximo" | Protótipo v1, `.btn-xl` |
-| `--font-size-unit` | `1.125rem` | `kg` e `s` ao lado do número | Protótipo v1 |
+| `--font-size-unit` | `1.125rem` | `kg` e `s` ao lado do número e letra do círculo de 44 px | Protótipo v1 |
 | `--font-size-wheel` | `3.5rem` | Valor da roda | Protótipo v1 |
 | `--font-size-rest` | `3.75rem` | Tempo no anel do descanso | Protótipo v1 |
 | `--font-size-execution` | `4rem` | Tempo da execução | Protótipo v1 |
@@ -490,6 +492,7 @@ Os tamanhos usam `rem` e seguem o Dynamic Type no iPhone (Seção 10.2). O corpo
 | `--duration-base` | `300ms` | Entrada e saída da folha e do aviso flutuante, fim do descanso | Seção 15 |
 | `--duration-countdown` | `900ms` | Número da contagem de 3 s | Protótipo v1, `.cd-num` |
 | `--duration-toast` | `2600ms` | Tempo de exibição do aviso flutuante | Protótipo v1, `toast()` |
+| `--duration-tick` | `250ms` | Transição linear do traço do anel, igual ao passo do relógio (`TICK_MS`) | Projeto |
 
 ### 18.6. Espaço e alvo de toque
 
@@ -527,6 +530,15 @@ Quando o protótipo e uma regra deste documento divergem, a regra vale e a diver
 | 9 | Atenção e sucesso em texto | Só ícone e indicador; texto em `--color-label` | Seção 11.3 |
 | 10 | Nota "O método de autenticação está em aberto" | Chave de acesso, com o botão "Entrar" | ADR-019 |
 | 11 | `rem` sobre 16 px | No iPhone, `rem` segue o Dynamic Type | Seção 10.2 |
+| 12 | Título de seção "Escolha a letra" | Sem título de seção | Seção 3, princípio 6 |
+| 13 | Controle do topo com 44 px | 56 px, com o mesmo visual | Seção 7 |
+| 14 | Descanso sem o nome do exercício | O nome fica, como heading de nível 1, no topo | Seção 15.2 |
+| 15 | "A seguir" só no `aria-label`, com a seta no lugar do texto | Rótulo "A seguir" visível ao lado da seta | Seção 15.2 |
+| 16 | Sem a chave "Som" na tela do celular | Chave "Som" 24 px abaixo do anel | Seção 15.1 |
+| 17 | Anel da execução em `--success` | Anel em `--color-label`; os últimos 3 s em `--color-warning` | Seção 11.1 (um papel por cor) |
+| 18 | Sem animação na passagem para a série seguinte | Animação de fim do descanso, só opacidade com movimento reduzido | Seções 15 e 15.2 |
+| 19 | Valores vizinhos da roda com 2,62:1 (claro) e 3,40:1 (escuro) contra o cartão | Ficam como no protótipo, decorativos e fora da árvore de acessibilidade. Registrado para o PO | Seção 16.3 ("menores e esmaecidos"); exceção de texto decorativo da WCAG 1.4.3 |
+| 20 | Botão "−" ativo com a carga em 0 kg | "−" desativado no mínimo, com opacidade de 45 % e focável | Seção 16.3 |
 
 ## 19. Verificação geométrica
 

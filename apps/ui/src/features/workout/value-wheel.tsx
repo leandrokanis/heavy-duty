@@ -1,4 +1,3 @@
-import { Button } from '@base-ui/react/button'
 import { Minus, Plus } from 'lucide-react'
 import {
   type CSSProperties,
@@ -9,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { IconButton } from '@/components/ui/icon-button'
 import {
   type AdjustField,
   adjustValue,
@@ -18,6 +18,7 @@ import {
   stepsFromDrag,
   valueTextOf,
 } from './drag-adjust'
+import { useFitScale } from './use-fit-scale'
 import { DRAG_STEP_PX, WHEEL_STEP_PX } from './workout.config'
 
 const KEYBOARD_STEPS: Record<string, number> = {
@@ -35,17 +36,30 @@ export type ValueWheelProps = {
   value: number
   // Steps with sign: positive raises the value.
   onAdjust: (steps: number) => void
+  // The card behind the wheel: grouped on the screen, fill inside a sheet.
+  surface?: 'grouped' | 'fill'
 }
 
-const BUTTON_CLASS =
-  'glass flex size-(--target-workout) shrink-0 items-center justify-center rounded-(--radius-circle) active:opacity-60 data-[disabled]:opacity-40'
+const SURFACE_CLASS = {
+  grouped: 'bg-(--color-background-grouped)',
+  fill: 'bg-(--color-fill)',
+} as const
 
-export function ValueWheel({ field, label, value, onAdjust }: ValueWheelProps) {
+export function ValueWheel({
+  field,
+  label,
+  value,
+  onAdjust,
+  surface = 'grouped',
+}: ValueWheelProps) {
   const labelId = useId()
   const dragAnchorY = useRef<number | null>(null)
   const [dragOffsetPx, setDragOffsetPx] = useState(0)
+  const [dragging, setDragging] = useState(false)
+  const { areaRef, lineRef, scale } = useFitScale()
   const startDrag = (event: PointerEvent<HTMLDivElement>) => {
     dragAnchorY.current = event.clientY
+    setDragging(true)
     try {
       event.currentTarget.setPointerCapture(event.pointerId)
     } catch {
@@ -66,7 +80,7 @@ export function ValueWheel({ field, label, value, onAdjust }: ValueWheelProps) {
     event.preventDefault()
     onAdjust(steps)
   }
-  const wheelRef = useRef<HTMLDivElement>(null)
+  const wheelRef = useRef<HTMLDivElement | null>(null)
   const onAdjustRef = useRef(onAdjust)
   onAdjustRef.current = onAdjust
   // React registers wheel listeners as passive, which cannot stop the page from scrolling.
@@ -92,26 +106,34 @@ export function ValueWheel({ field, label, value, onAdjust }: ValueWheelProps) {
   const endDrag = () => {
     dragAnchorY.current = null
     setDragOffsetPx(0)
+    setDragging(false)
   }
   const belowValue = value - DRAG_STEPS[field]
   return (
-    <div className="flex flex-col gap-(--space-8)">
-      <span id={labelId} className="text-[0.9375rem] opacity-60">
+    <div
+      className={`flex flex-col gap-(--space-4) rounded-(--radius-control) p-(--space-12) ${SURFACE_CLASS[surface]}`}
+    >
+      <span
+        id={labelId}
+        className="text-center font-(--font-weight-semibold) text-(--color-label-secondary) text-(length:--font-size-footnote)"
+      >
         {label}
       </span>
-      <div className="flex items-center gap-(--space-16)">
-        <Button
+      <div className="flex items-center gap-(--space-8)">
+        <IconButton
           aria-label={`Diminuir ${label.toLowerCase()}`}
-          className={BUTTON_CLASS}
+          icon={Minus}
+          size="workout"
           disabled={value <= MINIMUMS[field]}
           focusableWhenDisabled
           onClick={() => onAdjust(-1)}
-        >
-          <Minus aria-hidden="true" />
-        </Button>
+        />
         <div
           role="spinbutton"
-          ref={wheelRef}
+          ref={(element) => {
+            wheelRef.current = element
+            areaRef.current = element
+          }}
           tabIndex={0}
           onKeyDown={pressKey}
           onPointerDown={startDrag}
@@ -122,39 +144,49 @@ export function ValueWheel({ field, label, value, onAdjust }: ValueWheelProps) {
           aria-valuenow={Number(formatFieldValue(field, value).replace(',', '.'))}
           aria-valuemin={Number(formatFieldValue(field, MINIMUMS[field]))}
           aria-valuetext={valueTextOf(field, value)}
-          className="flex touch-none select-none flex-col items-start"
+          data-dragging={dragging ? 'true' : undefined}
+          className="group h-26 min-w-0 flex-1 touch-none select-none overflow-hidden rounded-(--radius-inner)"
         >
-          <span
-            data-dragging={dragOffsetPx === 0 ? undefined : 'true'}
-            style={{ '--drag-offset': `${dragOffsetPx}px` } as CSSProperties}
-            className="flex translate-y-(--drag-offset) flex-col items-start transition-transform data-[dragging]:transition-none motion-reduce:translate-y-0 motion-reduce:transition-none"
-          >
-            <span aria-hidden="true" className="text-[1.5rem] leading-none opacity-30 tabular-nums">
-              {formatFieldValue(field, adjustValue(field, value, 1))}
-            </span>
-            <span className="flex items-baseline gap-(--space-8)">
-              <span className="text-[5rem] leading-none font-(--font-weight-semibold) tabular-nums">
-                {formatFieldValue(field, value)}
-              </span>
-              <span className="text-[1.25rem] font-(--font-weight-regular) opacity-60">
-                {UNITS[field]}
-              </span>
-            </span>
+          {/* Tint and mask sit on a child so the fade matches the prototype and the focus ring stays whole. */}
+          <span className="block size-full transition-colors duration-(--duration-fast) [mask-image:linear-gradient(rgba(0,0,0,0.3),#000_32%,#000_68%,rgba(0,0,0,0.3))] group-data-[dragging]:bg-(--color-accent-soft)">
             <span
-              aria-hidden="true"
-              className="min-h-[1.5rem] text-[1.5rem] leading-none opacity-30 tabular-nums"
+              data-dragging={dragOffsetPx === 0 ? undefined : 'true'}
+              style={{ '--drag-offset': `${dragOffsetPx}px` } as CSSProperties}
+              className="grid translate-y-(--drag-offset) grid-cols-[minmax(0,1fr)] grid-rows-[1.375rem_3.75rem_1.375rem] items-center justify-items-center transition-transform duration-(--duration-medium) data-[dragging]:transition-none motion-reduce:translate-y-0 motion-reduce:transition-none"
             >
-              {belowValue >= MINIMUMS[field] ? formatFieldValue(field, belowValue) : ''}
+              <span
+                aria-hidden="true"
+                className="font-(--font-weight-semibold) text-(--color-label-secondary) text-(length:--font-size-title-3) leading-none tabular-nums opacity-60"
+              >
+                {formatFieldValue(field, adjustValue(field, value, 1))}
+              </span>
+              <span
+                ref={lineRef}
+                style={{ transform: `scale(${scale})` }}
+                className="flex w-max origin-center items-baseline gap-(--space-8) whitespace-nowrap"
+              >
+                <span className="font-(--font-weight-bold) text-(length:--font-size-wheel) leading-none tracking-(--font-tracking-tight) tabular-nums">
+                  {formatFieldValue(field, value)}
+                </span>
+                <span className="font-(--font-weight-semibold) text-(--color-label-secondary) text-(length:--font-size-unit)">
+                  {UNITS[field]}
+                </span>
+              </span>
+              <span
+                aria-hidden="true"
+                className="min-h-[1.25rem] font-(--font-weight-semibold) text-(--color-label-secondary) text-(length:--font-size-title-3) leading-none tabular-nums opacity-60"
+              >
+                {belowValue >= MINIMUMS[field] ? formatFieldValue(field, belowValue) : ''}
+              </span>
             </span>
           </span>
         </div>
-        <Button
+        <IconButton
           aria-label={`Aumentar ${label.toLowerCase()}`}
-          className={BUTTON_CLASS}
+          icon={Plus}
+          size="workout"
           onClick={() => onAdjust(1)}
-        >
-          <Plus aria-hidden="true" />
-        </Button>
+        />
       </div>
     </div>
   )

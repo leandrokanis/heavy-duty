@@ -2,10 +2,13 @@ import { act, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TOAST_EXIT_MS, TOAST_VISIBLE_MS, ToastProvider, useToast } from './toast'
 
-function Trigger({ message }: { message: string }) {
+function Trigger({ message, announce }: { message: string; announce?: boolean }) {
   const toast = useToast()
   return (
-    <button type="button" onClick={() => toast.show(message)}>
+    <button
+      type="button"
+      onClick={() => toast.show(message, announce === undefined ? undefined : { announce })}
+    >
       {message}
     </button>
   )
@@ -85,6 +88,85 @@ describe('Given a ToastProvider', () => {
       })
 
       expect(screen.getByRole('status')).toHaveTextContent(/^Segundo$/)
+    })
+  })
+})
+
+describe('Given a toast that is not announced', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const silent = 'Série corrigida: 42,5 kg · 10 rep'
+
+  describe('When it is shown', () => {
+    it('Then should leave the status region empty and show the text hidden from the accessibility tree', () => {
+      render(
+        <ToastProvider>
+          <Trigger message={silent} announce={false} />
+        </ToastProvider>,
+      )
+
+      press(silent)
+
+      const text = screen.getByText(silent, { selector: 'p' })
+      expect({
+        region: screen.getByRole('status').textContent,
+        hidden: text.closest('[aria-hidden="true"]') !== null,
+        inRegion: screen.getByRole('status').contains(text),
+      }).toEqual({ region: '', hidden: true, inRegion: false })
+    })
+
+    it('Then should remove the text after the visible time and the exit time', () => {
+      render(
+        <ToastProvider>
+          <Trigger message={silent} announce={false} />
+        </ToastProvider>,
+      )
+      press(silent)
+
+      act(() => {
+        vi.advanceTimersByTime(TOAST_VISIBLE_MS + TOAST_EXIT_MS)
+      })
+
+      expect(screen.queryAllByText(silent, { selector: 'p' })).toHaveLength(0)
+    })
+  })
+
+  describe('When an announced toast follows it', () => {
+    it('Then should replace the text and announce the new one', () => {
+      render(
+        <ToastProvider>
+          <Trigger message={silent} announce={false} />
+          <Trigger message="Segundo" />
+        </ToastProvider>,
+      )
+      press(silent)
+      press('Segundo')
+
+      expect({
+        region: screen.getByRole('status').textContent,
+        silentLeft: screen.queryAllByText(silent, { selector: 'p' }).length,
+      }).toEqual({ region: 'Segundo', silentLeft: 0 })
+    })
+  })
+
+  describe('When it follows an announced toast', () => {
+    it('Then should empty the status region', () => {
+      render(
+        <ToastProvider>
+          <Trigger message="Primeiro" />
+          <Trigger message={silent} announce={false} />
+        </ToastProvider>,
+      )
+      press('Primeiro')
+      press(silent)
+
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
     })
   })
 })

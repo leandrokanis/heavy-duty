@@ -1,9 +1,10 @@
 'use client'
 
-import { Button } from '@base-ui/react/button'
-import { Drawer } from '@base-ui/react/drawer'
-import { Timer, X } from 'lucide-react'
+import { Clock } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Sheet } from '@/components/ui/sheet'
 import { formatDurationMinutes } from './format'
+import { LetterBadge } from './letter-badge'
 import type { TodayDay } from './today.types'
 
 export type StartSheetProps = {
@@ -18,55 +19,59 @@ function setsLabel(sets: number): string {
 
 export function StartSheet({ day, onClose, onStart }: StartSheetProps) {
   return (
-    <Drawer.Root
+    <Sheet.Root
       open={day !== null}
       onOpenChange={(open) => {
         if (!open) onClose()
       }}
     >
-      <Drawer.Portal>
-        <Drawer.Backdrop className="fixed inset-0 bg-black/30" />
-        <Drawer.Viewport className="fixed inset-x-0 bottom-0">
-          <Drawer.Popup className="glass flex flex-col gap-(--space-24) rounded-t-[28px] px-(--space-margin-inline) pt-(--space-20) pb-[calc(var(--space-24)+env(safe-area-inset-bottom))]">
-            {day ? (
-              <>
-                <div className="flex items-center justify-between gap-(--space-16)">
-                  <Drawer.Title className="text-[1.75rem] font-(--font-weight-semibold)">
-                    {day.letter} {day.label}
-                  </Drawer.Title>
-                  <Drawer.Close
-                    aria-label="Fechar"
-                    className="flex size-(--target-workout) shrink-0 items-center justify-center rounded-(--radius-circle) bg-[color-mix(in_srgb,CanvasText_12%,transparent)] active:opacity-60"
-                  >
-                    <X aria-hidden="true" size={24} />
-                  </Drawer.Close>
-                </div>
-                <ul className="flex flex-col gap-(--space-12)">
-                  {day.exercises.map((planned) => (
-                    <li
-                      key={planned.exercise.id}
-                      className="flex items-baseline justify-between gap-(--space-16)"
-                    >
-                      <span>{planned.exercise.name}</span>
-                      <span className="tabular-nums opacity-70">{setsLabel(planned.sets)}</span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="flex items-center gap-(--space-8) tabular-nums opacity-70">
-                  <Timer aria-hidden="true" size={20} />
-                  <span>{formatDurationMinutes(day.estimatedDurationSeconds)}</span>
-                </p>
-                <Button
-                  className="min-h-(--target-workout) w-full rounded-(--radius-capsule) bg-[CanvasText] px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) text-[Canvas] active:opacity-60"
-                  onClick={() => onStart(day)}
+      {day ? (
+        <>
+          <div className="flex items-center gap-(--space-16)">
+            <span aria-hidden="true" className="flex">
+              <LetterBadge letter={day.letter} size={44} />
+            </span>
+            <div className="flex min-w-0 flex-col">
+              <Sheet.Title>
+                {day.label ? (
+                  <>
+                    <span className="sr-only">{day.letter}</span> {day.label}
+                  </>
+                ) : (
+                  day.letter
+                )}
+              </Sheet.Title>
+              <p className="m-0 flex items-center gap-(--space-4) font-(--font-weight-semibold) text-(--color-label-secondary) text-(length:--font-size-callout) tabular-nums">
+                <Clock aria-hidden="true" size={15} />
+                <span>{formatDurationMinutes(day.estimatedDurationSeconds)}</span>
+              </p>
+            </div>
+          </div>
+          <Sheet.Body>
+            <ul className="m-0 mt-(--space-12) flex list-none flex-col p-0">
+              {day.exercises.map((planned) => (
+                <li
+                  key={planned.exercise.id}
+                  className="flex items-baseline justify-between gap-(--space-16) border-(--color-separator) border-t py-(--space-12)"
                 >
-                  Começar
-                </Button>
-              </>
-            ) : null}
-          </Drawer.Popup>
-        </Drawer.Viewport>
-      </Drawer.Portal>
-    </Drawer.Root>
+                  <span className="text-(--color-label)">{planned.exercise.name}</span>
+                  <span className="text-(--color-label-secondary) tabular-nums">
+                    {setsLabel(planned.sets)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Sheet.Body>
+          <Sheet.Actions>
+            <Button variant="secondary" size="workout" onClick={onClose}>
+              Fechar
+            </Button>
+            <Button size="workout" onClick={() => onStart(day)}>
+              Começar
+            </Button>
+          </Sheet.Actions>
+        </>
+      ) : null}
+    </Sheet.Root>
   )
 }
