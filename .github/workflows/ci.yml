@@ -1,13 +1,14 @@
-# Continuous integration and deployment (ADR-028, docs/qualidade.md).
-# Every pull request and push to main or mvp runs the checks and builds the images;
-# only a green push to main publishes the images to GHCR and deploys through Coolify.
+# Continuous integration and deployment (ADR-028, ADR-029, docs/qualidade.md).
+# Every push to any branch runs the checks and builds the images, so a task branch is green
+# before its fast-forward into dev; only a green push to main publishes and deploys.
 name: CI
 
 on:
   pull_request:
-    branches: [main, mvp]
+    branches: [main, dev]
   push:
-    branches: [main, mvp]
+    # Dependabot branches run through their pull request instead.
+    branches-ignore: ["dependabot/**"]
   workflow_dispatch:
 
 permissions:
@@ -15,8 +16,8 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  # A deploy of main is never cancelled halfway; a newer push to a pull request is.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # A run on main or dev is never cancelled halfway; a newer push to a task branch or pull request is.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/dev' }}
 
 env:
   IMAGE_PREFIX: ghcr.io/leandrokanis/heavy-duty

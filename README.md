@@ -62,7 +62,7 @@ pnpm e2e
 
 ## Produção
 
-A produção roda no Coolify do servidor kasparov, com a pilha `compose.coolify.yaml` (ADR-028). Todo PR passa pelo CI no GitHub Actions. O merge na `main`, com o CI verde, publica as imagens no GitHub Container Registry e dispara o deploy no Coolify. A configuração, as variáveis e a operação estão em `docs/arquitetura/implantacao.md`.
+A produção roda no Coolify do servidor kasparov, com a pilha `compose.coolify.yaml` (ADR-028). Toda branch passa pelo CI no GitHub Actions, e cada tarefa entra na `dev` por merge fast-forward. O merge da `dev` na `main`, por PR e com o CI verde, publica as imagens no GitHub Container Registry e dispara o deploy no Coolify. A configuração, as variáveis e a operação estão em `docs/arquitetura/implantacao.md`.
 
 ## Documentação
 

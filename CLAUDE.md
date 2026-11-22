@@ -83,7 +83,7 @@ Use `http://localhost:8080`, não `http://127.0.0.1:8080`: a chave de acesso nã
 | Escrever teste | `docs/convencoes/testes.md` |
 | Escrever ou revisar comentário | `docs/convencoes/comentarios.md` |
 | Escrever ou revisar documentação | `docs/convencoes/escrita-tecnica.md` |
-| Fazer commit ou abrir PR | `docs/convencoes/git.md` e `docs/qualidade.md` |
+| Fazer commit, integrar na `dev` ou abrir PR | `docs/convencoes/git.md` e `docs/qualidade.md` |
 | Mudar o CI, um Dockerfile ou a produção | `docs/arquitetura/implantacao.md` e a ADR-028 |
 | Tomar decisão de arquitetura | `docs/adr/README.md` |
 
@@ -93,7 +93,7 @@ Use `http://localhost:8080`, não `http://127.0.0.1:8080`: a chave de acesso nã
 2. Escreva o plano técnico da story em `plan.md`, na mesma pasta.
 3. Implemente com TDD, um teste de comportamento por passo do plano. Registre os ciclos em `tdd.md`.
 4. Verifique contra o plano e os critérios de aceite. Registre o resultado em `qa.md`.
-5. Faça o commit e abra o PR com o modelo de `.github/pull_request_template.md`.
+5. Faça o commit na branch da story, criada a partir da `dev`, e integre na `dev` por merge fast-forward, com o CI verde no commit (`docs/convencoes/git.md`, Seção 5). O PR com o modelo de `.github/pull_request_template.md` é só o da `dev` para a `main`, na entrega de uma onda.
 
 A pasta `specs/` da raiz fica fora do Git (`.gitignore`): os artefatos de trabalho da story (`spec.md`, `plan.md`, `tdd.md`, `qa.md`, `decisoes.md`) não entram no commit. O que precisa ficar no repositório vai para o lugar definitivo: decisão de arquitetura em `docs/adr/`, contrato em `docs/arquitetura/`, termo em `CONTEXT.md` e requisito em `docs/prd.md`.
 

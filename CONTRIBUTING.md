@@ -10,11 +10,11 @@ O projeto tem um mantenedor, que também é o PO e o único usuário. Contribui�
 ## Fluxo de contribuição
 
 1. Abra uma issue com o problema ou a ideia. Cite a story do PRD (`US-F03-02`, por exemplo), se houver.
-2. Crie uma branch a partir de `main`, com o nome definido em `docs/convencoes/git.md`.
+2. Crie uma branch a partir de `dev`, com o nome definido em `docs/convencoes/git.md`.
 3. Escreva o teste antes do código. As regras estão em `docs/convencoes/testes.md`.
 4. Escreva as mensagens de commit em Conventional Commits, conforme `docs/convencoes/git.md`, Seção 4.
 5. Execute `pnpm lint`, `pnpm typecheck` e `pnpm test` antes de abrir o PR.
-6. Abra o PR com o modelo do repositório e preencha o checklist.
+6. Abra o PR para a `dev` com o modelo do repositório e preencha o checklist. O mantenedor integra o PR por merge fast-forward, depois do rebase na `dev` e do CI verde (`docs/convencoes/git.md`, Seção 5).
 
 ## Regras de revisão
 

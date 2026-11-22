@@ -4,11 +4,11 @@ Este documento descreve como uma mudança chega à produção: o CI no GitHub, a
 
 ## Caminho de uma mudança
 
-1. O PR para `main` ou `mvp` roda o workflow `.github/workflows/ci.yml`: lint, tipos, testes, contrato da API, e2e, auditoria de dependências, build das quatro imagens e teste de fumaça da pilha.
-2. O merge na `main` roda o mesmo workflow. Com tudo verde, o job `images` publica as imagens no GHCR com as tags `sha-<commit>` e `main`.
+1. O push da branch da tarefa roda o workflow `.github/workflows/ci.yml`: lint, tipos, testes, contrato da API, e2e, auditoria de dependências, build das quatro imagens e teste de fumaça da pilha. Com os checks verdes, a tarefa entra na `dev` por merge fast-forward (`docs/convencoes/git.md`, Seção 5).
+2. O PR da `dev` para a `main` roda o mesmo workflow. O merge na `main` roda de novo. Com tudo verde, o job `images` publica as imagens no GHCR com as tags `sha-<commit>` e `main`.
 3. O job `deploy` chama o webhook de deploy do Coolify. O Coolify baixa as imagens da tag `main` e recria os contêineres.
 
-O push na `mvp` roda as verificações e o build, mas não publica nem faz deploy.
+O push na `dev` e em qualquer outra branch roda as verificações e o build, mas não publica nem faz deploy.
 
 ## Imagens
 
@@ -53,7 +53,10 @@ O `.env.example` ainda não lista estas variáveis: a inclusão é tarefa manual
 | `COOLIFY_WEBHOOK` | Segredo do repositório | URL do webhook de deploy do recurso no Coolify |
 | `COOLIFY_TOKEN` | Segredo do repositório | Token de API do Coolify, com permissão de deploy |
 | Ambiente `production` | Environments do repositório | Agrupa o job `deploy`; aceita regra de aprovação, se o PO quiser |
+| Branch padrão | Configurações gerais | `dev` |
+| Proteção da `dev` | Branches do repositório | Exige os checks `Lint, types, tests and API contract`, `End-to-end tests` e `Production images` no commit enviado e histórico linear; bloqueia push forçado e remoção |
 | Proteção da `main` | Branches do repositório | Exige PR e os checks `Lint, types, tests and API contract`, `End-to-end tests` e `Production images` antes do merge |
+| Tipos de merge | Configurações gerais | Só merge commit; squash e rebase desligados |
 
 ## Configuração inicial
 

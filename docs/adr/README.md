@@ -34,6 +34,7 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-026](026-confirmacao-em-duas-chamadas-no-mcp.md) | Confirmação em duas chamadas nas ferramentas do MCP que alteram o histórico | Aceita |
 | [ADR-027](027-codigo-do-animate-ui-copiado-do-repositorio-oficial.md) | Código do Animate UI copiado do repositório oficial | Aceita |
 | [ADR-028](028-producao-no-coolify-com-imagens-do-github-actions.md) | Produção no Coolify com imagens do GitHub Actions | Aceita |
+| [ADR-029](029-integracao-pela-dev-com-merge-fast-forward.md) | Integração pela branch dev com merge fast-forward | Aceita |
 
 ## Regras
 

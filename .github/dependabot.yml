@@ -1,8 +1,9 @@
-# Weekly dependency updates (ADR-028); each update is a pull request that runs the CI.
+# Weekly dependency updates (ADR-028, ADR-029); each update is a pull request to dev that runs the CI.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
+    target-branch: dev
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -12,10 +13,12 @@ updates:
 
   - package-ecosystem: github-actions
     directory: /
+    target-branch: dev
     schedule:
       interval: weekly
 
   - package-ecosystem: docker
     directory: /infra/docker
+    target-branch: dev
     schedule:
       interval: weekly
