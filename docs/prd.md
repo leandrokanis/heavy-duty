@@ -465,13 +465,13 @@ Funcionalidade: Ajuste por arrasto
 
     Exemplos:
       | campo      | inicial | passos | direção | final   |
-      | carga      | 40 kg   | 1      | cima    | 42,5 kg |
-      | repetições | 10      | 2      | baixo   | 8       |
-      | tempo      | 45 s    | 1      | cima    | 50 s    |
+      | carga      | 40 kg   | 1      | baixo   | 42,5 kg |
+      | repetições | 10      | 2      | cima    | 8       |
+      | tempo      | 45 s    | 1      | baixo   | 50 s    |
 
   Cenário: carga não fica negativa
     Dado que a carga exibida é 0 kg
-    Quando o atleta arrasta para baixo
+    Quando o atleta arrasta para cima
     Então a carga continua 0 kg
 
   Cenário: correção da última série
@@ -634,6 +634,7 @@ Funcionalidade: Avisos por e-mail
 | D31 | O aviso de janela é um por letra, não um por grupo, para os 11 grupos não virarem ruído (F09) |
 | D32 | Avisos por e-mail entram na onda 7 (F17): aviso de janela por letra, aviso de queda de nível e resumo semanal. Todo aviso vai pelos dois canais, celular e e-mail. O envio é por servidor SMTP próprio no kasparov, para manter a NFR01 (ADR-007) |
 | D33 | O produto se chama Heavy Duty |
+| D34 | A roda do ajuste tem o valor maior acima: arrastar para baixo aumenta e arrastar para cima diminui. Os botões − e + ficam ao lado da roda, e os passos são de 2,5 kg, 1 repetição e 5 s (US-F04-01; decisão do PO no protótipo, plano do MVP, Seção 7) |
 
 ---
 

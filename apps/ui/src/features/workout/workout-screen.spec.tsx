@@ -89,6 +89,11 @@ function pendingSetCount(queue: SyncQueue): number {
   return queue.getSnapshot().pending.filter(({ kind }) => kind === 'set').length
 }
 
+// The value the wheel of a field shows, spoken: the athlete reads it from the wheel.
+function shownOf(name: string): string {
+  return screen.getByRole('spinbutton', { name }).getAttribute('aria-valuetext') ?? ''
+}
+
 function tapNext() {
   fireEvent.click(screen.getByRole('button', { name: 'Próximo' }))
 }
@@ -298,15 +303,15 @@ describe('Given supino-reto at 42,5 kg for 10 reps, resting 90 s', () => {
       await act(async () => vi.advanceTimersByTime(90_000))
       const ready = {
         resting: screen.queryByRole('timer', { name: 'Descanso' }) !== null,
-        load: screen.getByRole('group', { name: 'Carga' }).textContent,
-        target: screen.getByRole('group', { name: 'Alvo' }).textContent,
+        load: shownOf('Carga'),
+        target: shownOf('Repetições'),
         sets: valueTextOf('Séries'),
       }
       await act(async () => vi.advanceTimersByTime(800))
       await act(async () => tapNext())
 
       expect({ ready, sent: sentBodies(fetchMock).map(({ setNumber }) => setNumber) }).toEqual({
-        ready: { resting: false, load: '42,5kg', target: '10rep', sets: '2 de 3' },
+        ready: { resting: false, load: '42,5 quilos', target: '10 repetições', sets: '2 de 3' },
         sent: [1, 2],
       })
     })
@@ -414,7 +419,7 @@ describe('Given the 90 s rest of set 1 of supino-reto', () => {
 
 function setAreaCue() {
   return screen
-    .getByRole('group', { name: 'Carga' })
+    .getByRole('spinbutton', { name: 'Carga' })
     .closest('[data-cue]')
     ?.getAttribute('data-cue')
 }
@@ -471,16 +476,16 @@ describe('Given sets 1 and 2 of supino-reto recorded, with triceps-polia after i
       expect({
         duringRest,
         title: screen.getByRole('heading', { level: 1 }).textContent,
-        load: screen.getByRole('group', { name: 'Carga' }).textContent,
-        target: screen.getByRole('group', { name: 'Alvo' }).textContent,
+        load: shownOf('Carga'),
+        target: shownOf('Repetições'),
         sets: valueTextOf('Séries'),
         exercises: valueTextOf('Exercícios'),
         announcement: screen.getByRole('status').textContent,
       }).toEqual({
         duringRest: { title: 'Supino reto', upNext: true, upNextName: true },
         title: 'Tríceps na polia',
-        load: '20kg',
-        target: '12rep',
+        load: '20 quilos',
+        target: '12 repetições',
         sets: '1 de 3',
         exercises: '2 de 2',
         announcement: 'Tríceps na polia, série 1 de 3',
@@ -696,14 +701,14 @@ describe('Given the 90 s rest after set 1 of supino-reto, with the letter supino
       expect({
         afterPick,
         title: screen.getByRole('heading', { level: 1 }).textContent,
-        load: screen.getByRole('group', { name: 'Carga' }).textContent,
-        target: screen.getByRole('group', { name: 'Alvo' }).textContent,
+        load: shownOf('Carga'),
+        target: shownOf('Repetições'),
         announcement: screen.getByRole('status').textContent,
       }).toEqual({
         afterPick: { dialog: null, clock: '1:20', upNext: true, upNextName: true },
         title: 'Tríceps na polia',
-        load: '20kg',
-        target: '12rep',
+        load: '20 quilos',
+        target: '12 repetições',
         announcement: 'Tríceps na polia, série 1 de 3',
       })
     })
@@ -1050,8 +1055,8 @@ describe('Given the 3 sets of supino-reto recorded and set 1 of prancha on scree
         dialog: screen.queryByRole('dialog'),
         focusOnTopControl: document.activeElement === topControl,
         title: screen.getByRole('heading', { level: 1 }).textContent,
-        load: screen.getByRole('group', { name: 'Carga' }).textContent,
-        target: screen.getByRole('group', { name: 'Alvo' }).textContent,
+        load: shownOf('Carga'),
+        target: shownOf('Repetições'),
       }
       const reopened = await openSequence('Sequência do treino, letra A, exercício 2 de 3')
       expect({
@@ -1062,8 +1067,8 @@ describe('Given the 3 sets of supino-reto recorded and set 1 of prancha on scree
           dialog: null,
           focusOnTopControl: true,
           title: 'Tríceps na polia',
-          load: '20kg',
-          target: '12rep',
+          load: '20 quilos',
+          target: '12 repetições',
         },
         items: ['Supino retoFeito3 de 3', 'PranchaPulado0 de 3', 'Tríceps na poliaAtual0 de 3'],
       })
@@ -1088,8 +1093,8 @@ describe('Given the 3 sets of supino-reto recorded and set 1 of prancha on scree
 
       expect({
         title: screen.getByRole('heading', { level: 1 }).textContent,
-        target: screen.getByRole('group', { name: 'Alvo' }).textContent,
-      }).toEqual({ title: 'Prancha', target: '45s' })
+        target: shownOf('Tempo'),
+      }).toEqual({ title: 'Prancha', target: '45 segundos' })
     })
   })
 })
@@ -1118,11 +1123,11 @@ describe('Given the 90 s rest after the 3rd set of supino-reto with prancha as u
       expect({
         duringRest,
         title: screen.getByRole('heading', { level: 1 }).textContent,
-        load: screen.getByRole('group', { name: 'Carga' }).textContent,
+        load: shownOf('Carga'),
       }).toEqual({
         duringRest: { dialog: null, clock: '1:20', upNext: true, upNextName: true },
         title: 'Tríceps na polia',
-        load: '20kg',
+        load: '20 quilos',
       })
     })
   })
@@ -1525,7 +1530,7 @@ describe.each([
 
       expect({
         title: screen.getByRole('heading').textContent,
-        target: within(screen.getByRole('group', { name: 'Alvo' })).getByText('45').textContent,
+        target: shownOf('Tempo'),
         timers: screen.queryAllByRole('timer').length,
         pendingSets: pendingSetCount(queue),
         newCues: cues.length - cuesBefore.length,
@@ -1533,7 +1538,7 @@ describe.each([
         announced: screen.getByRole('status').textContent,
       }).toEqual({
         title: 'Prancha',
-        target: '45',
+        target: '45 segundos',
         timers: 0,
         pendingSets: 0,
         newCues: 0,
@@ -1735,6 +1740,188 @@ describe.each([
       await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Cancelar' })))
 
       expect(release).toHaveBeenCalledTimes(1)
+    })
+  })
+})
+
+// Supino at 40 kg from the program, 3 x 10 resting 90 s (the fixture of the drag adjust spec).
+const SUPINO_40 = {
+  ...SUPINO_RETO,
+  loadG: 40_000,
+  plannedLoadG: 40_000,
+  loadSource: 'program' as const,
+}
+
+function wheelNow(name: string): string | null {
+  return screen.getByRole('spinbutton', { name }).getAttribute('aria-valuenow')
+}
+
+describe('Given the workout screen on set 1 of supino-reto at 40 kg and 10 reps', () => {
+  describe('When it opens', () => {
+    it('Then should have the wheels Carga (40) and Repetições (10), no Alvo group and no text field', () => {
+      renderWorkout([SUPINO_40, PRANCHA])
+
+      expect({
+        load: wheelNow('Carga'),
+        reps: wheelNow('Repetições'),
+        target: screen.queryByRole('group', { name: 'Alvo' }),
+        fields: screen.queryAllByRole('textbox').length + document.querySelectorAll('input').length,
+      }).toEqual({ load: '40', reps: '10', target: null, fields: 0 })
+    })
+  })
+})
+
+describe('Given the workout screen on set 1 of prancha at 45 s and 0 kg', () => {
+  describe('When it opens', () => {
+    it('Then should have the wheels Carga (0) and Tempo (45) and no Repetições', () => {
+      renderWorkout([PRANCHA])
+
+      expect({
+        load: wheelNow('Carga'),
+        time: wheelNow('Tempo'),
+        reps: screen.queryByRole('spinbutton', { name: 'Repetições' }),
+      }).toEqual({ load: '0', time: '45', reps: null })
+    })
+  })
+})
+
+describe('Given the workout screen resting after set 1 of supino-reto', () => {
+  describe('When the rest is on screen', () => {
+    it('Then should show no wheel', async () => {
+      stubFetch(created())
+      renderWorkout([SUPINO_40, PRANCHA])
+
+      await act(async () => tapNext())
+
+      expect(screen.queryAllByRole('spinbutton')).toHaveLength(0)
+    })
+  })
+})
+
+describe('Given the workout screen of prancha counting down to the execution', () => {
+  describe('When the count and then the execution are on screen', () => {
+    it('Then should show no wheel in either', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch('pending')
+      renderWorkout([PRANCHA])
+
+      await act(async () => tapNext())
+      const inCount = screen.queryAllByRole('spinbutton').length
+      await act(async () => vi.advanceTimersByTime(3_000))
+
+      expect([inCount, screen.queryAllByRole('spinbutton').length]).toEqual([0, 0])
+    })
+  })
+})
+
+function tapButton(name: string) {
+  fireEvent.click(screen.getByRole('button', { name }))
+}
+
+describe('Given the buttons of the wheels on set 1 of supino-reto at 40 kg and 10 reps', () => {
+  describe('When the athlete taps Aumentar carga twice and Diminuir repetições once, then Próximo', () => {
+    it('Then should show 45 kg and 9, queue set 1 with 45000 g and 9 reps and, after the rest, show set 2 with 45 kg and 9', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const fetchMock = stubFetch(created())
+      renderWorkout([SUPINO_40, PRANCHA])
+
+      tapButton('Aumentar carga')
+      tapButton('Aumentar carga')
+      tapButton('Diminuir repetições')
+      const adjusted = [wheelNow('Carga'), wheelNow('Repetições')]
+      await act(async () => tapNext())
+      const restWheels = screen.queryAllByRole('spinbutton').length
+      await act(async () => vi.advanceTimersByTime(90_000))
+
+      expect({
+        adjusted,
+        sent: sentBodies(fetchMock).map(({ loadG, reps }) => ({ loadG, reps })),
+        restWheels,
+        set2: [wheelNow('Carga'), wheelNow('Repetições'), valueTextOf('Séries')],
+      }).toEqual({
+        adjusted: ['45', '9'],
+        sent: [{ loadG: 45_000, reps: 9 }],
+        restWheels: 0,
+        set2: ['45', '9', '2 de 3'],
+      })
+    })
+  })
+})
+
+describe('Given the workout screen on set 1 of supino-reto at 40 kg', () => {
+  describe('When the athlete drags the load 22 px down and lets go', () => {
+    it('Then should queue no set and stay on set 1 of 3 with 42,5 kg', async () => {
+      const fetchMock = stubFetch(created())
+      const { queue } = renderWorkout([SUPINO_40, PRANCHA])
+      const wheel = screen.getByRole('spinbutton', { name: 'Carga' })
+
+      fireEvent.pointerDown(wheel, { clientY: 100, pointerId: 1 })
+      fireEvent.pointerMove(wheel, { clientY: 122, pointerId: 1 })
+      fireEvent.pointerUp(wheel, { clientY: 122, pointerId: 1 })
+
+      expect({
+        pending: pendingSetCount(queue),
+        sent: fetchMock.mock.calls.length,
+        title: screen.getByRole('heading', { level: 1 }).textContent,
+        sets: valueTextOf('Séries'),
+        load: shownOf('Carga'),
+      }).toEqual({
+        pending: 0,
+        sent: 0,
+        title: 'Supino reto',
+        sets: '1 de 3',
+        load: '42,5 quilos',
+      })
+    })
+  })
+})
+
+describe('Given the workout screen on set 1 of prancha at 45 s, adjusted to 50 s', () => {
+  describe('When the athlete taps Próximo and the count of 3 s ends', () => {
+    it('Then the execution should run from 0:50 and, at zero, queue the set with 50 s', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const fetchMock = stubFetch(created())
+      renderWorkout(ONLY_PRANCHA)
+
+      tapButton('Aumentar tempo')
+      await act(async () => tapNext())
+      await passSeconds(3)
+      const inExecution = {
+        clock: screen.getByRole('timer', { name: 'Tempo de execução' }).textContent,
+        ringTotal: screen
+          .getByRole('progressbar', { name: 'Execução restante' })
+          .getAttribute('aria-valuemax'),
+      }
+      await passSeconds(50)
+
+      expect({ inExecution, sent: sentBodies(fetchMock).map(({ seconds }) => seconds) }).toEqual({
+        inExecution: { clock: '0:50', ringTotal: '50' },
+        sent: [50],
+      })
+    })
+  })
+})
+
+describe('Given the screen of supino-reto adjusted to 42,5 kg and 8 reps and not recorded', () => {
+  describe('When the saved workout is read and a new screen opens with it restored', () => {
+    it('Then the wheels should show 42,5 kg and 8', async () => {
+      stubFetch(created())
+      renderWorkout([SUPINO_40, PRANCHA])
+      tapButton('Aumentar carga')
+      tapButton('Diminuir repetições')
+      tapButton('Diminuir repetições')
+      await waitFor(async () => expect((await loadActiveWorkout(Date.now()))?.draft).not.toBeNull())
+      const saved = (await loadActiveWorkout(Date.now())) as WorkoutFlowState
+      cleanup()
+
+      renderWorkout(
+        [SUPINO_40, PRANCHA],
+        vi.fn(),
+        NEVER_SENT,
+        restoreWorkoutFlow(saved, Date.now()),
+      )
+
+      expect([wheelNow('Carga'), wheelNow('Repetições')]).toEqual(['42.5', '8'])
     })
   })
 })

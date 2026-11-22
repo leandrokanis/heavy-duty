@@ -10,6 +10,7 @@ import {
   leftOutOf,
   restoreWorkoutFlow,
   sequenceOf,
+  shownValuesOf,
   timerReadingOf,
   upcomingExercise,
   type WorkoutFlowState,
@@ -45,6 +46,22 @@ function timerReach(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
 
 function cancel(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
   return workoutFlowReducer(state, { type: 'cancel', nowMs })
+}
+
+// Supino at 40 kg from the program, 3 x 10 resting 90 s (the fixture of the drag adjust spec).
+const SUPINO_40 = {
+  ...SUPINO_RETO,
+  loadG: 40_000,
+  plannedLoadG: 40_000,
+  loadSource: 'program' as const,
+}
+
+function adjust(
+  state: WorkoutFlowState,
+  field: 'loadG' | 'reps' | 'seconds',
+  steps: number,
+): WorkoutFlowState {
+  return workoutFlowReducer(state, { type: 'adjust', field, steps })
 }
 
 function instantOf(id: string): number {
@@ -1935,6 +1952,287 @@ describe('Given supino-reto skipped with 1 set and then done by the sequence', (
         status: 'done',
         recordedSets: [{ setNumber: 1 }, { setNumber: 2 }, { setNumber: 3 }],
       })
+    })
+  })
+})
+
+describe('Given the flow on set 1 of supino-reto planned at 40 kg and 10 reps', () => {
+  describe('When the athlete adjusts the shown values', () => {
+    const flow = createWorkoutFlow(sessionOf([SUPINO_40, PRANCHA]))
+
+    it('Then should show the filled values before any adjust', () => {
+      expect(shownValuesOf(flow)).toEqual({ loadG: 40_000, reps: 10, seconds: null })
+    })
+
+    it('Then should show 42500 g after the load goes up one step', () => {
+      expect(shownValuesOf(adjust(flow, 'loadG', 1)).loadG).toBe(42_500)
+    })
+
+    it('Then should show 8 reps after the reps go down two steps', () => {
+      expect(shownValuesOf(adjust(flow, 'reps', -2)).reps).toBe(8)
+    })
+
+    it('Then should keep the phase, the sets and the step of the last tap', () => {
+      const tapped = { ...flow, lastStepAtMs: T0, lastStep: 'advance' as const }
+      const adjusted = adjust(tapped, 'loadG', 1)
+
+      expect({
+        phase: adjusted.phase,
+        recorded: adjusted.recorded,
+        lastStepAtMs: adjusted.lastStepAtMs,
+        lastStep: adjusted.lastStep,
+      }).toEqual({ phase: 'set', recorded: [], lastStepAtMs: T0, lastStep: 'advance' })
+    })
+  })
+})
+
+describe('Given the flow on set 1 of prancha planned at 45 s', () => {
+  describe('When the athlete adjusts the shown values', () => {
+    const flow = createWorkoutFlow(sessionOf([PRANCHA]))
+
+    it('Then should show 50 s after the time goes up one step', () => {
+      expect(shownValuesOf(adjust(flow, 'seconds', 1)).seconds).toBe(50)
+    })
+
+    it('Then should ignore the reps, which this exercise does not have', () => {
+      expect(adjust(flow, 'reps', 1)).toBe(flow)
+    })
+  })
+})
+
+describe('Given the flow out of the set screen or with a sheet open', () => {
+  describe('When an adjust arrives', () => {
+    const onSet = createWorkoutFlow(sessionOf([SUPINO_40, PRANCHA]))
+    const timed = createWorkoutFlow(sessionOf([PRANCHA]))
+    const lastSet = createWorkoutFlow(sessionOf([{ ...SUPINO_40, sets: 1 }]))
+    const states: [string, WorkoutFlowState][] = [
+      ['rest', next(onSet, T0)],
+      ['countdown', next(timed, T0)],
+      ['timing', timerReach(next(timed, T0), T0 + 3_000)],
+      ['finished', next(lastSet, T0)],
+      ['sequence sheet', workoutFlowReducer(onSet, { type: 'openSheet', sheet: 'sequence' })],
+      ['confirmEnd sheet', workoutFlowReducer(onSet, { type: 'openSheet', sheet: 'confirmEnd' })],
+    ]
+
+    it.each(states)('Then the %s state should come back the same', (_name, state) => {
+      expect(adjust(state, 'loadG', 1)).toBe(state)
+    })
+  })
+})
+
+describe('Given supino-reto adjusted to 42500 g and 8 reps on set 1', () => {
+  describe('When next arrives', () => {
+    const adjusted = adjust(
+      adjust(createWorkoutFlow(sessionOf([SUPINO_40, PRANCHA])), 'loadG', 1),
+      'reps',
+      -2,
+    )
+
+    it('Then should record the set with the shown 42500 g and 8 reps', () => {
+      const [recorded] = next(adjusted, T0).recorded
+
+      expect([recorded?.loadG, recorded?.reps]).toEqual([42_500, 8])
+    })
+
+    it('Then should record even when it arrives 100 ms after the adjust', () => {
+      const tapped = { ...adjusted, lastStepAtMs: null }
+
+      expect(next(tapped, T0 + 100).recorded).toHaveLength(1)
+    })
+  })
+})
+
+describe('Given set 1 of supino-reto recorded at 42500 g and 8 reps', () => {
+  describe('When the rest ends', () => {
+    const adjusted = adjust(
+      adjust(createWorkoutFlow(sessionOf([SUPINO_40, PRANCHA])), 'loadG', 1),
+      'reps',
+      -2,
+    )
+    const onSet2 = restEnd(next(adjusted, T0), T0 + 90_000)
+
+    it('Then set 2 should start from 42500 g and 8 reps', () => {
+      expect(shownValuesOf(onSet2)).toEqual({ loadG: 42_500, reps: 8, seconds: null })
+    })
+
+    it('Then a set 2 adjusted to 45000 g and recorded should hand 45000 g to set 3', () => {
+      const onSet3 = restEnd(next(adjust(onSet2, 'loadG', 1), T0 + 95_000), T0 + 185_000)
+
+      expect(shownValuesOf(onSet3).loadG).toBe(45_000)
+    })
+
+    it('Then an adjust during the rest should change nothing for set 2', () => {
+      const resting = next(adjusted, T0)
+
+      expect(shownValuesOf(restEnd(adjust(resting, 'loadG', 4), T0 + 90_000)).loadG).toBe(42_500)
+    })
+  })
+})
+
+describe('Given supino-reto with set 1 recorded at 42500 g and 8 reps, now on set 2', () => {
+  const adjusted = adjust(
+    adjust(createWorkoutFlow(sessionOf([SUPINO_40, PRANCHA])), 'loadG', 1),
+    'reps',
+    -2,
+  )
+  const onSet2 = restEnd(next(adjusted, T0), T0 + 90_000)
+  const goToExercise = (state: WorkoutFlowState, exerciseIndex: number, nowMs: number) =>
+    workoutFlowReducer(state, { type: 'goTo', exerciseIndex, nowMs })
+
+  describe('When the athlete goes to prancha and back to supino by the sequence', () => {
+    it('Then supino should show 42500 g and 8 reps again', () => {
+      const onPrancha = goToExercise(onSet2, 1, T0 + 100_000)
+      const back = goToExercise(onPrancha, 0, T0 + 110_000)
+
+      expect(shownValuesOf(back)).toEqual({ loadG: 42_500, reps: 8, seconds: null })
+    })
+  })
+
+  describe('When prancha is adjusted to 50 s and the athlete goes to supino and back', () => {
+    it('Then prancha should show 45 s, the adjust being lost', () => {
+      const onPrancha = adjust(goToExercise(onSet2, 1, T0 + 100_000), 'seconds', 1)
+      const back = goToExercise(goToExercise(onPrancha, 0, T0 + 110_000), 1, T0 + 120_000)
+
+      expect(shownValuesOf(back).seconds).toBe(45)
+    })
+  })
+})
+
+describe('Given supino-reto adjusted to 42500 g and 8 reps but not recorded', () => {
+  describe('When the athlete skips it', () => {
+    it('Then prancha should show its own filled values, not the ones of supino', () => {
+      const adjusted = adjust(
+        adjust(createWorkoutFlow(sessionOf([SUPINO_40, PRANCHA])), 'loadG', 1),
+        'reps',
+        -2,
+      )
+      const skipped = workoutFlowReducer(adjusted, { type: 'skip', nowMs: T0 })
+
+      expect(shownValuesOf(skipped)).toEqual({ loadG: 0, reps: null, seconds: 45 })
+    })
+  })
+})
+
+describe('Given prancha adjusted to 50 s with next tapped at T0', () => {
+  const adjusted = adjust(createWorkoutFlow(sessionOf([PRANCHA])), 'seconds', 1)
+  const counting = next(adjusted, T0)
+  const timing = timerReach(counting, T0 + 3_000)
+
+  describe('When the execution runs', () => {
+    it('Then should end at T0 + 53 s and read 50 at its start', () => {
+      expect([deadlineOf(timing), timerReadingOf(timing, T0 + 3_000).value]).toEqual([
+        T0 + 53_000,
+        50,
+      ])
+    })
+
+    it('Then should not record at T0 + 52 999 ms', () => {
+      expect(timerReach(timing, T0 + 52_999).recorded).toHaveLength(0)
+    })
+
+    it('Then should record 50 s performed at T0 + 53 s when the time is reached', () => {
+      const [recorded] = timerReach(timing, T0 + 53_000).recorded
+
+      expect([recorded?.seconds, recorded?.performedAt]).toEqual([
+        50,
+        new Date(T0 + 53_000).toISOString(),
+      ])
+    })
+  })
+})
+
+describe('Given prancha adjusted to 50 s and 2500 g, running its execution from T0 + 3 s', () => {
+  const adjusted = adjust(adjust(createWorkoutFlow(sessionOf([PRANCHA])), 'seconds', 1), 'loadG', 1)
+  const timing = timerReach(next(adjusted, T0), T0 + 3_000)
+
+  describe('When next ends the execution early at T0 + 23 s', () => {
+    const ended = next(timing, T0 + 23_000)
+
+    it('Then should record 20 s and the 2500 g shown', () => {
+      const [recorded] = ended.recorded
+
+      expect([recorded?.seconds, recorded?.loadG]).toEqual([20, 2_500])
+    })
+
+    it('Then set 2 should start from the 50 s shown before the execution', () => {
+      expect(shownValuesOf(restEnd(ended, T0 + 83_000)).seconds).toBe(50)
+    })
+  })
+
+  describe('When cancel arrives in the count or in the execution', () => {
+    it.each([
+      ['count', next(adjusted, T0)],
+      ['execution', timing],
+    ])('Then the %s should go back to set 1 showing 50 s', (_name, state) => {
+      const cancelled = cancel(state, T0 + 10_000)
+
+      expect([cancelled.phase, cancelled.setNumber, shownValuesOf(cancelled).seconds]).toEqual([
+        'set',
+        1,
+        50,
+      ])
+    })
+  })
+})
+
+describe('Given a saved state on set 1 of supino-reto', () => {
+  const adjusted = adjust(
+    adjust(createWorkoutFlow(sessionOf([SUPINO_40, PRANCHA])), 'loadG', 1),
+    'reps',
+    -2,
+  )
+
+  describe('When it is restored with a draft of 42500 g and 8 reps', () => {
+    it('Then should show the same values', () => {
+      expect(shownValuesOf(restoreWorkoutFlow(adjusted, T0 + 60_000))).toEqual({
+        loadG: 42_500,
+        reps: 8,
+        seconds: null,
+      })
+    })
+  })
+
+  describe('When it is restored from a workout saved before the adjust existed', () => {
+    const { draft: _draft, carriedValues: _carried, ...old } = adjusted
+    const restored = restoreWorkoutFlow(old as WorkoutFlowState, T0 + 60_000)
+
+    it('Then should show the filled values', () => {
+      expect(shownValuesOf(restored)).toEqual({ loadG: 40_000, reps: 10, seconds: null })
+    })
+
+    it('Then should take an adjust', () => {
+      expect(shownValuesOf(adjust(restored, 'loadG', 1)).loadG).toBe(42_500)
+    })
+  })
+
+  describe('When it is restored with a draft that is negative or not an integer', () => {
+    it.each([
+      [{ loadG: -2_500, reps: 8, seconds: null }],
+      [{ loadG: 42_500, reps: 8.5, seconds: null }],
+      [{ loadG: 42_500, reps: 0, seconds: null }],
+    ])('Then %o should be dropped for the filled values', (draft) => {
+      const restored = restoreWorkoutFlow({ ...adjusted, draft }, T0 + 60_000)
+
+      expect(shownValuesOf(restored)).toEqual({ loadG: 40_000, reps: 10, seconds: null })
+    })
+  })
+})
+
+describe('Given the 3rd and last set of supino-reto adjusted to 42500 g and 8 reps and recorded', () => {
+  const onSet3 = restEnd(
+    next(
+      restEnd(next(createWorkoutFlow(sessionOf([SUPINO_40, PRANCHA])), T0), T0 + 90_000),
+      T0 + 95_000,
+    ),
+    T0 + 185_000,
+  )
+  const recordedLast = next(adjust(adjust(onSet3, 'loadG', 1), 'reps', -2), T0 + 190_000)
+
+  describe('When the rest ends and prancha comes up', () => {
+    it('Then prancha should show its own filled values, not the ones of supino', () => {
+      const onPrancha = restEnd(recordedLast, T0 + 280_000)
+
+      expect(shownValuesOf(onPrancha)).toEqual({ loadG: 0, reps: null, seconds: 45 })
     })
   })
 })
