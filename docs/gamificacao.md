@@ -1,6 +1,6 @@
 # Projeto de gamificação do Heavy Duty (Octalysis)
 
-**Versão:** 0.4 · **Data:** 2026-11-20 · **Status:** rascunho, sujeito a revisão do PO · Elaborado com apoio de IA
+**Versão:** 0.5 · **Data:** 2026-11-22 · **Status:** rascunho, sujeito a revisão do PO · Elaborado com apoio de IA
 
 Neste documento, **Decisão** marca o que o PO decidiu e **Proposta** marca o que foi sugerido e ainda não foi validado. O resumo do projeto e os IDs de questões (Q), riscos (R), hipóteses (H) e decisões (D) estão em `prd.md`, Seção 3. A gamificação entra nas ondas 5 a 7 do roadmap.
 
@@ -10,7 +10,7 @@ O protótipo navegável mostra as mecânicas deste documento com valores ilustra
 
 A academia caiu para uma vez por semana ou menos porque nada puxa o PO de volta. A gamificação existe para criar esse gatilho fora da academia, sustentar a regularidade ao longo do tempo e dar sensação de progresso durante o treino.
 
-Ela usa pontos, níveis, recordes, medalhas e ranking pessoal, sem elementos sociais (**Decisão**, PRD D23). A versão 0.1 deste documento excluía pontos, medalhas e ranking. O PO retirou essa exclusão porque a gamificação ficou discreta demais no dia a dia. Na versão 0.3, o grupo passou a perder nível quando a janela passa (PRD, D24). Na versão 0.4, o nível passou a ir de 1 a 20 e a medir a forma atual do grupo (PRD, D28).
+Ela usa pontos, níveis, recordes, medalhas e ranking pessoal, sem elementos sociais (**Decisão**, PRD D23). A versão 0.1 deste documento excluía pontos, medalhas e ranking. O PO retirou essa exclusão porque a gamificação ficou discreta demais no dia a dia. Na versão 0.3, o grupo passou a perder nível quando a janela passa (PRD, D24). Na versão 0.4, o nível passou a ir de 1 a 20 e a medir a forma atual do grupo (PRD, D28). Na versão 0.5, o PO aceitou as propostas da Q06, da Q08, da Q11, da Q12 e da Q13 (PRD, D39 a D43): a sugestão pelas janelas, o músculo secundário pela metade, os pontos e o nível, a proteção da sequência de semanas e o ritmo da perda passam de **Proposta** a **Decisão**, com os números como parâmetros de partida, recalculáveis com os dados reais (ADR-010). As stories estão no PRD, Seção 9.
 
 ## Regra de desenho: black hat e white hat
 

@@ -4,8 +4,8 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 0.3 |
-| Data | 20/11/2026 |
+| Versão | 0.4 |
+| Data | 22/11/2026 |
 | Status | Rascunho — sujeito a revisão humana |
 | Classificação | Público |
 | Elaboração | Elaborado com apoio de IA (Lean Inception solo, método de Paulo Caroli, traduzido para SAFe) |
@@ -167,15 +167,17 @@ O próximo ciclo trimestral, em meados de dezembro de 2026, é marco do MVP, nã
 | F05 | Descanso do programa | Feature | 3 | E | $ | ♥♥ | Verde | O descanso automático mantém o ritmo sem decisão do atleta | Conta o descanso planejado; um toque pula; ao fim, abre a próxima série ou exercício |
 | F04 | Ajuste por arrasto | Feature | 4 | EE | $$ | ♥♥ | Amarelo | Ajustar sem teclado mantém a meta de um toque | Arrasto altera carga, repetições ou tempo em passos; carga não fica negativa; última série corrigível |
 | F06 | Histórico (via MCP) | Feature | 4 | E | $$ | ♥♥ | Verde | Consultar e corrigir pelo Claude mantém o histórico confiável | Consulta por intervalo; edição e remoção com confirmação |
-| F07 | Cálculo da janela por grupo | Feature + EN01 | 5 | EE | $$$ | ♥♥ | Vermelho | Uma janela calibrada com dados reais é crível e puxa o PO de volta | A definir na onda 5 (depende de EN01, Q07, Q08) |
-| F15a | Indicadores de volume por grupo | Feature | 5 | E | $$ | ♥ | Verde | Medir o O4 sem esforço manual | A definir |
-| F10 | Progresso por grupo e esfriamento | Feature | 6 | E | $$ | ♥♥ | Amarelo | Progresso visível sustenta a motivação (Octalysis 2) | A definir (depende de Q04) |
-| F12 | Sugestão do treino do dia pelas janelas | Feature | 6 | E | $$ | ♥♥ | Amarelo | O atleta não precisa decidir o que treinar | A definir (depende de Q06) |
-| F15b | Indicador de janelas aproveitadas | Feature | 6 | E | $$ | ♥ | Verde | Medir o O1 | A definir |
-| F08 | Mapa do corpo | Feature | 7 | EE | $$$ | ♥♥♥ | Amarelo | O mapa torna o estado das janelas visível de relance | A definir (protótipo antes) |
-| F09 | Avisos perto de abrir e de fechar | Feature | 7 | EE | $$$ | ♥♥ | Amarelo | O aviso é o gatilho que falta hoje (H02) | A definir (depende de Q02) |
-| F11 | Períodos de 12 semanas e retrato | Feature | 7 | E | $ | ♥♥ | Verde | Começo e fim dão sentido ao esforço (Octalysis 4) | A definir (depende de Q01) |
-| F17 | Avisos por e-mail | Feature | 7 | E | $ | ♥ | Vermelho | Um segundo canal garante o gatilho quando o aviso no celular não chega (R01, H02) | Aviso de janela por letra, aviso de queda de nível e resumo semanal por e-mail, sempre junto com o aviso no celular, pelo servidor SMTP próprio (ADR-007) |
+| F07 | Cálculo da janela por grupo | Feature + EN01 | 5 | EE | $$$ | ♥♥ | Vermelho | Uma janela calibrada com dados reais é crível e puxa o PO de volta | Estado da janela por grupo (descansando, em janela, esfriando) pelo MCP e no treino do dia; reabertura no fim do treino; regra validada pelo PO antes da tela (EN01) |
+| F15a | Indicadores de volume por grupo | Feature | 5 | E | $$ | ♥ | Verde | Medir o O4 sem esforço manual | Volume semanal por grupo pelo MCP, com o músculo secundário contando metade |
+| F10 | Progresso por grupo e esfriamento | Feature | 6a e 6b | E | $$ | ♥♥ | Amarelo | Progresso visível sustenta a motivação (Octalysis 2) | Pontos por série relativos ao plano; nível de 1 a 20 por grupo; esfriamento e queda de nível; memória muscular; nível geral |
+| F12 | Sugestão do treino do dia pelas janelas | Feature | 6b | E | $$ | ♥♥ | Amarelo | O atleta não precisa decidir o que treinar | Letra sugerida pelas janelas, com a regra da D39 |
+| F15b | Indicador de janelas aproveitadas | Feature | 6b | E | $$ | ♥ | Verde | Medir o O1 | Janelas aproveitadas por semana pelo MCP; meta semanal no treino do dia |
+| F08 | Mapa do corpo | Feature | 7a | EE | $$$ | ♥♥♥ | Amarelo | O mapa torna o estado das janelas visível de relance | Estado de cada grupo no mapa, sem depender só da cor; detalhe do grupo |
+| F09 | Avisos perto de abrir e de fechar | Feature | 7a | EE | $$$ | ♥♥ | Amarelo | O aviso é o gatilho que falta hoje (H02) | Avisos no app instalado: um por letra perto de a janela abrir e de fechar, e antes da queda de nível |
+| F11 | Períodos de 12 semanas e retrato | Feature | 7b | E | $ | ♥♥ | Verde | Começo e fim dão sentido ao esforço (Octalysis 4) | Período de 12 semanas com frase de intenção, retrato congelado e sequência de semanas com uma proteção por período |
+| F17 | Avisos por e-mail | Feature | 7a e 7b | E | $ | ♥ | Vermelho | Um segundo canal garante o gatilho quando o aviso no celular não chega (R01, H02) | Aviso de janela por letra, aviso de queda de nível e resumo semanal por e-mail, sempre junto com o aviso no celular, pelo servidor SMTP próprio (ADR-007) |
+| F18 | Recordes | Feature | 6a | E | $$ | ♥♥ | Verde | O recorde marca o progresso real de carga (O4) e equilibra o peso extrínseco do jogo | Recorde por número de repetições; marca ao lado da carga; série que passa do recorde |
+| F19 | Medalhas e ranking pessoal | Feature | 7b | E | $ | ♥♥ | Amarelo | Medalhas e ranking guardam o histórico de longo prazo (Octalysis 4) | Medalhas, inclusive ocultas, numa estante; treinos do período ordenados por pontos |
 
 ### Enabler de exploração
 - **EN01, calibrar a janela (de F07).** Pergunta: que horas-base por objetivo e que ajuste pelo volume fazem a janela parecer certa no uso real? Insumo: o histórico registrado durante o MVP. Aprendizado esperado: uma regra de cálculo validada pelo PO antes de a janela aparecer.
@@ -223,15 +225,19 @@ Todas as ondas passam nas regras do Caroli (conferidas com código): até 3 func
 | 2 | F02, F16 | Programa montado pelo Claude |
 | 3 | F03, F05 | Treino registrado pelo celular |
 | 4 | F04, F06 | Registro completo — **fim do MVP** |
-| 5 | F07, F15a | Janela calibrada com dados reais; indicador de volume |
-| 6 | F10, F12, F15b | Progresso, treino do dia e indicador de janelas |
-| 7 | F08, F09, F11, F17 | Mapa, avisos (no celular e por e-mail) e períodos: início do primeiro período de 12 semanas |
+| 5 | F07, F15a, com a EN01 | Janela calibrada com dados reais; volume por grupo pelo MCP |
+| 6a | F10 (pontos, nível e esfriamento), F18 | Pontos, nível por grupo, esfriamento e recordes |
+| 6b | F10 (memória muscular e nível geral), F12, F15b | Memória muscular, nível geral, treino do dia pelas janelas e meta semanal |
+| 7a | F08, F09, F17 (sem o resumo semanal) | Mapa do corpo e avisos no celular e por e-mail |
+| 7b | F11, F19, F17 (resumo semanal) | Períodos, retrato, sequência de semanas, medalhas e ranking: início do primeiro período de 12 semanas |
+
+A divisão das ondas 6 e 7 em partes, cada uma com deploy próprio, e as features F18 e F19 vêm da D35 e da D36. A divisão veio depois da conferência com as regras do Caroli e não foi reconferida com código. A F18 e a F19 ficam fora do cálculo do WSJF. As telas de administração no Mac entram depois da onda 7 (D37).
 
 ---
 
-## 9. User stories por feature (MVP)
+## 9. User stories por feature
 
-São 15 stories. Os exemplos de cargas e exercícios nos cenários são ilustrativos.
+São 42 stories: 15 do MVP (ondas 1 a 4) e 27 das ondas 5 a 7, contando as duas da EN01. Os exemplos de cargas e exercícios nos cenários são ilustrativos. Nas ondas 5 a 7, os números de pontos, níveis e janelas são os parâmetros de partida das D38 a D43 e mudam com a calibração, sem perda de dado, porque o estado do jogo é derivado do histórico (ADR-010).
 
 ### F01. Exercícios, músculos e grupos
 - **US-F01-01.** Como planejador, quero cadastrar músculos ligados a um grupo muscular, para que o progresso seja somado por grupo.
@@ -502,9 +508,516 @@ Funcionalidade: Histórico
     Então a edição é recusada com o motivo "treino não encontrado"
 ```
 
-### F17. Avisos por e-mail (onda 7, fora do MVP)
+### F15a. Indicadores de volume por grupo (onda 5)
 
-Esta feature entra com os avisos da onda 7 (D32). As stories das outras features das ondas 5 a 7 ainda serão escritas.
+- **US-F15a-01.** Como planejador, quero consultar pelo Claude o volume semanal de cada grupo muscular, para medir a progressão de carga (O4) sem conta manual.
+
+O volume é a soma de carga × repetições. O músculo secundário conta metade para o grupo (D40). Até a decisão da Q07, o exercício por tempo aparece em segundos, fora do volume em kg.
+
+```gherkin
+# language: pt
+Funcionalidade: Volume por grupo muscular
+
+  Cenário: volume da semana por grupo
+    Dado que na semana o atleta registrou 3 séries de 10 repetições com 40 kg no "Supino reto"
+    E que o "Supino reto" ativa o peitoral maior como principal e o tríceps braquial como secundário
+    Quando o planejador consulta o volume da semana pelo Claude
+    Então o grupo peito aparece com 1.200 kg
+    E o grupo tríceps aparece com 600 kg
+
+  Cenário: comparação com a semana anterior
+    Dado que o volume do grupo costas foi de 2.000 kg na semana anterior e de 2.400 kg nesta semana
+    Quando o planejador consulta o volume das duas semanas
+    Então o grupo costas aparece com alta de 20%
+
+  Cenário: exercício por tempo
+    Dado que na semana o atleta registrou 3 séries de 45 s na "Prancha"
+    Quando o planejador consulta o volume da semana
+    Então o grupo abdômen aparece com 135 s, separados do volume em kg
+```
+
+### EN01. Calibrar a janela (onda 5)
+
+- **EN01-01.** Como planejador, quero simular pelo Claude as janelas de cada grupo muscular sobre o histórico registrado, com os parâmetros que eu escolher, para calibrar a regra antes de a janela aparecer no celular.
+- **EN01-02.** Como PO, quero validar a regra e os parâmetros da janela com as quatro semanas de dados do MVP, para que a janela estreie crível.
+
+A regra de partida sai da literatura sobre recuperação (H03) e dos valores do protótipo; os dados reais ajustam o volume e confirmam a regra (D38). A EN01-02 não tem tela: a saída é uma ADR com a regra e os parâmetros validados, e a troca dos parâmetros no código.
+
+```gherkin
+# language: pt
+Funcionalidade: Simulação da janela
+
+  Cenário: janelas do histórico com os parâmetros em uso
+    Dado que o atleta treinou costas na segunda às 7h e na quinta às 7h
+    Quando o planejador simula as janelas de costas na semana
+    Então cada treino aparece com a abertura e o fechamento da janela seguinte
+    E cada treino aparece como dentro ou fora da janela anterior
+
+  Cenário: simulação com outros parâmetros
+    Quando o planejador simula as janelas com horas-base diferentes das que estão em uso
+    Então o resultado usa as horas-base pedidas
+    E os parâmetros em uso no app não mudam
+
+  Cenário: linha de base em janelas
+    Quando o planejador simula as janelas de todo o histórico
+    Então o resultado mostra, por grupo, quantas janelas foram aproveitadas (H04)
+
+  Cenário: simulação sem histórico
+    Dado que nenhum treino foi registrado
+    Quando o planejador simula as janelas
+    Então o resultado vem vazio, sem erro
+```
+
+### F07. Cálculo da janela por grupo (onda 5)
+
+- **US-F07-01.** Como planejador, quero consultar pelo Claude o estado da janela de cada grupo muscular, para saber quais grupos estão prontos para treinar.
+- **US-F07-02.** Como atleta, quero ver no treino do dia quais grupos de cada letra estão em janela e até quando, para escolher o treino sem pensar.
+- **US-F07-03.** Como atleta, quero ver no fim do treino quando cada grupo trabalhado reabre, para saber o efeito do treino que acabei de fazer.
+
+A janela de cada grupo é calculada a partir do último treino do grupo: o objetivo do programa define a janela-base, e o volume ajustado do treino estica ou encurta a base. Um grupo está descansando antes de a janela abrir, em janela enquanto ela está aberta e esfriando depois de ela fechar sem treino. A janela só aparece no celular depois da EN01-02.
+
+```gherkin
+# language: pt
+Funcionalidade: Janela de atividade por grupo
+
+  Cenário: grupo descansando
+    Dado que o atleta treinou peito hoje às 7h
+    Quando o planejador consulta as janelas pelo Claude
+    Então peito aparece descansando, com o horário em que a janela abre
+
+  Cenário: grupo em janela
+    Dado que a janela de costas abriu e ainda não fechou
+    Quando o planejador consulta as janelas
+    Então costas aparece em janela, com o horário em que a janela fecha
+
+  Cenário: janela passada sem treino
+    Dado que a janela de quadríceps fechou sem treino de quadríceps
+    Quando o planejador consulta as janelas
+    Então quadríceps aparece esfriando desde o fechamento da janela
+
+  Cenário: grupo nunca treinado
+    Dado que nenhum treino trabalhou panturrilhas
+    Quando o planejador consulta as janelas
+    Então panturrilhas aparece sem janela
+
+  Cenário: volume maior estica a janela
+    Dado dois treinos de peito no mesmo objetivo e no mesmo horário, com volumes ajustados diferentes
+    Quando o planejador consulta as janelas de cada um
+    Então a janela do treino de maior volume abre mais tarde
+
+  Cenário: letra com grupos em janela
+    Dado que costas e bíceps estão em janela até amanhã às 20h
+    E que a letra B treina costas, bíceps e lombar
+    Quando o atleta abre o treino do dia
+    Então a letra B mostra costas e bíceps em janela até amanhã às 20h
+
+  Cenário: grupo descansando na letra
+    Dado que a janela de peito abre amanhã às 9h
+    Quando o atleta abre o treino do dia
+    Então a letra que treina peito mostra peito descansando até amanhã às 9h
+
+  Cenário: treino do dia sem histórico
+    Dado que nenhum treino foi registrado
+    Quando o atleta abre o treino do dia
+    Então as letras aparecem sem estado de janela
+
+  Cenário: reabertura no fim do treino
+    Dado que o atleta terminou a letra A, que treina peito, ombros e tríceps
+    Quando a tela de treino terminado aparece
+    Então ela mostra quando a janela de peito, de ombros e de tríceps abre
+
+  Cenário: reabertura de treino encerrado antes
+    Dado que o atleta encerrou a letra A antes dos exercícios de ombros
+    Quando a tela de treino terminado aparece
+    Então ela mostra a reabertura só dos grupos que tiveram série registrada
+```
+
+### F10. Progresso por grupo e esfriamento (ondas 6a e 6b)
+
+- **US-F10-01 (6a).** Como atleta, quero ver os pontos que cada série rende, na hora do registro, para sentir o efeito de cada série.
+- **US-F10-02 (6a).** Como atleta, quero ver o nível de cada grupo muscular subir com os pontos, para ver a forma de cada grupo melhorar.
+- **US-F10-03 (6a).** Como atleta, quero ver o grupo esfriar e perder nível quando a janela passa sem treino, para ter motivo de voltar a tempo.
+- **US-F10-04 (6b).** Como atleta, quero pontos em dobro enquanto um grupo está abaixo do melhor nível, para recuperar rápido o que perdi.
+- **US-F10-05 (6b).** Como atleta, quero ver o nível geral e o grupo que o limita, para saber qual grupo treinar.
+
+Parâmetros de partida (D41 e D43), recalculáveis com os dados reais (ADR-010): a série que bate o plano vale 10 pontos, até o dobro do plano; os pontos valem em dobro com algum grupo do exercício em janela; o nível *n* custa 40 + 3 × (*n* − 1) pontos; o grupo esfriando perde cerca de 40 pontos por dia. A memória muscular não soma com o ×2 da janela. O rendimento de um treino fora da janela depende da Q15, e o primeiro treino depois de um esfriamento depende da Q04.
+
+```gherkin
+# language: pt
+Funcionalidade: Pontos, nível e esfriamento
+
+  Cenário: série que bate o plano
+    Dado que o plano do "Supino reto" é de 10 repetições com 40 kg
+    Quando o atleta registra 10 repetições com 40 kg
+    Então a série rende 10 pontos
+    E os pontos sobem do botão "Próximo"
+
+  Cenário: série acima do plano tem limite
+    Quando o atleta registra o triplo do volume planejado da série
+    Então a série rende 20 pontos, o dobro do plano
+
+  Cenário: série em janela
+    Dado que peito está em janela
+    Quando o atleta registra no "Supino reto" uma série que bate o plano
+    Então a série rende 20 pontos, com a marca de pontos em dobro
+
+  Cenário: som desligado
+    Dado que o atleta desligou o som do jogo
+    Quando ele registra uma série
+    Então os pontos aparecem na tela, sem som
+
+  Cenário: barra de nível no descanso
+    Dado que peito está no nível 3
+    Quando o atleta registra uma série do "Supino reto" e o descanso começa
+    Então a barra de nível de peito cresce com os pontos da série
+
+  Cenário: subida de nível
+    Dado que faltam 5 pontos para peito sair do nível 3
+    Quando uma série rende 10 pontos para peito
+    Então peito passa ao nível 4, e a barra mostra a sobra
+
+  Cenário: entrada numa faixa
+    Quando peito passa do nível 4 ao 5
+    Então o selo da faixa de prata aparece em tela cheia por cerca de 1,7 s, sem pedir toque
+
+  Cenário: redução de movimento
+    Dado que o celular pede redução de movimento
+    Quando peito sobe de nível
+    Então o nível novo aparece sem animação
+
+  Cenário: nível máximo
+    Dado que peito está no nível 20
+    Quando o atleta registra uma série do "Supino reto"
+    Então peito continua no nível 20
+
+  Cenário: barra esvazia depois da janela
+    Dado que a janela de quadríceps fechou ontem sem treino
+    Quando o atleta abre o treino do dia
+    Então quadríceps aparece esfriando, com a barra menor que no fechamento da janela
+
+  Cenário: queda de nível
+    Dado que quadríceps está esfriando no nível 7
+    Quando a barra de quadríceps chega a zero
+    Então quadríceps cai para o nível 6 e continua esfriando
+
+  Cenário: treino interrompe o esfriamento
+    Dado que quadríceps está esfriando
+    Quando o atleta registra uma série de agachamento
+    Então quadríceps deixa de esfriar
+
+  Cenário: nível 1 não cai
+    Dado que panturrilhas está no nível 1 e esfriando
+    Quando a barra de panturrilhas chega a zero
+    Então panturrilhas continua no nível 1
+
+  Cenário: memória muscular
+    Dado que o melhor nível de costas é 12 e costas está no nível 8
+    Quando o atleta registra num exercício de costas uma série que bate o plano
+    Então a série rende pontos em dobro para costas, com a marca de memória muscular
+
+  Cenário: memória muscular não soma com a janela
+    Dado que costas está abaixo do melhor nível e em janela
+    Quando o atleta registra num exercício de costas uma série que bate o plano
+    Então a série rende o dobro, e não o quádruplo
+
+  Cenário: fim da memória muscular
+    Dado que o melhor nível de costas é 12
+    Quando costas chega ao nível 12
+    Então as séries seguintes de costas deixam de render a memória muscular
+
+  Cenário: melhor nível nunca se perde
+    Dado que o melhor nível de costas é 12
+    Quando costas cai para o nível 8
+    Então o melhor nível de costas continua 12
+
+  Cenário: nível geral
+    Dado que o programa ativo treina peito no nível 9, costas no nível 7 e quadríceps no nível 4
+    Quando o atleta abre o treino do dia
+    Então o nível geral aparece como 4, limitado por quadríceps
+
+  Cenário: grupo fora do programa
+    Dado que panturrilhas está no nível 1 e o programa ativo não treina panturrilhas
+    Quando o atleta abre o treino do dia
+    Então panturrilhas não limita o nível geral
+
+  Cenário: atalho do nível geral
+    Dado que quadríceps limita o nível geral e está em janela ou esfriando
+    Quando o atleta toca no nível geral
+    Então o app mostra a letra que mais treina quadríceps
+
+  Cenário: grupo que limita está descansando
+    Dado que quadríceps limita o nível geral e está descansando
+    Quando o atleta toca no nível geral
+    Então o app mostra quando a janela de quadríceps abre, sem levar à letra
+```
+
+### F18. Recordes (onda 6a)
+
+- **US-F18-01.** Como atleta, quero ver quando passo do meu recorde num exercício, para ver a força crescer.
+
+O recorde é a maior carga de um exercício para um número de repetições, ou mais repetições com a mesma carga. O app não sugere aumento de carga.
+
+```gherkin
+# language: pt
+Funcionalidade: Recordes
+
+  Cenário: marca do recorde na série
+    Dado que o recorde do "Supino reto" para 10 repetições é de 42,5 kg
+    Quando o atleta abre uma série do "Supino reto" com 10 repetições
+    Então a marca de 42,5 kg aparece ao lado da carga
+
+  Cenário: carga acima do recorde
+    Dado que o recorde do "Supino reto" para 10 repetições é de 42,5 kg
+    Quando o atleta registra 10 repetições com 45 kg
+    Então a série aparece como recorde
+    E o recorde para 10 repetições passa a 45 kg
+
+  Cenário: mais repetições com a mesma carga
+    Dado que o recorde do "Supino reto" com 40 kg é de 10 repetições
+    Quando o atleta registra 12 repetições com 40 kg
+    Então a série aparece como recorde
+
+  Cenário: correção da última série
+    Dado que a última série virou recorde por um erro de arrasto
+    Quando o atleta corrige a série para uma carga abaixo do recorde anterior
+    Então o recorde volta ao valor anterior
+```
+
+### F12. Sugestão do treino do dia pelas janelas (onda 6b)
+
+- **US-F12-01.** Como atleta, quero que o treino do dia sugira a letra pelas janelas, para não precisar decidir o que treinar.
+
+A regra segue a D39: sai da sugestão a letra cujos grupos estão na maioria descansando; entre as outras, grupos esfriando pesam mais que grupos em janela, e o grupo mais fraco desempata. Sem histórico, vale a sugestão da US-F03-01.
+
+```gherkin
+# language: pt
+Funcionalidade: Sugestão pelas janelas
+
+  Cenário: letra com a maioria dos grupos descansando
+    Dado que a maioria dos grupos da letra A está descansando
+    E que a maioria dos grupos da letra B está em janela
+    Quando o atleta abre o treino do dia
+    Então a letra B aparece sugerida
+
+  Cenário: grupos esfriando pesam mais
+    Dado que a letra B tem grupos em janela e a letra C tem grupos esfriando
+    E que nenhuma das duas tem a maioria dos grupos descansando
+    Quando o atleta abre o treino do dia
+    Então a letra C aparece sugerida
+
+  Cenário: grupo mais fraco desempata
+    Dado que as letras B e C empatam pelas janelas
+    E que o grupo de menor nível está na letra C
+    Quando o atleta abre o treino do dia
+    Então a letra C aparece sugerida
+
+  Cenário: sem histórico
+    Dado que nenhum treino foi registrado
+    Quando o atleta abre o treino do dia
+    Então a sugestão segue a regra da US-F03-01
+```
+
+### F15b. Indicador de janelas aproveitadas (onda 6b)
+
+- **US-F15b-01.** Como planejador, quero consultar pelo Claude quantas janelas foram aproveitadas em cada semana, para medir a regularidade (O1, meta de 70%).
+- **US-F15b-02.** Como atleta, quero ver a meta semanal de janelas no treino do dia, para saber quanto falta na semana.
+
+Uma janela é aproveitada quando o grupo é treinado enquanto ela está aberta. O planejador define a meta semanal pelo Claude [a confirmar: na especificação da US-F15b-02].
+
+```gherkin
+# language: pt
+Funcionalidade: Janelas aproveitadas e meta semanal
+
+  Cenário: janelas aproveitadas na semana
+    Dado que na semana abriram 10 janelas e o atleta treinou o grupo dentro de 7 delas
+    Quando o planejador consulta as janelas aproveitadas da semana
+    Então o resultado mostra 7 de 10, ou 70%
+
+  Cenário: semana sem janela
+    Dado que nenhuma janela abriu na semana
+    Quando o planejador consulta as janelas aproveitadas da semana
+    Então o resultado mostra 0 de 0, sem porcentagem
+
+  Cenário: progresso da meta semanal
+    Dado que a meta semanal é de 6 janelas e o atleta aproveitou 4 nesta semana
+    Quando o atleta abre o treino do dia
+    Então a faixa de jogo mostra 4 de 6
+
+  Cenário: meta definida pelo Claude
+    Quando o planejador define pelo Claude a meta semanal de 8 janelas
+    Então a faixa de jogo do treino do dia passa a mostrar a meta de 8
+```
+
+### F08. Mapa do corpo (onda 7a)
+
+- **US-F08-01.** Como atleta, quero ver num mapa do corpo o estado de cada grupo muscular, para entender de relance o que está em janela, descansando ou esfriando.
+
+O visual segue o protótipo (`docs/prototipo/`).
+
+```gherkin
+# language: pt
+Funcionalidade: Mapa do corpo
+
+  Cenário: estado de cada grupo no mapa
+    Dado que peito está em janela, costas está descansando e quadríceps está esfriando
+    Quando o atleta abre o mapa do corpo
+    Então cada grupo aparece com a marca do seu estado
+
+  Cenário: estado sem depender só da cor
+    Quando o atleta abre o mapa do corpo
+    Então o estado de cada grupo também aparece por forma ou texto, sem depender só da cor
+
+  Cenário: detalhe do grupo
+    Quando o atleta toca em peito no mapa
+    Então aparecem o nível, a barra de progresso, o melhor nível e o horário da janela de peito
+```
+
+### F09. Avisos perto de abrir e de fechar (onda 7a)
+
+- **US-F09-01.** Como atleta, quero ativar os avisos no app instalado, para receber os avisos no celular.
+- **US-F09-02.** Como atleta, quero um aviso perto de a janela abrir e perto de fechar, um por letra, e um aviso antes de um grupo cair de nível, para não perder a janela nem o nível.
+
+O celular é um iPhone, e o aviso exige o app instalado na tela inicial, com iOS 16.4 ou posterior (D44, R01). A antecedência dos avisos depende da Q16. Todo aviso também vai por e-mail (D32, F17).
+
+```gherkin
+# language: pt
+Funcionalidade: Avisos no celular
+
+  Cenário: ativar os avisos
+    Dado que o app está instalado na tela inicial do iPhone
+    Quando o atleta ativa os avisos e aceita a permissão do sistema
+    Então o celular passa a receber os avisos do app
+
+  Cenário: app fora da tela inicial
+    Dado que o app está aberto no Safari, sem instalação
+    Quando o atleta abre o controle dos avisos
+    Então o controle aparece indisponível, com o motivo "instale o app na tela inicial"
+
+  Cenário: permissão negada
+    Quando o atleta nega a permissão do sistema
+    Então o controle dos avisos aparece desligado
+
+  Cenário: desativar os avisos
+    Quando o atleta desativa os avisos no app
+    Então o celular deixa de receber avisos
+
+  Cenário: aviso perto de abrir
+    Dado que a janela de costas, bíceps e lombar abre amanhã às 9h
+    Quando chega a hora do aviso de abertura
+    Então o atleta recebe um aviso só, com a letra B e o horário da abertura
+
+  Cenário: aviso perto de fechar
+    Dado que a janela da letra B fecha hoje às 20h e os grupos não foram treinados
+    Quando chega a hora do aviso de fechamento
+    Então o atleta recebe um aviso com a letra B e o horário do fechamento
+
+  Cenário: sem aviso de fechamento depois do treino
+    Dado que o atleta treinou a letra B dentro da janela
+    Quando chega a hora do aviso de fechamento da letra B
+    Então nenhum aviso de fechamento é enviado
+
+  Cenário: aviso antes da queda
+    Dado que quadríceps cai para o nível 6 amanhã
+    Quando chega a hora do aviso de queda
+    Então o atleta recebe um aviso com o nível atual, o nível depois da queda e a letra que treina o grupo
+
+  Cenário: toque no aviso
+    Quando o atleta toca num aviso
+    Então o app abre no treino do dia
+```
+
+### F11. Períodos de 12 semanas e retrato (onda 7b)
+
+- **US-F11-01.** Como atleta, quero que o progresso seja organizado em períodos de 12 semanas, com uma frase de intenção, para dar começo e fim ao esforço.
+- **US-F11-02.** Como atleta, quero que o fim do período congele o mapa num retrato, para guardar a forma de cada período.
+- **US-F11-03.** Como atleta, quero ver a sequência de semanas com a meta semanal cumprida, para manter a regularidade de uma semana para outra.
+
+O período zera as metas e o ranking; o nível de cada grupo atravessa os períodos (D24). A sequência de semanas tem uma proteção por período (D42). O alinhamento dos períodos ao ciclo trimestral depende da Q01.
+
+```gherkin
+# language: pt
+Funcionalidade: Períodos, retratos e sequência de semanas
+
+  Cenário: início do primeiro período
+    Quando o primeiro período começa
+    Então o atleta escreve a frase de intenção do período
+    E o período mostra o início, o fim 12 semanas depois e a semana atual
+
+  Cenário: o nível atravessa o período
+    Dado que peito está no nível 15 no fim de um período
+    Quando o período seguinte começa
+    Então peito continua no nível 15
+    E as metas e o ranking recomeçam do zero
+
+  Cenário: retrato no fim do período
+    Quando o período termina
+    Então o mapa do corpo, os níveis e a frase de intenção ficam congelados num retrato
+
+  Cenário: coleção de retratos
+    Dado que dois períodos terminaram
+    Quando o atleta abre a tela Período
+    Então os dois retratos aparecem lado a lado
+
+  Cenário: retrato congelado
+    Dado que o retrato de um período foi congelado
+    Quando o planejador edita pelo Claude um treino daquele período
+    Então o retrato continua igual
+
+  Cenário: sequência de semanas
+    Dado que o atleta cumpriu a meta semanal nas últimas 3 semanas
+    Quando o atleta abre o treino do dia
+    Então a faixa de jogo mostra a sequência de 3 semanas
+
+  Cenário: proteção da sequência
+    Dado que o atleta tem uma sequência de 5 semanas e ainda não usou a proteção do período
+    Quando uma semana termina sem a meta semanal cumprida
+    Então a sequência continua em 5 semanas, e a proteção do período fica usada
+
+  Cenário: semana perdida sem proteção
+    Dado que a proteção do período já foi usada
+    Quando uma semana termina sem a meta semanal cumprida
+    Então a sequência volta a zero
+```
+
+### F19. Medalhas e ranking pessoal (onda 7b)
+
+- **US-F19-01.** Como atleta, quero conquistar medalhas por marcos, algumas ocultas até a conquista, para guardar o que alcancei.
+- **US-F19-02.** Como atleta, quero ver a posição de cada treino no ranking pessoal do período, para comparar o treino só com os meus treinos.
+
+As medalhas marcam volume, janelas, sequência, nível e recorde. O catálogo de medalhas depende da Q17. O ranking não compara com outras pessoas (D23).
+
+```gherkin
+# language: pt
+Funcionalidade: Medalhas e ranking pessoal
+
+  Cenário: medalha conquistada
+    Dado que o atleta ainda não tem recorde registrado
+    Quando ele registra o primeiro recorde
+    Então a medalha do primeiro recorde desce do topo da tela
+    E a medalha fica na estante de medalhas
+
+  Cenário: medalha oculta
+    Quando o atleta abre a estante de medalhas
+    Então as medalhas ocultas aparecem sem nome e sem critério até a conquista
+
+  Cenário: medalha nunca se perde
+    Dado que o atleta conquistou a medalha do nível 10 em peito
+    Quando peito cai para o nível 8
+    Então a medalha continua na estante
+
+  Cenário: posição do treino no período
+    Dado que um treino do período rendeu mais pontos que o treino de hoje e os outros renderam menos
+    Quando a tela de treino terminado aparece
+    Então ela mostra "2º do período"
+
+  Cenário: ranking na tela Período
+    Quando o atleta abre a tela Período
+    Então os treinos do período aparecem ordenados por pontos
+```
+
+### F17. Avisos por e-mail (ondas 7a e 7b)
+
+Esta feature entra com os avisos da onda 7a (D32). O resumo semanal (US-F17-03) fica para a 7b, porque traz as medalhas da F19 (D36). O endereço de remetente e o horário do resumo dependem da Q14, e a entrega depende do teste do R09.
 
 - **US-F17-01.** Como atleta, quero receber por e-mail o aviso de janela, um por letra, para não perder a janela quando o aviso no celular não chega.
 - **US-F17-02.** Como atleta, quero receber por e-mail o aviso antes de um grupo cair de nível, para ter tempo de treinar.
@@ -566,18 +1079,14 @@ Funcionalidade: Avisos por e-mail
 
 ### Questões em aberto
 - **Q01:** o primeiro período começa fora do ciclo; os períodos seguintes se realinham ao ciclo trimestral?
-- **Q02:** o celular é iPhone ou Android?
 - **Q04:** o primeiro treino depois de um esfriamento rende o progresso cheio ("bem-vindo de volta")?
-- **Q06:** quando a janela sugere uma letra e o plano sugere outra, qual vale? A proposta é que a recuperação decida quais letras podem ser feitas: sai da sugestão a letra cujos grupos estão na maioria descansando. Entre as outras, grupos esfriando pesam mais que grupos em janela, e o grupo mais fraco desempata. O atalho do nível geral só leva à letra do grupo mais fraco se ele estiver em janela ou esfriando.
 - **Q07:** como calcular o volume de um exercício por tempo?
-- **Q08:** um músculo ativado de forma secundária conta o volume inteiro para o grupo, ou só uma parte? A proposta é metade (D30).
 - **Q09:** a academia tem sinal de celular e Wi-Fi confiáveis?
-- **Q10:** em que onda entram as telas de administração no Mac (D22)?
-- **Q11:** quais são os parâmetros dos pontos e do nível? A proposta é 10 pontos por série no plano e o nível 20 em cerca de 4 semanas aproveitando todas as janelas (D23, D28).
-- **Q12:** a sequência de semanas tem proteção por período, ou sai do desenho para não castigar o retorno (D23, Q04)?
-- **Q13:** qual é o ritmo da perda de nível? A proposta é ir do 20 ao 1 em 4 a 5 semanas de esfriamento, calibrado com os dados reais (D24).
 - **Q14:** em que dia e hora sai o resumo semanal, e qual é o endereço de remetente dos e-mails (F17)?
-- **Resolvidas:** Q03 (a F13 foi removida) e Q05 (MVP sem gamificação, D18).
+- **Q15:** quanto rende um treino fora da janela, com o grupo ainda descansando (metade, um terço)?
+- **Q16:** com quantas horas de antecedência saem os avisos de abertura, de fechamento e de queda?
+- **Q17:** quais são as medalhas e o critério de cada uma? A proposta sai na especificação da US-F19-01.
+- **Resolvidas:** Q02 (D44), Q03 (a F13 foi removida), Q05 (MVP sem gamificação, D18), Q06 (D39), Q08 (D40), Q10 (D37), Q11 (D41), Q12 (D42) e Q13 (D43).
 
 ### Hipóteses e validações pendentes (o PO é o único papel)
 
@@ -635,6 +1144,16 @@ Funcionalidade: Avisos por e-mail
 | D32 | Avisos por e-mail entram na onda 7 (F17): aviso de janela por letra, aviso de queda de nível e resumo semanal. Todo aviso vai pelos dois canais, celular e e-mail. O envio é por servidor SMTP próprio no kasparov, para manter a NFR01 (ADR-007) |
 | D33 | O produto se chama Heavy Duty |
 | D34 | A roda do ajuste tem o valor maior acima: arrastar para baixo aumenta e arrastar para cima diminui. Os botões − e + ficam ao lado da roda, e os passos são de 2,5 kg, 1 repetição e 5 s (US-F04-01; decisão do PO no protótipo, plano do MVP, Seção 7) |
+| D35 | O recorde vira a F18 (onda 6a), e medalhas e ranking pessoal viram a F19 (onda 7b). A meta semanal entra na F15b (onda 6b). A sequência de semanas entra na F11 (onda 7b), porque a proteção dela é por período |
+| D36 | A onda 6 se divide em 6a (pontos, nível e esfriamento da F10; F18) e 6b (memória muscular e nível geral da F10; F12; F15b), e a onda 7 em 7a (F08; F09; F17 sem o resumo semanal) e 7b (F11; F19; resumo semanal da F17). Cada parte tem deploy próprio. O primeiro período começa com o deploy da 7b |
+| D37 | As telas de administração no Mac entram depois da onda 7 (responde à Q10) |
+| D38 | A janela estreia com uma regra de partida tirada da literatura e do protótipo, ajustada com os dados do MVP (EN01). O cálculo e a simulação pelo MCP vêm antes da janela no celular, que só aparece depois de o PO validar a regra. O volume por grupo fica só no MCP por ora |
+| D39 | A sugestão pelas janelas segue a proposta da Q06: sai da sugestão a letra cujos grupos estão na maioria descansando; entre as outras, grupos esfriando pesam mais que grupos em janela, e o grupo mais fraco desempata. O atalho do nível geral só leva à letra do grupo mais fraco se ele estiver em janela ou esfriando (responde à Q06) |
+| D40 | O músculo secundário conta metade do volume para o grupo (responde à Q08 e confirma a proposta da D30) |
+| D41 | Pontos e nível começam com os parâmetros do `gamificacao.md`: 10 pontos pela série que bate o plano, até o dobro; pontos em dobro em janela; o nível *n* custa 40 + 3 × (*n* − 1) pontos; o nível 20 em cerca de 4 semanas aproveitando todas as janelas. Os parâmetros mudam com a calibração (responde à Q11) |
+| D42 | A sequência de semanas tem uma proteção por período (responde à Q12) |
+| D43 | O grupo esfriando perde cerca de 40 pontos por dia, e vai do nível 20 ao 1 em 4 a 5 semanas. O ritmo muda com a calibração (responde à Q13) |
+| D44 | O celular é um iPhone. O aviso exige o app instalado na tela inicial, com iOS 16.4 ou posterior (responde à Q02) |
 
 ---
 
@@ -643,15 +1162,15 @@ Funcionalidade: Avisos por e-mail
 | Objetivo | Features | Stories |
 |---|---|---|
 | O5. Um toque por passo | F03, F04, F05 | US-F03-01, US-F03-02, US-F03-03, US-F03-04, US-F03-05, US-F03-06, US-F03-07, US-F04-01, US-F04-02, US-F05-01 |
-| O4. Progressão de carga | F02, F03, F06; depois F10, F15a | US-F02-01, US-F02-02, US-F03-02, US-F06-01; stories das ondas 5 e 6 a escrever |
-| O1. Regularidade | F07, F08, F09, F10, F11, F12, F15b, F17 (pós-MVP); o MVP gera os dados para a EN01 | US-F17-01 a US-F17-04; outras stories das ondas 5 a 7 a escrever |
+| O4. Progressão de carga | F02, F03, F06; depois F15a, F18 e F10 | US-F02-01, US-F02-02, US-F03-02, US-F06-01, US-F15a-01, US-F18-01 |
+| O1. Regularidade | F07, F08, F09, F10, F11, F12, F15b, F17, F19 (pós-MVP); o MVP gera os dados para a EN01 | EN01-01, EN01-02, US-F07-01 a US-F07-03, US-F10-01 a US-F10-05, US-F12-01, US-F15b-01, US-F15b-02, US-F08-01, US-F09-01, US-F09-02, US-F11-01 a US-F11-03, US-F17-01 a US-F17-04, US-F19-01, US-F19-02 |
 | NFR01. Dados próprios | F14, F16 | US-F14-01, US-F14-02, US-F16-01 |
 | Administração | F01, F02, F06, F16 | US-F01-01, US-F01-02, US-F02-01, US-F02-02, US-F06-01, US-F06-02, US-F16-01 |
 
 ---
 
 ## Próximos passos sugeridos
-1. Responder às hipóteses H12 e H13, que entram na onda 1.
-2. Incluir o MVP (ondas 1 a 4) como meta de desenvolvimento no planejamento do próximo ciclo (`plano-trimestral`), com a data de cada onda no scorecard.
-3. Responder às Q02 e Q09 antes da onda 3: o tipo de celular e o sinal na academia definem a instalação e o modo sem sinal.
-4. Ao fim do MVP, rodar a EN01 com o histórico real e escrever as stories da onda 5.
+1. Publicar o MVP no kasparov e registrar todos os treinos por quatro semanas, para o go/no-go da onda 5 (Seção 6).
+2. Responder às Q04, Q07, Q14, Q15, Q16, Q17 e Q01 antes das stories que cada uma bloqueia. Cada questão e cada story têm uma issue no GitHub, com as dependências.
+3. Testar a entrega de e-mail pelo kasparov antes da onda 7a (R09).
+4. Rodar a EN01 com o histórico real antes de a janela aparecer no celular.
