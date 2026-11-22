@@ -101,6 +101,38 @@ describe('Given an authorization request whose preview names Claude and claude.a
     })
   })
 
+  describe('When the consent shows', () => {
+    it('Then should offer Recusar before Permitir', async () => {
+      stubFetch(json(200, CONSENT))
+      stubAssign()
+
+      render(<AuthorizationScreen />)
+      await screen.findByRole('button', { name: 'Permitir' })
+
+      expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
+        'Recusar',
+        'Permitir',
+      ])
+    })
+  })
+
+  describe('When the decision is on its way', () => {
+    it('Then should disable both buttons', async () => {
+      stubFetch(json(200, CONSENT), new Promise<Response>(() => {}))
+      stubAssign()
+      render(<AuthorizationScreen />)
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Permitir' }))
+
+      await vi.waitFor(() =>
+        expect([
+          screen.getByRole('button', { name: 'Recusar' }).hasAttribute('disabled'),
+          screen.getByRole('button', { name: 'Permitir' }).hasAttribute('disabled'),
+        ]).toEqual([true, true]),
+      )
+    })
+  })
+
   describe('When the PO taps Recusar', () => {
     it('Then should send the deny decision and take the browser to redirectTo', async () => {
       const deniedRedirect = 'https://claude.ai/callback?error=access_denied&state=xyz'
@@ -137,6 +169,28 @@ describe('Given an authorization request whose redirect_uri the client did not r
         allow: screen.queryByRole('button', { name: 'Permitir' }),
         assign: assign.mock.calls,
       }).toEqual({ shown: true, allow: null, assign: [] })
+    })
+  })
+})
+
+describe('Given a refused authorization request', () => {
+  beforeEach(() => {
+    useSearchParamsMock.mockReturnValue(new URLSearchParams(REQUEST_QUERY) as never)
+  })
+
+  describe('When the refusal shows', () => {
+    it('Then the alert should carry the message and a hidden icon', async () => {
+      const message = 'Endereço de retorno não registrado por este cliente do MCP.'
+      stubFetch(json(400, { code: 'oauth_redirect_uri_invalid', message }))
+      stubAssign()
+
+      render(<AuthorizationScreen />)
+      const alert = await screen.findByRole('alert')
+
+      expect({
+        text: alert.textContent,
+        icon: alert.querySelector('svg')?.getAttribute('aria-hidden'),
+      }).toEqual({ text: message, icon: 'true' })
     })
   })
 })

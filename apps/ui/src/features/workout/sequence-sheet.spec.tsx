@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SequenceSheet } from './sequence-sheet'
 import type { RecordedSetView, SequenceItem } from './workout-flow'
@@ -28,13 +28,13 @@ const ALL_DONE: SequenceItem[] = [
   },
 ]
 
-type Handlers = { onPick?: () => void; onSkip?: () => void }
+type Handlers = { onPick?: () => void; onSkip?: () => void; onClose?: () => void }
 
 function renderSheet(
   items: SequenceItem[],
   finished: boolean,
   canSkip = false,
-  { onPick = vi.fn(), onSkip = vi.fn() }: Handlers = {},
+  { onPick = vi.fn(), onSkip = vi.fn(), onClose = vi.fn() }: Handlers = {},
 ) {
   render(
     <SequenceSheet
@@ -43,7 +43,7 @@ function renderSheet(
       finished={finished}
       canSkip={canSkip}
       returnFocusRef={{ current: null }}
-      onClose={vi.fn()}
+      onClose={onClose}
       onPick={onPick}
       onSkip={onSkip}
       onEnd={vi.fn()}
@@ -96,7 +96,7 @@ describe('Given the sequence sheet of a workout in progress, with one exercise t
         within(dialog)
           .getAllByRole('button')
           .map((button) => button.getAttribute('aria-label') ?? button.textContent),
-      ).toEqual(['Fechar', 'Tríceps na poliaPor fazer0 de 3', 'Encerrar'])
+      ).toEqual(['Tríceps na poliaPor fazer0 de 3', 'Encerrar', 'Fechar'])
     })
   })
 })
@@ -211,7 +211,7 @@ describe('Given a sequence with prancha skipped', () => {
 
 describe('Given a sequence with supino-reto done with 3 recorded sets and prancha current', () => {
   describe('When the sheet renders', () => {
-    it('Then the list "Séries de Supino reto" should read the 3 sets in order, and the buttons stay Fechar, Pular Prancha, the row of Tríceps na polia and Encerrar', async () => {
+    it('Then the list "Séries de Supino reto" should read the 3 sets in order, and the buttons stay Pular Prancha, the row of Tríceps na polia, Encerrar and Fechar', async () => {
       renderSheet(WITH_PRANCHA_CURRENT, false, true)
 
       const dialog = await screen.findByRole('dialog')
@@ -229,7 +229,7 @@ describe('Given a sequence with supino-reto done with 3 recorded sets and pranch
           'Série 2: 42,5 kg, 10 repetições',
           'Série 3: 42,5 kg, 10 repetições',
         ],
-        buttons: ['Fechar', 'Pular Prancha', 'Tríceps na poliaPor fazer0 de 3', 'Encerrar'],
+        buttons: ['Pular Prancha', 'Tríceps na poliaPor fazer0 de 3', 'Encerrar', 'Fechar'],
       })
     })
   })
@@ -355,6 +355,137 @@ describe('Given supino-reto done with a set of 42500 g and 10 repetitions', () =
       const [firstSet] = within(sets).getAllByRole('listitem')
       const visible = firstSet?.querySelector('[aria-hidden="true"]')
       expect(visible?.textContent).toBe('Série 142,5 kg10 rep')
+    })
+  })
+})
+
+const MIXED: SequenceItem[] = [
+  {
+    exerciseIndex: 0,
+    name: 'Supino reto',
+    status: 'done',
+    setsDone: 3,
+    setsTotal: 3,
+    recordedSets: [],
+  },
+  {
+    exerciseIndex: 1,
+    name: 'Crucifixo',
+    status: 'current',
+    setsDone: 0,
+    setsTotal: 3,
+    recordedSets: [],
+  },
+  {
+    exerciseIndex: 2,
+    name: 'Tríceps na polia',
+    status: 'todo',
+    setsDone: 0,
+    setsTotal: 3,
+    recordedSets: [],
+  },
+  {
+    exerciseIndex: 3,
+    name: 'Prancha',
+    status: 'skipped',
+    setsDone: 0,
+    setsTotal: 3,
+    recordedSets: [],
+  },
+]
+
+function rowsOf(dialog: HTMLElement): HTMLElement[] {
+  const list = within(dialog).getByRole('list', { name: 'Exercícios' })
+  return Array.from(list.querySelectorAll<HTMLElement>(':scope > li'))
+}
+
+describe('Given a sequence with an exercise done, the current one, one to do and one skipped', () => {
+  describe('When the sheet renders', () => {
+    it('Then every row should have a hidden circle with the status of the item', async () => {
+      renderSheet(MIXED, false, true)
+
+      const dialog = await screen.findByRole('dialog')
+      expect(
+        rowsOf(dialog).map((row) => {
+          const circle = row.querySelector<HTMLElement>('[aria-hidden="true"][data-status]')
+          return [circle?.dataset.status, circle?.getAttribute('aria-hidden')]
+        }),
+      ).toEqual([
+        ['done', 'true'],
+        ['current', 'true'],
+        ['todo', 'true'],
+        ['skipped', 'true'],
+      ])
+    })
+
+    it('Then the circle of the current and the to-do rows should carry the position and no text node', async () => {
+      renderSheet(MIXED, false, true)
+
+      const dialog = await screen.findByRole('dialog')
+      const circles = rowsOf(dialog).map((row) =>
+        row.querySelector<HTMLElement>('[aria-hidden="true"][data-status]'),
+      )
+      expect(
+        [circles[1], circles[2]].map((circle) => [circle?.dataset.position, circle?.textContent]),
+      ).toEqual([
+        ['2', ''],
+        ['3', ''],
+      ])
+    })
+
+    it('Then the circle of the done and the skipped rows should hold an icon', async () => {
+      renderSheet(MIXED, false, true)
+
+      const dialog = await screen.findByRole('dialog')
+      const circles = rowsOf(dialog).map((row) =>
+        row.querySelector<HTMLElement>('[aria-hidden="true"][data-status]'),
+      )
+      expect(
+        [circles[0], circles[3]].map((circle) => circle?.querySelector('svg') !== null),
+      ).toEqual([true, true])
+    })
+
+    it('Then the button of the exercise to do should read the name, the state and the count, without the position', async () => {
+      renderSheet(MIXED, false, true)
+
+      const dialog = await screen.findByRole('dialog')
+      expect(within(dialog).getByRole('button', { name: /^Tríceps na polia/ }).textContent).toBe(
+        'Tríceps na poliaPor fazer0 de 3',
+      )
+    })
+  })
+
+  describe('When the finger presses the row of the exercise to do and releases it', () => {
+    it('Then the row should be marked as pressed and tapping it should call onPick', async () => {
+      const onPick = vi.fn()
+      renderSheet(MIXED, false, true, { onPick })
+      const row = await screen.findByRole('button', { name: /^Tríceps na polia/ })
+
+      fireEvent.pointerDown(row, { pointerType: 'touch', isPrimary: true, button: 0 })
+      await waitFor(() => expect(row).toHaveAttribute('data-pressed'))
+      fireEvent.click(row)
+
+      expect(onPick).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('When the athlete closes the sheet by Fechar, Escape or the backdrop', () => {
+    it.each([
+      [
+        'Fechar',
+        async () => fireEvent.click(await screen.findByRole('button', { name: 'Fechar' })),
+      ],
+      [
+        'Escape',
+        async () => fireEvent.keyDown(await screen.findByRole('dialog'), { key: 'Escape' }),
+      ],
+    ])('Then %s should call onClose', async (_name, close) => {
+      const onClose = vi.fn()
+      renderSheet(MIXED, false, true, { onClose })
+
+      await close()
+
+      await waitFor(() => expect(onClose).toHaveBeenCalled())
     })
   })
 })

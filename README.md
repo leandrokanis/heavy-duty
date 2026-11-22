@@ -2,7 +2,7 @@
 
 O Heavy Duty é um app web pessoal de musculação, hospedado no próprio servidor. No celular, o app acompanha o treino na academia com um toque por passo. Pelo Claude, via MCP, o app recebe a administração: exercícios, programas e histórico. Depois do MVP, a administração também vai ter telas no Mac.
 
-Estado: scaffold da onda 1. O workspace, o app web, a API e o ambiente de desenvolvimento existem, sem regra de domínio. O plano de entrega está no roadmap de `docs/prd.md`, Seção 8.
+Estado: as ondas 1 a 4 e a EN-S1 (visual do protótipo v1) estão concluídas. O início da onda 5 e da EN01 depende de decisão do PO. O plano de entrega está no roadmap de `docs/prd.md`, Seção 8.
 
 ## Estrutura do repositório
 

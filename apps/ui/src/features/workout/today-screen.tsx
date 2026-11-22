@@ -8,8 +8,7 @@ import { useSyncQueue } from '@/sync/sync-context'
 import { type LoadedToday, loadToday } from '@/sync/today-cache'
 import { createClientId } from './client-id'
 import { LetterList } from './letter-list'
-import { PendingSetsIndicator } from './pending-sets-indicator'
-import { RejectedSetsNotice } from './rejected-sets-notice'
+import { QueueNotices } from './queue-notices'
 import { StartSheet } from './start-sheet'
 import type { Today, TodayDay } from './today.types'
 import {
@@ -79,23 +78,24 @@ export function TodayScreen() {
   return (
     <main
       aria-busy={result === null || flow === 'pending' ? 'true' : undefined}
-      className="mx-auto flex min-h-dvh w-full max-w-[640px] flex-col gap-(--space-24) px-(--space-margin-inline) pt-(--space-12) pb-(--space-24)"
+      className="mx-auto flex min-h-dvh w-full max-w-[640px] flex-col px-(--space-margin-inline) pt-(--space-12) pb-(--space-24)"
     >
       <h1 className="m-0 font-(--font-weight-bold) text-(length:--font-size-large-title) leading-(--font-leading-tight) tracking-(--font-tracking-tight)">
         Heavy Duty
       </h1>
-      {result?.status === 'ok' ? (
-        <TodayContent
-          today={result.today}
-          onSelect={(day) => {
-            if (day.exercises.length > 0) setSheetDay(day)
-          }}
-        />
-      ) : (
-        <LetterListSkeleton />
-      )}
-      <RejectedSetsNotice />
-      <PendingSetsIndicator />
+      <QueueNotices align="start" className="mt-(--space-16)" />
+      <div className="mt-(--space-24)">
+        {result?.status === 'ok' ? (
+          <TodayContent
+            today={result.today}
+            onSelect={(day) => {
+              if (day.exercises.length > 0) setSheetDay(day)
+            }}
+          />
+        ) : (
+          <LetterListSkeleton />
+        )}
+      </div>
       <StartSheet
         day={sheetDay}
         onClose={() => setSheetDay(null)}

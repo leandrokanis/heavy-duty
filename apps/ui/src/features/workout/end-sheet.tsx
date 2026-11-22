@@ -1,11 +1,15 @@
 'use client'
 
-import { Button } from '@base-ui/react/button'
-import { Drawer } from '@base-ui/react/drawer'
 import type { RefObject } from 'react'
+import { Button } from '@/components/ui/button'
+import { Sheet } from '@/components/ui/sheet'
+import { ExerciseBar } from './exercise-bar'
+import type { SequenceItem } from './workout-flow'
 
 export type EndSheetProps = {
   open: boolean
+  // The bar of the sheet draws one segment per exercise, from the same list as the sequence.
+  items: SequenceItem[]
   doneSets: number
   leftSets: number
   // Where the focus goes when the sheet closes: the control that opened the sequence.
@@ -24,6 +28,7 @@ function leftLabel(count: number): string {
 
 export function EndSheet({
   open,
+  items,
   doneSets,
   leftSets,
   returnFocusRef,
@@ -31,43 +36,31 @@ export function EndSheet({
   onContinue,
 }: EndSheetProps) {
   return (
-    <Drawer.Root
+    <Sheet.Root
       open={open}
+      finalFocus={returnFocusRef}
       onOpenChange={(next) => {
         if (!next) onContinue()
       }}
     >
-      <Drawer.Portal>
-        <Drawer.Backdrop className="fixed inset-0 bg-black/30" />
-        <Drawer.Viewport className="fixed inset-x-0 bottom-0">
-          <Drawer.Popup
-            finalFocus={returnFocusRef}
-            className="glass flex flex-col gap-(--space-24) rounded-t-[28px] px-(--space-margin-inline) pt-(--space-20) pb-[calc(var(--space-24)+env(safe-area-inset-bottom))]"
-          >
-            <Drawer.Title className="text-[1.75rem] font-(--font-weight-semibold)">
-              Encerrar o treino
-            </Drawer.Title>
-            <div className="flex flex-col gap-(--space-8) text-[1.25rem] tabular-nums">
-              <p>{doneLabel(doneSets)}</p>
-              <p className="opacity-70">{leftLabel(leftSets)}</p>
-            </div>
-            <div className="flex flex-col gap-(--space-12)">
-              <Button
-                className="min-h-(--target-workout) w-full rounded-(--radius-capsule) bg-[CanvasText] px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) text-[Canvas] active:opacity-60"
-                onClick={onConfirm}
-              >
-                Encerrar
-              </Button>
-              <Button
-                className="min-h-(--target-workout) w-full rounded-(--radius-capsule) bg-[color-mix(in_srgb,CanvasText_12%,transparent)] px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) active:opacity-60"
-                onClick={onContinue}
-              >
-                Continuar
-              </Button>
-            </div>
-          </Drawer.Popup>
-        </Drawer.Viewport>
-      </Drawer.Portal>
-    </Drawer.Root>
+      <Sheet.Title>Encerrar o treino</Sheet.Title>
+      <Sheet.Body>
+        <div className="mt-(--space-8)">
+          <ExerciseBar items={items} size="full" />
+        </div>
+        <div className="mt-(--space-8) flex flex-wrap justify-between gap-x-(--space-16) font-(--font-weight-bold) text-(length:--font-size-body) tabular-nums">
+          <p className="m-0 text-(--color-label)">{doneLabel(doneSets)}</p>
+          <p className="m-0 text-(--color-label-secondary)">{leftLabel(leftSets)}</p>
+        </div>
+      </Sheet.Body>
+      <Sheet.Actions>
+        <Button variant="secondary" size="workout" onClick={onContinue}>
+          Continuar
+        </Button>
+        <Button size="workout" onClick={onConfirm}>
+          Encerrar
+        </Button>
+      </Sheet.Actions>
+    </Sheet.Root>
   )
 }

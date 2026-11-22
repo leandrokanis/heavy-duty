@@ -2,7 +2,7 @@
 
 Monorepo open source do Heavy Duty, um app pessoal de musculação. A UI (`apps/ui`) é um PWA em Next.js para registrar o treino no celular. A API (`apps/api`) guarda os dados e expõe um servidor MCP para administrar o app pelo Claude. O produto está descrito em `docs/prd.md`.
 
-Estado atual: o scaffold (EN-S0) criou os quatro pacotes do workspace (`heavy-duty`, `@heavy-duty/ui`, `@heavy-duty/api` e `@heavy-duty/e2e`), o ambiente de desenvolvimento com Docker Compose e a preparação da produção. A onda 1 trouxe o catálogo, o backup e a entrada com chave de acesso (US-F14-01). As stories seguem o roadmap da onda 1 do PRD (F01 e F14).
+Estado atual: o scaffold (EN-S0) criou os quatro pacotes do workspace (`heavy-duty`, `@heavy-duty/ui`, `@heavy-duty/api` e `@heavy-duty/e2e`), o ambiente de desenvolvimento com Docker Compose e a preparação da produção. As ondas 1 a 4 (F01, F14, F02, F16, F03, F05, F04 e F06) e a EN-S1, que aplicou o visual do protótipo v1 ao app, estão concluídas. O início da onda 5 e da EN01 depende de decisão do PO.
 
 ## Idioma
 

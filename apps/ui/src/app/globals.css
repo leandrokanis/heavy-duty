@@ -85,7 +85,9 @@
   --color-on-accent: light-dark(#ffffff, #0a0f22);
   --color-accent-soft: light-dark(rgba(47, 85, 228, 0.12), rgba(123, 150, 255, 0.16));
   --color-success: light-dark(#1e8a4c, #41c47f);
+  --color-success-soft: light-dark(rgba(30, 138, 76, 0.16), rgba(65, 196, 127, 0.16));
   --color-warning: light-dark(#a86200, #f0a63a);
+  --color-warning-soft: light-dark(rgba(168, 98, 0, 0.14), rgba(240, 166, 58, 0.14));
   --color-danger: light-dark(#c9302c, #ff6b62);
   --color-backdrop: rgba(8, 10, 16, 0.32);
 

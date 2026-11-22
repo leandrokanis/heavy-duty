@@ -237,6 +237,10 @@ describe('Given no connection', () => {
       await act(async () => tapNext())
       const offline = {
         indicator: screen.getByRole('status', { name: '2 séries aguardando envio' }).textContent,
+        icon: screen
+          .getByRole('status', { name: '2 séries aguardando envio' })
+          .querySelector('svg')
+          ?.getAttribute('aria-hidden'),
         resting: screen.queryByRole('timer', { name: 'Descanso' }) !== null,
         next: buttonState('Próximo'),
       }
@@ -247,7 +251,12 @@ describe('Given no connection', () => {
         offline,
         indicatorAfter: screen.queryByRole('status', { name: /aguardando envio/ }),
       }).toEqual({
-        offline: { indicator: '2 séries aguardando envio', resting: true, next: 'enabled' },
+        offline: {
+          indicator: '2 séries aguardando envio',
+          icon: 'true',
+          resting: true,
+          next: 'enabled',
+        },
         indicatorAfter: null,
       })
     })
@@ -2494,26 +2503,79 @@ describe('Given the rest after set 1 of supino at 45 kg with a floating toast av
 
 describe('Given the screen Treino concluído of the prototype layout', () => {
   describe('When the last set of the day is recorded with sets still in the queue', () => {
-    it('Then Fechar should have no icon, no dot should be current and the queue indicator should come before Fechar', async () => {
+    async function finishedWithQueue() {
       vi.useFakeTimers({ now: T0 })
       renderWorkout([TRICEPS_TWO_SETS], vi.fn(), NEVER_SENT)
       await tapSets(2)
       await act(async () => vi.advanceTimersByTime(300))
+    }
 
-      const close = screen.getByRole('button', { name: 'Fechar' })
-      const indicator = screen.getByText(/aguardando envio/)
+    it('Then Fechar should have no icon and the heading should be the level 1 "Treino concluído"', async () => {
+      await finishedWithQueue()
+
       expect({
-        icon: close.querySelector('svg'),
-        current: dotsOfSets().filter((dot) => dot.hasAttribute('data-current')).length,
-        indicatorFirst: indicator.compareDocumentPosition(close) & Node.DOCUMENT_POSITION_FOLLOWING,
-        sameArea: close.parentElement?.contains(indicator),
+        icon: screen.getByRole('button', { name: 'Fechar' }).querySelector('svg'),
         heading: screen.getByRole('heading', { level: 1 }).textContent,
+      }).toEqual({ icon: null, heading: 'Treino concluído' })
+    })
+
+    it('Then the success mark should be a hidden svg before the heading', async () => {
+      await finishedWithQueue()
+
+      const heading = screen.getByRole('heading', { level: 1 })
+      const mark = document.querySelector('main svg[aria-hidden="true"]:not(button svg)')
+      expect({
+        hidden: mark?.getAttribute('aria-hidden'),
+        before: (mark?.compareDocumentPosition(heading) ?? 0) & Node.DOCUMENT_POSITION_FOLLOWING,
+      }).toEqual({ hidden: 'true', before: Node.DOCUMENT_POSITION_FOLLOWING })
+    })
+
+    it('Then the screen should have no progressbar "Séries"', async () => {
+      await finishedWithQueue()
+
+      expect(screen.queryByRole('progressbar', { name: 'Séries' })).toBeNull()
+    })
+
+    it('Then the DOM order should be the last set button, the queue status and Fechar, with the status outside the area of Fechar', async () => {
+      await finishedWithQueue()
+
+      const lastSet = screen.getByRole('button', { name: /^Corrigir última série/ })
+      const status = screen.getByRole('status', { name: '2 séries aguardando envio' })
+      const close = screen.getByRole('button', { name: 'Fechar' })
+      const follows = (from: Element, to: Element) =>
+        from.compareDocumentPosition(to) & Node.DOCUMENT_POSITION_FOLLOWING
+      expect({
+        statusAfterLastSet: follows(lastSet, status),
+        closeAfterStatus: follows(status, close),
+        statusInsideCloseArea: close.parentElement?.contains(status),
       }).toEqual({
-        icon: null,
-        current: 0,
-        indicatorFirst: Node.DOCUMENT_POSITION_FOLLOWING,
-        sameArea: true,
-        heading: 'Treino concluído',
+        statusAfterLastSet: Node.DOCUMENT_POSITION_FOLLOWING,
+        closeAfterStatus: Node.DOCUMENT_POSITION_FOLLOWING,
+        statusInsideCloseArea: false,
+      })
+    })
+  })
+
+  describe('When the day ends with prancha left out and a set in the queue', () => {
+    it('Then the region "Ficaram de fora" should come after the status and before Fechar', async () => {
+      const { flow, nowMs } = flowOnLastTricepsSetWithPranchaSkipped()
+      vi.useFakeTimers({ now: nowMs })
+      renderWorkout(SKIP_LETTER, vi.fn(), NEVER_SENT, flow)
+
+      await act(async () => tapNext())
+      await act(async () => vi.advanceTimersByTime(300))
+
+      const status = screen.getByRole('status', { name: /aguardando envio/ })
+      const region = screen.getByRole('region', { name: 'Ficaram de fora' })
+      const close = screen.getByRole('button', { name: 'Fechar' })
+      const follows = (from: Element, to: Element) =>
+        from.compareDocumentPosition(to) & Node.DOCUMENT_POSITION_FOLLOWING
+      expect({
+        regionAfterStatus: follows(status, region),
+        closeAfterRegion: follows(region, close),
+      }).toEqual({
+        regionAfterStatus: Node.DOCUMENT_POSITION_FOLLOWING,
+        closeAfterRegion: Node.DOCUMENT_POSITION_FOLLOWING,
       })
     })
   })

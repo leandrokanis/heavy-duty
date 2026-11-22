@@ -224,7 +224,7 @@ O HIG não especifica botão de ação central sobre a barra de abas. Se o app a
 | Texto | `--color-label`, `--color-label-secondary` | Texto principal e secundário |
 | Fundo | `--color-background`, `--color-background-grouped` | Camada de conteúdo |
 | Separador | `--color-separator` | Divisores e bordas de grupo |
-| Sucesso | `--color-success` | Série registrada, envio concluído |
+| Sucesso | `--color-success` | Série registrada, envio concluído e treino concluído |
 | Atenção | `--color-warning` | Envio pendente sem rede |
 | Erro | `--color-danger` | Falha e ação destrutiva |
 | Janela de atividade | `--color-window-open`, `--color-window-cooling` | Reservado para as ondas 5 a 7. A janela aberta também marca o ×2 dos pontos |
@@ -331,7 +331,7 @@ O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar na pr
 - O fim do descanso DEVE ter sinal visual na área da série (Seção 15) e DEVE ser anunciado na região `aria-live="polite"`, como "Série 2 de 3" ou "Tríceps na polia, série 1 de 3". O sinal NÃO DEVE depender de som nem de vibração.
 - A tela DEVERIA ficar acesa durante o descanso, com a Screen Wake Lock API onde o navegador aceitar [a confirmar: suporte no PWA do iPhone em 2026].
 - Exercício com descanso de 0 s NÃO DEVE mostrar a tela de descanso.
-- A última série da letra NÃO DEVE abrir descanso. A tela DEVE mostrar "Treino concluído" e o botão "Fechar", que volta às letras. "Fechar" DEVE ficar desativado enquanto houver série enviando ou não enviada.
+- A última série da letra NÃO DEVE abrir descanso. A tela DEVE mostrar "Treino concluído" e o botão "Fechar", que volta às letras. "Fechar" DEVE ficar ativo com séries na fila, porque as séries já estão salvas na fila e seguem sozinhas para a API (US-F03-03; `docs/arquitetura/app-web.md`, seção "Fluxo da série com um toque").
 
 ## 16. Acessibilidade
 
@@ -416,8 +416,10 @@ Na coluna "Contraste alto", "igual" mantém o valor do tema. Dois valores entre 
 | `--color-accent` | `#2F55E4` | `#7B96FF` | igual | Só elemento interativo (Seção 11.1) | Protótipo v1, `--accent` |
 | `--color-on-accent` | `#FFFFFF` | `#0A0F22` | igual | Texto e ícone sobre a cor de destaque | Protótipo v1, `--accent-fg` |
 | `--color-accent-soft` | `rgba(47,85,228,.12)` | `rgba(123,150,255,.16)` | igual | Fundo do valor da roda durante o arrasto | Protótipo v1, `--accent-soft` |
-| `--color-success` | `#1E8A4C` | `#41C47F` | igual | Ícone de série registrada e de envio concluído | Protótipo v1, `--success` |
-| `--color-warning` | `#A86200` | `#F0A63A` | igual | Ícone de envio pendente, anel e tempo do cronômetro nos últimos 3 s | Protótipo v1, `--warning` |
+| `--color-success` | `#1E8A4C` | `#41C47F` | igual | Ícone de série registrada e de envio concluído e marca do treino concluído | Protótipo v1, `--success` |
+| `--color-success-soft` | `rgba(30,138,76,.16)` | `rgba(65,196,127,.16)` | igual | Fundo do círculo de treino concluído | Protótipo v1, `.ok-bg` |
+| `--color-warning` | `#A86200` | `#F0A63A` | igual | Ícone da pílula de envio pendente, anel e tempo do cronômetro nos últimos 3 s | Protótipo v1, `--warning` |
+| `--color-warning-soft` | `rgba(168,98,0,.14)` | `rgba(240,166,58,.14)` | igual | Fundo da pílula da fila de envio | Protótipo v1, `.pill` |
 | `--color-danger` | `#C9302C` | `#FF6B62` | igual | Mensagem de erro e ação destrutiva | Protótipo v1, `--danger` |
 | `--color-backdrop` | `rgba(8,10,16,.32)` | `rgba(8,10,16,.32)` | igual | Fundo escurecido atrás da folha | Protótipo v1, `.backdrop` |
 
@@ -425,7 +427,7 @@ Regras de uso da cor, além das da Seção 11.1:
 
 - Sucesso e atenção marcam só ícone e indicador. Texto normal usa `--color-label` (Seção 11.3). A exceção é o tempo do cronômetro nos últimos 3 s, em `--color-warning`: é texto grande (4 rem, peso 700) e mede 4,29:1 no tema claro, acima do mínimo de 3:1 do texto grande.
 - O texto sobre vidro usa só `--color-label`. O texto secundário sobre vidro mede 3,20:1 no tema claro e 2,49:1 no escuro, abaixo do mínimo.
-- O texto de erro sobre `--color-fill` mede 4,30:1 no tema claro, abaixo de 4,5:1. A ação destrutiva da folha precisa de outro fundo ou de outro estilo antes de entrar em tela (EN-S1-03).
+- O texto de erro sobre `--color-fill` mede 4,30:1 no tema claro, abaixo de 4,5:1. A ação destrutiva da folha usa texto `--color-danger` sobre `--color-background-elevated`, com 5,33:1 no tema claro e 6,24:1 no escuro (EN-S1-03).
 
 ### 18.2. Material e sombra
 
@@ -445,7 +447,7 @@ Regras de uso da cor, além das da Seção 11.1:
 | `--radius-circle` | `50%` | Botão de ícone e letra | Seção 13 |
 | `--radius-card` | `22px` | Caixa de grupo e cartão | Protótipo v1, `.group-box` |
 | `--radius-control` | `24px` | Cartão da roda de valor | Protótipo v1, `.adj` |
-| `--radius-inner` | `16px` | Área interna concêntrica, como o valor da roda dentro do cartão | Protótipo v1, `.adj-value` |
+| `--radius-inner` | `16px` | Área interna concêntrica, como o valor da roda dentro do cartão, e a linha atual e a linha pressionada da sequência do treino | Protótipo v1, `.adj-value` |
 | `--radius-sheet` | `39px` | Folha flutuante | Protótipo v1, `.sheet` |
 | `--radius-icon` | `22px` | Ícone do app de 84 px | Protótipo v1, `.app-glyph.big` |
 
@@ -456,15 +458,15 @@ Os tamanhos usam `rem` e seguem o Dynamic Type no iPhone (Seção 10.2). O corpo
 | Token | Valor | Uso | Origem |
 |---|---|---|---|
 | `--font-sans` | `system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` | Família do app (Seção 10.1) | Projeto |
-| `--font-size-large-title` | `2.125rem` | "Heavy Duty" na entrada e título de tela | Protótipo v1 |
+| `--font-size-large-title` | `2.125rem` | "Heavy Duty" na entrada, título de tela, "Treino concluído" e título da autorização do MCP | Protótipo v1 |
 | `--font-size-title-1` | `1.75rem` | Nome do exercício | Protótipo v1 |
 | `--font-size-title-2` | `1.375rem` | Título da folha | Protótipo v1 |
-| `--font-size-title-3` | `1.25rem` | Valores da última série e valores vizinhos da roda | Protótipo v1 |
+| `--font-size-title-3` | `1.25rem` | Valores da última série, valores vizinhos da roda e host da autorização do MCP | Protótipo v1 |
 | `--font-size-headline` | `1.0625rem` | Título de linha e número dos pontos das séries | Protótipo v1 |
 | `--font-size-body` | `1rem` | Texto corrido | Seção 10.2 |
 | `--font-size-callout` | `0.9375rem` | Subtítulo e letra do círculo de 30 px | Protótipo v1 |
 | `--font-size-subheadline` | `0.875rem` | Aviso flutuante e metadados | Protótipo v1 |
-| `--font-size-footnote` | `0.8125rem` | Rótulo da roda e título de seção | Protótipo v1 |
+| `--font-size-footnote` | `0.8125rem` | Rótulo da roda e título de seção, como "Ficaram de fora" | Protótipo v1 |
 | `--font-size-button-large` | `1.1875rem` | "Entrar" e "Próximo" | Protótipo v1, `.btn-xl` |
 | `--font-size-unit` | `1.125rem` | `kg` e `s` ao lado do número e letra do círculo de 44 px | Protótipo v1 |
 | `--font-size-wheel` | `3.5rem` | Valor da roda | Protótipo v1 |
@@ -539,6 +541,11 @@ Quando o protótipo e uma regra deste documento divergem, a regra vale e a diver
 | 18 | Sem animação na passagem para a série seguinte | Animação de fim do descanso, só opacidade com movimento reduzido | Seções 15 e 15.2 |
 | 19 | Valores vizinhos da roda com 2,62:1 (claro) e 3,40:1 (escuro) contra o cartão | Ficam como no protótipo, decorativos e fora da árvore de acessibilidade. Registrado para o PO | Seção 16.3 ("menores e esmaecidos"); exceção de texto decorativo da WCAG 1.4.3 |
 | 20 | Botão "−" ativo com a carga em 0 kg | "−" desativado no mínimo, com opacidade de 45 % e focável | Seção 16.3 |
+| 21 | "Encerrar" da folha da sequência em vermelho sobre preenchimento: 3,90:1 (claro) e 4,23:1 (escuro) | Texto `--color-danger` sobre fundo opaco `--color-background-elevated`: 5,33:1 e 6,24:1 | Seções 11.3 e 18.1 |
+| 22 | "Pular" com 44 px | 56 px | Seção 9.4 |
+| 23 | Séries iguais do exercício feito agrupadas ("3 × 10 · 42,5 kg") | Uma etiqueta por série, com o número da série, a carga e as repetições ou os segundos | Seção 9.4; US-F03-06 |
+| 24 | Etiquetas das séries e pontos também no exercício feito em parte | Lista das séries só no exercício feito | Seção 9.4 |
+| 25 | Linha da sequência sem rótulo de estado, só com o círculo | Rótulos "Feito", "Atual", "Por fazer" e "Pulado" visíveis na linha de baixo, com "N de M" | Seção 9.4 e Seção 11.1 (a cor não é o único sinal) |
 
 ## 19. Verificação geométrica
 

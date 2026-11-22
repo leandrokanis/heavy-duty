@@ -1,9 +1,10 @@
 'use client'
 
-import { Button } from '@base-ui/react/button'
-import { Drawer } from '@base-ui/react/drawer'
-import { Check, Circle, CircleDot, SkipForward, X } from 'lucide-react'
+import { Check, SkipForward } from 'lucide-react'
 import type { RefObject } from 'react'
+import { Button } from '@/components/ui/button'
+import { MotionButton } from '@/components/ui/motion-button'
+import { Sheet } from '@/components/ui/sheet'
 import { formatLoadKg } from './format'
 import type { RecordedSetView, SequenceItem } from './workout-flow'
 
@@ -29,26 +30,48 @@ const STATUS_LABEL = {
   todo: 'Por fazer',
 } as const
 
-const STATUS_ICON = {
-  done: Check,
-  current: CircleDot,
-  skipped: SkipForward,
-  todo: Circle,
-} as const
+const CIRCLE_CLASS =
+  'flex size-[34px] shrink-0 items-center justify-center rounded-(--radius-circle) font-(--font-weight-bold) text-(length:--font-size-callout) tabular-nums leading-none after:content-[attr(data-position)] data-[status=current]:text-(--color-label) data-[status=current]:shadow-[inset_0_0_0_3px_var(--color-label)] data-[status=done]:bg-(--color-label) data-[status=skipped]:shadow-[inset_0_0_0_2px_var(--color-fill-strong)] data-[status=todo]:text-(--color-label-secondary) data-[status=todo]:shadow-[inset_0_0_0_2px_var(--color-fill-strong)]'
 
-const ROW_CLASS =
-  'flex min-h-(--target-workout) w-full items-center gap-(--space-16) rounded-(--radius-capsule) px-(--space-20) text-left'
+// Decorative: the name, the state and the count beside it carry the same for the screen reader.
+// The position of the current and to-do rows is drawn by CSS, so it stays out of the row text.
+function StatusCircle({ item }: { item: SequenceItem }) {
+  const position =
+    item.status === 'current' || item.status === 'todo' ? item.exerciseIndex + 1 : null
+  return (
+    <span
+      aria-hidden="true"
+      data-status={item.status}
+      data-position={position ?? undefined}
+      className={CIRCLE_CLASS}
+    >
+      {item.status === 'done' ? (
+        <Check size={18} strokeWidth={2.6} className="text-(--color-background)" />
+      ) : null}
+      {item.status === 'skipped' ? (
+        <SkipForward size={18} strokeWidth={1.8} className="text-(--color-label-secondary)" />
+      ) : null}
+    </span>
+  )
+}
 
 function ItemContent({ item }: { item: SequenceItem }) {
-  const Icon = STATUS_ICON[item.status]
   return (
     <>
-      <Icon aria-hidden="true" size={24} className="shrink-0" />
-      <span className="min-w-0 flex-1 truncate text-[1.0625rem] font-(--font-weight-semibold)">
-        {item.name}
+      <StatusCircle item={item} />
+      <span className="flex min-w-0 flex-1 flex-col gap-(--space-4) text-left">
+        <span
+          className={`break-words font-(--font-weight-bold) text-(length:--font-size-body) ${
+            item.status === 'skipped' ? 'text-(--color-label-secondary)' : 'text-(--color-label)'
+          }`}
+        >
+          {item.name}
+        </span>
+        <span className="flex flex-wrap gap-x-(--space-8) font-normal text-(--color-label-secondary) text-(length:--font-size-subheadline) tabular-nums">
+          <span className="whitespace-nowrap">{STATUS_LABEL[item.status]}</span>
+          <span className="whitespace-nowrap">{`${item.setsDone} de ${item.setsTotal}`}</span>
+        </span>
       </span>
-      <span className="opacity-70">{STATUS_LABEL[item.status]}</span>
-      <span className="tabular-nums opacity-70">{`${item.setsDone} de ${item.setsTotal}`}</span>
     </>
   )
 }
@@ -65,22 +88,24 @@ function RecordedSetRow({ set }: { set: RecordedSetView }) {
     ? plural(amount, 'segundo', 'segundos')
     : plural(amount, 'repetição', 'repetições')
   return (
-    <li className="flex flex-wrap items-baseline gap-x-(--space-16)">
-      <span aria-hidden="true" className="flex flex-wrap items-baseline gap-x-(--space-16)">
-        <span className="opacity-70">{`Série ${set.setNumber}`}</span>
+    <li className="rounded-(--radius-capsule) bg-(--color-fill) px-(--space-12) py-(--space-4) font-(--font-weight-semibold) text-(length:--font-size-subheadline) tabular-nums">
+      <span aria-hidden="true" className="flex items-baseline gap-(--space-8)">
+        <span className="text-(--color-label-secondary)">{`Série ${set.setNumber}`}</span>
         <span>
-          <span className="tabular-nums">{formatLoadKg(set.loadG)}</span>
-          <span className="text-[0.8125rem] font-normal opacity-70"> kg</span>
+          <span className="text-(--color-label)">{formatLoadKg(set.loadG)}</span>
+          <span className="text-(--color-label-secondary)"> kg</span>
         </span>
         <span>
-          <span className="tabular-nums">{amount}</span>
-          <span className="text-[0.8125rem] font-normal opacity-70">{isTime ? ' s' : ' rep'}</span>
+          <span className="text-(--color-label)">{amount}</span>
+          <span className="text-(--color-label-secondary)">{isTime ? ' s' : ' rep'}</span>
         </span>
       </span>
       <span className="sr-only">{`Série ${set.setNumber}: ${formatLoadKg(set.loadG)} kg, ${spoken}`}</span>
     </li>
   )
 }
+
+const ROW_PADDING = '-mx-(--space-12) px-(--space-12) rounded-(--radius-inner)'
 
 export function SequenceSheet({
   open,
@@ -94,83 +119,81 @@ export function SequenceSheet({
   onEnd,
 }: SequenceSheetProps) {
   return (
-    <Drawer.Root
+    <Sheet.Root
       open={open}
+      finalFocus={returnFocusRef}
       onOpenChange={(next) => {
         if (!next) onClose()
       }}
     >
-      <Drawer.Portal>
-        <Drawer.Backdrop className="fixed inset-0 bg-black/30" />
-        <Drawer.Viewport className="fixed inset-x-0 bottom-0">
-          <Drawer.Popup
-            finalFocus={returnFocusRef}
-            className="glass flex max-h-[calc(100dvh-env(safe-area-inset-top)-var(--space-16))] flex-col gap-(--space-24) rounded-t-[28px] px-(--space-margin-inline) pt-(--space-20) pb-[calc(var(--space-24)+env(safe-area-inset-bottom))]"
+      <Sheet.Title>Sequência do treino</Sheet.Title>
+      <ul
+        aria-label="Exercícios"
+        className="-mx-(--space-12) m-0 mt-(--space-4) flex min-h-0 flex-1 list-none flex-col overflow-y-auto overscroll-contain p-0 px-(--space-12) pb-px"
+      >
+        {items.map((item) => (
+          <li
+            key={item.exerciseIndex}
+            data-status={item.status}
+            className="border-(--color-separator) border-t first:border-t-0 data-[status=current]:border-t-0 [[data-status=current]+&]:border-t-0"
           >
-            <div className="flex items-center justify-between gap-(--space-16)">
-              <Drawer.Title className="text-[1.75rem] font-(--font-weight-semibold)">
-                Sequência do treino
-              </Drawer.Title>
-              <Drawer.Close
-                aria-label="Fechar"
-                className="flex size-(--target-workout) shrink-0 items-center justify-center rounded-(--radius-circle) bg-[color-mix(in_srgb,CanvasText_12%,transparent)] active:opacity-60"
+            {(item.status === 'todo' || item.status === 'skipped') && !finished ? (
+              <MotionButton
+                tapScale={1}
+                className={`${ROW_PADDING} flex min-h-16 w-[calc(100%+var(--space-24))] cursor-pointer items-center gap-(--space-12) py-(--space-12) transition-colors duration-(--duration-fast) data-pressed:bg-(--color-fill)`}
+                onClick={() => onPick(item.exerciseIndex)}
               >
-                <X aria-hidden="true" size={24} />
-              </Drawer.Close>
-            </div>
-            <ul
-              aria-label="Exercícios"
-              className="flex min-h-0 flex-1 flex-col gap-(--space-8) overflow-y-auto overscroll-contain"
-            >
-              {items.map((item) => (
-                <li key={item.exerciseIndex}>
-                  {(item.status === 'todo' || item.status === 'skipped') && !finished ? (
-                    <Button
-                      className={`${ROW_CLASS} bg-[color-mix(in_srgb,CanvasText_8%,transparent)] active:opacity-60`}
-                      onClick={() => onPick(item.exerciseIndex)}
-                    >
-                      <ItemContent item={item} />
-                    </Button>
-                  ) : (
-                    <div className="flex items-center gap-(--space-8)">
-                      <div className={`${ROW_CLASS} min-w-0 flex-1`}>
-                        <ItemContent item={item} />
-                      </div>
-                      {item.status === 'current' && canSkip && !finished ? (
-                        <Button
-                          aria-label={`Pular ${item.name}`}
-                          className="min-h-(--target-workout) shrink-0 rounded-(--radius-capsule) bg-[color-mix(in_srgb,CanvasText_12%,transparent)] px-(--space-20) text-[1.0625rem] font-(--font-weight-semibold) active:opacity-60"
-                          onClick={onSkip}
-                        >
-                          Pular
-                        </Button>
-                      ) : null}
-                    </div>
-                  )}
-                  {item.status === 'done' && item.recordedSets.length > 0 ? (
-                    <ul
-                      aria-label={`Séries de ${item.name}`}
-                      className="flex flex-col gap-(--space-4) pt-(--space-8) pr-(--space-20) pl-[calc(var(--space-20)+24px+var(--space-16))] text-[1.0625rem]"
-                    >
-                      {item.recordedSets.map((set) => (
-                        <RecordedSetRow key={set.setNumber} set={set} />
-                      ))}
-                    </ul>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-            {finished ? null : (
-              <Button
-                className="min-h-(--target-workout) w-full rounded-(--radius-capsule) bg-[color-mix(in_srgb,CanvasText_12%,transparent)] px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) active:opacity-60"
-                onClick={onEnd}
+                <ItemContent item={item} />
+              </MotionButton>
+            ) : (
+              <div
+                className={`${ROW_PADDING} flex min-h-16 items-center gap-(--space-8) py-(--space-12) ${
+                  item.status === 'current' ? 'bg-(--color-fill)' : ''
+                }`}
               >
-                Encerrar
-              </Button>
+                <div className="flex min-w-0 flex-1 items-center gap-(--space-12)">
+                  <ItemContent item={item} />
+                </div>
+                {item.status === 'current' && canSkip && !finished ? (
+                  <Button
+                    variant="secondary"
+                    size="workout"
+                    aria-label={`Pular ${item.name}`}
+                    onClick={onSkip}
+                  >
+                    Pular
+                  </Button>
+                ) : null}
+              </div>
             )}
-          </Drawer.Popup>
-        </Drawer.Viewport>
-      </Drawer.Portal>
-    </Drawer.Root>
+            {item.status === 'done' && item.recordedSets.length > 0 ? (
+              <ul
+                aria-label={`Séries de ${item.name}`}
+                className="m-0 flex list-none flex-wrap gap-(--space-8) p-0 pb-(--space-12) pl-[calc(34px+var(--space-12))]"
+              >
+                {item.recordedSets.map((set) => (
+                  <RecordedSetRow key={set.setNumber} set={set} />
+                ))}
+              </ul>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      <Sheet.Actions>
+        {finished ? null : (
+          <Button variant="destructive" size="workout" onClick={onEnd}>
+            Encerrar
+          </Button>
+        )}
+        <Button
+          variant="secondary"
+          size="workout"
+          className={finished ? 'col-span-2' : undefined}
+          onClick={onClose}
+        >
+          Fechar
+        </Button>
+      </Sheet.Actions>
+    </Sheet.Root>
   )
 }

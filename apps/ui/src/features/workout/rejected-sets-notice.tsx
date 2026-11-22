@@ -1,7 +1,7 @@
 'use client'
 
-import { Button } from '@base-ui/react/button'
-import { TriangleAlert } from 'lucide-react'
+import { CircleAlert } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { useSyncQueue, useSyncSnapshot } from '@/sync/sync-context'
 
 function countText(count: number): string {
@@ -15,18 +15,33 @@ export function RejectedSetsNotice() {
   if (rejected.length === 0) return null
   const messages = [...new Set(rejected.map(({ message }) => message))]
   return (
-    <div role="alert" className="flex items-start gap-(--space-12)">
-      <TriangleAlert aria-hidden="true" className="mt-[2px] size-[20px] shrink-0" />
-      <div className="flex flex-1 flex-col gap-(--space-4) text-[0.9375rem]">
-        <span className="font-(--font-weight-semibold)">{countText(rejected.length)}</span>
+    <div
+      role="alert"
+      className="flex w-full items-start gap-(--space-12) rounded-(--radius-card) bg-(--color-background-grouped) px-(--space-16) py-(--space-12)"
+    >
+      <CircleAlert
+        aria-hidden="true"
+        size={22}
+        strokeWidth={1.8}
+        className="shrink-0 text-(--color-danger)"
+      />
+      <div className="flex min-w-0 flex-1 flex-col gap-(--space-4)">
+        <span className="font-(--font-weight-semibold) text-(--color-label) text-(length:--font-size-body)">
+          {countText(rejected.length)}
+        </span>
         {messages.map((message) => (
-          <span key={message} className="opacity-60">
+          <span
+            key={message}
+            className="text-(--color-label-secondary) text-(length:--font-size-subheadline)"
+          >
             {message}
           </span>
         ))}
       </div>
       <Button
-        className="min-h-(--target-min) rounded-(--radius-capsule) px-(--space-16) text-[1.0625rem] font-(--font-weight-semibold) active:opacity-60"
+        variant="secondary"
+        size="workout"
+        className="shrink-0 self-center"
         onClick={() => void queue.dismissRejected()}
       >
         Dispensar
