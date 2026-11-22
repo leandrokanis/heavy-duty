@@ -25,6 +25,7 @@ const REVIEW_DONE_EXERCISE_SPEC = /review-done-exercise\.feature\.spec\.js$/
 const TIMED_EXERCISE_SPEC = /timed-exercise\.feature\.spec\.js$/
 const DRAG_ADJUST_SPEC = /drag-adjust\.feature\.spec\.js$/
 const CORRECT_LAST_SET_SPEC = /correct-last-set\.feature\.spec\.js$/
+const LIST_WORKOUTS_SPEC = /list-workouts\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -65,6 +66,7 @@ export default defineConfig({
         TIMED_EXERCISE_SPEC,
         DRAG_ADJUST_SPEC,
         CORRECT_LAST_SET_SPEC,
+        LIST_WORKOUTS_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -173,6 +175,15 @@ export default defineConfig({
       testMatch: CORRECT_LAST_SET_SPEC,
       fullyParallel: false,
       dependencies: ['drag-adjust'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records workouts in a fixed week of 2025 and reads them back through the MCP, so it runs
+    // alone and one scenario at a time, after the correction of the last set.
+    {
+      name: 'list-workouts',
+      testMatch: LIST_WORKOUTS_SPEC,
+      fullyParallel: false,
+      dependencies: ['correct-last-set'],
       use: { ...devices['Pixel 7'] },
     },
   ],

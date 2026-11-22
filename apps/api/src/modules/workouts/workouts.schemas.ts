@@ -158,6 +158,80 @@ export const WorkoutSkipSchema = z
   })
   .openapi('WorkoutSkip')
 
+// from and to stay plain strings so the service refuses them with its own code.
+export const ListWorkoutsQuerySchema = z.object({
+  from: z
+    .string()
+    .optional()
+    .openapi({
+      param: { name: 'from', in: 'query' },
+      example: '2026-11-09T03:00:00.000Z',
+    }),
+  to: z
+    .string()
+    .optional()
+    .openapi({
+      param: { name: 'to', in: 'query' },
+      example: '2026-11-16T03:00:00.000Z',
+    }),
+})
+
+export const ExerciseSummarySchema = z
+  .object({
+    id: z.string().openapi({ example: '0193a1b2-0000-7000-8000-000000000201' }),
+    slug: z.string().openapi({ example: 'supino-reto' }),
+    name: z.string().openapi({ example: 'Supino reto' }),
+    kind: ExerciseKindSchema,
+  })
+  .openapi('ExerciseSummary')
+
+export const HistorySetSchema = z
+  .object({
+    id: z.string().openapi({ example: '0193a1b2-0000-7000-8000-000000000501' }),
+    setNumber: z.number().int().openapi({ example: 1 }),
+    loadG: z.number().int().openapi({ example: 40000 }),
+    reps: z.number().int().nullable().openapi({ example: 10 }),
+    seconds: z.number().int().nullable().openapi({ example: null }),
+    performedAt: z.string().openapi({ example: '2026-11-21T18:31:05.000Z' }),
+    correctedAt: z.string().nullable().openapi({ example: null }),
+  })
+  .openapi('HistorySet')
+
+export const HistoryExerciseSchema = z
+  .object({
+    exercise: ExerciseSummarySchema,
+    sets: z.array(HistorySetSchema),
+  })
+  .openapi('HistoryExercise')
+
+export const HistoryWorkoutSchema = z
+  .object({
+    id: z.string().openapi({ example: '0193a1b2-0000-7000-8000-000000000601' }),
+    program: z.object({
+      id: z.string().openapi({ example: '0193a1b2-0000-7000-8000-000000000301' }),
+      name: z.string().openapi({ example: 'Programa 1' }),
+    }),
+    letter: z.string().openapi({ example: 'A' }),
+    label: z.string().nullable().openapi({ example: 'Superior' }),
+    startedAt: z.string().openapi({ example: '2026-11-21T18:30:00.000Z' }),
+    finishedAt: z.string().nullable().openapi({ example: '2026-11-21T19:20:00.000Z' }),
+    endReason: WorkoutEndReasonSchema.nullable(),
+    exercises: z.array(HistoryExerciseSchema),
+    leftOut: z.array(ExerciseSummarySchema),
+  })
+  .openapi('HistoryWorkout')
+
+export const WorkoutHistorySchema = z
+  .object({ workouts: z.array(HistoryWorkoutSchema) })
+  .openapi('WorkoutHistory')
+
+export type ListWorkoutsQuery = z.infer<typeof ListWorkoutsQuerySchema>
+export type ExerciseSummary = z.infer<typeof ExerciseSummarySchema>
+export type HistorySet = z.infer<typeof HistorySetSchema>
+export type HistoryExercise = z.infer<typeof HistoryExerciseSchema>
+export type HistoryWorkout = z.infer<typeof HistoryWorkoutSchema>
+export type WorkoutHistory = z.infer<typeof WorkoutHistorySchema>
+
 export type RecordWorkoutSetBody = z.infer<typeof RecordWorkoutSetBodySchema>
 export type CorrectWorkoutSetBody = z.infer<typeof CorrectWorkoutSetBodySchema>
 export type WorkoutSet = z.infer<typeof WorkoutSetSchema>

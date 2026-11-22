@@ -1,13 +1,30 @@
 import { and, asc, eq } from 'drizzle-orm'
 import type { Database } from '../db/connection.js'
 import { createId } from '../db/id.js'
-import { exercises, plannedExercises, programDays, workoutSets, workouts } from '../db/schema.js'
+import {
+  exercises,
+  plannedExercises,
+  programDays,
+  workoutSets,
+  workoutSkips,
+  workouts,
+} from '../db/schema.js'
 
 export type RecordWorkoutInput = {
   programId: string
   letter: string
   startedAt: string
-  sets: { exerciseSlug: string; loadG: number; reps?: number; seconds?: number }[]
+  finishedAt?: string
+  endReason?: 'completed' | 'ended_early'
+  skippedExerciseSlugs?: string[]
+  sets: {
+    exerciseSlug: string
+    loadG: number
+    reps?: number
+    seconds?: number
+    setNumber?: number
+    performedAt?: string
+  }[]
 }
 
 export type RecordedWorkout = {
@@ -41,6 +58,8 @@ export function recordWorkout(db: Database, input: RecordWorkoutInput, now: Date
         programDayId: day?.id ?? null,
         letter: input.letter,
         startedAt: input.startedAt,
+        finishedAt: input.finishedAt ?? null,
+        endReason: input.endReason ?? null,
       })
       .run()
     input.sets.forEach((set, index) => {
@@ -52,32 +71,40 @@ export function recordWorkout(db: Database, input: RecordWorkoutInput, now: Date
       if (!exercise) {
         throw new Error(`Unknown exercise slug in fixture: ${set.exerciseSlug}`)
       }
-      const planned = day
-        ? tx
-            .select({ id: plannedExercises.id })
-            .from(plannedExercises)
-            .where(
-              and(
-                eq(plannedExercises.programDayId, day.id),
-                eq(plannedExercises.exerciseId, exercise.id),
-              ),
-            )
-            .get()
-        : undefined
+      const planned = findPlannedId(tx, day?.id, exercise.id)
       tx.insert(workoutSets)
         .values({
           id: createId(now.getTime()),
           workoutId,
           exerciseId: exercise.id,
-          plannedExerciseId: planned?.id ?? null,
-          setNumber: index + 1,
+          plannedExerciseId: planned,
+          setNumber: set.setNumber ?? index + 1,
           loadG: set.loadG,
           reps: set.reps ?? null,
           seconds: set.seconds ?? null,
-          performedAt: input.startedAt,
+          performedAt: set.performedAt ?? input.startedAt,
         })
         .run()
     })
+    for (const slug of input.skippedExerciseSlugs ?? []) {
+      const exercise = tx
+        .select({ id: exercises.id })
+        .from(exercises)
+        .where(eq(exercises.slug, slug))
+        .get()
+      if (!exercise) {
+        throw new Error(`Unknown exercise slug in fixture: ${slug}`)
+      }
+      const planned = findPlannedId(tx, day?.id, exercise.id)
+      tx.insert(workoutSkips)
+        .values({
+          workoutId,
+          exerciseId: exercise.id,
+          plannedExerciseId: planned,
+          skippedAt: input.startedAt,
+        })
+        .run()
+    }
     return workoutId
   })
 }
@@ -110,4 +137,25 @@ export function readWorkout(db: Database, workoutId: string): RecordedWorkout | 
     .orderBy(asc(workoutSets.setNumber))
     .all()
   return { ...workout, sets }
+}
+
+function findPlannedId(
+  tx: Pick<Database, 'select'>,
+  programDayId: string | undefined,
+  exerciseId: string,
+): string | null {
+  if (!programDayId) {
+    return null
+  }
+  const planned = tx
+    .select({ id: plannedExercises.id })
+    .from(plannedExercises)
+    .where(
+      and(
+        eq(plannedExercises.programDayId, programDayId),
+        eq(plannedExercises.exerciseId, exerciseId),
+      ),
+    )
+    .get()
+  return planned?.id ?? null
 }

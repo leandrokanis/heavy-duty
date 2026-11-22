@@ -1,12 +1,10 @@
 import type { Database } from '../../db/connection.js'
 import { DomainError } from '../../errors/domain-error.js'
+import { parseUtcInstant } from './utc-instant.js'
 import { findWorkoutRow, updateWorkoutFinish, type WorkoutRow } from './workout.repository.js'
 import type { FinishWorkoutBody, Workout, WorkoutEndReason } from './workouts.schemas.js'
 
 const END_REASONS: readonly string[] = ['completed', 'ended_early'] satisfies WorkoutEndReason[]
-
-// Same UTC ISO 8601 shape the set route accepts, with optional milliseconds.
-const UTC_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/
 
 // The order follows decision 37: format, then existence, then a replay, then the time rule,
 // and every refusal happens before the write of the transaction.
@@ -48,11 +46,11 @@ function parseEndReason(value: string): WorkoutEndReason {
 }
 
 function parseInstant(value: string): string {
-  const time = UTC_INSTANT.test(value) ? new Date(value).getTime() : Number.NaN
-  if (Number.isNaN(time)) {
+  const instant = parseUtcInstant(value)
+  if (instant === undefined) {
     throw new DomainError('workout_finished_at_invalid', 'instante do fim inválido', 'invalid')
   }
-  return new Date(time).toISOString()
+  return instant
 }
 
 function toWorkout(row: WorkoutRow): Workout {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createApp } from '../../app.js'
 import { createProgramTestApp, type ProgramTestApp } from '../../test/programs.js'
-import type { Today, WorkoutSet } from './workouts.schemas.js'
+import type { Today, WorkoutHistory, WorkoutSet } from './workouts.schemas.js'
 
 type App = ProgramTestApp['app']
 
@@ -335,6 +335,74 @@ describe('Given a stored supino-reto set at 45.000 g and a request that fails a 
         status: 403,
         body: { code: 'forbidden_origin', message: 'origem não permitida' },
         row: before,
+      })
+    })
+  })
+})
+
+type HistorySetView = { loadG: number; correctedAt: string | null }
+
+async function readSupinoFromHistory(testApp: ProgramTestApp): Promise<HistorySetView | undefined> {
+  const response = await testApp.app.request(
+    '/api/workouts?from=2026-11-21T00:00:00.000Z&to=2026-11-22T00:00:00.000Z',
+  )
+  const history = (await response.json()) as WorkoutHistory
+  const supino = history.workouts[0]?.exercises.find(
+    ({ exercise }) => exercise.slug === 'supino-reto',
+  )
+  return supino?.sets[0]
+}
+
+describe('Given a workout with a supino-reto set recorded at 45.000 g, never corrected', () => {
+  describe('When the PATCH changes the load to 42.500 g at an instant T of the test clock', () => {
+    it('Then GET /api/workouts should bring the set at 42500 with correctedAt equal to T', async () => {
+      const { testApp } = await givenWorkoutWithSupinoAndPranchaSets()
+      const instant = testApp.clock.now().toISOString()
+
+      await patchSet(testApp, { loadG: 42500, reps: 10 })
+
+      expect(await readSupinoFromHistory(testApp)).toMatchObject({
+        loadG: 42500,
+        correctedAt: instant,
+      })
+    })
+  })
+
+  describe('When the PATCH sends the values already stored', () => {
+    it('Then GET /api/workouts should bring correctedAt null', async () => {
+      const { testApp } = await givenWorkoutWithSupinoAndPranchaSets()
+
+      await patchSet(testApp, { loadG: 45000, reps: 10 })
+
+      expect((await readSupinoFromHistory(testApp))?.correctedAt).toBeNull()
+    })
+  })
+
+  describe('When the same correction arrives again after the clock advanced', () => {
+    it('Then correctedAt should keep the instant of the first correction', async () => {
+      const { testApp } = await givenWorkoutWithSupinoAndPranchaSets()
+      const firstInstant = testApp.clock.now().toISOString()
+      await patchSet(testApp, { loadG: 42500, reps: 10 })
+
+      testApp.clock.advance(60_000)
+      await patchSet(testApp, { loadG: 42500, reps: 10 })
+
+      expect((await readSupinoFromHistory(testApp))?.correctedAt).toBe(firstInstant)
+    })
+  })
+
+  describe('When a second correction with another value arrives after the clock advanced', () => {
+    it('Then correctedAt should move to the instant of the second correction', async () => {
+      const { testApp } = await givenWorkoutWithSupinoAndPranchaSets()
+      await patchSet(testApp, { loadG: 42500, reps: 10 })
+
+      testApp.clock.advance(60_000)
+      const secondInstant = testApp.clock.now().toISOString()
+      await patchSet(testApp, { loadG: 40000, reps: 10 })
+
+      expect(await readSupinoFromHistory(testApp)).toMatchObject({
+        loadG: 40000,
+        correctedAt: secondInstant,
       })
     })
   })

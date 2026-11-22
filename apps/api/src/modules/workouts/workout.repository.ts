@@ -70,7 +70,7 @@ export function findWorkoutSetRow(db: Database, setId: string): WorkoutSet | und
 export function updateWorkoutSetValues(
   db: Database,
   setId: string,
-  values: Pick<WorkoutSet, 'loadG' | 'reps' | 'seconds'>,
+  values: Pick<WorkoutSet, 'loadG' | 'reps' | 'seconds'> & { correctedAt?: string },
 ): void {
   db.update(workoutSets).set(values).where(eq(workoutSets.id, setId)).run()
 }
