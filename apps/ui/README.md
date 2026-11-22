@@ -2,7 +2,7 @@
 
 PWA que o atleta usa no celular, na academia: mostra o treino do dia, registra cada série com um toque e conta o descanso. No MVP, a administração não passa pela UI; passa pelo MCP da API. As telas de administração no Mac entram depois do MVP (PRD, D22).
 
-Estado: o app tem a página inicial, a página sem conexão, a tela de entrada com chave de acesso, a tela de cadastro (`/cadastro`), o manifesto do PWA com ícones PNG, o service worker do Serwist e os tokens do `DESIGN.md` (EN-S0 e US-F14-01). Nenhum componente do Animate UI foi copiado: a licença está pendente de decisão do PO (ADR-016).
+Estado: o app tem a página inicial, a página sem conexão, a tela de entrada com chave de acesso, a tela de cadastro (`/cadastro`), o manifesto do PWA com ícones PNG, o service worker do Serwist e os tokens do `DESIGN.md` (EN-S0 e US-F14-01). A EN-S1-01 trouxe os tokens do protótipo v1 e os componentes base (`Button`, `IconButton`, `Sheet` e `Toast`). O único arquivo copiado do Animate UI é `src/components/ui/motion-button.tsx` (ADR-024 e ADR-027).
 
 ## Stack
 

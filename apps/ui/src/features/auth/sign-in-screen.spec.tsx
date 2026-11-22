@@ -98,6 +98,56 @@ describe('Given the sign-in screen in a browser with WebAuthn', () => {
   })
 })
 
+describe('Given the sign-in screen layout', () => {
+  describe('When it opens', () => {
+    it('Then should have an empty polite live region and a decorative app icon', () => {
+      const { container } = render(<SignInScreen onSignedIn={() => {}} />)
+      const region = container.querySelector('[aria-live="polite"]')
+
+      expect({
+        regionEmpty: region?.textContent === '',
+        decorativeIcons: [...container.querySelectorAll('svg')].every(
+          (icon) => icon.getAttribute('aria-hidden') === 'true',
+        ),
+      }).toEqual({ regionEmpty: true, decorativeIcons: true })
+    })
+  })
+
+  describe('When the sign-in is refused', () => {
+    it('Then the live region should hold only the message, beside a decorative CircleAlert', async () => {
+      stubFetch(json(200, { challenge: 'Y2hhbGxlbmdl' }), json(401, { code: 'sign_in_failed' }))
+      startAuthenticationMock.mockResolvedValue({ id: 'credential' } as never)
+      const { container } = render(<SignInScreen onSignedIn={() => {}} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Entrar' }))
+      await screen.findByText(SIGN_IN_FAILED)
+      const region = container.querySelector('[aria-live="polite"]')
+
+      expect({
+        text: region?.textContent,
+        icon: region?.querySelector('svg')?.getAttribute('aria-hidden'),
+      }).toEqual({ text: SIGN_IN_FAILED, icon: 'true' })
+    })
+  })
+
+  describe('When the confirmation is running', () => {
+    it('Then the button should keep the name Entrar with the Lock icon outside the name', async () => {
+      stubFetch(json(200, { challenge: 'Y2hhbGxlbmdl' }))
+      startAuthenticationMock.mockReturnValue(new Promise(() => {}))
+      render(<SignInScreen onSignedIn={() => {}} />)
+      const button = screen.getByRole('button', { name: 'Entrar' })
+
+      fireEvent.click(button)
+      await vi.waitFor(() => expect(startAuthenticationMock).toHaveBeenCalled())
+
+      expect({
+        name: screen.getByRole('button', { name: 'Entrar' }) === button,
+        lockHidden: button.querySelector('svg')?.getAttribute('aria-hidden'),
+      }).toEqual({ name: true, lockHidden: 'true' })
+    })
+  })
+})
+
 describe('Given a browser without WebAuthn', () => {
   describe('When the sign-in screen renders', () => {
     it('Then should explain that the browser does not support passkeys, without an enabled button', () => {

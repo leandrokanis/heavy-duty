@@ -18,9 +18,9 @@ export function PendingSetsIndicator() {
     <div
       role="status"
       aria-label={label}
-      className="flex items-center gap-(--space-12) text-[var(--color-warning,currentColor)]"
+      className="flex items-center gap-(--space-12) text-(--color-label)"
     >
-      <CloudOff aria-hidden="true" className="size-[20px]" />
+      <CloudOff aria-hidden="true" className="size-[20px] text-(--color-warning)" />
       <span className="text-[0.9375rem]">{label}</span>
     </div>
   )

@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Tokens of DESIGN.md, Section 18. Values come from the sections cited on each group. */
+/* Tokens of DESIGN.md, Section 18. Spacing, targets, radius, type and duration live here. */
 @theme static {
   /* Section 5.3: 4 px base scale. */
   --space-4: 4px;
@@ -18,30 +18,80 @@
   /* Section 7: touch targets and the gap between neighbouring targets. */
   --target-min: 44px;
   --target-workout: 56px;
+  --target-large: 64px;
   --target-gap: 8px;
 
   /* Section 13: capsule for labelled buttons, circle for icon-only buttons. */
   --radius-capsule: 9999px;
   --radius-circle: 50%;
+  --radius-card: 22px;
+  --radius-control: 24px;
+  --radius-inner: 16px;
+  --radius-sheet: 39px;
+  --radius-icon: 22px;
 
-  /* Section 10: system font stack and body size. */
+  /* Section 10: system font stack and type scale. */
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-size-large-title: 2.125rem;
+  --font-size-title-1: 1.75rem;
+  --font-size-title-2: 1.375rem;
+  --font-size-title-3: 1.25rem;
+  --font-size-headline: 1.0625rem;
   --font-size-body: 1rem;
+  --font-size-callout: 0.9375rem;
+  --font-size-subheadline: 0.875rem;
+  --font-size-footnote: 0.8125rem;
+  --font-size-button-large: 1.1875rem;
+  --font-size-unit: 1.125rem;
+  --font-size-wheel: 3.5rem;
+  --font-size-rest: 3.75rem;
+  --font-size-execution: 4rem;
+  --font-size-countdown: 7rem;
   --font-weight-regular: 400;
   --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-heavy: 900;
+  --font-tracking-tight: -0.02em;
+  --font-tracking-title-1: -0.015em;
+  --font-tracking-caps: 0.04em;
+  --font-leading-none: 1;
+  --font-leading-tight: 1.1;
+  --font-leading-title-1: 1.15;
+  --font-leading-body: 1.4;
 
   /* Section 15: state transitions last up to 300 ms. */
+  --duration-fast: 120ms;
+  --duration-medium: 150ms;
   --duration-base: 300ms;
+  --duration-countdown: 900ms;
+  --duration-toast: 2600ms;
 }
 
+/* Colour, material and shadow change with the theme and the contrast, so they stay on :root. */
 :root {
   color-scheme: light dark;
-  /* Section 18: provisional glass material on system colours until the PO picks the palette. */
-  --material-glass: blur(20px) saturate(180%);
-  --material-glass-fill: color-mix(in srgb, Canvas 72%, transparent);
-  --color-background-elevated: Canvas;
-  /* Section 18: provisional attention colour, 3:1 or more against Canvas in both themes (WCAG 1.4.11). */
-  --color-warning: light-dark(#b45309, #fbbf24);
+
+  --color-background: light-dark(#f2f3f7, #06070a);
+  --color-background-grouped: light-dark(#ffffff, #171a22);
+  --color-background-elevated: light-dark(#ffffff, #171a22);
+  --color-label: light-dark(#12151c, #f1f3f8);
+  --color-label-secondary: light-dark(#596173, #9ea6b6);
+  --color-separator: light-dark(#d8dce4, #272c37);
+  --color-fill: light-dark(rgba(118, 124, 140, 0.14), rgba(140, 148, 166, 0.16));
+  --color-fill-strong: light-dark(rgba(118, 124, 140, 0.28), rgba(140, 148, 166, 0.3));
+  --color-accent: light-dark(#2f55e4, #7b96ff);
+  --color-on-accent: light-dark(#ffffff, #0a0f22);
+  --color-accent-soft: light-dark(rgba(47, 85, 228, 0.12), rgba(123, 150, 255, 0.16));
+  --color-success: light-dark(#1e8a4c, #41c47f);
+  --color-warning: light-dark(#a86200, #f0a63a);
+  --color-danger: light-dark(#c9302c, #ff6b62);
+  --color-backdrop: rgba(8, 10, 16, 0.32);
+
+  --material-glass: blur(22px) saturate(1.7);
+  --material-glass-fill: light-dark(rgba(252, 252, 254, 0.74), rgba(34, 37, 46, 0.72));
+  --material-glass-border: light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.1));
+  --material-sheet-fill: light-dark(rgba(255, 255, 255, 0.92), rgba(28, 31, 40, 0.95));
+  --shadow-glass: 0 8px 28px rgba(15, 20, 35, 0.16);
 }
 
 html {
@@ -52,9 +102,11 @@ html {
 body {
   margin: 0;
   min-height: 100dvh;
+  font-family: var(--font-sans);
   font-size: var(--font-size-body);
-  background: Canvas;
-  color: CanvasText;
+  line-height: var(--font-leading-body);
+  background: var(--color-background);
+  color: var(--color-label);
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
     env(safe-area-inset-left);
 }
@@ -68,16 +120,45 @@ body {
   }
 }
 
+/* Section 7: focus ring on every control reached by keyboard. */
+:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* The container of a sheet takes focus by script; the ring belongs to the controls inside it. */
+[role="dialog"]:focus-visible {
+  outline: none;
+}
+
 /* Section 12: glass only on the control layer, with an opaque version. */
 .glass {
   background: var(--material-glass-fill);
   -webkit-backdrop-filter: var(--material-glass);
   backdrop-filter: var(--material-glass);
+  border: 1px solid var(--material-glass-border);
+  box-shadow: var(--shadow-glass);
+}
+
+.glass-sheet {
+  background: var(--material-sheet-fill);
+  -webkit-backdrop-filter: var(--material-glass);
+  backdrop-filter: var(--material-glass);
+  border: 1px solid var(--material-glass-border);
+  box-shadow: var(--shadow-glass);
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass {
     background: var(--color-background-elevated);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .glass-sheet {
+    background: var(--color-background-elevated);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }
 
@@ -87,14 +168,33 @@ body {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
+
+  .glass-sheet {
+    background: var(--color-background-elevated);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 @media (prefers-contrast: more) {
+  :root {
+    --color-label-secondary: var(--color-label);
+    --color-separator: light-dark(#596173, #9ea6b6);
+    --color-fill-strong: light-dark(#596173, #9ea6b6);
+  }
+
   .glass {
     background: var(--color-background-elevated);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    outline: 1px solid CanvasText;
+    border: 1px solid var(--color-label);
+  }
+
+  .glass-sheet {
+    background: var(--color-background-elevated);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border: 1px solid var(--color-label);
   }
 }
 
@@ -118,5 +218,73 @@ body {
     to {
       opacity: 1;
     }
+  }
+}
+
+/* Section 15: the sheet slides in with the drag position of Base UI; opacity only with reduced motion. */
+.sheet-popup {
+  transform: translateY(var(--drawer-swipe-movement-y, 0px));
+  transition: transform var(--duration-base) ease-out;
+}
+
+.sheet-popup[data-starting-style],
+.sheet-popup[data-ending-style] {
+  transform: translateY(calc(100% + var(--space-16)));
+}
+
+.sheet-popup[data-swiping] {
+  transition: none;
+}
+
+.sheet-backdrop {
+  transition: opacity var(--duration-base) ease-out;
+}
+
+.sheet-backdrop[data-starting-style],
+.sheet-backdrop[data-ending-style] {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-popup {
+    transition: opacity var(--duration-base) ease-out;
+  }
+
+  .sheet-popup[data-starting-style],
+  .sheet-popup[data-ending-style] {
+    transform: none;
+    opacity: 0;
+  }
+}
+
+/* Section 17: the toast enters with @starting-style and leaves with data-leaving. */
+.toast {
+  transition:
+    opacity var(--duration-base) ease-out,
+    transform var(--duration-base) ease-out;
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(var(--space-8));
+  }
+}
+
+.toast[data-leaving] {
+  opacity: 0;
+  transform: translateY(var(--space-8));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    transition: opacity var(--duration-base) ease-out;
+
+    @starting-style {
+      opacity: 0;
+      transform: none;
+    }
+  }
+
+  .toast[data-leaving] {
+    transform: none;
   }
 }

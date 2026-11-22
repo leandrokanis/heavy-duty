@@ -137,6 +137,7 @@ O espaçamento DEVE usar a escala de tokens da Seção 18, com base de 4 px (Pro
 - Todo elemento tocável DEVE ter área de toque de pelo menos 44 × 44 px. "A button needs a hit region of at least 44×44 pt" [HIG-BUTTONS]. Na web, 1 pt corresponde a 1 px CSS na escala base. O valor coincide com o critério 2.5.5 das WCAG 2.2 [WCAG22].
 - O desenho do ícone PODE ser menor que 44 px. O padding invisível completa a área de toque; a arte não aumenta.
 - Os controles da tela de treino ("Próximo", ajuste de valor) DEVERIAM ter pelo menos 56 px de altura (Projeto), porque o atleta toca com a mão suada ou ocupada.
+- Os botões "Entrar" e "Próximo" têm 64 px de altura (`--target-large`, Protótipo v1, `.btn-xl`). Os botões das folhas abertas na tela de treino têm 56 px.
 - Duas áreas de toque NÃO DEVEM se sobrepor. A distância entre duas áreas vizinhas DEVERIA ser de pelo menos 8 px (Projeto).
 
 ```css
@@ -233,7 +234,7 @@ O HIG não especifica botão de ação central sobre a barra de abas. Se o app a
 | Recorde | `--color-game-record` | Só gamificação: marca e destaque de recorde |
 | Sequência de semanas | `--color-game-flame` | Só gamificação: ícone da sequência |
 
-Os valores das cores são definidos no scaffold da onda 1 [a confirmar: paleta escolhida pelo PO].
+Os valores das cores, nos temas claro e escuro e no contraste alto, estão na Seção 18.
 
 ### 11.2. Aparência
 
@@ -248,13 +249,16 @@ Os valores das cores são definidos no scaffold da onda 1 [a confirmar: paleta e
 | Texto grande (a partir de 24 px, ou 18,66 px em negrito) | 3:1 | WCAG 1.4.3 |
 | Borda de controle, ícone e indicador de estado | 3:1 | WCAG 1.4.11 |
 
+As cores de sucesso e de atenção marcam só ícone e indicador (3:1). Elas NÃO DEVEM colorir texto normal, porque no tema claro medem 3,95:1 (sucesso) e 4,29:1 (atenção) contra `--color-background`.
+
 O contraste de texto sobre vidro DEVE ser medido contra o fundo mais claro e o mais escuro que podem passar por trás.
 
 ## 12. Materiais
 
 - O vidro DEVE usar `backdrop-filter` com desfoque e um preenchimento semitransparente, nos tokens `--material-glass` e `--material-glass-fill`.
 - O preenchimento do vidro DEVERIA ter opacidade alta o bastante para o texto passar na Seção 11.3 sem depender do conteúdo de trás (Projeto, alinhado à transparência reduzida do iOS 27).
-- O vidro DEVE virar fundo opaco nestes casos:
+- O vidro DEVE ter borda de 1 px em `--material-glass-border` e sombra `--shadow-glass`. A folha DEVE usar `--material-sheet-fill` com o mesmo desfoque, a mesma borda e a mesma sombra. Os valores estão na Seção 18.
+- O vidro e a folha DEVEM virar fundo opaco `--color-background-elevated` nestes casos, e no contraste alto a borda passa a ter 1 px em `--color-label`:
 
 ```css
 @supports not (backdrop-filter: blur(1px)) {
@@ -274,7 +278,7 @@ O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar na pr
 ## 13. Forma e cantos
 
 - Os cantos DEVEM ser concêntricos: o raio interno é o raio externo menos o padding entre as duas formas. Um botão dentro de um cartão com raio 20 px e padding 8 px tem raio 12 px.
-- Os tokens de raio (`--radius-*`) DEVEM ser usados em vez de valor solto.
+- Os tokens de raio (`--radius-*`) DEVEM ser usados em vez de valor solto. Os valores estão na Seção 18.
 - A Apple usa curva contínua nos cantos (superelipse). O HIG não publica um percentual de raio para elementos de interface em geral. Não cite números como "22,37 %" como regra da Apple.
 - Na web, `border-radius` comum é o padrão. `corner-shape: squircle` PODE entrar como melhoria progressiva onde o navegador aceitar [a confirmar: suporte em 2026].
 - Botão com rótulo DEVERIA ser cápsula (`border-radius: 9999px`). Botão só com ícone DEVERIA ser círculo.
@@ -291,7 +295,7 @@ O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar na pr
 ## 15. Movimento e resposta ao toque
 
 - O estado pressionado DEVE aparecer no `pointerdown`, não na soltura do toque.
-- A transição entre estados DEVERIA durar até 300 ms (Projeto [a confirmar]).
+- A transição entre estados DEVERIA durar até 300 ms (Projeto [a confirmar]). As durações são os tokens `--duration-fast` (estado pressionado), `--duration-medium`, `--duration-base`, `--duration-countdown` (número da contagem de 3 s) e `--duration-toast` (tempo de exibição do aviso flutuante), com valores na Seção 18.
 - O movimento DEVE ser reduzido a troca de opacidade, ou retirado, com `prefers-reduced-motion: reduce`.
 - O fim do descanso DEVE ter sinal visual. O Safari do iOS não aceita a Vibration API, então a interface NÃO DEVE depender de vibração.
 - As regras detalhadas de animação, mola e gesto ficam para um documento próprio [a confirmar: quando a onda 3 começar].
@@ -364,6 +368,13 @@ O critério 2.5.7 das WCAG 2.2 (nível AA) pede uma alternativa de ponteiro úni
 | Erro | Mensagem com a causa e a ação possível, no texto do PRD quando houver |
 | Sucesso | Retorno visual imediato no próprio controle, sem diálogo |
 
+O aviso flutuante (`Toast`) confirma uma ação sem tomar o foco nem o toque. Ele segue estas regras:
+
+- O aviso é uma cápsula de vidro (`.glass`), centralizada na horizontal, acima da área de ação.
+- O aviso fica visível por 2,6 s (`--duration-toast`) e sai em até 300 ms.
+- O aviso NÃO DEVE receber toque nem foco. O toque passa para o controle de baixo (`pointer-events: none`), porque um aviso sobre "Próximo" não pode custar um toque.
+- O texto do aviso entra numa região `role="status"` montada desde a abertura da tela. O aviso NÃO DEVE repetir um texto que outra região viva já anuncia.
+
 O texto exibido ao usuário é em português do Brasil (`docs/convencoes/codigo.md`, Seção 3).
 
 ## 18. Tokens de design
@@ -375,22 +386,147 @@ O texto exibido ao usuário é em português do Brasil (`docs/convencoes/codigo.
 |---|---|---|
 | Cor | `--color-` | `--color-accent`, `--color-label-secondary` |
 | Espaço | `--space-` | `--space-4` (4 px), `--space-16` (16 px) |
-| Raio | `--radius-` | `--radius-card`, `--radius-control` |
+| Raio | `--radius-` | `--radius-card`, `--radius-sheet` |
 | Material | `--material-` | `--material-glass`, `--material-glass-fill` |
-| Tipografia | `--font-` | `--font-size-display`, `--font-weight-semibold` |
+| Sombra | `--shadow-` | `--shadow-glass` |
+| Tipografia | `--font-` | `--font-size-large-title`, `--font-weight-semibold` |
 | Duração | `--duration-` | `--duration-fast`, `--duration-base` |
 | Alvo de toque | `--target-` | `--target-min` (44 px), `--target-workout` (56 px) |
 
-Os tokens ficam no tema do Tailwind CSS, em `apps/ui/src/app/globals.css`, como variáveis CSS no bloco `@theme static` (ADR-009). O arquivo declara só os tokens com valor neste documento: espaço (Seções 5.2 e 5.3), alvo de toque (Seção 7), raio de cápsula e de círculo (Seção 13), fonte (Seção 10) e `--duration-base` (Seção 15). Cor, `--radius-card`, `--radius-control`, `--font-size-display` e `--duration-fast` entram quando o documento definir o valor [a confirmar: paleta e escala tipográfica escolhidas pelo PO].
+Os tokens de espaço, alvo de toque, raio, tipografia e duração ficam no bloco `@theme static` de `apps/ui/src/app/globals.css` (ADR-009). Os tokens de cor, material e sombra mudam com o tema e com o contraste, então ficam no `:root`, com `light-dark(<claro>, <escuro>)` e com os valores de contraste alto em `@media (prefers-contrast: more)`. O app segue `prefers-color-scheme` e não tem chave de tema.
 
-Os tokens de material são provisórios e ficam no `:root` de `globals.css`, a partir das cores do sistema, até o PO escolher a paleta [a confirmar: valores do PO]. A folha de confirmação e o controle do topo da tela de treino (US-F03-01) usam a classe `.glass`, com a versão opaca da Seção 12:
+A origem "Protótipo v1" é `docs/prototipo/v1/index.html`. A origem "Projeto" marca um valor que o protótipo não define. O teste `apps/ui/src/app/globals.spec.ts` lê as tabelas desta seção e confere cada token no `globals.css`: uma divergência entre o documento e o arquivo faz o teste falhar. Os tokens de gamificação e de janela de atividade (Seção 11.1) entram na onda 5.
 
-| Token | Valor provisório |
-|---|---|
-| `--material-glass` | `blur(20px) saturate(180%)`, usado no `backdrop-filter` |
-| `--material-glass-fill` | `color-mix(in srgb, Canvas 72%, transparent)` |
-| `--color-background-elevated` | `Canvas`, o fundo opaco da Seção 12 |
-| `--color-warning` | `light-dark(#b45309, #fbbf24)`, a cor de atenção dos últimos 3 segundos da execução e do indicador de séries pendentes; contraste de 3:1 ou mais contra `Canvas` nos dois temas (WCAG 1.4.11) `[a confirmar: valores do PO]` |
+### 18.1. Cor
+
+Na coluna "Contraste alto", "igual" mantém o valor do tema. Dois valores entre crases são o do tema claro e o do escuro, nessa ordem. Uma referência a outro token troca a cor pelo valor desse token.
+
+| Token | Claro | Escuro | Contraste alto | Papel | Origem |
+|---|---|---|---|---|---|
+| `--color-background` | `#F2F3F7` | `#06070A` | igual | Fundo da página (camada de conteúdo) | Protótipo v1, `--app-bg` |
+| `--color-background-grouped` | `#FFFFFF` | `#171A22` | igual | Caixa de grupo e cartão (Seção 6) | Protótipo v1, `--app-card` |
+| `--color-background-elevated` | `#FFFFFF` | `#171A22` | igual | Fundo opaco do vidro e da folha (Seção 12) | Protótipo v1, `--app-card` |
+| `--color-label` | `#12151C` | `#F1F3F8` | igual | Texto principal | Protótipo v1, `--fg` |
+| `--color-label-secondary` | `#596173` | `#9EA6B6` | igual a `--color-label` | Texto secundário | Protótipo v1, `--fg-2`; contraste alto do Projeto |
+| `--color-separator` | `#D8DCE4` | `#272C37` | `#596173` `#9EA6B6` | Divisor e borda de grupo | Protótipo v1, `--line`; contraste alto do Projeto |
+| `--color-fill` | `rgba(118,124,140,.14)` | `rgba(140,148,166,.16)` | igual | Fundo de botão secundário, botão de ícone e etiqueta | Protótipo v1, `--fill` |
+| `--color-fill-strong` | `rgba(118,124,140,.28)` | `rgba(140,148,166,.30)` | `#596173` `#9EA6B6` | Trilho de progresso, puxador e estado pressionado | Protótipo v1, `--fill-strong`; contraste alto do Projeto |
+| `--color-accent` | `#2F55E4` | `#7B96FF` | igual | Só elemento interativo (Seção 11.1) | Protótipo v1, `--accent` |
+| `--color-on-accent` | `#FFFFFF` | `#0A0F22` | igual | Texto e ícone sobre a cor de destaque | Protótipo v1, `--accent-fg` |
+| `--color-accent-soft` | `rgba(47,85,228,.12)` | `rgba(123,150,255,.16)` | igual | Fundo do valor da roda durante o arrasto | Protótipo v1, `--accent-soft` |
+| `--color-success` | `#1E8A4C` | `#41C47F` | igual | Ícone de série registrada e de envio concluído | Protótipo v1, `--success` |
+| `--color-warning` | `#A86200` | `#F0A63A` | igual | Ícone de envio pendente e anel dos últimos 3 s | Protótipo v1, `--warning` |
+| `--color-danger` | `#C9302C` | `#FF6B62` | igual | Mensagem de erro e ação destrutiva | Protótipo v1, `--danger` |
+| `--color-backdrop` | `rgba(8,10,16,.32)` | `rgba(8,10,16,.32)` | igual | Fundo escurecido atrás da folha | Protótipo v1, `.backdrop` |
+
+Regras de uso da cor, além das da Seção 11.1:
+
+- Sucesso e atenção marcam só ícone e indicador. Texto normal usa `--color-label` (Seção 11.3).
+- O texto sobre vidro usa só `--color-label`. O texto secundário sobre vidro mede 3,20:1 no tema claro e 2,49:1 no escuro, abaixo do mínimo.
+- O texto de erro sobre `--color-fill` mede 4,30:1 no tema claro, abaixo de 4,5:1. A ação destrutiva da folha precisa de outro fundo ou de outro estilo antes de entrar em tela (EN-S1-03).
+
+### 18.2. Material e sombra
+
+| Token | Claro | Escuro | Papel | Origem |
+|---|---|---|---|---|
+| `--material-glass` | `blur(22px) saturate(1.7)` | igual | Desfoque do vidro, no `backdrop-filter` | Protótipo v1, `.glass` |
+| `--material-glass-fill` | `rgba(252,252,254,.74)` | `rgba(34,37,46,.72)` | Preenchimento do vidro | Protótipo v1, `--glass-fill` |
+| `--material-glass-border` | `rgba(255,255,255,.7)` | `rgba(255,255,255,.10)` | Borda de 1 px do vidro | Protótipo v1, `--glass-line` |
+| `--material-sheet-fill` | `rgba(255,255,255,.92)` | `rgba(28,31,40,.95)` | Preenchimento da folha | Protótipo v1, `--sheet-fill` |
+| `--shadow-glass` | `0 8px 28px rgba(15,20,35,.16)` | igual | Sombra do vidro e da folha | Protótipo v1, `.glass` |
+
+### 18.3. Raio
+
+| Token | Valor | Uso | Origem |
+|---|---|---|---|
+| `--radius-capsule` | `9999px` | Botão com rótulo e aviso flutuante | Seção 13 |
+| `--radius-circle` | `50%` | Botão de ícone e letra | Seção 13 |
+| `--radius-card` | `22px` | Caixa de grupo e cartão | Protótipo v1, `.group-box` |
+| `--radius-control` | `24px` | Cartão da roda de valor | Protótipo v1, `.adj` |
+| `--radius-inner` | `16px` | Área interna concêntrica, como o valor da roda dentro do cartão | Protótipo v1, `.adj-value` |
+| `--radius-sheet` | `39px` | Folha flutuante | Protótipo v1, `.sheet` |
+| `--radius-icon` | `22px` | Ícone do app de 84 px | Protótipo v1, `.app-glyph.big` |
+
+### 18.4. Tipografia
+
+Os tamanhos usam `rem` e seguem o Dynamic Type no iPhone (Seção 10.2). O corpo tem 1 rem, e não os 15 px do protótipo.
+
+| Token | Valor | Uso | Origem |
+|---|---|---|---|
+| `--font-sans` | `system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` | Família do app (Seção 10.1) | Projeto |
+| `--font-size-large-title` | `2.125rem` | "Heavy Duty" na entrada e título de tela | Protótipo v1 |
+| `--font-size-title-1` | `1.75rem` | Nome do exercício | Protótipo v1 |
+| `--font-size-title-2` | `1.375rem` | Título da folha | Protótipo v1 |
+| `--font-size-title-3` | `1.25rem` | Valores da última série | Protótipo v1 |
+| `--font-size-headline` | `1.0625rem` | Título de linha | Protótipo v1 |
+| `--font-size-body` | `1rem` | Texto corrido | Seção 10.2 |
+| `--font-size-callout` | `0.9375rem` | Subtítulo | Protótipo v1 |
+| `--font-size-subheadline` | `0.875rem` | Aviso flutuante e metadados | Protótipo v1 |
+| `--font-size-footnote` | `0.8125rem` | Rótulo da roda e título de seção | Protótipo v1 |
+| `--font-size-button-large` | `1.1875rem` | "Entrar" e "Próximo" | Protótipo v1, `.btn-xl` |
+| `--font-size-unit` | `1.125rem` | `kg` e `s` ao lado do número | Protótipo v1 |
+| `--font-size-wheel` | `3.5rem` | Valor da roda | Protótipo v1 |
+| `--font-size-rest` | `3.75rem` | Tempo no anel do descanso | Protótipo v1 |
+| `--font-size-execution` | `4rem` | Tempo da execução | Protótipo v1 |
+| `--font-size-countdown` | `7rem` | Contagem de 3 s | Protótipo v1 |
+| `--font-weight-regular` | `400` | Texto corrido | Protótipo v1 |
+| `--font-weight-semibold` | `600` | Botão, destaque e aviso flutuante | Protótipo v1 |
+| `--font-weight-bold` | `700` | Títulos | Protótipo v1 |
+| `--font-weight-heavy` | `900` | Número da contagem | Protótipo v1 |
+| `--font-tracking-tight` | `-0.02em` | Título grande e números grandes | Protótipo v1 |
+| `--font-tracking-title-1` | `-0.015em` | Nome do exercício | Protótipo v1 |
+| `--font-tracking-caps` | `0.04em` | Título de seção em caixa alta | Protótipo v1 |
+| `--font-leading-none` | `1` | Números grandes | Protótipo v1 |
+| `--font-leading-tight` | `1.1` | Título grande | Protótipo v1 |
+| `--font-leading-title-1` | `1.15` | Nome do exercício | Protótipo v1 |
+| `--font-leading-body` | `1.4` | Texto corrido | Protótipo v1 |
+
+### 18.5. Duração
+
+| Token | Valor | Uso | Origem |
+|---|---|---|---|
+| `--duration-fast` | `120ms` | Estado pressionado | Protótipo v1, `.btn` e `.step` |
+| `--duration-medium` | `150ms` | Volta da roda ao centro | Protótipo v1, `.wheel` |
+| `--duration-base` | `300ms` | Entrada e saída da folha e do aviso flutuante, fim do descanso | Seção 15 |
+| `--duration-countdown` | `900ms` | Número da contagem de 3 s | Protótipo v1, `.cd-num` |
+| `--duration-toast` | `2600ms` | Tempo de exibição do aviso flutuante | Protótipo v1, `toast()` |
+
+### 18.6. Espaço e alvo de toque
+
+| Token | Valor | Uso | Origem |
+|---|---|---|---|
+| `--space-4` | `4px` | Escala de 4 px (Seção 5.3) | Seção 5.3 |
+| `--space-8` | `8px` | Escala de 4 px | Seção 5.3 |
+| `--space-12` | `12px` | Escala de 4 px | Seção 5.3 |
+| `--space-16` | `16px` | Escala de 4 px | Seção 5.3 |
+| `--space-20` | `20px` | Escala de 4 px | Seção 5.3 |
+| `--space-24` | `24px` | Escala de 4 px | Seção 5.3 |
+| `--space-32` | `32px` | Escala de 4 px | Seção 5.3 |
+| `--space-40` | `40px` | Escala de 4 px | Seção 5.3 |
+| `--space-48` | `48px` | Escala de 4 px | Seção 5.3 |
+| `--space-margin-inline` | `var(--space-16)` | Margem lateral fixa no celular | Seção 5.2 |
+| `--target-min` | `44px` | Área de toque mínima | Seção 7 |
+| `--target-workout` | `56px` | Controles da tela de treino | Seção 7 |
+| `--target-large` | `64px` | "Entrar" e "Próximo" | Protótipo v1, `.btn-xl` |
+| `--target-gap` | `8px` | Distância entre áreas de toque vizinhas | Seção 7 |
+
+### 18.7. Divergências resolvidas entre o protótipo e as regras
+
+Quando o protótipo e uma regra deste documento divergem, a regra vale e a divergência fica registrada.
+
+| # | Protótipo | Decisão | Motivo |
+|---|---|---|---|
+| 1 | Corpo de 15 px | Corpo de 1 rem | Seção 10.2 |
+| 2 | Espaços fora da escala de 4 px | Arredondados para o valor mais próximo da escala; no empate, para o maior; acima de 48 px, soma de dois tokens | Seção 5.3 |
+| 3 | Sem variante de contraste alto | Variante do Projeto na tabela de cor | Seção 11.2 |
+| 4 | Ícones próprios em SVG | Lucide (ADR-016) | Seção 14 |
+| 5 | Título da entrada em `h2` | `h1` com o mesmo texto | O `h1` do protótipo é o título da página de simulação |
+| 6 | Sem área de mensagem na entrada | Região viva com as mensagens do PRD, no estilo de erro | Seção 17 |
+| 7 | Tema forçado por `data-theme` | O app segue só `prefers-color-scheme` | Chave de tema seria comportamento novo |
+| 8 | Botões da folha com 52 px | 56 px nas folhas abertas na tela de treino | Seção 7 |
+| 9 | Atenção e sucesso em texto | Só ícone e indicador; texto em `--color-label` | Seção 11.3 |
+| 10 | Nota "O método de autenticação está em aberto" | Chave de acesso, com o botão "Entrar" | ADR-019 |
+| 11 | `rem` sobre 16 px | No iPhone, `rem` segue o Dynamic Type | Seção 10.2 |
 
 ## 19. Verificação geométrica
 

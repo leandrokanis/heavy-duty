@@ -1,9 +1,11 @@
 'use client'
 
-import { Button } from '@base-ui/react/button'
 import { browserSupportsWebAuthn, startRegistration } from '@simplewebauthn/browser'
+import { KeyRound } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
 import { type EnrollmentFailure, requestEnrollmentOptions, verifyEnrollment } from './auth-client'
+import { AuthScreenLayout } from './auth-screen-layout'
 
 const MESSAGES: Record<EnrollmentFailure | 'unsupported', string> = {
   enrollment_token_invalid: 'Link de cadastro inválido ou vencido. Gere outro link no servidor.',
@@ -58,20 +60,12 @@ export function EnrollmentScreen() {
   const canEnroll = Boolean(token) && failure !== 'unsupported'
 
   return (
-    <main className="flex min-h-dvh flex-col justify-center gap-(--space-24) px-(--space-margin-inline) py-(--space-24)">
-      <h1 className="text-[2rem] font-(--font-weight-semibold)">Heavy Duty</h1>
+    <AuthScreenLayout icon="app" title="Heavy Duty" message={failure ? MESSAGES[failure] : null}>
       {canEnroll ? (
-        <Button
-          className="min-h-(--target-min) min-w-(--target-min) self-start rounded-(--radius-capsule) bg-[CanvasText] px-(--space-24) font-(--font-weight-semibold) text-[Canvas] active:opacity-60 disabled:opacity-40"
-          disabled={busy}
-          onClick={enroll}
-        >
+        <Button size="large" icon={KeyRound} className="w-full" disabled={busy} onClick={enroll}>
           Criar chave de acesso
         </Button>
       ) : null}
-      <p aria-live="polite" className="min-h-(--target-min)">
-        {failure ? MESSAGES[failure] : null}
-      </p>
-    </main>
+    </AuthScreenLayout>
   )
 }

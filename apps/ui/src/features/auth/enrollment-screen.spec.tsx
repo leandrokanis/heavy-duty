@@ -93,3 +93,15 @@ describe('Given the enrollment page without a token in the fragment', () => {
     })
   })
 })
+
+describe('Given the enrollment screen layout', () => {
+  describe('When the link has a token', () => {
+    it('Then the button should be named Criar chave de acesso with a decorative KeyRound', () => {
+      stubLocation('#token=dG9rZW4tZnJvbS10aGUtbGluaw')
+      render(<EnrollmentScreen />)
+      const button = screen.getByRole('button', { name: 'Criar chave de acesso' })
+
+      expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+    })
+  })
+})

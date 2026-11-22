@@ -24,4 +24,11 @@ describe('Given the offline page', () => {
       expect(reload).toHaveBeenCalledOnce()
     })
   })
+  describe('When the icon is looked up', () => {
+    it('Then should keep the WifiOff icon out of the accessibility tree', () => {
+      const { container } = render(<OfflinePage />)
+
+      expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+    })
+  })
 })
