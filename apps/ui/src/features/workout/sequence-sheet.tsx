@@ -4,7 +4,8 @@ import { Button } from '@base-ui/react/button'
 import { Drawer } from '@base-ui/react/drawer'
 import { Check, Circle, CircleDot, SkipForward, X } from 'lucide-react'
 import type { RefObject } from 'react'
-import type { SequenceItem } from './workout-flow'
+import { formatLoadKg } from './format'
+import type { RecordedSetView, SequenceItem } from './workout-flow'
 
 export type SequenceSheetProps = {
   open: boolean
@@ -52,6 +53,35 @@ function ItemContent({ item }: { item: SequenceItem }) {
   )
 }
 
+function plural(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`
+}
+
+// The same set twice: the figures for the eye, the full sentence for the screen reader (FR-010).
+function RecordedSetRow({ set }: { set: RecordedSetView }) {
+  const isTime = typeof set.seconds === 'number'
+  const amount = isTime ? (set.seconds as number) : (set.reps ?? 0)
+  const spoken = isTime
+    ? plural(amount, 'segundo', 'segundos')
+    : plural(amount, 'repetição', 'repetições')
+  return (
+    <li className="flex flex-wrap items-baseline gap-x-(--space-16)">
+      <span aria-hidden="true" className="flex flex-wrap items-baseline gap-x-(--space-16)">
+        <span className="opacity-70">{`Série ${set.setNumber}`}</span>
+        <span>
+          <span className="tabular-nums">{formatLoadKg(set.loadG)}</span>
+          <span className="text-[0.8125rem] font-normal opacity-70"> kg</span>
+        </span>
+        <span>
+          <span className="tabular-nums">{amount}</span>
+          <span className="text-[0.8125rem] font-normal opacity-70">{isTime ? ' s' : ' rep'}</span>
+        </span>
+      </span>
+      <span className="sr-only">{`Série ${set.setNumber}: ${formatLoadKg(set.loadG)} kg, ${spoken}`}</span>
+    </li>
+  )
+}
+
 export function SequenceSheet({
   open,
   items,
@@ -75,7 +105,7 @@ export function SequenceSheet({
         <Drawer.Viewport className="fixed inset-x-0 bottom-0">
           <Drawer.Popup
             finalFocus={returnFocusRef}
-            className="glass flex flex-col gap-(--space-24) rounded-t-[28px] px-(--space-margin-inline) pt-(--space-20) pb-[calc(var(--space-24)+env(safe-area-inset-bottom))]"
+            className="glass flex max-h-[calc(100dvh-env(safe-area-inset-top)-var(--space-16))] flex-col gap-(--space-24) rounded-t-[28px] px-(--space-margin-inline) pt-(--space-20) pb-[calc(var(--space-24)+env(safe-area-inset-bottom))]"
           >
             <div className="flex items-center justify-between gap-(--space-16)">
               <Drawer.Title className="text-[1.75rem] font-(--font-weight-semibold)">
@@ -88,7 +118,10 @@ export function SequenceSheet({
                 <X aria-hidden="true" size={24} />
               </Drawer.Close>
             </div>
-            <ul className="flex flex-col gap-(--space-8)">
+            <ul
+              aria-label="Exercícios"
+              className="flex min-h-0 flex-1 flex-col gap-(--space-8) overflow-y-auto overscroll-contain"
+            >
               {items.map((item) => (
                 <li key={item.exerciseIndex}>
                   {(item.status === 'todo' || item.status === 'skipped') && !finished ? (
@@ -114,6 +147,16 @@ export function SequenceSheet({
                       ) : null}
                     </div>
                   )}
+                  {item.status === 'done' && item.recordedSets.length > 0 ? (
+                    <ul
+                      aria-label={`Séries de ${item.name}`}
+                      className="flex flex-col gap-(--space-4) pt-(--space-8) pr-(--space-20) pl-[calc(var(--space-20)+24px+var(--space-16))] text-[1.0625rem]"
+                    >
+                      {item.recordedSets.map((set) => (
+                        <RecordedSetRow key={set.setNumber} set={set} />
+                      ))}
+                    </ul>
+                  ) : null}
                 </li>
               ))}
             </ul>

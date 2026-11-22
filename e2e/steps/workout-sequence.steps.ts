@@ -14,6 +14,13 @@ function dialogOf(page: Page) {
   return page.getByRole('dialog')
 }
 
+// The header of each exercise row; the sets of a done exercise are a nested list below it (US-F03-06).
+function exerciseRows(page: Page) {
+  return dialogOf(page)
+    .getByRole('list', { name: 'Exercícios' })
+    .locator(':scope > li > :first-child')
+}
+
 When('the athlete opens the sequence', async ({ page }) => {
   await topControl(page).click()
   await expect(dialogOf(page)).toBeVisible()
@@ -73,14 +80,14 @@ Then(
             `^${escapeRegExp(rowText(row.exercise ?? '', row.state ?? '', row.sets ?? ''))}(Pular)?$`,
           ),
       )
-    await expect(dialogOf(page).getByRole('listitem')).toHaveText(expected)
+    await expect(exerciseRows(page)).toHaveText(expected)
   },
 )
 
 Then(
   'the sequence sheet should list {string} as {string} with {string}',
   async ({ page }, name: string, state: string, sets: string) => {
-    await expect(dialogOf(page).getByRole('listitem').filter({ hasText: name })).toHaveText(
+    await expect(exerciseRows(page).filter({ hasText: name })).toHaveText(
       rowText(name, state, sets),
     )
   },

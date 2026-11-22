@@ -6,7 +6,12 @@ import { SYNC_RETRY_INTERVAL_MS } from '@/sync/sync.config'
 import { SyncProvider, sendPendingItem } from '@/sync/sync-context'
 import { createSyncQueue, type SendItem, type SyncQueue } from '@/sync/sync-queue'
 import { CRUCIFIXO, PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayDay } from './test-today'
-import { createWorkoutFlow, type WorkoutFlowState, workoutFlowReducer } from './workout-flow'
+import {
+  createWorkoutFlow,
+  restoreWorkoutFlow,
+  type WorkoutFlowState,
+  workoutFlowReducer,
+} from './workout-flow'
 import { WorkoutScreen } from './workout-screen'
 import type { SendOutcome } from './workout-set.types'
 
@@ -83,6 +88,13 @@ afterEach(async () => {
   Reflect.deleteProperty(navigator, 'wakeLock')
   await clearActiveWorkout()
 })
+
+// The text of the header of each exercise row; the sets of a done exercise sit below it.
+function sequenceRowsOf(dialog: HTMLElement): (string | null | undefined)[] {
+  return Array.from(within(dialog).getByRole('list', { name: 'Exercícios' }).children).map(
+    (row) => row.firstElementChild?.textContent,
+  )
+}
 
 describe('Given supino-reto with 42,5 kg from the last workout and 10 reps', () => {
   describe('When the athlete taps Próximo', () => {
@@ -617,9 +629,7 @@ describe('Given the 3 sets of supino-reto recorded and set 1 of crucifixo on scr
 
       const dialog = await screen.findByRole('dialog')
       expect({
-        items: within(dialog)
-          .getAllByRole('listitem')
-          .map((item) => item.textContent),
+        items: sequenceRowsOf(dialog),
         end: within(dialog).queryByRole('button', { name: 'Encerrar' }) !== null,
       }).toEqual({
         items: [
@@ -732,7 +742,7 @@ describe('Given set 2 of supino-reto on screen after a skipped rest', () => {
 
       expect({
         afterPick,
-        supino: within(reopened).getAllByRole('listitem')[0]?.textContent,
+        supino: sequenceRowsOf(reopened)[0],
       }).toEqual({
         afterPick: { title: 'Tríceps na polia', next: 'enabled', sets: '1 de 3' },
         supino: 'Supino retoPor fazer1 de 3',
@@ -1035,9 +1045,7 @@ describe('Given the 3 sets of supino-reto recorded and set 1 of prancha on scree
       const reopened = await openSequence('Sequência do treino, letra A, exercício 2 de 3')
       expect({
         afterSkip,
-        items: within(reopened)
-          .getAllByRole('listitem')
-          .map((item) => item.textContent),
+        items: sequenceRowsOf(reopened),
       }).toEqual({
         afterSkip: {
           dialog: null,
@@ -1238,6 +1246,75 @@ describe('Given the first exercise skipped before any set was recorded', () => {
         pending: queue.getSnapshot().pending,
         finished: onFinish.mock.calls.length,
       }).toEqual({ pending: [], finished: 1 })
+    })
+  })
+})
+
+describe('Given a workout restored from a saved state with the 3 sets of supino-reto recorded and set 1 of prancha on screen', () => {
+  describe('When the athlete taps the top control', () => {
+    it('Then the dialog should list "Séries de Supino reto" with the 3 sets at 42,5 kg and 10 repetições', async () => {
+      const saved = flowAfterSets([SUPINO_RETO, PRANCHA] as typeof THREE_EXERCISES, 3)
+      const restored = restoreWorkoutFlow(saved, T0 + 60_000)
+      renderWorkout([SUPINO_RETO, PRANCHA], vi.fn(), NEVER_SENT, restored)
+
+      const dialog = await openSequence('Sequência do treino, letra A, exercício 2 de 2')
+
+      const sets = within(dialog).getByRole('list', { name: 'Séries de Supino reto' })
+      expect(
+        within(sets)
+          .getAllByText(/^Série \d: /)
+          .map((node) => node.textContent),
+      ).toEqual([
+        'Série 1: 42,5 kg, 10 repetições',
+        'Série 2: 42,5 kg, 10 repetições',
+        'Série 3: 42,5 kg, 10 repetições',
+      ])
+    })
+  })
+})
+
+describe('Given the screen Treino concluído after the last set of the day', () => {
+  describe('When the athlete taps the top control', () => {
+    it('Then the dialog should list the sets of each exercise in program order and offer only Fechar', async () => {
+      const exercises = [TRICEPS_TWO_SETS, { ...SUPINO_RETO, sets: 2 }]
+      const finished = flowAfterSets(exercises as typeof THREE_EXERCISES, 4)
+      renderWorkout(exercises, vi.fn(), NEVER_SENT, finished)
+
+      const dialog = await openSequence('Sequência do treino, letra A, exercício 2 de 2')
+
+      expect({
+        lists: within(dialog)
+          .getAllByRole('list')
+          .map((list) => list.getAttribute('aria-label')),
+        buttons: within(dialog)
+          .getAllByRole('button')
+          .map((button) => button.getAttribute('aria-label') ?? button.textContent),
+      }).toEqual({
+        lists: ['Exercícios', 'Séries de Tríceps na polia', 'Séries de Supino reto'],
+        buttons: ['Fechar'],
+      })
+    })
+  })
+})
+
+const ALWAYS_REJECTED: SendItem = async () => ({
+  status: 'rejected',
+  code: 'test_rejection',
+  message: 'Refused by the test double.',
+})
+
+describe('Given the API refused every set of supino-reto after the athlete recorded the 3 sets', () => {
+  describe('When the athlete opens the sequence', () => {
+    it('Then the dialog should still list the 3 recorded sets of supino-reto', async () => {
+      vi.useFakeTimers({ now: T0 })
+      renderWorkout([SUPINO_RETO, PRANCHA], vi.fn(), ALWAYS_REJECTED)
+      await tapSets(3)
+      await act(async () => vi.advanceTimersByTime(300))
+
+      const dialog = await openSequence('Sequência do treino, letra A, exercício 2 de 2')
+
+      const sets = within(dialog).getByRole('list', { name: 'Séries de Supino reto' })
+      expect(within(sets).getAllByText(/^Série \d: /)).toHaveLength(3)
     })
   })
 })

@@ -21,6 +21,7 @@ const REST_TIMER_SPEC = /rest-timer\.feature\.spec\.js$/
 const OFFLINE_SETS_SPEC = /offline-sets\.feature\.spec\.js$/
 const WORKOUT_SEQUENCE_SPEC = /workout-sequence\.feature\.spec\.js$/
 const SKIP_EXERCISE_SPEC = /skip-exercise\.feature\.spec\.js$/
+const REVIEW_DONE_EXERCISE_SPEC = /review-done-exercise\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -57,6 +58,7 @@ export default defineConfig({
         OFFLINE_SETS_SPEC,
         WORKOUT_SEQUENCE_SPEC,
         SKIP_EXERCISE_SPEC,
+        REVIEW_DONE_EXERCISE_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -129,6 +131,15 @@ export default defineConfig({
       testMatch: SKIP_EXERCISE_SPEC,
       fullyParallel: false,
       dependencies: ['workout-sequence'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records sets and reads the sheet of the sequence in the shared database, so it runs alone
+    // and one scenario at a time, after the skipped exercise.
+    {
+      name: 'review-done-exercise',
+      testMatch: REVIEW_DONE_EXERCISE_SPEC,
+      fullyParallel: false,
+      dependencies: ['skip-exercise'],
       use: { ...devices['Pixel 7'] },
     },
   ],
