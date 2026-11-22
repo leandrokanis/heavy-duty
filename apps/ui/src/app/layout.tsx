@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
+import { ToastProvider } from '@/components/ui/toast'
 import { AuthGate } from '@/features/auth/auth-gate'
 import './globals.css'
 
@@ -22,7 +23,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR">
       <body>
-        <AuthGate>{children}</AuthGate>
+        <ToastProvider>
+          <AuthGate>{children}</AuthGate>
+        </ToastProvider>
       </body>
     </html>
   )

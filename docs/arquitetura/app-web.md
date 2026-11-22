@@ -26,16 +26,16 @@ O app web não guarda regra de negócio. Validação de domínio, cálculo do jo
 | React 19 | Componentes | MIT | Aceita, ADR-009 |
 | TypeScript, modo estrito | Linguagem | Apache-2.0 | Aceita, ADR-002 |
 | Base UI (`@base-ui/react`) | Componentes sem estilo e acessíveis, base do Animate UI. A feature `workout` usa o `Drawer` (folha de confirmação) e o `Progress` (barra de exercícios e pontos das séries) | MIT | Aceita, ADR-009 |
-| Animate UI, variante Base UI | Componentes animados copiados para `src/components/ui/` | "MIT + Commons Clause" no `LICENSE.md` oficial (2026-11-21) | Pendente: decisão do PO sobre a licença (ADR-016); nenhum componente copiado |
+| Animate UI | Código copiado do repositório oficial, sem o pacote `@animate-ui/react`. Arquivo copiado: `src/components/ui/motion-button.tsx`, derivado do primitivo do botão (commit `9873c628`, 2026-11-22) | "MIT + Commons Clause" (`THIRD_PARTY_NOTICES.md`) | Aceita, ADR-024 e ADR-027 |
 | Tailwind CSS 4 | Estilo, com os tokens do `DESIGN.md` no tema | MIT | Aceita, ADR-009 |
-| Motion | Animação, exigida pelo Animate UI | MIT | Aceita, ADR-009 |
+| Motion (`motion` 14.14.0) | Animação do estado pressionado do botão (`whileTap`). Licença conferida no `package.json` instalado | MIT | Aceita, ADR-009 |
 | Serwist (`@serwist/next` 9.5.15) | Service worker: pré-carga, página sem conexão em `/~offline`, recebimento do Web Push | MIT | Aceita, ADR-009 |
 | `@simplewebauthn/browser` 14.0.0 | Cerimônias da chave de acesso no navegador (`startAuthentication`, `startRegistration`) | MIT | Aceita, ADR-019 |
 | TanStack Query | Cache e revalidação dos dados da API no cliente | MIT | Não adotado (ADR-021): uma leitura por abertura não pede cache em memória; a cópia local fica no Dexie |
 | Dexie 4.4.7 | Acesso ao IndexedDB (contêiner de armazenamento local) | Apache-2.0 | Aceita, ADR-021 |
 | Zod | Validação dos dados que chegam da API | MIT | Não adotado (ADR-021): o tipo da resposta continua espelhado em `today.types.ts` |
 | Vitest, jsdom e Testing Library | Teste de componente | MIT | Aceita, `docs/convencoes/testes.md` |
-| Lucide (`lucide-react` 1.70.0) | Conjunto de ícones. Instalado na US-F03-01, com os ícones `X` (fechar a folha) e `Timer` (duração estimada); a US-F03-02 acrescentou `CloudOff` (hoje, o indicador da fila) e a US-F03-03, `TriangleAlert` (aviso das séries recusadas) | ISC | Aceita, ADR-016 |
+| Lucide (`lucide-react` 1.70.0) | Conjunto de ícones. Instalado na US-F03-01, com os ícones `X` (fechar a folha) e `Timer` (duração estimada); a US-F03-02 acrescentou `CloudOff` (hoje, o indicador da fila) e a US-F03-03, `TriangleAlert` (aviso das séries recusadas); a EN-S1-01 acrescentou `Dumbbell`, `Lock`, `KeyRound`, `WifiOff` e `CircleAlert` (telas de entrada, de cadastro e sem conexão) | ISC | Aceita, ADR-016 |
 | `uuid` 14.0.3 | ID do treino e da série em UUID v7, gerado no celular (`createClientId` em `src/features/workout/client-id.ts`), a mesma versão da API. Instalado na US-F03-02 | MIT | Aceita, ADR-014 |
 
 ## Interfaces
@@ -59,7 +59,7 @@ apps/ui/src/
     autorizar/             tela de autorização do cliente do MCP (US-F16-01)
     ~offline/              página sem conexão
     manifest.ts            manifesto do PWA
-  components/ui/           componentes do Animate UI, sobre o Base UI, adaptados ao DESIGN.md
+  components/ui/           componentes base sobre o Base UI, com os tokens do DESIGN.md: `MotionButton` (derivado do Animate UI), `Button`, `IconButton`, `Sheet` e `Toast` (aviso flutuante, com o `ToastProvider` no layout raiz)
   features/<feature>/      componentes, hooks e serviços de uma feature (auth, workout, rest, game…)
   features/auth/           AuthGate, tela de entrada, tela de cadastro, aviso sem conexão, cliente de /api/auth/*
   features/workout/        treino do dia: cliente de /api/today, lista de letras, folha de confirmação, tela de treino, cronômetro do exercício por tempo (`timer-ring.tsx`, `timer-cues.ts`, `tone-player.ts`, `sound-preference.ts`; US-F03-07) e formatação de carga e duração (US-F03-01); fluxo da série (reducer), cliente de /api/workouts/{workoutId}/sets e descanso (US-F03-02); indicador da fila, aviso das séries recusadas e retomada do treino (US-F03-03); fim e pulo do descanso, anel, tela acesa e treino concluído (US-F05-01)

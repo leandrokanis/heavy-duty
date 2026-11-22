@@ -1,9 +1,11 @@
 'use client'
 
-import { Button } from '@base-ui/react/button'
 import { browserSupportsWebAuthn, startAuthentication } from '@simplewebauthn/browser'
+import { Lock } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
 import { requestSignInOptions, verifySignIn } from './auth-client'
+import { AuthScreenLayout } from './auth-screen-layout'
 
 export type SignInScreenProps = {
   onSignedIn: () => void
@@ -41,20 +43,16 @@ export function SignInScreen({ onSignedIn }: SignInScreenProps) {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col justify-center gap-(--space-24) px-(--space-margin-inline) py-(--space-24)">
-      <h1 className="text-[2rem] font-(--font-weight-semibold)">Heavy Duty</h1>
+    <AuthScreenLayout
+      icon="app"
+      title="Heavy Duty"
+      message={supported ? error : WEBAUTHN_UNSUPPORTED}
+    >
       {supported ? (
-        <Button
-          className="min-h-(--target-min) min-w-(--target-min) self-start rounded-(--radius-capsule) bg-[CanvasText] px-(--space-24) font-(--font-weight-semibold) text-[Canvas] active:opacity-60 disabled:opacity-40"
-          disabled={busy}
-          onClick={signIn}
-        >
+        <Button size="large" icon={Lock} className="w-full" disabled={busy} onClick={signIn}>
           Entrar
         </Button>
       ) : null}
-      <p aria-live="polite" className="min-h-(--target-min)">
-        {supported ? error : WEBAUTHN_UNSUPPORTED}
-      </p>
-    </main>
+    </AuthScreenLayout>
   )
 }

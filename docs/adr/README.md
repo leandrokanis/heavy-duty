@@ -32,6 +32,7 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-024](024-componentes-do-animate-ui-com-commons-clause.md) | Componentes do Animate UI com a licença MIT + Commons Clause | Aceita |
 | [ADR-025](025-correcao-da-serie-na-fila-de-sincronizacao.md) | Correção da série na fila de sincronização | Aceita |
 | [ADR-026](026-confirmacao-em-duas-chamadas-no-mcp.md) | Confirmação em duas chamadas nas ferramentas do MCP que alteram o histórico | Aceita |
+| [ADR-027](027-codigo-do-animate-ui-copiado-do-repositorio-oficial.md) | Código do Animate UI copiado do repositório oficial | Aceita |
 
 ## Regras
 

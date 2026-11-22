@@ -7,7 +7,7 @@ PWA em Next.js, com Base UI e Animate UI, para a persona Atleta (P1). A arquitet
 ```text
 src/
   app/                    rotas do App Router; o fluxo da academia fica em app/(treino)/, renderizado no cliente
-  components/ui/          componentes do Animate UI, sobre o Base UI, adaptados ao DESIGN.md
+  components/ui/          componentes base: `MotionButton` (derivado do Animate UI, sob a licença do `THIRD_PARTY_NOTICES.md`), `Button`, `IconButton`, `Sheet` e `Toast` (código próprio)
   features/<feature>/     componentes, hooks e serviços de uma feature (workout, rest…)
   shared/                 utilitários usados por duas features ou mais
   sync/                   fila local (IndexedDB, com Dexie) e envio para a API
@@ -25,7 +25,8 @@ Siga `DESIGN.md` em toda tela e todo componente. Regras que mais erram:
 - Vidro (`backdrop-filter`) só na camada de controles e navegação, com versão opaca para `prefers-reduced-transparency` e `prefers-contrast: more`.
 - Cor, espaço, raio e duração vêm de tokens CSS (`--color-*`, `--space-*`, `--radius-*`).
 - Não use fontes SF nem SF Symbols. Use a pilha `system-ui` e os ícones do Lucide (`lucide-react`, ADR-016).
-- Ao copiar um componente do Animate UI, ponha no topo do arquivo o comentário de licença da ADR-024 e acrescente o arquivo à lista do `THIRD_PARTY_NOTICES.md`. Na primeira cópia, ponha nesse arquivo o texto integral do `LICENSE.md` do repositório oficial.
+- Use `Button` e `IconButton` de `components/ui/` em tela nova, no lugar de `<button>` com classe solta. `IconButton` exige `aria-label`.
+- Ao copiar um componente do Animate UI, copie só do repositório oficial, em commit fixado, sem o pacote `@animate-ui/react` (ADR-027). Ponha no topo do arquivo o comentário de licença da ADR-024 e acrescente o arquivo à lista do `THIRD_PARTY_NOTICES.md`. Na primeira cópia, ponha nesse arquivo o texto integral do `LICENSE.md` do repositório oficial.
 - Siga o visual da versão mais recente de `docs/prototipo/`. Token que o protótipo usa e o `DESIGN.md` não define entra primeiro no `DESIGN.md`.
 - Meça alinhamento e espaçamento com `getBoundingClientRect()` antes de afirmar que estão corretos.
 
