@@ -99,4 +99,6 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Cliente do MCP | Programa que se registra no servidor de autorização do app para chamar o `/mcp`, como o conector do Claude. Declara um nome, que não é confiável; o host do endereço de retorno é o dado que vale | `OAuthClient` | conector, app |
 | Autorização do MCP | Acesso que o PO aprovou para um cliente do MCP, com a sessão de acesso. Renova a credencial do MCP sem nova aprovação até ser revogada | `OAuthGrant` | permissão, consentimento |
 | Credencial do MCP | Valor que o cliente do MCP manda em `Authorization: Bearer` para chamar o `/mcp`. Vale 1 hora; o banco guarda só o hash | `accessToken` | token do MCP, chave do MCP |
+| Prévia | Resultado de uma ferramenta do MCP que mostra a mudança antes de aplicá-la, com `applied: false`. Não altera o histórico | `applied: false` | simulação, dry run |
+| Código de confirmação | Texto de 32 caracteres hexadecimais que a prévia devolve e que o planejador repete para aplicar a mudança. Só vale para o mesmo pedido sobre o mesmo estado do treino | `confirmationCode` | token de confirmação |
 | Onda | Grupo de features entregue em sequência, conforme o roadmap do PRD | — | sprint, release |

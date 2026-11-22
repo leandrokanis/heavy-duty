@@ -19,7 +19,7 @@ Este documento lista as ferramentas do servidor MCP da API: nome, descrição, p
 
 - O nome da ferramenta é em `snake_case`, com verbo primeiro (`apps/api/CLAUDE.md`, regra 4).
 - A ferramenta chama o mesmo service da rota HTTP (ADR-006).
-- A ferramenta que apaga ou altera histórico declara `destructiveHint: true` e só age depois de confirmação explícita (US-F06-02).
+- A ferramenta que apaga ou altera histórico declara `destructiveHint: true` e só age depois de confirmação explícita, em duas chamadas (US-F06-02, ADR-026).
 - O registro das ferramentas fica em `apps/api/src/mcp/tools/index.ts`. Ferramenta nova, alterada ou removida atualiza este arquivo no mesmo commit.
 
 ## Lista de ferramentas
@@ -46,14 +46,28 @@ As ferramentas existem só quando a API abriu o banco. Sem banco, `tools/list` d
 | `list_programs` | List the programs with their days and planned exercises, the active program first and the others from newest to oldest. | Nenhum | Não (`readOnlyHint: true`) | `listPrograms`, em `modules/programs/program.service.ts` |
 | `get_system_status` | Report the daily backup status: the latest run, the last successful run and up to 7 recent runs, newest first. Each run has startedAt and finishedAt in UTC (ISO 8601), status (succeeded or failed), sizeBytes and the failure reason in error. latestRun and lastSuccessfulRun are null when no such run exists. | Nenhum | Não (`readOnlyHint: true`) | `getSystemStatus`, em `modules/system/system-status.service.ts` |
 | `list_workouts` | List the recorded workouts that started in an interval, oldest first. from and to are UTC instants in ISO 8601 with a Z; the interval is half open (a workout starting exactly at from is included, one starting exactly at to is not) and at most 92 days. The API does no time zone conversion: midnight in America/Sao_Paulo is 03:00Z. Each workout has its program, letter, current label of the letter, startedAt, finishedAt and endReason (null while in progress), exercises with their sets and leftOut, the exercises that were skipped and not done. | `from` (texto), `to` (texto) | Não (`readOnlyHint: true`) | `listWorkouts`, em `modules/workouts/workout-history.service.ts` |
+| `update_workout_set` | Replace the load and the measure of a recorded set. The workoutId and the setId come from list_workouts; loadG is in grams and the measure is reps (reps exercise) or seconds (time exercise), never both. Two calls are needed: the first, without confirmationCode, returns a preview (applied false) with a confirmationCode; show it to the PO, wait for the confirmation of the PO and repeat the same request with the code. | `workoutId` (texto), `setId` (texto), `loadG` (número, em gramas), `reps` (número, opcional), `seconds` (número, opcional), `confirmationCode` (texto, opcional) | Sim (`destructiveHint: true`) | `editWorkoutSet`, em `modules/workouts/workout-set-edit.service.ts` |
+| `remove_workout` | Remove a recorded workout with its sets and skips; this cannot be undone. The workoutId comes from list_workouts. Two calls are needed, as in update_workout_set. A workout without finishedAt may come back if the phone still has sets to send. | `workoutId` (texto), `confirmationCode` (texto, opcional) | Sim (`destructiveHint: true`) | `removeWorkout`, em `modules/workouts/workout-removal.service.ts` |
 
-A US-F01-01 trouxe as três primeiras ferramentas, a US-F01-02 trouxe `list_exercises` e `add_exercise`, a US-F02-01 trouxe as cinco ferramentas do programa, a US-F02-02 trouxe as seis ferramentas de edição do programa, a US-F14-02 trouxe `get_system_status` e a US-F06-01 trouxe `list_workouts`. As rotas HTTP equivalentes estão em `contratos.md`, nas seções "Catálogo de grupos musculares e músculos", "Catálogo de exercícios", "Programa", "Histórico de treinos" e "Situação do app". O schema aceita os campos de `add_exercise` e das ferramentas do programa como opcionais, e o service recusa o campo ausente ou inválido, como na rota HTTP.
+A US-F01-01 trouxe as três primeiras ferramentas, a US-F01-02 trouxe `list_exercises` e `add_exercise`, a US-F02-01 trouxe as cinco ferramentas do programa, a US-F02-02 trouxe as seis ferramentas de edição do programa, a US-F14-02 trouxe `get_system_status`, a US-F06-01 trouxe `list_workouts` e a US-F06-02 trouxe `update_workout_set` e `remove_workout`. As rotas HTTP equivalentes estão em `contratos.md`, nas seções "Catálogo de grupos musculares e músculos", "Catálogo de exercícios", "Programa", "Histórico de treinos" e "Situação do app". O schema aceita os campos de `add_exercise` e das ferramentas do programa como opcionais, e o service recusa o campo ausente ou inválido, como na rota HTTP.
 
 A ferramenta `list_workouts` recebe `from` e `to` como texto opcional, e o service recusa o valor ausente, vazio ou fora do formato com `workout_range_required`, o intervalo invertido com `workout_range_inverted` e o intervalo maior que 92 dias com `workout_range_too_long`, como na rota HTTP. A ferramenta só lê: o `readOnlyHint: true` vale porque o service e o repositório do histórico só fazem `select`.
 
 As ferramentas do programa recebem no mesmo objeto o corpo da rota HTTP e os parâmetros do caminho: `programId`, `letter` e, nas ferramentas do exercício do programa, `exerciseSlug`. O `programId` ausente ou vazio volta como `program_not_found`, a `letter` ausente ou vazia volta como `program_day_letter_required`, e o `exerciseSlug` ausente ou vazio de `update_planned_exercise` e `remove_planned_exercise` volta como `planned_exercise_exercise_required`.
 
 As ferramentas `remove_program_day` e `remove_planned_exercise` declaram `destructiveHint: true` porque tiram parte do plano, mas não pedem confirmação: a remoção não muda treino registrado, e a regra da confirmação vale para o histórico (US-F06-02). As ferramentas de edição mudam só o campo enviado, como a rota `PATCH` equivalente. As ferramentas `create_program`, `add_program_day` e `add_planned_exercise` usam o relógio da API (`now` do `ToolDeps`), o mesmo das rotas HTTP.
+
+## Confirmação em duas chamadas
+
+As ferramentas `update_workout_set` e `remove_workout` não têm rota HTTP e agem em duas chamadas (ADR-026). Sem `confirmationCode` (ausente, vazio ou só com espaços), o service confere o pedido e devolve a prévia, sem mudar o banco. Com o código, o service recalcula o código sobre o estado atual do treino, dentro da mesma transação, e aplica se ele conferir.
+
+- O resultado tem `applied` e `confirmationCode`. A prévia traz `applied: false` e o código. A aplicação traz `applied: true` e `confirmationCode: null`.
+- O resultado de `remove_workout` traz também `workout`, no formato de um item de `list_workouts`.
+- O resultado de `update_workout_set` traz `workout` (`id`, `letter`, `startedAt`), `exercise`, `set` (`id`, `setNumber`), `before` e `after`, cada um com `loadG`, `reps` e `seconds`.
+- O código é o SHA-256, em 32 caracteres hexadecimais, de um JSON com a ação, o pedido e o estado do treino. O código não é segredo e não fica no banco.
+- O service decide nesta ordem: treino, série (só na edição), valores e tipo (só na edição), código. Treino, série e valor inválidos são recusados com ou sem código.
+- Recusas: `workout_not_found` ("treino não encontrado"), `workout_set_not_found` ("série não encontrada"), os códigos de valor da correção (`workout_set_load_invalid`, `workout_set_reps_invalid`, `workout_set_seconds_invalid` e `workout_set_measure_invalid`) e `workout_confirmation_stale` ("o treino mudou desde a prévia; peça uma nova prévia").
+- A remoção apaga o treino, e `ON DELETE CASCADE` apaga as séries e os pulos (`dados.md`).
 
 ## Resultado e erro das ferramentas
 

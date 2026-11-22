@@ -827,7 +827,7 @@ O programa que deixou de ser o ativo depois do "Começar" não impede a série: 
 
 ## Correção da série
 
-A rota desta seção vem da US-F04-02. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem dos métodos que mudam estado. A correção não tem ferramenta MCP: a edição pelo planejador é da US-F06-02 (`mcp.md` não muda). O service fica em `apps/api/src/modules/workouts/workout-set-correction.service.ts`.
+A rota desta seção vem da US-F04-02. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem dos métodos que mudam estado. A rota é do atleta. O planejador troca a carga e a medida de qualquer série pelo `update_workout_set` e remove o treino pelo `remove_workout`, as duas ferramentas da US-F06-02 (`mcp.md`, seção "Confirmação em duas chamadas"), sem rota HTTP. O service fica em `apps/api/src/modules/workouts/workout-set-correction.service.ts`.
 
 O app não chama a rota direto da tela. A correção entra na fila local de envio como quarto tipo de item, depois da série, e segue as regras da ADR-025.
 
@@ -875,7 +875,7 @@ Ordem da conferência, na mesma transação:
 
 ## Fim do treino
 
-A rota desta seção vem da US-F03-04. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem. O fim não tem ferramenta MCP própria: o planejador lê o fim pelo `list_workouts` (US-F06-01, seção "Histórico de treinos"), e a correção do fim é da US-F06-02. O service fica em `apps/api/src/modules/workouts/workout-finish.service.ts`.
+A rota desta seção vem da US-F03-04. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem. O fim não tem ferramenta MCP própria: o planejador lê o fim pelo `list_workouts` (US-F06-01, seção "Histórico de treinos"), e a correção do fim fica para uma story futura. O `remove_workout` apaga o treino inteiro (US-F06-02). O service fica em `apps/api/src/modules/workouts/workout-finish.service.ts`.
 
 O app não chama a rota direto da tela. O fim entra na fila local de envio depois das séries e dos exercícios pulados do treino (seção "Exercício pulado") e segue as regras da ADR-022.
 
@@ -925,7 +925,7 @@ A API não limita o instante no futuro nem recusa série nova para um treino ter
 
 ## Exercício pulado
 
-A rota desta seção vem da US-F03-05. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem. O exercício pulado não tem ferramenta MCP própria: o planejador lê os exercícios que ficaram de fora pelo `list_workouts` (US-F06-01, seção "Histórico de treinos"), e a correção é da US-F06-02. O service fica em `apps/api/src/modules/workouts/workout-skip.service.ts`.
+A rota desta seção vem da US-F03-05. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem. O exercício pulado não tem ferramenta MCP própria: o planejador lê os exercícios que ficaram de fora pelo `list_workouts` (US-F06-01, seção "Histórico de treinos"), e a correção fica para uma story futura. O `remove_workout` apaga o treino com os pulos (US-F06-02). O service fica em `apps/api/src/modules/workouts/workout-skip.service.ts`.
 
 O app não chama a rota direto da tela. O pulado que resta no fim do treino entra na fila local de envio depois das séries e antes do fim, e segue as regras da ADR-023.
 
