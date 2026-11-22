@@ -47,12 +47,18 @@ const correctWorkoutSetRoute = createRoute({
   },
 })
 
-export function createWorkoutSetCorrectionRoutes(db: Database): OpenAPIHono {
+export function createWorkoutSetCorrectionRoutes(options: {
+  db: Database
+  now: () => Date
+}): OpenAPIHono {
   const routes = createRouter()
 
   routes.openapi(correctWorkoutSetRoute, (c) => {
     const { workoutId, setId } = c.req.valid('param')
-    return c.json(correctWorkoutSet(db, workoutId, setId, c.req.valid('json')), 200)
+    return c.json(
+      correctWorkoutSet(options.db, workoutId, setId, c.req.valid('json'), options.now),
+      200,
+    )
   })
 
   return routes

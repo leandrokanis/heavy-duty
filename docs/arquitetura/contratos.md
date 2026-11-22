@@ -831,6 +831,8 @@ A rota desta seção vem da US-F04-02. A rota existe só quando a API abriu o ba
 
 O app não chama a rota direto da tela. A correção entra na fila local de envio como quarto tipo de item, depois da série, e segue as regras da ADR-025.
 
+O instante de `corrected_at` é o da chegada na API, não o do toque na tela, porque o corpo da ADR-025 não traz instante. A correção que ficou na fila sem sinal recebe o instante em que chegou. A marca indica que a série foi corrigida e não mede quando. A resposta do `PATCH` continua `WorkoutSet`, sem o campo `correctedAt`; o campo aparece em `GET /api/workouts` (seção "Histórico de treinos").
+
 ### PATCH /api/workouts/{workoutId}/sets/{setId}
 
 | Campo | Valor |
@@ -840,8 +842,8 @@ O app não chama a rota direto da tela. A correção entra na fila local de envi
 | Autenticação | Sessão de acesso (cookie `hd_session`) e `Origin` igual a `APP_ORIGIN` quando o navegador manda o cabeçalho |
 | Caminho | `workoutId` e `setId`: IDs do treino e da série em UUID |
 | Corpo | `{ "loadG", "reps" }` no exercício de repetição; o exercício de tempo manda `seconds` no lugar de `reps`. Os valores são absolutos e inteiros. O schema confere só o formato, e o service recusa os valores de domínio com `code` próprio |
-| Efeito colateral | Troca `load_g` e `reps` ou `seconds` da linha de `workout_sets`. `id`, `workout_id`, `exercise_id`, `planned_exercise_id`, `set_number` e `performed_at` não mudam. A recusa não grava nada: a conferência e a gravação ficam numa transação só |
-| Idempotência | Idempotente: o reenvio com os mesmos valores responde 200 com a mesma série e não muda nada |
+| Efeito colateral | Troca `load_g` e `reps` ou `seconds` da linha de `workout_sets`. Quando a carga ou a medida difere da gravada, grava também `corrected_at` com o instante da chegada na API, em UTC e no formato de `toISOString()` (US-F06-01). `id`, `workout_id`, `exercise_id`, `planned_exercise_id`, `set_number` e `performed_at` não mudam. A recusa não grava nada: a conferência e a gravação ficam numa transação só |
+| Idempotência | Idempotente: o reenvio com os mesmos valores responde 200 com a mesma série e não muda nada, nem `corrected_at`. Uma segunda correção com outro valor move `corrected_at` para o instante da segunda chegada |
 
 | Status | Corpo | Quando |
 |---|---|---|
@@ -873,7 +875,7 @@ Ordem da conferência, na mesma transação:
 
 ## Fim do treino
 
-A rota desta seção vem da US-F03-04. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem. O fim não tem ferramenta MCP: a leitura e a correção do fim pelo planejador são das stories US-F06-01 e US-F06-02 (`mcp.md` não muda). O service fica em `apps/api/src/modules/workouts/workout-finish.service.ts`.
+A rota desta seção vem da US-F03-04. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem. O fim não tem ferramenta MCP própria: o planejador lê o fim pelo `list_workouts` (US-F06-01, seção "Histórico de treinos"), e a correção do fim é da US-F06-02. O service fica em `apps/api/src/modules/workouts/workout-finish.service.ts`.
 
 O app não chama a rota direto da tela. O fim entra na fila local de envio depois das séries e dos exercícios pulados do treino (seção "Exercício pulado") e segue as regras da ADR-022.
 
@@ -923,7 +925,7 @@ A API não limita o instante no futuro nem recusa série nova para um treino ter
 
 ## Exercício pulado
 
-A rota desta seção vem da US-F03-05. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem. O exercício pulado não tem ferramenta MCP: a leitura e a correção pelo planejador são das stories US-F06-01 e US-F06-02 (`mcp.md` não muda). O service fica em `apps/api/src/modules/workouts/workout-skip.service.ts`.
+A rota desta seção vem da US-F03-05. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem. O exercício pulado não tem ferramenta MCP própria: o planejador lê os exercícios que ficaram de fora pelo `list_workouts` (US-F06-01, seção "Histórico de treinos"), e a correção é da US-F06-02. O service fica em `apps/api/src/modules/workouts/workout-skip.service.ts`.
 
 O app não chama a rota direto da tela. O pulado que resta no fim do treino entra na fila local de envio depois das séries e antes do fim, e segue as regras da ADR-023.
 
@@ -974,6 +976,103 @@ Ordem da conferência, na mesma transação:
 8. Gravação do pulado.
 
 A API não recusa pulado de treino já terminado, porque a fila envia os pulados antes do fim [fora de escopo da US-F03-05].
+
+## Histórico de treinos
+
+A rota desta seção vem da US-F06-01. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019). A ferramenta MCP `list_workouts` devolve o mesmo objeto (`mcp.md`), pelo mesmo service `listWorkouts`, em `apps/api/src/modules/workouts/workout-history.service.ts`. O `GET` não passa pela guarda de origem.
+
+### GET /api/workouts
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Listar os treinos que começaram num intervalo em UTC, com programa, letra, fim, exercícios feitos, séries e exercícios que ficaram de fora, para o planejador consultar o histórico pelo Claude |
+| Story | US-F06-01 |
+| Autenticação | Sessão de acesso (cookie `hd_session`). A ferramenta MCP exige a credencial do MCP |
+| Query | `from` e `to`: instantes ISO 8601 em UTC, com `Z` e milissegundos opcionais. O intervalo é semiaberto: o treino que começa em `from` entra e o que começa em `to` fica de fora. O intervalo tem no máximo 92 dias. O schema aceita os dois como texto opcional, e o service recusa o valor com `code` próprio |
+| Efeito colateral | Nenhum. O service e o repositório só fazem `select` em `workouts`, `programs`, `program_days`, `workout_sets`, `exercises` e `workout_skips`, em três consultas |
+| Idempotência | Idempotente |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `WorkoutHistory` | Intervalo válido. A lista fica vazia quando nenhum treino começou nele |
+| 400 | `{ "code": "workout_range_required", "message": "informe o início e o fim do intervalo em UTC" }` | `from` ou `to` ausente, vazio, sem `Z`, só com a data ou com data que não existe, como `2026-02-30T03:00:00Z` |
+| 400 | `{ "code": "workout_range_inverted", "message": "o fim do intervalo deve ser depois do início" }` | `to` igual ou anterior a `from` |
+| 400 | `{ "code": "workout_range_too_long", "message": "o intervalo deve ter no máximo 92 dias" }` | Intervalo maior que 92 dias. Os 92 dias exatos são aceitos |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida. O corpo não tem dado de treino |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+Forma do `WorkoutHistory`: `{ "workouts": HistoryWorkout[] }`, dos treinos mais antigos para os mais novos (`started_at` e, no empate, `id`).
+
+| Campo do treino | Conteúdo |
+|---|---|
+| `id` | ID do treino |
+| `program` | `{ "id", "name" }` do programa treinado |
+| `letter` | Letra treinada, gravada no treino |
+| `label` | Nome atual da letra, lido de `program_days.label`. Fica `null` quando a letra não tem nome ou saiu do programa |
+| `startedAt`, `finishedAt`, `endReason` | Início, fim e motivo (`completed` ou `ended_early`). `finishedAt` e `endReason` ficam `null` no treino em andamento |
+| `exercises` | `[{ "exercise": { "id", "slug", "name", "kind" }, "sets": [...] }]`, na ordem da primeira série de cada exercício. As séries seguem o número da série |
+| `leftOut` | `[{ "id", "slug", "name", "kind" }]`: os exercícios pulados que não têm série no treino, na ordem do pulo. O exercício pulado e feito depois fica só em `exercises` |
+
+Cada série tem `id`, `setNumber`, `loadG` (gramas inteiras), `reps`, `seconds` (um dos dois fica `null`), `performedAt` e `correctedAt`. `correctedAt` fica `null` enquanto ninguém corrigiu a série e traz o instante da última correção que mudou um valor (seção "Correção da série").
+
+A consulta devolve os valores gravados no treino, não os do programa: depois de o planejador remover a letra "B", o treino volta com `letter` "B", `label` `null` e as séries registradas (`apps/api/CLAUDE.md`, regra 7). O treino sem série volta com `exercises` e `leftOut` vazios. A API não converte fuso: o Claude converte a semana do PO para UTC, em que a meia-noite de `America/Sao_Paulo` é `03:00Z`. A resposta não tem paginação; o limite de 92 dias contém o tamanho.
+
+Exemplo da semana de 9 a 16 de novembro de 2026:
+
+```text
+GET /api/workouts?from=2026-11-09T03:00:00.000Z&to=2026-11-16T03:00:00.000Z
+```
+
+```json
+{
+  "workouts": [
+    {
+      "id": "0193a1b2-0000-7000-8000-000000000601",
+      "program": { "id": "0193a1b2-0000-7000-8000-000000000301", "name": "Programa 1" },
+      "letter": "A",
+      "label": "Superior",
+      "startedAt": "2026-11-09T21:30:00.000Z",
+      "finishedAt": "2026-11-09T22:20:00.000Z",
+      "endReason": "ended_early",
+      "exercises": [
+        {
+          "exercise": {
+            "id": "0193a1b2-0000-7000-8000-000000000201",
+            "slug": "supino-reto",
+            "name": "Supino reto",
+            "kind": "reps"
+          },
+          "sets": [
+            {
+              "id": "0193a1b2-0000-7000-8000-000000000501",
+              "setNumber": 1,
+              "loadG": 42500,
+              "reps": 10,
+              "seconds": null,
+              "performedAt": "2026-11-09T21:31:05.000Z",
+              "correctedAt": "2026-11-09T21:32:00.000Z"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "id": "0193a1b2-0000-7000-8000-000000000202",
+          "slug": "prancha",
+          "name": "Prancha",
+          "kind": "time"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Ordem da conferência, antes de ler os treinos:
+
+1. Formato de `from` e `to`, com ida e volta da data (`workout_range_required`).
+2. `to` depois de `from` (`workout_range_inverted`).
+3. Intervalo de até 92 dias (`workout_range_too_long`).
 
 ## Situação do app
 

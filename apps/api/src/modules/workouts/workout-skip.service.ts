@@ -1,5 +1,6 @@
 import type { Database } from '../../db/connection.js'
 import { DomainError } from '../../errors/domain-error.js'
+import { parseUtcInstant } from './utc-instant.js'
 import {
   findPlannedExerciseTarget,
   findWorkoutRow,
@@ -12,9 +13,6 @@ import {
 import type { RecordWorkoutSkipBody, WorkoutSkip } from './workouts.schemas.js'
 
 export type RecordedWorkoutSkip = { skip: WorkoutSkip; created: boolean }
-
-// Same UTC ISO 8601 shape the set route accepts, with optional milliseconds.
-const UTC_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/
 
 // The order follows decision 31: format, then existence, then a replay (before the plan is
 // read), then the plan, the time rule and the exercise already skipped; every refusal
@@ -64,11 +62,11 @@ function skipConflict(message: string): DomainError {
 }
 
 function parseInstant(value: string): string {
-  const time = UTC_INSTANT.test(value) ? new Date(value).getTime() : Number.NaN
-  if (Number.isNaN(time)) {
+  const instant = parseUtcInstant(value)
+  if (instant === undefined) {
     throw new DomainError('workout_skipped_at_invalid', 'instante do pulo inválido', 'invalid')
   }
-  return new Date(time).toISOString()
+  return instant
 }
 
 // The workout keeps the day it was started on, so a planned exercise of another letter,

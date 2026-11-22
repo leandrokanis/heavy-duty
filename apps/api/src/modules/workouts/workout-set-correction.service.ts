@@ -9,12 +9,14 @@ import {
 import { parseMeasuredValues, parseMeasureOfKind } from './workout-set.service.js'
 import type { CorrectWorkoutSetBody, WorkoutSet } from './workouts.schemas.js'
 
-// Replaces the load and the measure of a stored set; the rest of the row never changes.
+// Replaces the load and the measure of a stored set; the rest of the row never changes,
+// except corrected_at, which marks the arrival of a correction that changed a value.
 export function correctWorkoutSet(
   db: Database,
   workoutId: string,
   setId: string,
   input: CorrectWorkoutSetBody,
+  now: () => Date,
 ): WorkoutSet {
   return db.transaction(() => {
     if (!findWorkoutRow(db, workoutId)) {
@@ -30,7 +32,15 @@ export function correctWorkoutSet(
       parseMeasureOfKind(kind, input)
     }
     const values = { loadG: input.loadG, reps: input.reps ?? null, seconds: input.seconds ?? null }
-    updateWorkoutSetValues(db, setId, values)
+    const changed =
+      values.loadG !== stored.loadG ||
+      values.reps !== stored.reps ||
+      values.seconds !== stored.seconds
+    updateWorkoutSetValues(
+      db,
+      setId,
+      changed ? { ...values, correctedAt: now().toISOString() } : values,
+    )
     return { ...stored, ...values }
   })
 }

@@ -1520,6 +1520,189 @@
           "plannedExerciseId",
           "skippedAt"
         ]
+      },
+      "WorkoutHistory": {
+        "type": "object",
+        "properties": {
+          "workouts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistoryWorkout"
+            }
+          }
+        },
+        "required": [
+          "workouts"
+        ]
+      },
+      "HistoryWorkout": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "0193a1b2-0000-7000-8000-000000000601"
+          },
+          "program": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "0193a1b2-0000-7000-8000-000000000301"
+              },
+              "name": {
+                "type": "string",
+                "example": "Programa 1"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          "letter": {
+            "type": "string",
+            "example": "A"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Superior"
+          },
+          "startedAt": {
+            "type": "string",
+            "example": "2026-11-21T18:30:00.000Z"
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-11-21T19:20:00.000Z"
+          },
+          "endReason": {
+            "$ref": "#/components/schemas/WorkoutEndReason"
+          },
+          "exercises": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistoryExercise"
+            }
+          },
+          "leftOut": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExerciseSummary"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "program",
+          "letter",
+          "label",
+          "startedAt",
+          "finishedAt",
+          "endReason",
+          "exercises",
+          "leftOut"
+        ]
+      },
+      "HistoryExercise": {
+        "type": "object",
+        "properties": {
+          "exercise": {
+            "$ref": "#/components/schemas/ExerciseSummary"
+          },
+          "sets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistorySet"
+            }
+          }
+        },
+        "required": [
+          "exercise",
+          "sets"
+        ]
+      },
+      "ExerciseSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "0193a1b2-0000-7000-8000-000000000201"
+          },
+          "slug": {
+            "type": "string",
+            "example": "supino-reto"
+          },
+          "name": {
+            "type": "string",
+            "example": "Supino reto"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ExerciseKind"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "kind"
+        ]
+      },
+      "HistorySet": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "0193a1b2-0000-7000-8000-000000000501"
+          },
+          "setNumber": {
+            "type": "integer",
+            "example": 1
+          },
+          "loadG": {
+            "type": "integer",
+            "example": 40000
+          },
+          "reps": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 10
+          },
+          "seconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": null
+          },
+          "performedAt": {
+            "type": "string",
+            "example": "2026-11-21T18:31:05.000Z"
+          },
+          "correctedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": null
+          }
+        },
+        "required": [
+          "id",
+          "setNumber",
+          "loadG",
+          "reps",
+          "seconds",
+          "performedAt",
+          "correctedAt"
+        ]
       }
     },
     "parameters": {}
@@ -3917,6 +4100,76 @@
           },
           "422": {
             "description": "Planned exercise missing or outside the letter of the workout (planned_exercise_not_found)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workouts": {
+      "get": {
+        "tags": [
+          "workouts"
+        ],
+        "summary": "List the workouts that started in a UTC interval, from inclusive to exclusive, oldest first, with sets and the exercises left out",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "2026-11-09T03:00:00.000Z"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "example": "2026-11-16T03:00:00.000Z"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The workouts of the interval, an empty list when none started in it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutHistory"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or malformed from or to (workout_range_required), to not after from (workout_range_inverted) or interval above 92 days (workout_range_too_long)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
             "content": {
               "application/json": {
                 "schema": {
