@@ -2,6 +2,7 @@ import type { Today } from '@/features/workout/today.types'
 import type { FinishWorkoutBody } from '@/features/workout/workout-finish.types'
 import type { WorkoutFlowState } from '@/features/workout/workout-flow'
 import type { RecordWorkoutSetBody } from '@/features/workout/workout-set.types'
+import type { CorrectWorkoutSetBody } from '@/features/workout/workout-set-correction.types'
 import type { RecordWorkoutSkipBody } from '@/features/workout/workout-skip.types'
 
 // A set waiting to go to the API; seq is the registration order. A row written before the
@@ -36,7 +37,19 @@ export type PendingSkip = {
   queuedAt: number
 }
 
-export type PendingItem = PendingSet | PendingFinish | PendingSkip
+// New values for a set already queued or sent, queued after it; the id is
+// `${workoutId}:correction:${setId}`, so a newer correction replaces the pending one (ADR-025).
+export type PendingCorrection = {
+  kind: 'correction'
+  seq: number
+  id: string
+  workoutId: string
+  setId: string
+  body: CorrectWorkoutSetBody
+  queuedAt: number
+}
+
+export type PendingItem = PendingSet | PendingFinish | PendingSkip | PendingCorrection
 
 // A set the API refused for a domain rule; the server wins, so it is never resent.
 export type RejectedSet = {
@@ -52,6 +65,7 @@ export type NewPendingItem =
   | Pick<PendingSet, 'kind' | 'workoutId' | 'body' | 'queuedAt'>
   | Pick<PendingFinish, 'kind' | 'workoutId' | 'body' | 'queuedAt'>
   | Pick<PendingSkip, 'kind' | 'workoutId' | 'body' | 'queuedAt'>
+  | Pick<PendingCorrection, 'kind' | 'workoutId' | 'setId' | 'body' | 'queuedAt'>
 
 export type RejectionReason = Pick<RejectedSet, 'code' | 'message' | 'rejectedAt'>
 
@@ -66,6 +80,8 @@ export interface QueueStore {
   load(): Promise<QueueContents>
   // An item id already in the queue is a no-op that returns the stored item.
   add(item: NewPendingItem): Promise<PendingItem>
+  // Takes the stored item with the same id out and adds this one at the end of the order.
+  replace(item: NewPendingItem): Promise<PendingItem>
   remove(id: string): Promise<void>
   // Takes the set out of the pending list and records it as rejected, in one step.
   reject(id: string, reason: RejectionReason): Promise<void>

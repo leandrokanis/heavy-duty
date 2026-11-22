@@ -131,3 +131,25 @@ describe('Given an active workout saved with an adjusted draft of 45000 g and 8 
     })
   })
 })
+
+describe('Given an active workout saved after the correction of its last set to 40000 g', () => {
+  describe('When loadActiveWorkout runs a minute later', () => {
+    it('Then should return the same state, with the corrected load on the last set', async () => {
+      const { store } = freshStore()
+      const open = workoutFlowReducer(SAVED, { type: 'openSheet', sheet: 'correction' })
+      const corrected = workoutFlowReducer(open, {
+        type: 'correctLastSet',
+        values: { loadG: 40000, reps: 10, seconds: null },
+        nowMs: T0 + 5_000,
+      })
+      await store.save(corrected, T0 + 5_000)
+
+      const loaded = await store.load(T0 + 60_000)
+
+      expect({ loadG: loaded?.recorded.at(-1)?.loadG, sameState: loaded }).toEqual({
+        loadG: 40000,
+        sameState: corrected,
+      })
+    })
+  })
+})

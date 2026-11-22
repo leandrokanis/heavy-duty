@@ -71,6 +71,15 @@ export const RecordWorkoutSetBodySchema = z
   })
   .openapi('RecordWorkoutSetBody')
 
+// Domain values stay plain integers here so the service refuses them with their own code.
+export const CorrectWorkoutSetBodySchema = z
+  .object({
+    loadG: z.number().int().openapi({ example: 42500 }),
+    reps: z.number().int().optional().openapi({ example: 10 }),
+    seconds: z.number().int().optional().openapi({ example: 45 }),
+  })
+  .openapi('CorrectWorkoutSetBody')
+
 export const WorkoutSetSchema = z
   .object({
     id: z.string().openapi({ example: '0193a1b2-0000-7000-8000-000000000501' }),
@@ -92,6 +101,17 @@ export const WorkoutIdParamsSchema = z.object({
   workoutId: z.uuid().openapi({
     param: { name: 'workoutId', in: 'path' },
     example: '0193a1b2-0000-7000-8000-000000000601',
+  }),
+})
+
+export const WorkoutSetParamsSchema = z.object({
+  workoutId: z.uuid().openapi({
+    param: { name: 'workoutId', in: 'path' },
+    example: '0193a1b2-0000-7000-8000-000000000601',
+  }),
+  setId: z.uuid().openapi({
+    param: { name: 'setId', in: 'path' },
+    example: '0193a1b2-0000-7000-8000-000000000501',
   }),
 })
 
@@ -139,6 +159,7 @@ export const WorkoutSkipSchema = z
   .openapi('WorkoutSkip')
 
 export type RecordWorkoutSetBody = z.infer<typeof RecordWorkoutSetBodySchema>
+export type CorrectWorkoutSetBody = z.infer<typeof CorrectWorkoutSetBodySchema>
 export type WorkoutSet = z.infer<typeof WorkoutSetSchema>
 export type FinishWorkoutBody = z.infer<typeof FinishWorkoutBodySchema>
 export type WorkoutEndReason = z.infer<typeof WorkoutEndReasonSchema>

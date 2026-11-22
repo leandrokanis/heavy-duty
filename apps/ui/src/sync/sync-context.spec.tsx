@@ -314,3 +314,49 @@ describe('Given two sets and a skip waiting in the queue', () => {
     })
   })
 })
+
+describe('Given a correction item of a set', () => {
+  describe('When sendPendingItem sends it', () => {
+    it('Then should PATCH the body to the set of the workout', async () => {
+      const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }))
+      vi.stubGlobal('fetch', fetchMock)
+      const body = { loadG: 42500, reps: 10 }
+
+      await sendPendingItem({
+        kind: 'correction',
+        seq: 1,
+        id: `${WORKOUT_ID}:correction:set-s`,
+        workoutId: WORKOUT_ID,
+        setId: 'set-s',
+        body,
+        queuedAt: 1,
+      })
+
+      expect(
+        (fetchMock.mock.calls as unknown as [string, RequestInit][]).map(([url, init]) => [
+          url,
+          init.method,
+          init.body,
+        ]),
+      ).toEqual([[`/api/workouts/${WORKOUT_ID}/sets/set-s`, 'PATCH', JSON.stringify(body)]])
+    })
+  })
+})
+
+describe('Given one set and one correction waiting in the queue', () => {
+  describe('When the indicator renders', () => {
+    it('Then should read "1 série aguardando envio"', async () => {
+      const { queue } = retryingQueue()
+      await queue.enqueue(WORKOUT_ID, pendingSetBody({ id: 'set-1' }))
+      await queue.enqueueCorrection(WORKOUT_ID, 'set-1', { loadG: 40000, reps: 10 })
+
+      render(
+        <SyncProvider queue={queue}>
+          <PendingSetsIndicator />
+        </SyncProvider>,
+      )
+
+      expect(screen.getByRole('status').textContent).toBe('1 série aguardando envio')
+    })
+  })
+})

@@ -7,6 +7,7 @@ import {
   currentExercise,
   deadlineOf,
   exerciseProgressOf,
+  lastSetOf,
   leftOutOf,
   restoreWorkoutFlow,
   sequenceOf,
@@ -17,6 +18,7 @@ import {
   type WorkoutSession,
   workoutFlowReducer,
 } from './workout-flow'
+import type { RecordWorkoutSetBody } from './workout-set.types'
 
 const T0 = Date.UTC(2026, 10, 21, 18, 31, 5)
 
@@ -2233,6 +2235,308 @@ describe('Given the 3rd and last set of supino-reto adjusted to 42500 g and 8 re
       const onPrancha = restEnd(recordedLast, T0 + 280_000)
 
       expect(shownValuesOf(onPrancha)).toEqual({ loadG: 0, reps: null, seconds: 45 })
+    })
+  })
+})
+
+// Supino at 45 kg, 3 x 10 resting 90 s, and a prancha of 1 x 45 s: the fixture of US-F04-02.
+const SUPINO_45 = {
+  ...SUPINO_RETO,
+  loadG: 45_000,
+  plannedLoadG: 45_000,
+  loadSource: 'program' as const,
+}
+const PRANCHA_ONE_SET = { ...PRANCHA, sets: 1 }
+
+function openCorrection(state: WorkoutFlowState): WorkoutFlowState {
+  return workoutFlowReducer(state, { type: 'openSheet', sheet: 'correction' })
+}
+
+// Prancha of one set recorded by the clock at 45 s: the workout is finished.
+function finishedOnPrancha(): WorkoutFlowState {
+  const counting = next(createWorkoutFlow(sessionOf([PRANCHA_ONE_SET])), T0)
+  const timing = timerReach(counting, T0 + 3_000)
+  return timerReach(timing, T0 + 3_000 + 45_000)
+}
+
+function restAfterSupinoSet1(): WorkoutFlowState {
+  return next(createWorkoutFlow(sessionOf([SUPINO_45, PRANCHA])), T0)
+}
+
+describe('Given the flow in different phases', () => {
+  describe.each([
+    { name: 'the rest after set 1 of supino', state: restAfterSupinoSet1(), opens: true },
+    { name: 'the finished workout', state: finishedOnPrancha(), opens: true },
+    {
+      name: 'set 2 of supino',
+      state: restEnd(restAfterSupinoSet1(), T0 + 90_000),
+      opens: false,
+    },
+    {
+      name: 'the count of prancha',
+      state: next(createWorkoutFlow(sessionOf([PRANCHA_ONE_SET])), T0),
+      opens: false,
+    },
+    {
+      name: 'the execution of prancha',
+      state: timerReach(next(createWorkoutFlow(sessionOf([PRANCHA_ONE_SET])), T0), T0 + 3_000),
+      opens: false,
+    },
+    { name: 'a workout with no set recorded', state: createWorkoutFlow(sessionOf()), opens: false },
+  ])('When openSheet correction arrives in $name', ({ state, opens }) => {
+    it(`Then should ${opens ? 'open the correction sheet' : 'return the same state'}`, () => {
+      const after = openCorrection(state)
+
+      expect(opens ? after.sheet : after).toEqual(opens ? 'correction' : state)
+    })
+  })
+})
+
+describe('Given the rest after set 1 of supino recorded at 45000 g and 10 reps', () => {
+  describe('When lastSetOf reads the state', () => {
+    it('Then should give the set, the exercise name and the total of sets', () => {
+      const last = lastSetOf(restAfterSupinoSet1())
+
+      expect(
+        last && {
+          loadG: last.set.loadG,
+          reps: last.set.reps,
+          setNumber: last.set.setNumber,
+          exerciseName: last.exerciseName,
+          setsTotal: last.setsTotal,
+        },
+      ).toEqual({ loadG: 45000, reps: 10, setNumber: 1, exerciseName: 'Supino reto', setsTotal: 3 })
+    })
+  })
+
+  describe('When lastSetOf reads a workout with no set', () => {
+    it('Then should give null', () => {
+      expect(lastSetOf(createWorkoutFlow(sessionOf()))).toBeNull()
+    })
+  })
+})
+
+function correct(
+  state: WorkoutFlowState,
+  values: { loadG: number; reps: number | null; seconds: number | null },
+  nowMs = T0 + 5_000,
+): WorkoutFlowState {
+  return workoutFlowReducer(state, { type: 'correctLastSet', values, nowMs })
+}
+
+describe('Given the rest after set 1 of supino with the correction sheet open', () => {
+  describe('When correctLastSet arrives with 42500 g and 10 reps', () => {
+    it('Then should change the load of the last set, keep its identity, close the sheet and mark the step as correct', () => {
+      const open = openCorrection(restAfterSupinoSet1())
+      const before = open.recorded[0] as RecordWorkoutSetBody
+
+      const state = correct(open, { loadG: 42500, reps: 10, seconds: null })
+
+      expect({
+        last: state.recorded.at(-1),
+        sheet: state.sheet,
+        lastStep: state.lastStep,
+        phase: state.phase,
+        lastStepAtMs: state.lastStepAtMs,
+      }).toEqual({
+        last: { ...before, loadG: 42500 },
+        sheet: 'none',
+        lastStep: 'correct',
+        phase: 'rest',
+        lastStepAtMs: open.lastStepAtMs,
+      })
+    })
+  })
+
+  describe('When correctLastSet arrives twice, the second with 40000 g', () => {
+    it('Then the second should return the same state, since the sheet is already closed', () => {
+      const open = openCorrection(restAfterSupinoSet1())
+      const once = correct(open, { loadG: 42500, reps: 10, seconds: null })
+
+      expect(correct(once, { loadG: 40000, reps: 10, seconds: null })).toBe(once)
+    })
+  })
+
+  describe('When correctLastSet arrives with the recorded values', () => {
+    it('Then should close the sheet and keep the same recorded list', () => {
+      const open = openCorrection(restAfterSupinoSet1())
+
+      const state = correct(open, { loadG: 45000, reps: 10, seconds: null })
+
+      expect({ sheet: state.sheet, sameRecorded: state.recorded === open.recorded }).toEqual({
+        sheet: 'none',
+        sameRecorded: true,
+      })
+    })
+  })
+})
+
+const SUPINO_VALUES = { loadG: 42500, reps: 10, seconds: null }
+
+describe('Given the correction sheet open in the rest, to be saved with values to check', () => {
+  describe.each([
+    { case: 'a negative load', values: { loadG: -2500, reps: 10, seconds: null } },
+    { case: 'zero reps', values: { loadG: 45000, reps: 0, seconds: null } },
+    { case: 'seconds on a reps exercise', values: { loadG: 45000, reps: null, seconds: 40 } },
+    { case: 'reps and seconds together', values: { loadG: 45000, reps: 10, seconds: 40 } },
+  ])('When correctLastSet arrives with $case', ({ values }) => {
+    it('Then should return the same state', () => {
+      const open = openCorrection(restAfterSupinoSet1())
+
+      expect(correct(open, values)).toBe(open)
+    })
+  })
+
+  describe('When correctLastSet arrives with 42500 g and 8 reps and the rest ends', () => {
+    it('Then set 2 should show 42500 g and 8 reps', () => {
+      const open = openCorrection(restAfterSupinoSet1())
+
+      const corrected = correct(open, { loadG: 42500, reps: 8, seconds: null })
+      const set2 = restEnd(corrected, T0 + 90_000)
+
+      expect(shownValuesOf(set2)).toEqual({ loadG: 42500, reps: 8, seconds: null })
+    })
+  })
+})
+
+function restAfterPranchaByClock(): WorkoutFlowState {
+  const counting = next(createWorkoutFlow(sessionOf([PRANCHA])), T0)
+  const timing = timerReach(counting, T0 + 3_000)
+  return timerReach(timing, T0 + 3_000 + 45_000)
+}
+
+function restAfterPranchaEndedAt20Seconds(): WorkoutFlowState {
+  const counting = next(createWorkoutFlow(sessionOf([PRANCHA])), T0)
+  const timing = timerReach(counting, T0 + 3_000)
+  return next(timing, T0 + 3_000 + 20_000)
+}
+
+describe('Given prancha of 3 sets recorded by the clock at 45 s, with the correction sheet open', () => {
+  describe('When correctLastSet arrives with 40 s and the rest ends', () => {
+    it('Then set 2 should start at 40 s', () => {
+      const open = openCorrection(restAfterPranchaByClock())
+
+      const corrected = correct(open, { loadG: 0, reps: null, seconds: 40 })
+      const set2 = restEnd(corrected, T0 + 3_000 + 45_000 + 60_000)
+
+      expect(shownValuesOf(set2).seconds).toBe(40)
+    })
+  })
+})
+
+describe('Given prancha of 3 sets ended early at 20 s, with the correction sheet open', () => {
+  describe('When correctLastSet arrives with 25 s and the rest ends', () => {
+    it('Then the recorded set should have 25 s and set 2 should still show 45 s', () => {
+      const open = openCorrection(restAfterPranchaEndedAt20Seconds())
+
+      const corrected = correct(open, { loadG: 0, reps: null, seconds: 25 })
+      const set2 = restEnd(corrected, T0 + 3_000 + 20_000 + 60_000)
+
+      expect({
+        recordedSeconds: corrected.recorded.at(-1)?.seconds,
+        shown: shownValuesOf(set2).seconds,
+      }).toEqual({
+        recordedSeconds: 25,
+        shown: 45,
+      })
+    })
+  })
+})
+
+describe('Given the rest after set 1 of supino with the correction sheet open and the rest over', () => {
+  describe('When restEnd arrives after the end of the rest', () => {
+    it('Then should stay in the rest', () => {
+      const open = openCorrection(restAfterSupinoSet1())
+
+      expect(restEnd(open, T0 + 95_000).phase).toBe('rest')
+    })
+  })
+
+  describe('When correctLastSet arrives at T0 + 95 000 with 42500 g and 8 reps', () => {
+    it('Then should close the sheet and pass to set 2 with the corrected values, the guard starting at that instant', () => {
+      const open = openCorrection(restAfterSupinoSet1())
+
+      const state = correct(open, { loadG: 42500, reps: 8, seconds: null }, T0 + 95_000)
+
+      expect({
+        phase: state.phase,
+        setNumber: state.setNumber,
+        shown: shownValuesOf(state),
+        lastStepAtMs: state.lastStepAtMs,
+        sheet: state.sheet,
+      }).toEqual({
+        phase: 'set',
+        setNumber: 2,
+        shown: { loadG: 42500, reps: 8, seconds: null },
+        lastStepAtMs: T0 + 95_000,
+        sheet: 'none',
+      })
+    })
+  })
+
+  describe('When next arrives 100 ms after that passage', () => {
+    it('Then should do nothing, since the guard still holds', () => {
+      const open = openCorrection(restAfterSupinoSet1())
+      const passed = correct(open, SUPINO_VALUES, T0 + 95_000)
+
+      expect(next(passed, T0 + 95_100)).toBe(passed)
+    })
+  })
+})
+
+describe('Given the finished workout on the last set of prancha at 45 s, with the correction sheet open', () => {
+  describe('When correctLastSet arrives with 40 s', () => {
+    it('Then should change the seconds of the last set and keep the phase finished and the finish', () => {
+      const open = openCorrection(finishedOnPrancha())
+
+      const state = correct(open, { loadG: 0, reps: null, seconds: 40 })
+
+      expect({
+        seconds: state.recorded.at(-1)?.seconds,
+        phase: state.phase,
+        finish: state.finish,
+      }).toEqual({ seconds: 40, phase: 'finished', finish: open.finish })
+    })
+  })
+})
+
+describe('Given a set corrected after the rest of supino, the rest of prancha and a pass to set 2', () => {
+  describe.each([
+    {
+      case: 'a correction in the rest',
+      state: () => correct(openCorrection(restAfterSupinoSet1()), SUPINO_VALUES),
+      text: 'Série corrigida: 42,5 quilos, 10 repetições',
+    },
+    {
+      case: 'a correction of prancha',
+      state: () =>
+        correct(openCorrection(restAfterPranchaByClock()), { loadG: 0, reps: null, seconds: 40 }),
+      text: 'Série corrigida: 0 quilos, 40 segundos',
+    },
+    {
+      case: 'a correction that passed to set 2',
+      state: () => correct(openCorrection(restAfterSupinoSet1()), SUPINO_VALUES, T0 + 95_000),
+      text: 'Série corrigida: 42,5 quilos, 10 repetições. Série 2 de 3',
+    },
+  ])('When announcementOf reads $case', ({ state, text }) => {
+    it(`Then should say "${text}"`, () => {
+      expect(announcementOf(state())).toBe(text)
+    })
+  })
+})
+
+describe('Given a saved state with the correction sheet open and the last set corrected', () => {
+  describe('When restoreWorkoutFlow brings it back', () => {
+    it('Then should close the sheet and keep the corrected values', () => {
+      const corrected = correct(openCorrection(restAfterSupinoSet1()), SUPINO_VALUES)
+      const saved = { ...corrected, sheet: 'correction' as const }
+
+      const restored = restoreWorkoutFlow(saved, T0 + 10_000)
+
+      expect({ sheet: restored.sheet, loadG: restored.recorded.at(-1)?.loadG }).toEqual({
+        sheet: 'none',
+        loadG: 42500,
+      })
     })
   })
 })

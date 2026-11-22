@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { postWorkoutFinish } from '@/features/workout/workout-finish-client'
 import { postWorkoutSet } from '@/features/workout/workout-set-client'
+import { patchWorkoutSet } from '@/features/workout/workout-set-correction-client'
 import { postWorkoutSkip } from '@/features/workout/workout-skip-client'
 import { openLocalDb } from './local-db'
 import { createDexieQueueStore, createMemoryQueueStore } from './queue-store'
@@ -27,19 +28,22 @@ function createDeferredStore(): QueueStore {
   return {
     load: async () => (await opened).load(),
     add: async (set) => (await opened).add(set),
+    replace: async (item) => (await opened).replace(item),
     remove: async (id) => (await opened).remove(id),
     reject: async (id, reason) => (await opened).reject(id, reason),
     clearRejected: async () => (await opened).clearRejected(),
   }
 }
 
-// The queue holds sets, the exercises left out and the end of the workout; each kind has its own route.
+// The queue holds sets, their corrections, the exercises left out and the end of the workout; each kind has its own route.
 export function sendPendingItem(item: PendingItem) {
   switch (item.kind) {
     case 'set':
       return postWorkoutSet(item.workoutId, item.body)
     case 'skip':
       return postWorkoutSkip(item.workoutId, item.body)
+    case 'correction':
+      return patchWorkoutSet(item.workoutId, item.setId, item.body)
     case 'finish':
       return postWorkoutFinish(item.workoutId, item.body)
   }

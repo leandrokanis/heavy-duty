@@ -39,6 +39,7 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Exercício pulado | Exercício que o atleta deixou para depois com a ação "Pular". Pode ser feito depois; o que resta pulado no fim do treino fica de fora | `skipped` (estado), `skip` (ação), `WorkoutSkip` e `workout_skips` (API) | ignorar, descartar |
 | Ficaram de fora | Exercícios pulados e não feitos, listados na tela de treino terminado | `leftOutOf`, `LeftOutSummary` | não feitos, restantes |
 | Passo | Ação do atleta no fluxo da academia que pede um toque: registrar a série, pular o descanso | — | etapa |
+| Correção da última série | Troca da carga e da medida da última série registrada, pela folha que o botão da série abre no descanso e no treino concluído. A série mantém o número e o instante; a correção segue pela fila de envio, depois da série | `correctLastSet` (ação), `CorrectionSheet` (folha), `kind: 'correction'` (fila) | edição, desfazer |
 | Ajuste por arrasto | Mudança de carga, repetições ou tempo por arrasto, em passos fixos, sem teclado | `dragAdjust` | slider |
 | Histórico | Conjunto dos treinos registrados | `history` | log |
 | Fila de envio | Séries registradas no celular que aguardam a confirmação da API, guardadas no aparelho e enviadas em ordem de registro. A série que a API recusa por regra de domínio sai da fila e vira aviso | `pendingSets` | buffer, cache |

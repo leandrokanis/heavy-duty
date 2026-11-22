@@ -1386,6 +1386,26 @@
           "performedAt"
         ]
       },
+      "CorrectWorkoutSetBody": {
+        "type": "object",
+        "properties": {
+          "loadG": {
+            "type": "integer",
+            "example": 42500
+          },
+          "reps": {
+            "type": "integer",
+            "example": 10
+          },
+          "seconds": {
+            "type": "integer",
+            "example": 45
+          }
+        },
+        "required": [
+          "loadG"
+        ]
+      },
       "Workout": {
         "type": "object",
         "properties": {
@@ -3571,6 +3591,108 @@
           },
           "422": {
             "description": "No such program (program_not_found), no such letter in the program (program_day_not_found) or no such planned exercise in the letter (planned_exercise_not_found)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workouts/{workoutId}/sets/{setId}": {
+      "patch": {
+        "tags": [
+          "workouts"
+        ],
+        "summary": "Replace the load and the measure of a recorded set, also after the workout ended. Sending the same values again changes nothing",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193a1b2-0000-7000-8000-000000000601"
+            },
+            "required": true,
+            "name": "workoutId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193a1b2-0000-7000-8000-000000000501"
+            },
+            "required": true,
+            "name": "setId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectWorkoutSetBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The set with the values now stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Body or ids outside the schema (invalid_request), negative load (workout_set_load_invalid), reps below 1 (workout_set_reps_invalid), seconds below 1 (workout_set_seconds_invalid) or no measure, both measures or the measure of the other kind (workout_set_measure_invalid)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin other than the app origin (forbidden_origin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such workout (workout_not_found) or no such set in the workout (workout_set_not_found)",
             "content": {
               "application/json": {
                 "schema": {

@@ -11,6 +11,7 @@ import type {
 
 export function itemIdOf(item: NewPendingItem): string {
   if (item.kind === 'set') return item.body.id
+  if (item.kind === 'correction') return `${item.workoutId}:correction:${item.setId}`
   if (item.kind === 'skip') return `${item.workoutId}:skip:${item.body.plannedExerciseId}`
   return `${item.workoutId}:finish`
 }
@@ -37,6 +38,14 @@ export function createDexieQueueStore(db: LocalDb): QueueStore {
       return db.transaction('rw', db.pendingSets, async () => {
         const existing = await db.pendingSets.where('id').equals(id).first()
         if (existing) return withKind(existing)
+        const seq = await db.pendingSets.add({ ...item, id } as PendingItem)
+        return { ...item, id, seq } as PendingItem
+      })
+    },
+    async replace(item) {
+      const id = itemIdOf(item)
+      return db.transaction('rw', db.pendingSets, async () => {
+        await db.pendingSets.where('id').equals(id).delete()
         const seq = await db.pendingSets.add({ ...item, id } as PendingItem)
         return { ...item, id, seq } as PendingItem
       })
@@ -76,6 +85,12 @@ export function createMemoryQueueStore(): QueueStore {
       if (existing) return existing
       const added = { ...item, id, seq: nextSeq++ } as PendingItem
       pending = [...pending, added]
+      return added
+    },
+    async replace(item: NewPendingItem) {
+      const id = itemIdOf(item)
+      const added = { ...item, id, seq: nextSeq++ } as PendingItem
+      pending = [...pending.filter((stored) => stored.id !== id), added]
       return added
     },
     async remove(id) {

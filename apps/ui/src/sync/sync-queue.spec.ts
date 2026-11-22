@@ -405,3 +405,131 @@ describe('Given a skip followed by the finish of the same workout in the queue',
     })
   })
 })
+
+describe('Given set S enqueued while send answers retry', () => {
+  describe('When the correction of S enters and send starts answering confirmed', () => {
+    it('Then should send the set and then the correction, in this order, and empty the queue', async () => {
+      const set = pendingSetBody({ id: 'set-s' })
+      const correction = { loadG: 42500, reps: 10 }
+      let outcome: SendOutcome = RETRY
+      const send = vi.fn(async (_item: PendingItem) => outcome)
+      const queue = createSyncQueue({ store: createMemoryQueueStore(), send, now: () => NOW_MS })
+      await queue.enqueue(WORKOUT_ID, set)
+      await queue.enqueueCorrection(WORKOUT_ID, 'set-s', correction)
+      await queue.flush()
+      send.mockClear()
+
+      outcome = CONFIRMED
+      await queue.flush()
+
+      expect({
+        calls: send.mock.calls.map(([item]) => [item.kind, item.body]),
+        pending: queue.getSnapshot().pending,
+      }).toEqual({
+        calls: [
+          ['set', set],
+          ['correction', correction],
+        ],
+        pending: [],
+      })
+    })
+  })
+})
+
+describe('Given set S and the correction of S to 42.500 g in the queue while send answers retry', () => {
+  describe('When another correction of S to 40.000 g enters and send starts answering confirmed', () => {
+    it('Then the queue should hold two items with the 40.000 g correction, and the API should receive only that correction', async () => {
+      let outcome: SendOutcome = RETRY
+      const send = vi.fn(async (_item: PendingItem) => outcome)
+      const queue = createSyncQueue({ store: createMemoryQueueStore(), send, now: () => NOW_MS })
+      await queue.enqueue(WORKOUT_ID, pendingSetBody({ id: 'set-s' }))
+      await queue.enqueueCorrection(WORKOUT_ID, 'set-s', { loadG: 42500, reps: 10 })
+      await queue.flush()
+
+      await queue.enqueueCorrection(WORKOUT_ID, 'set-s', { loadG: 40000, reps: 10 })
+      const queued = queue
+        .getSnapshot()
+        .pending.map(({ kind, body }) => [kind, 'loadG' in body && body.loadG])
+      await queue.flush()
+      send.mockClear()
+      outcome = CONFIRMED
+      await queue.flush()
+
+      expect({
+        queued,
+        sentCorrections: send.mock.calls
+          .map(([item]) => item)
+          .filter(({ kind }) => kind === 'correction')
+          .map(({ body }) => body),
+      }).toEqual({
+        queued: [
+          ['set', 42500],
+          ['correction', 40000],
+        ],
+        sentCorrections: [{ loadG: 40000, reps: 10 }],
+      })
+    })
+  })
+})
+
+describe('Given the correction of S to 42.500 g alone in the queue and a send that has not answered', () => {
+  describe('When another correction of S to 40.000 g enters and the first send confirms', () => {
+    it('Then the 40.000 g correction should stay and be sent in the same round, and the store should remove the id only after that second send', async () => {
+      const store = createMemoryQueueStore()
+      const events: string[] = []
+      const remove = store.remove.bind(store)
+      store.remove = async (id) => {
+        events.push('remove')
+        await remove(id)
+      }
+      let answerFirst: (outcome: SendOutcome) => void = () => {}
+      const send = vi.fn((item: PendingItem) => {
+        if (item.kind !== 'correction') return Promise.resolve(CONFIRMED)
+        events.push(`send ${item.body.loadG}`)
+        return item.body.loadG === 42500
+          ? new Promise<SendOutcome>((resolve) => {
+              answerFirst = resolve
+            })
+          : Promise.resolve(CONFIRMED)
+      })
+      const queue = createSyncQueue({ store, send, now: () => NOW_MS })
+      await queue.enqueueCorrection(WORKOUT_ID, 'set-s', { loadG: 42500, reps: 10 })
+      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1))
+
+      await queue.enqueueCorrection(WORKOUT_ID, 'set-s', { loadG: 40000, reps: 10 })
+      answerFirst(CONFIRMED)
+      await queue.flush()
+
+      expect({ events, pending: queue.getSnapshot().pending }).toEqual({
+        events: ['send 42500', 'send 40000', 'remove'],
+        pending: [],
+      })
+    })
+  })
+})
+
+describe('Given the correction of set S followed by set T in the queue', () => {
+  describe('When the API refuses the correction with 404', () => {
+    it('Then the correction should leave the queue with no entry in rejected, and T should still be sent', async () => {
+      const send = vi.fn(
+        async (item: PendingItem): Promise<SendOutcome> =>
+          item.kind === 'correction'
+            ? { status: 'rejected', code: 'workout_set_not_found', message: 'série não encontrada' }
+            : CONFIRMED,
+      )
+      const queue = createSyncQueue({ store: createMemoryQueueStore(), send, now: () => NOW_MS })
+      await queue.enqueueCorrection(WORKOUT_ID, 'set-s', { loadG: 42500, reps: 10 })
+      await queue.enqueue(WORKOUT_ID, pendingSetBody({ id: 'set-t', setNumber: 2 }))
+
+      await queue.flush()
+
+      expect({
+        sent: send.mock.calls.map(([item]) => item.id),
+        snapshot: queue.getSnapshot(),
+      }).toEqual({
+        sent: [`${WORKOUT_ID}:correction:set-s`, 'set-t'],
+        snapshot: { pending: [], rejected: [] },
+      })
+    })
+  })
+})

@@ -1,5 +1,6 @@
 import type { Database } from '../../db/connection.js'
 import { DomainError } from '../../errors/domain-error.js'
+import type { ExerciseKind } from '../catalog/catalog.schemas.js'
 import { findProgramDayRow, findProgramRow } from '../programs/program.repository.js'
 import {
   existsWorkoutSet,
@@ -109,21 +110,35 @@ const MEASURE_INVALID: [code: string, message: string] = [
   'informe repetições no exercício de repetição e segundos no exercício de tempo',
 ]
 
-function parseValues(input: RecordWorkoutSetBody): void {
-  if (input.loadG < 0) {
+export type MeasuredValues = { loadG: number; reps?: number; seconds?: number }
+
+// Shared by the record and the correction, so both refuse a value with the same code.
+export function parseMeasuredValues(values: MeasuredValues): void {
+  if (values.loadG < 0) {
     throw new DomainError('workout_set_load_invalid', 'carga inválida', 'invalid')
   }
-  if (input.setNumber < 1) {
-    throw new DomainError('workout_set_number_invalid', 'número da série inválido', 'invalid')
-  }
-  if ((input.reps === undefined) === (input.seconds === undefined)) {
+  if ((values.reps === undefined) === (values.seconds === undefined)) {
     throw new DomainError(...MEASURE_INVALID, 'invalid')
   }
-  if (input.reps !== undefined && input.reps < 1) {
+  if (values.reps !== undefined && values.reps < 1) {
     throw new DomainError('workout_set_reps_invalid', 'repetições inválidas', 'invalid')
   }
-  if (input.seconds !== undefined && input.seconds < 1) {
+  if (values.seconds !== undefined && values.seconds < 1) {
     throw new DomainError('workout_set_seconds_invalid', 'tempo inválido', 'invalid')
+  }
+}
+
+export function parseMeasureOfKind(kind: ExerciseKind, values: MeasuredValues): void {
+  const measure = kind === 'reps' ? values.reps : values.seconds
+  if (measure === undefined) {
+    throw new DomainError(...MEASURE_INVALID, 'invalid')
+  }
+}
+
+function parseValues(input: RecordWorkoutSetBody): void {
+  parseMeasuredValues(input)
+  if (input.setNumber < 1) {
+    throw new DomainError('workout_set_number_invalid', 'número da série inválido', 'invalid')
   }
 }
 
@@ -167,10 +182,7 @@ function parseExercise(planned: PlannedExerciseTarget, input: RecordWorkoutSetBo
       'invalid',
     )
   }
-  const measure = planned.kind === 'reps' ? input.reps : input.seconds
-  if (measure === undefined) {
-    throw new DomainError(...MEASURE_INVALID, 'invalid')
-  }
+  parseMeasureOfKind(planned.kind, input)
 }
 
 // The schema already accepts only UTC ISO 8601; this unifies the precision.

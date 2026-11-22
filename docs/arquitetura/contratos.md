@@ -825,6 +825,52 @@ Ordem da conferência, na mesma transação:
 
 O programa que deixou de ser o ativo depois do "Começar" não impede a série: o treino guarda o programa treinado (`apps/api/CLAUDE.md`, regra 7). O número da série maior que o número de séries do programa é aceito.
 
+## Correção da série
+
+A rota desta seção vem da US-F04-02. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem dos métodos que mudam estado. A correção não tem ferramenta MCP: a edição pelo planejador é da US-F06-02 (`mcp.md` não muda). O service fica em `apps/api/src/modules/workouts/workout-set-correction.service.ts`.
+
+O app não chama a rota direto da tela. A correção entra na fila local de envio como quarto tipo de item, depois da série, e segue as regras da ADR-025.
+
+### PATCH /api/workouts/{workoutId}/sets/{setId}
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Trocar a carga e a medida de uma série gravada, quando o atleta corrige a última série |
+| Story | US-F04-02 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) e `Origin` igual a `APP_ORIGIN` quando o navegador manda o cabeçalho |
+| Caminho | `workoutId` e `setId`: IDs do treino e da série em UUID |
+| Corpo | `{ "loadG", "reps" }` no exercício de repetição; o exercício de tempo manda `seconds` no lugar de `reps`. Os valores são absolutos e inteiros. O schema confere só o formato, e o service recusa os valores de domínio com `code` próprio |
+| Efeito colateral | Troca `load_g` e `reps` ou `seconds` da linha de `workout_sets`. `id`, `workout_id`, `exercise_id`, `planned_exercise_id`, `set_number` e `performed_at` não mudam. A recusa não grava nada: a conferência e a gravação ficam numa transação só |
+| Idempotência | Idempotente: o reenvio com os mesmos valores responde 200 com a mesma série e não muda nada |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `WorkoutSet`, com os valores gravados | Correção gravada ou reenvio com os mesmos valores. O treino terminado também aceita a correção |
+| 400 | `{ "code": "invalid_request", "message": "requisição inválida" }` | Formato fora do schema: ID que não é UUID, número não inteiro, campo obrigatório ausente |
+| 400 | `{ "code": "workout_set_load_invalid", "message": "carga inválida" }` | `loadG` menor que 0 |
+| 400 | `{ "code": "workout_set_reps_invalid", "message": "repetições inválidas" }` | `reps` menor que 1 |
+| 400 | `{ "code": "workout_set_seconds_invalid", "message": "tempo inválido" }` | `seconds` menor que 1 |
+| 400 | `{ "code": "workout_set_measure_invalid", "message": "informe repetições no exercício de repetição e segundos no exercício de tempo" }` | Nenhuma medida, as duas, ou a medida que não é do tipo do exercício da série |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida. O corpo não tem dado de treino |
+| 403 | `{ "code": "forbidden_origin", "message": "origem não permitida" }` | `Origin` diferente de `APP_ORIGIN` |
+| 404 | `{ "code": "workout_not_found", "message": "treino não encontrado" }` | O treino não existe |
+| 404 | `{ "code": "workout_set_not_found", "message": "série não encontrada" }` | A série não existe ou é de outro treino |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+Exemplo da correção do Supino reto de 45 kg para 42,5 kg:
+
+```json
+{ "loadG": 42500, "reps": 10 }
+```
+
+Ordem da conferência, na mesma transação:
+
+1. Formato, pelo schema (`invalid_request`).
+2. Treino existente: 404 `workout_not_found`.
+3. Série existente no treino do caminho: 404 `workout_set_not_found`.
+4. Regras de valor (400), as mesmas do registro. A medida do tipo vem do exercício da série (`exercise_id`).
+5. Gravação dos valores.
+
 ## Fim do treino
 
 A rota desta seção vem da US-F03-04. A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem. O fim não tem ferramenta MCP: a leitura e a correção do fim pelo planejador são das stories US-F06-01 e US-F06-02 (`mcp.md` não muda). O service fica em `apps/api/src/modules/workouts/workout-finish.service.ts`.
