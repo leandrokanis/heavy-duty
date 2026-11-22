@@ -459,9 +459,34 @@ describe('Given the 3 sets of supino-reto recorded and the athlete on set 1 of c
 
       expect({ sequence: sequenceOf(state), progress: exerciseProgressOf(state) }).toEqual({
         sequence: [
-          { exerciseIndex: 0, name: 'Supino reto', status: 'done', setsDone: 3, setsTotal: 3 },
-          { exerciseIndex: 1, name: 'Crucifixo', status: 'current', setsDone: 0, setsTotal: 3 },
-          { exerciseIndex: 2, name: 'Tríceps na polia', status: 'todo', setsDone: 0, setsTotal: 3 },
+          {
+            exerciseIndex: 0,
+            name: 'Supino reto',
+            status: 'done',
+            setsDone: 3,
+            setsTotal: 3,
+            recordedSets: [
+              { setNumber: 1, loadG: 42500, reps: 10 },
+              { setNumber: 2, loadG: 42500, reps: 10 },
+              { setNumber: 3, loadG: 42500, reps: 10 },
+            ],
+          },
+          {
+            exerciseIndex: 1,
+            name: 'Crucifixo',
+            status: 'current',
+            setsDone: 0,
+            setsTotal: 3,
+            recordedSets: [],
+          },
+          {
+            exerciseIndex: 2,
+            name: 'Tríceps na polia',
+            status: 'todo',
+            setsDone: 0,
+            setsTotal: 3,
+            recordedSets: [],
+          },
         ],
         progress: 2,
       })
@@ -1335,6 +1360,162 @@ describe('Given a state saved with prancha skipped', () => {
       const state = restoreWorkoutFlow(saved, clock + 10_000)
 
       expect(state.skipped).toEqual(saved.skipped)
+    })
+  })
+})
+
+describe('Given the 3 sets of supino-reto recorded and set 1 of prancha on screen', () => {
+  describe('When sequenceOf is read', () => {
+    it('Then supino-reto should be done with recordedSets 1, 2 and 3 of 42500 g and 10 reps, and prancha and triceps-polia should have none', () => {
+      const { state } = recordSets(createWorkoutFlow(sessionOf(SKIP_LETTER)), 3, T0)
+
+      const [supino, prancha, triceps] = sequenceOf(state)
+
+      expect({
+        supino: { status: supino?.status, sets: supino?.recordedSets },
+        prancha: prancha?.recordedSets,
+        triceps: triceps?.recordedSets,
+      }).toEqual({
+        supino: {
+          status: 'done',
+          sets: [
+            { setNumber: 1, loadG: 42500, reps: 10 },
+            { setNumber: 2, loadG: 42500, reps: 10 },
+            { setNumber: 3, loadG: 42500, reps: 10 },
+          ],
+        },
+        prancha: [],
+        triceps: [],
+      })
+    })
+  })
+})
+
+describe('Given the 3 sets of supino-reto stored out of order in recorded', () => {
+  describe('When sequenceOf is read', () => {
+    it('Then recordedSets should list the sets by setNumber, 1, 2 and 3', () => {
+      const { state } = recordSets(createWorkoutFlow(sessionOf(SKIP_LETTER)), 3, T0)
+      const shuffled = { ...state, recorded: [...state.recorded].reverse() }
+
+      expect(sequenceOf(shuffled)[0]?.recordedSets.map(({ setNumber }) => setNumber)).toEqual([
+        1, 2, 3,
+      ])
+    })
+  })
+})
+
+describe('Given the 3 sets of prancha recorded, with triceps-polia on screen', () => {
+  describe('When sequenceOf is read', () => {
+    it('Then prancha recordedSets should have 45 seconds and 0 g in each set and no reps', () => {
+      const letter = [PRANCHA, TRICEPS_POLIA]
+      const { state } = recordSets(createWorkoutFlow(sessionOf(letter)), 3, T0)
+
+      expect(sequenceOf(state)[0]?.recordedSets).toEqual([
+        { setNumber: 1, loadG: 0, seconds: 45 },
+        { setNumber: 2, loadG: 0, seconds: 45 },
+        { setNumber: 3, loadG: 0, seconds: 45 },
+      ])
+    })
+  })
+})
+
+describe('Given 1 set of supino-reto recorded and set 2 on screen, read as a sequence', () => {
+  describe('When sequenceOf is read', () => {
+    it('Then supino-reto should be current with no recordedSets', () => {
+      const { state } = recordSets(createWorkoutFlow(sessionOf(SKIP_LETTER)), 1, T0)
+
+      expect(sequenceOf(state)[0]).toMatchObject({ status: 'current', recordedSets: [] })
+    })
+  })
+})
+
+describe('Given supino-reto skipped with 1 set recorded', () => {
+  describe('When sequenceOf is read', () => {
+    it('Then supino-reto should be skipped with no recordedSets', () => {
+      const { state, clock } = recordSets(createWorkoutFlow(sessionOf(SKIP_LETTER)), 1, T0)
+
+      expect(sequenceOf(skip(state, clock))[0]).toMatchObject({
+        status: 'skipped',
+        recordedSets: [],
+      })
+    })
+  })
+})
+
+describe('Given triceps-polia done through the sequence before supino-reto, with supino-reto on screen', () => {
+  describe('When sequenceOf is read', () => {
+    it('Then triceps-polia should be done with 3 sets of 20000 g and 12 reps, and supino-reto current with none', () => {
+      const flow = createWorkoutFlow(sessionOf(LETTER_A))
+      const { state, clock } = recordSets(goTo(flow, 1, T0), 3, T0 + 1000)
+      const onSupino = goTo(state, 0, clock)
+
+      const [supino, triceps] = sequenceOf(onSupino)
+
+      expect({ supino: supino?.recordedSets, triceps: triceps?.recordedSets }).toEqual({
+        supino: [],
+        triceps: [
+          { setNumber: 1, loadG: 20000, reps: 12 },
+          { setNumber: 2, loadG: 20000, reps: 12 },
+          { setNumber: 3, loadG: 20000, reps: 12 },
+        ],
+      })
+      expect(supino?.status).toBe('current')
+    })
+  })
+})
+
+describe('Given a set of supino-reto recorded at 45000 g while the program plans 40000 g', () => {
+  describe('When sequenceOf is read after the 3 sets', () => {
+    it('Then recordedSets should show the recorded 45000 g', () => {
+      const shown = { ...SUPINO_RETO, loadG: 45000 }
+      const { state } = recordSets(createWorkoutFlow(sessionOf([shown, PRANCHA])), 3, T0)
+
+      expect(sequenceOf(state)[0]?.recordedSets.map(({ loadG }) => loadG)).toEqual([
+        45000, 45000, 45000,
+      ])
+    })
+  })
+})
+
+describe('Given the rest right after the 3rd set of supino-reto', () => {
+  describe('When sequenceOf is read', () => {
+    it('Then supino-reto should already be done with its 3 sets', () => {
+      const flow = createWorkoutFlow(sessionOf(SKIP_LETTER))
+      const resting = next(recordSets(flow, 2, T0).state, T0 + 10_000)
+
+      expect({
+        phase: resting.phase,
+        sets: sequenceOf(resting)[0]?.recordedSets.map(({ setNumber }) => setNumber),
+      }).toEqual({ phase: 'rest', sets: [1, 2, 3] })
+    })
+  })
+})
+
+describe('Given the workout finished after the last set of the letter, read as a sequence', () => {
+  describe('When sequenceOf is read', () => {
+    it('Then every exercise should be done with its 3 recorded sets', () => {
+      const finished = next(tricepsSet3(T0), T0)
+
+      expect({
+        phase: finished.phase,
+        setCounts: sequenceOf(finished).map(({ recordedSets }) => recordedSets.length),
+      }).toEqual({ phase: 'finished', setCounts: [3, 3] })
+    })
+  })
+})
+
+describe('Given supino-reto skipped with 1 set and then done by the sequence', () => {
+  describe('When sequenceOf is read', () => {
+    it('Then supino-reto should be done with the 3 sets in order', () => {
+      const first = recordSets(createWorkoutFlow(sessionOf(SKIP_LETTER)), 1, T0)
+      const skipped = skip(first.state, first.clock)
+      const back = goTo(skipped, 0, first.clock + 1000)
+      const { state } = recordSets(back, 2, first.clock + 2000)
+
+      expect(sequenceOf(state)[0]).toMatchObject({
+        status: 'done',
+        recordedSets: [{ setNumber: 1 }, { setNumber: 2 }, { setNumber: 3 }],
+      })
     })
   })
 })

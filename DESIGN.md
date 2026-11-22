@@ -183,6 +183,8 @@ O HIG não especifica botão de ação central sobre a barra de abas. Se o app a
 
 - O topo da tela de treino DEVE ter um controle com a letra e a barra de exercícios. Um toque nele abre a folha da sequência do treino (PRD, US-F03-04).
 - A folha DEVE listar os exercícios da letra com o estado de cada um: feito, com as séries registradas (US-F03-06); atual; pulado; ou por fazer.
+- A lista das séries registradas DEVE aparecer só no exercício feito e DEVE ser só de leitura: o item da série não é um controle e não leva a ação nenhuma. Cada item mostra o número da série, a carga em kg e as repetições ou os segundos registrados. O leitor de tela DEVE ler a série por extenso, como "Série 1: 42,5 kg, 10 repetições" (US-F03-06).
+- Quando a folha passa da altura da tela, a lista de exercícios DEVE rolar dentro da folha, com o título, "Fechar" e "Encerrar" sempre visíveis. A página atrás da folha NÃO DEVE rolar (US-F03-06).
 - Um toque num exercício que falta DEVE levar a ele. Durante o descanso, o exercício escolhido vira o próximo, e o descanso continua.
 - Com a folha da sequência aberta, o descanso continua contando, mas a passagem à série seguinte espera a folha fechar (Seção 3, princípio 1).
 - O exercício atual DEVE ter a ação "Pular" (US-F03-05), com área de toque de 56 px ou mais, e o texto do botão DEVE dizer o nome do exercício no nome acessível. A ação "Pular" NÃO DEVE aparecer quando não resta outro exercício, não pulado, com série por fazer: nesse caso o atleta termina o exercício ou encerra o treino. A ação NÃO DEVE depender de gesto (WCAG 2.5.7).

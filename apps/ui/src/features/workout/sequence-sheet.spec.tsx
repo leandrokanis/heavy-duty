@@ -1,11 +1,31 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SequenceSheet } from './sequence-sheet'
-import type { SequenceItem } from './workout-flow'
+import type { RecordedSetView, SequenceItem } from './workout-flow'
+
+const SUPINO_SETS: RecordedSetView[] = [
+  { setNumber: 1, loadG: 42500, reps: 10 },
+  { setNumber: 2, loadG: 42500, reps: 10 },
+  { setNumber: 3, loadG: 42500, reps: 10 },
+]
 
 const ALL_DONE: SequenceItem[] = [
-  { exerciseIndex: 0, name: 'Supino reto', status: 'done', setsDone: 3, setsTotal: 3 },
-  { exerciseIndex: 1, name: 'Tríceps na polia', status: 'done', setsDone: 3, setsTotal: 3 },
+  {
+    exerciseIndex: 0,
+    name: 'Supino reto',
+    status: 'done',
+    setsDone: 3,
+    setsTotal: 3,
+    recordedSets: [],
+  },
+  {
+    exerciseIndex: 1,
+    name: 'Tríceps na polia',
+    status: 'done',
+    setsDone: 3,
+    setsTotal: 3,
+    recordedSets: [],
+  },
 ]
 
 type Handlers = { onPick?: () => void; onSkip?: () => void }
@@ -51,8 +71,22 @@ describe('Given the sequence sheet of a workout in progress, with one exercise t
     it('Then should offer the exercise to do as a button, with Encerrar, and the exercise done as plain text', async () => {
       renderSheet(
         [
-          { exerciseIndex: 0, name: 'Supino reto', status: 'current', setsDone: 1, setsTotal: 3 },
-          { exerciseIndex: 1, name: 'Tríceps na polia', status: 'todo', setsDone: 0, setsTotal: 3 },
+          {
+            exerciseIndex: 0,
+            name: 'Supino reto',
+            status: 'current',
+            setsDone: 1,
+            setsTotal: 3,
+            recordedSets: [],
+          },
+          {
+            exerciseIndex: 1,
+            name: 'Tríceps na polia',
+            status: 'todo',
+            setsDone: 0,
+            setsTotal: 3,
+            recordedSets: [],
+          },
         ],
         false,
       )
@@ -68,9 +102,30 @@ describe('Given the sequence sheet of a workout in progress, with one exercise t
 })
 
 const WITH_PRANCHA_CURRENT: SequenceItem[] = [
-  { exerciseIndex: 0, name: 'Supino reto', status: 'done', setsDone: 3, setsTotal: 3 },
-  { exerciseIndex: 1, name: 'Prancha', status: 'current', setsDone: 0, setsTotal: 3 },
-  { exerciseIndex: 2, name: 'Tríceps na polia', status: 'todo', setsDone: 0, setsTotal: 3 },
+  {
+    exerciseIndex: 0,
+    name: 'Supino reto',
+    status: 'done',
+    setsDone: 3,
+    setsTotal: 3,
+    recordedSets: SUPINO_SETS,
+  },
+  {
+    exerciseIndex: 1,
+    name: 'Prancha',
+    status: 'current',
+    setsDone: 0,
+    setsTotal: 3,
+    recordedSets: [],
+  },
+  {
+    exerciseIndex: 2,
+    name: 'Tríceps na polia',
+    status: 'todo',
+    setsDone: 0,
+    setsTotal: 3,
+    recordedSets: [],
+  },
 ]
 
 describe('Given a sequence with prancha as the current exercise and canSkip true', () => {
@@ -112,9 +167,30 @@ describe('Given a sequence with prancha as the current exercise, canSkip false a
 
 describe('Given a sequence with prancha skipped', () => {
   const skipped: SequenceItem[] = [
-    { exerciseIndex: 0, name: 'Supino reto', status: 'done', setsDone: 3, setsTotal: 3 },
-    { exerciseIndex: 1, name: 'Prancha', status: 'skipped', setsDone: 0, setsTotal: 3 },
-    { exerciseIndex: 2, name: 'Tríceps na polia', status: 'current', setsDone: 0, setsTotal: 3 },
+    {
+      exerciseIndex: 0,
+      name: 'Supino reto',
+      status: 'done',
+      setsDone: 3,
+      setsTotal: 3,
+      recordedSets: [],
+    },
+    {
+      exerciseIndex: 1,
+      name: 'Prancha',
+      status: 'skipped',
+      setsDone: 0,
+      setsTotal: 3,
+      recordedSets: [],
+    },
+    {
+      exerciseIndex: 2,
+      name: 'Tríceps na polia',
+      status: 'current',
+      setsDone: 0,
+      setsTotal: 3,
+      recordedSets: [],
+    },
   ]
 
   describe('When the sheet renders and the athlete taps the row of prancha', () => {
@@ -129,6 +205,156 @@ describe('Given a sequence with prancha skipped', () => {
         text: 'PranchaPulado0 de 3',
         picked: 1,
       })
+    })
+  })
+})
+
+describe('Given a sequence with supino-reto done with 3 recorded sets and prancha current', () => {
+  describe('When the sheet renders', () => {
+    it('Then the list "Séries de Supino reto" should read the 3 sets in order, and the buttons stay Fechar, Pular Prancha, the row of Tríceps na polia and Encerrar', async () => {
+      renderSheet(WITH_PRANCHA_CURRENT, false, true)
+
+      const dialog = await screen.findByRole('dialog')
+      const sets = within(dialog).getByRole('list', { name: 'Séries de Supino reto' })
+      expect({
+        sets: within(sets)
+          .getAllByRole('listitem')
+          .map((item) => within(item).getByText(/^Série \d: /).textContent),
+        buttons: within(dialog)
+          .getAllByRole('button')
+          .map((button) => button.getAttribute('aria-label') ?? button.textContent),
+      }).toEqual({
+        sets: [
+          'Série 1: 42,5 kg, 10 repetições',
+          'Série 2: 42,5 kg, 10 repetições',
+          'Série 3: 42,5 kg, 10 repetições',
+        ],
+        buttons: ['Fechar', 'Pular Prancha', 'Tríceps na poliaPor fazer0 de 3', 'Encerrar'],
+      })
+    })
+  })
+})
+
+describe('Given prancha done with 3 recorded sets of 45 seconds and 0 g', () => {
+  describe('When the sheet renders', () => {
+    it('Then "Série 1" should read "0 kg, 45 segundos" with no repetições', async () => {
+      const items: SequenceItem[] = [
+        {
+          exerciseIndex: 0,
+          name: 'Prancha',
+          status: 'done',
+          setsDone: 3,
+          setsTotal: 3,
+          recordedSets: [
+            { setNumber: 1, loadG: 0, seconds: 45 },
+            { setNumber: 2, loadG: 0, seconds: 45 },
+            { setNumber: 3, loadG: 0, seconds: 45 },
+          ],
+        },
+      ]
+      renderSheet(items, true)
+
+      const sets = within(await screen.findByRole('dialog')).getByRole('list', {
+        name: 'Séries de Prancha',
+      })
+      expect({
+        first: within(sets).getByText(/^Série 1: /).textContent,
+        repetitions: within(sets).queryAllByText(/repetiç/).length,
+      }).toEqual({ first: 'Série 1: 0 kg, 45 segundos', repetitions: 0 })
+    })
+  })
+})
+
+describe('Given a done exercise with a set of 1 repetition and a set of 1 second', () => {
+  describe('When the sheet renders', () => {
+    it('Then the sets should read "1 repetição" and "1 segundo" in the singular', async () => {
+      const items: SequenceItem[] = [
+        {
+          exerciseIndex: 0,
+          name: 'Barra fixa',
+          status: 'done',
+          setsDone: 2,
+          setsTotal: 2,
+          recordedSets: [
+            { setNumber: 1, loadG: 0, reps: 1 },
+            { setNumber: 2, loadG: 0, seconds: 1 },
+          ],
+        },
+      ]
+      renderSheet(items, true)
+
+      const sets = within(await screen.findByRole('dialog')).getByRole('list', {
+        name: 'Séries de Barra fixa',
+      })
+      expect(
+        within(sets)
+          .getAllByText(/^Série \d: /)
+          .map((node) => node.textContent),
+      ).toEqual(['Série 1: 0 kg, 1 repetição', 'Série 2: 0 kg, 1 segundo'])
+    })
+  })
+})
+
+describe.each(['current', 'skipped', 'todo'] as const)(
+  'Given an exercise %s that carries a recorded set',
+  (status) => {
+    describe('When the sheet renders', () => {
+      it('Then should have no list of sets', async () => {
+        const items: SequenceItem[] = [
+          {
+            exerciseIndex: 0,
+            name: 'Supino reto',
+            status,
+            setsDone: 1,
+            setsTotal: 3,
+            recordedSets: [{ setNumber: 1, loadG: 42500, reps: 10 }],
+          },
+        ]
+        renderSheet(items, false)
+
+        const dialog = await screen.findByRole('dialog')
+        expect(within(dialog).queryByRole('list', { name: 'Séries de Supino reto' })).toBeNull()
+      })
+    })
+  },
+)
+
+describe('Given the sequence sheet of a finished workout with every exercise done and recorded', () => {
+  describe('When the sheet renders', () => {
+    it('Then should have one list of sets per exercise and only the Fechar button', async () => {
+      const items: SequenceItem[] = ALL_DONE.map((item) => ({
+        ...item,
+        recordedSets: SUPINO_SETS,
+      }))
+      renderSheet(items, true)
+
+      const dialog = await screen.findByRole('dialog')
+      expect({
+        lists: within(dialog)
+          .getAllByRole('list')
+          .map((list) => list.getAttribute('aria-label')),
+        buttons: within(dialog)
+          .getAllByRole('button')
+          .map((button) => button.getAttribute('aria-label') ?? button.textContent),
+      }).toEqual({
+        lists: ['Exercícios', 'Séries de Supino reto', 'Séries de Tríceps na polia'],
+        buttons: ['Fechar'],
+      })
+    })
+  })
+})
+
+describe('Given supino-reto done with a set of 42500 g and 10 repetitions', () => {
+  describe('When the sheet renders', () => {
+    it('Then the visible text of the set should show "Série 1", "42,5", "kg", "10" and "rep"', async () => {
+      renderSheet(WITH_PRANCHA_CURRENT, false)
+
+      const sets = within(await screen.findByRole('dialog')).getByRole('list', {
+        name: 'Séries de Supino reto',
+      })
+      const [firstSet] = within(sets).getAllByRole('listitem')
+      const visible = firstSet?.querySelector('[aria-hidden="true"]')
+      expect(visible?.textContent).toBe('Série 142,5 kg10 rep')
     })
   })
 })

@@ -100,12 +100,17 @@ export function nextPositionOf(state: WorkoutFlowState): Position | null {
   }
 }
 
+// A set as the athlete recorded it: the sent values, not the planned ones (FR-002).
+export type RecordedSetView = Pick<RecordWorkoutSetBody, 'setNumber' | 'loadG' | 'reps' | 'seconds'>
+
 export type SequenceItem = {
   exerciseIndex: number
   name: string
   status: 'done' | 'current' | 'skipped' | 'todo'
   setsDone: number
   setsTotal: number
+  // The recorded sets, only while the exercise is done (FR-004); empty otherwise.
+  recordedSets: RecordedSetView[]
 }
 
 // The exercises of the letter in program order with their state (FR-002, FR-003). The current one
@@ -115,14 +120,28 @@ export function sequenceOf(state: WorkoutFlowState): SequenceItem[] {
   return state.session.day.exercises.map((planned, exerciseIndex) => {
     const setsDone = setsDoneOf(state, planned)
     const done = setsDone >= planned.sets
+    const status = statusOf(state, planned, exerciseIndex === currentIndex, done)
     return {
       exerciseIndex,
       name: planned.exercise.name,
-      status: statusOf(state, planned, exerciseIndex === currentIndex, done),
+      status,
       setsDone,
       setsTotal: planned.sets,
+      recordedSets: status === 'done' ? recordedSetsOf(state, planned) : [],
     }
   })
+}
+
+function recordedSetsOf(state: WorkoutFlowState, planned: TodayExercise): RecordedSetView[] {
+  return state.recorded
+    .filter((body) => body.plannedExerciseId === planned.plannedExerciseId)
+    .sort((a, b) => a.setNumber - b.setNumber)
+    .map(({ setNumber, loadG, reps, seconds }) => ({
+      setNumber,
+      loadG,
+      ...(reps === undefined ? {} : { reps }),
+      ...(seconds === undefined ? {} : { seconds }),
+    }))
 }
 
 // The exercise on screen wins over the skipped mark (FR-011).
