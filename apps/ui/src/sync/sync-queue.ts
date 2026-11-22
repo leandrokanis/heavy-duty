@@ -1,5 +1,6 @@
 import type { FinishWorkoutBody } from '@/features/workout/workout-finish.types'
 import type { RecordWorkoutSetBody, SendOutcome } from '@/features/workout/workout-set.types'
+import type { CorrectWorkoutSetBody } from '@/features/workout/workout-set-correction.types'
 import type { RecordWorkoutSkipBody } from '@/features/workout/workout-skip.types'
 import { itemIdOf, rejectedOf } from './queue-store'
 import type { NewPendingItem, PendingItem, QueueContents, QueueStore } from './sync.types'
@@ -16,6 +17,8 @@ export type SyncQueue = {
   enqueue(workoutId: string, body: RecordWorkoutSetBody): Promise<void>
   // An exercise left out goes after the sets and before the end; the same exercise twice does nothing.
   enqueueSkip(workoutId: string, body: RecordWorkoutSkipBody): Promise<void>
+  // New values for a set go after the queued items, so after the set itself.
+  enqueueCorrection(workoutId: string, setId: string, body: CorrectWorkoutSetBody): Promise<void>
   // The end of the workout goes after its sets; a second call for the same workout does nothing.
   enqueueFinish(workoutId: string, body: FinishWorkoutBody): Promise<void>
   flush(): Promise<void>
@@ -76,7 +79,10 @@ export function createSyncQueue({ store, send, now = Date.now }: SyncQueueOption
       if (!head) return
       const outcome = await send(head)
       if (outcome.status === 'retry') return
-      // A refused finish or skip leaves in silence: the athlete cannot fix it and it must not block
+      // A newer correction replaced the sent one while it was in flight: it still has to go, and
+      // its id must stay in the queue and in the store (ADR-025).
+      if (snapshot.pending.find(({ id }) => id === head.id) !== head) continue
+      // A refused finish, skip or correction leaves in silence: the athlete cannot fix it and it must not block
       // the queue (ADR-022, ADR-023).
       if (outcome.status === 'confirmed' || head.kind !== 'set') {
         update(({ pending, rejected }) => ({
@@ -98,16 +104,23 @@ export function createSyncQueue({ store, send, now = Date.now }: SyncQueueOption
   async function add(item: NewPendingItem): Promise<void> {
     await ready
     const id = itemIdOf(item)
-    if (snapshot.pending.some((stored) => stored.id === id)) return
+    const exists = snapshot.pending.some((stored) => stored.id === id)
+    // Only a correction is replaced: the newest values win and go to the end of the queue.
+    if (exists && item.kind !== 'correction') return
     const added = { ...item, id, seq: (snapshot.pending.at(-1)?.seq ?? 0) + 1 } as PendingItem
-    update(({ pending, rejected }) => ({ pending: [...pending, added], rejected }))
-    await persist(() => store.add(item))
+    update(({ pending, rejected }) => ({
+      pending: [...pending.filter((stored) => stored.id !== id), added],
+      rejected,
+    }))
+    await persist(() => (exists ? store.replace(item) : store.add(item)))
     void flush()
   }
 
   return {
     enqueue: (workoutId, body) => add({ kind: 'set', workoutId, body, queuedAt: now() }),
     enqueueSkip: (workoutId, body) => add({ kind: 'skip', workoutId, body, queuedAt: now() }),
+    enqueueCorrection: (workoutId, setId, body) =>
+      add({ kind: 'correction', workoutId, setId, body, queuedAt: now() }),
     enqueueFinish: (workoutId, body) => add({ kind: 'finish', workoutId, body, queuedAt: now() }),
     flush,
     async dismissRejected() {

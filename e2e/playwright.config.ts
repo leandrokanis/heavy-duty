@@ -24,6 +24,7 @@ const SKIP_EXERCISE_SPEC = /skip-exercise\.feature\.spec\.js$/
 const REVIEW_DONE_EXERCISE_SPEC = /review-done-exercise\.feature\.spec\.js$/
 const TIMED_EXERCISE_SPEC = /timed-exercise\.feature\.spec\.js$/
 const DRAG_ADJUST_SPEC = /drag-adjust\.feature\.spec\.js$/
+const CORRECT_LAST_SET_SPEC = /correct-last-set\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -63,6 +64,7 @@ export default defineConfig({
         REVIEW_DONE_EXERCISE_SPEC,
         TIMED_EXERCISE_SPEC,
         DRAG_ADJUST_SPEC,
+        CORRECT_LAST_SET_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -162,6 +164,15 @@ export default defineConfig({
       testMatch: DRAG_ADJUST_SPEC,
       fullyParallel: false,
       dependencies: ['timed-exercise'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records sets, corrects the last one and reads it in the shared database, so it runs alone
+    // and one scenario at a time, after the drag adjust.
+    {
+      name: 'correct-last-set',
+      testMatch: CORRECT_LAST_SET_SPEC,
+      fullyParallel: false,
+      dependencies: ['drag-adjust'],
       use: { ...devices['Pixel 7'] },
     },
   ],

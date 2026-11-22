@@ -32,7 +32,7 @@ Banco `heavy-duty`, versão 1, com quatro tabelas (`apps/ui/src/sync/local-db.ts
 
 | Tabela local | Conteúdo | Quando sai |
 |---|---|---|
-| `pendingSets` | Item da fila: `kind` (`set`, `skip` ou `finish`), `seq` (ordem de registro), `id` único, treino, corpo do envio e horário da entrada. A linha sem `kind`, gravada antes da US-F03-04, é série. O exercício pulado tem o `id` `${workoutId}:skip:${plannedExerciseId}` e o fim do treino tem o `id` `${workoutId}:finish` | Quando a API confirma (200 ou 201) ou recusa o item (série: 400, 409 ou 422; pulado e fim: 400, 404, 409 ou 422) |
+| `pendingSets` | Item da fila: `kind` (`set`, `skip`, `finish` ou `correction`), `seq` (ordem de registro), `id` único, treino, corpo do envio e horário da entrada. A linha sem `kind`, gravada antes da US-F03-04, é série. O exercício pulado tem o `id` `${workoutId}:skip:${plannedExerciseId}` o fim do treino tem o `id` `${workoutId}:finish` e a correção da série tem o `id` `${workoutId}:correction:${setId}`, com `setId` e corpo `{ loadG, reps }` ou `{ loadG, seconds }` | Quando a API confirma (200 ou 201) ou recusa o item (série: 400, 409 ou 422; pulado, fim e correção: 400, 404, 409 ou 422) |
 | `rejectedSets` | Série que a API recusou por regra de domínio, com `code` e `message` | Quando o atleta toca em "Dispensar" |
 | `activeWorkout` | Uma linha: o estado inteiro do treino em andamento (letra, posição, fase, fim do descanso, séries feitas, exercícios pulados em `skipped` com o instante do último pulo) e o instante da gravação | Quando o atleta toca em "Fechar" ou passadas 2 h desde a última gravação |
 | `programCache` | Uma linha: a última resposta 200 de `GET /api/today` | Quando a API devolve uma resposta 200 nova, em `signOut` e no 401 de `GET /api/today` |
@@ -44,6 +44,7 @@ Banco `heavy-duty`, versão 1, com quatro tabelas (`apps/ui/src/sync/local-db.ts
 | Lê e grava | App web, no navegador | As tabelas acima |
 | Envia, pelo app web | API, `POST /api/workouts/{id}/sets` | Séries da fila, em ordem, com o ID como chave de idempotência |
 | Envia, pelo app web | API, `POST /api/workouts/{id}/skips` | O exercício que ficou de fora, depois das séries e antes do fim do mesmo treino, idempotente pelo par exercício do programa e instante (ADR-023) |
+| Envia, pelo app web | API, `PATCH /api/workouts/{id}/sets/{setId}` | A correção de uma série, depois da série na fila, idempotente pelos valores absolutos (ADR-025) |
 | Envia, pelo app web | API, `POST /api/workouts/{id}/finish` | O fim do treino, depois das séries e dos pulados do mesmo treino, idempotente pelo par instante e motivo (ADR-022) |
 
 ## Regras que o código segue
@@ -51,11 +52,12 @@ Banco `heavy-duty`, versão 1, com quatro tabelas (`apps/ui/src/sync/local-db.ts
 1. A série entra na fila antes do envio, mesmo com rede. O envio direto sem fila perde a série se a requisição falhar.
 2. O reenvio usa o mesmo ID. A API trata o ID repetido como a mesma série (US-F03-02).
 3. A fila é enviada em ordem de registro, uma série por vez. Uma série que a API recusa por regra de domínio (400, 409 ou 422) sai da fila, vai para `rejectedSets` e aparece num aviso até o atleta dispensar. O app não reenvia a série recusada. As outras falhas (rede, tempo esgotado, 401, 403, 404, 408, 429 e 5xx) mantêm a série na fila e param a rodada.
-4. A tela mostra quantas séries aguardam envio, sem bloquear o treino (`DESIGN.md`, princípio 4). O fim do treino na fila não entra nessa conta.
+4. A tela mostra quantas séries aguardam envio, sem bloquear o treino (`DESIGN.md`, princípio 4). O fim do treino, o pulado e a correção na fila não entram nessa conta.
 5. Se o IndexedDB não abre ou uma gravação falha, a fila segue só em memória pelo resto da sessão, com o mesmo indicador.
 6. O envio começa ao abrir o app, no evento `online`, na volta ao primeiro plano, depois de cada resposta 200 de `GET /api/today` e a cada 15 s enquanto houver série na fila. Não há Background Sync.
 7. O fim do treino entra na fila depois das séries, no mesmo envio em ordem. A API que recusa o fim (400, 404, 409 ou 422) tira o fim da fila sem `rejectedSets` e sem aviso: o 404 é recusa porque as séries vão antes, e o fim preso travaria a fila (ADR-022). O encerrar sem série registrada não enfileira nada.
 8. O exercício pulado que resta no fim do treino entra na fila entre as séries e o fim, um item por exercício, com o instante do último pulo. A API que recusa o pulado (400, 404, 409 ou 422) tira o pulado da fila sem `rejectedSets` e sem aviso, pela mesma razão do fim (ADR-023). O exercício pulado e feito depois não entra na fila. O encerrar sem série registrada não enfileira pulado.
-9. `signOut` apaga `programCache`. A fila, as recusadas e o treino em andamento ficam, porque guardam séries que ainda precisam chegar à API (risco aceito, ADR-021).
+9. A correção da última série entra na fila depois da série e nunca reescreve a série. Uma correção nova da mesma série substitui a pendente (`replace`) e vai para o fim da fila. Depois do envio, a fila só tira o item se o objeto enviado ainda é o do espelho; se uma correção nova o substituiu durante o envio, a nova segue na mesma rodada. A API que recusa a correção (400, 404, 409 ou 422) tira a correção da fila sem `rejectedSets` e sem aviso (ADR-025).
+10. `signOut` apaga `programCache`. A fila, as recusadas e o treino em andamento ficam, porque guardam séries que ainda precisam chegar à API (risco aceito, ADR-021).
 
 A estratégia de sincronização e de conflito está na ADR-021: o servidor vence. A ADR-022 estende a fila com o fim do treino, e a ADR-023, com o exercício pulado.

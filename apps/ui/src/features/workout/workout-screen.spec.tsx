@@ -1925,3 +1925,282 @@ describe('Given the screen of supino-reto adjusted to 42,5 kg and 8 reps and not
     })
   })
 })
+
+// Supino at 45 kg, 3 x 10 resting 90 s: the fixture of the last set correction.
+const SUPINO_45 = {
+  ...SUPINO_RETO,
+  loadG: 45_000,
+  plannedLoadG: 45_000,
+  loadSource: 'program' as const,
+}
+
+const LAST_SET_AT_45 = 'Corrigir última série: 45 quilos, 10 repetições'
+const LAST_SET_AT_42_5 = 'Corrigir última série: 42,5 quilos, 10 repetições'
+
+// The polite live region, apart from the indicator of the pending sets, which is also a status.
+function liveRegionText(): string | null | undefined {
+  return document.querySelector('[aria-live="polite"]')?.textContent
+}
+
+// The queue as the athlete cannot see it: the kind and the load of each waiting item.
+function queuedLoads(queue: SyncQueue): [string, number][] {
+  return queue
+    .getSnapshot()
+    .pending.flatMap((item) =>
+      item.kind === 'set' || item.kind === 'correction' ? [[item.kind, item.body.loadG]] : [],
+    )
+}
+
+// Taps the button of the last set, lowers the load by one step and taps Salvar.
+async function correctLastSetByOneStepDown(): Promise<void> {
+  fireEvent.click(screen.getByRole('button', { name: LAST_SET_AT_45 }))
+  const dialog = await screen.findByRole('dialog', { name: 'Corrigir última série' })
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Diminuir carga' }))
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+}
+
+describe('Given the rest after set 1 of supino at 45 kg', () => {
+  describe('When the athlete opens the correction, lowers the load one step and taps Salvar', () => {
+    it('Then the sheet should close, the button should read 42,5 kg with the focus back on it, the live region should announce it, and the queue should hold the set at 45 kg and then the correction at 42,5 kg', async () => {
+      const { queue } = renderWorkout([SUPINO_45, PRANCHA], vi.fn(), NEVER_SENT)
+      await act(async () => tapNext())
+      const buttonBefore = screen.getByRole('button', { name: LAST_SET_AT_45 }).textContent
+
+      await correctLastSetByOneStepDown()
+
+      const button = screen.getByRole('button', { name: LAST_SET_AT_42_5 })
+      await waitFor(() => expect(document.activeElement).toBe(button))
+      expect({
+        buttonBefore,
+        button: button.textContent,
+        announced: liveRegionText(),
+        queued: queuedLoads(queue),
+      }).toEqual({
+        buttonBefore: '45 kg · 10 rep',
+        button: '42,5 kg · 10 rep',
+        announced: 'Série corrigida: 42,5 quilos, 10 repetições',
+        queued: [
+          ['set', 45000],
+          ['correction', 42500],
+        ],
+      })
+    })
+  })
+})
+
+async function openCorrectionSheet(buttonName: string): Promise<HTMLElement> {
+  fireEvent.click(screen.getByRole('button', { name: buttonName }))
+  const dialog = await screen.findByRole('dialog', { name: 'Corrigir última série' })
+  return dialog
+}
+
+describe('Given the correction sheet open with the load lowered to 42,5 kg', () => {
+  describe('When the athlete taps Cancelar and later opens the sheet again and taps Salvar with no change', () => {
+    it('Then the button should keep 45 kg and the queue should hold only the set, after each of the two closings', async () => {
+      const { queue } = renderWorkout([SUPINO_45, PRANCHA], vi.fn(), NEVER_SENT)
+      await act(async () => tapNext())
+      const first = await openCorrectionSheet(LAST_SET_AT_45)
+      fireEvent.click(within(first).getByRole('button', { name: 'Diminuir carga' }))
+
+      fireEvent.click(within(first).getByRole('button', { name: 'Cancelar' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      const afterCancel = {
+        button: screen.getByRole('button', { name: LAST_SET_AT_45 }).textContent,
+        queued: queuedLoads(queue),
+      }
+      const second = await openCorrectionSheet(LAST_SET_AT_45)
+      fireEvent.click(within(second).getByRole('button', { name: 'Salvar' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+      expect({ afterCancel, afterSave: queuedLoads(queue) }).toEqual({
+        afterCancel: { button: '45 kg · 10 rep', queued: [['set', 45000]] },
+        afterSave: [['set', 45000]],
+      })
+    })
+  })
+})
+
+// Reads by role and label straight from the DOM: a modal sheet over the screen leaves the rest of
+// the page aria-hidden, which the role queries skip.
+function ariaTextOf(role: string, label: string): string | null | undefined {
+  return document
+    .querySelector(`[role="${role}"][aria-label="${label}"]`)
+    ?.getAttribute('aria-valuetext')
+}
+
+describe('Given the correction sheet open in the rest after set 1 of supino at 45 kg', () => {
+  describe('When the 90 s of the rest pass and then the athlete lowers the load and taps Salvar', () => {
+    it('Then the screen should stay on set 1 while the sheet is open, and show set 2 at 42,5 kg after Salvar', async () => {
+      vi.useFakeTimers({ now: T0 })
+      renderWorkout([SUPINO_45, PRANCHA], vi.fn(), NEVER_SENT)
+      await act(async () => tapNext())
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: LAST_SET_AT_45 }))
+      })
+      const dialog = screen.getByRole('dialog', { name: 'Corrigir última série' })
+
+      await act(async () => vi.advanceTimersByTimeAsync(95_000))
+      const whileOpen = {
+        sets: ariaTextOf('progressbar', 'Séries'),
+        dialog: screen.queryByRole('dialog') !== null,
+      }
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Diminuir carga' }))
+      })
+      await act(async () => {
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }))
+      })
+
+      expect({
+        whileOpen,
+        sets: ariaTextOf('progressbar', 'Séries'),
+        load: shownOf('Carga'),
+      }).toEqual({
+        whileOpen: { sets: '1 de 3', dialog: true },
+        sets: '2 de 3',
+        load: '42,5 quilos',
+      })
+    })
+  })
+})
+
+describe('Given the rest after set 1 of supino at 45 kg, corrected more than once', () => {
+  describe('When the athlete corrects the set twice, to 42,5 kg and then to 40 kg, and then taps Próximo', () => {
+    it('Then the queue should hold the set and one correction at 40 kg, and set 2 should show no correction button', async () => {
+      // Only the clock is faked, so the sheet animations still run; Próximo comes after the 0,8 s guard.
+      vi.useFakeTimers({ now: T0, toFake: ['Date'] })
+      const { queue } = renderWorkout([SUPINO_45, PRANCHA], vi.fn(), NEVER_SENT)
+      await act(async () => tapNext())
+      const first = await openCorrectionSheet(LAST_SET_AT_45)
+      fireEvent.click(within(first).getByRole('button', { name: 'Diminuir carga' }))
+      fireEvent.click(within(first).getByRole('button', { name: 'Salvar' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      const second = await openCorrectionSheet(LAST_SET_AT_42_5)
+      fireEvent.click(within(second).getByRole('button', { name: 'Diminuir carga' }))
+      fireEvent.click(within(second).getByRole('button', { name: 'Salvar' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+      vi.setSystemTime(T0 + 2_000)
+      await act(async () => tapNext())
+
+      expect({
+        queued: queuedLoads(queue),
+        correctionButtons: screen.queryAllByRole('button', { name: /^Corrigir última série/ })
+          .length,
+        sets: screen.getByRole('progressbar', { name: 'Séries' }).getAttribute('aria-valuetext'),
+      }).toEqual({
+        queued: [
+          ['set', 45000],
+          ['correction', 40000],
+        ],
+        correctionButtons: 0,
+        sets: '2 de 3',
+      })
+    })
+  })
+})
+
+const SUPINO_ONE_SET = { ...SUPINO_45, sets: 1 }
+const PRANCHA_ONE_SET = { ...PRANCHA, sets: 1 }
+
+describe('Given the letter of supino 1 x 10 at 45 kg and prancha 1 x 45 s', () => {
+  describe('When the athlete corrects supino to 42,5 kg in the rest, then does the prancha up to Treino concluído and corrects it to 40 s', () => {
+    it('Then the sequence should list set 1 of supino at 42,5 kg, the finished screen should offer "0 quilos, 45 segundos", and the queue should hold the correction of the prancha after one finish', async () => {
+      vi.useFakeTimers({ now: T0, toFake: ['Date'] })
+      const { queue } = renderWorkout([SUPINO_ONE_SET, PRANCHA_ONE_SET], vi.fn(), NEVER_SENT)
+      await act(async () => tapNext())
+      const sheet = await openCorrectionSheet(LAST_SET_AT_45)
+      fireEvent.click(within(sheet).getByRole('button', { name: 'Diminuir carga' }))
+      fireEvent.click(within(sheet).getByRole('button', { name: 'Salvar' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+      const sequence = await openSequence('Sequência do treino, letra A, exercício 2 de 2')
+      const supinoSets = within(
+        within(sequence).getByRole('list', { name: 'Séries de Supino reto' }),
+      )
+        .getAllByText(/^Série \d: /)
+        .map((node) => node.textContent)
+      fireEvent.click(within(sequence).getByRole('button', { name: 'Fechar' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+      vi.setSystemTime(T0 + 2_000)
+      await act(async () => tapNext())
+      vi.setSystemTime(T0 + 3_000)
+      await act(async () => tapNext())
+      vi.setSystemTime(T0 + 6_000)
+      await waitFor(() =>
+        expect(screen.getByRole('timer', { name: 'Tempo de execução' })).toBeTruthy(),
+      )
+      vi.setSystemTime(T0 + 52_000)
+      await screen.findByRole('heading', { name: 'Treino concluído' })
+      const offered = screen.getByRole('button', {
+        name: 'Corrigir última série: 0 quilos, 45 segundos',
+      }).textContent
+      const last = await openCorrectionSheet('Corrigir última série: 0 quilos, 45 segundos')
+      fireEvent.click(within(last).getByRole('button', { name: 'Diminuir tempo' }))
+      fireEvent.click(within(last).getByRole('button', { name: 'Salvar' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+      expect({
+        supinoSets,
+        offered,
+        queue: queue.getSnapshot().pending.map(({ kind }) => kind),
+        lastCorrection: queue
+          .getSnapshot()
+          .pending.flatMap((item) =>
+            item.kind === 'correction' && 'seconds' in item.body ? [item.body.seconds] : [],
+          ),
+      }).toEqual({
+        supinoSets: ['Série 1: 42,5 kg, 10 repetições'],
+        offered: '0 kg · 45 s',
+        queue: ['set', 'correction', 'set', 'finish', 'correction'],
+        lastCorrection: [40],
+      })
+    })
+  })
+})
+
+describe('Given a workout saved in the rest after set 1 of supino corrected to 42,5 kg', () => {
+  describe('When a new screen opens from the restored state', () => {
+    it('Then should show the button at 42,5 kg with the sheet closed, and queue neither the set nor the correction again', async () => {
+      vi.useFakeTimers({ now: T0 + 10_000, toFake: ['Date'] })
+      const recorded = workoutFlowReducer(flowOf([SUPINO_45, PRANCHA]), { type: 'next', nowMs: T0 })
+      const open = workoutFlowReducer(recorded, { type: 'openSheet', sheet: 'correction' })
+      const saved = workoutFlowReducer(open, {
+        type: 'correctLastSet',
+        values: { loadG: 42500, reps: 10, seconds: null },
+        nowMs: T0 + 5_000,
+      })
+      const restored = restoreWorkoutFlow({ ...saved, sheet: 'correction' }, T0 + 10_000)
+
+      const { queue } = renderWorkout([SUPINO_45, PRANCHA], vi.fn(), NEVER_SENT, restored)
+      await act(async () => {})
+
+      expect({
+        button: screen.getByRole('button', { name: LAST_SET_AT_42_5 }).textContent,
+        dialog: screen.queryByRole('dialog'),
+        queued: queue.getSnapshot().pending,
+      }).toEqual({ button: '42,5 kg · 10 rep', dialog: null, queued: [] })
+    })
+  })
+})
+
+describe('Given the correction sheet open with the load lowered to 42,5 kg and cancelled', () => {
+  describe('When the athlete taps Próximo and set 2 shows', () => {
+    it('Then set 2 should still start at 45 kg, since the lowered value was never saved', async () => {
+      vi.useFakeTimers({ now: T0, toFake: ['Date'] })
+      renderWorkout([SUPINO_45, PRANCHA], vi.fn(), NEVER_SENT)
+      await act(async () => tapNext())
+      const sheet = await openCorrectionSheet(LAST_SET_AT_45)
+      fireEvent.click(within(sheet).getByRole('button', { name: 'Diminuir carga' }))
+      fireEvent.click(within(sheet).getByRole('button', { name: 'Cancelar' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+      vi.setSystemTime(T0 + 2_000)
+      await act(async () => tapNext())
+
+      expect(shownOf('Carga')).toBe('45 quilos')
+    })
+  })
+})

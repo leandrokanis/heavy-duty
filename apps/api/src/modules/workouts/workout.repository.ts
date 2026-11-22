@@ -67,6 +67,14 @@ export function findWorkoutSetRow(db: Database, setId: string): WorkoutSet | und
   return db.select(workoutSetColumns).from(workoutSets).where(eq(workoutSets.id, setId)).get()
 }
 
+export function updateWorkoutSetValues(
+  db: Database,
+  setId: string,
+  values: Pick<WorkoutSet, 'loadG' | 'reps' | 'seconds'>,
+): void {
+  db.update(workoutSets).set(values).where(eq(workoutSets.id, setId)).run()
+}
+
 export function existsWorkoutSet(
   db: Database,
   workoutId: string,
@@ -90,6 +98,14 @@ export function existsWorkoutSet(
 
 export function insertWorkoutSet(db: Database, set: WorkoutSet): void {
   db.insert(workoutSets).values(set).run()
+}
+
+export function findExerciseKind(db: Database, exerciseId: string): ExerciseKind | undefined {
+  return db
+    .select({ kind: exercises.kind })
+    .from(exercises)
+    .where(eq(exercises.id, exerciseId))
+    .get()?.kind
 }
 
 export type PlannedExerciseTarget = {

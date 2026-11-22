@@ -1,6 +1,6 @@
 import { createClientId } from './client-id'
-import { type AdjustField, adjustValue, MINIMUMS } from './drag-adjust'
-import type { TodayDay, TodayExercise } from './today.types'
+import { type AdjustField, adjustValue, MINIMUMS, valueTextOf } from './drag-adjust'
+import type { ExerciseKind, TodayDay, TodayExercise } from './today.types'
 import { COUNTDOWN_MS, DOUBLE_TAP_GUARD_MS } from './workout.config'
 import type { FinishWorkoutBody } from './workout-finish.types'
 import type { RecordWorkoutSetBody } from './workout-set.types'
@@ -17,7 +17,7 @@ export type WorkoutSession = {
 // The numbers on the set screen; reps or seconds is null for the other kind of exercise.
 export type SetValues = { loadG: number; reps: number | null; seconds: number | null }
 
-export type SheetName = 'none' | 'sequence' | 'confirmEnd'
+export type SheetName = 'none' | 'sequence' | 'confirmEnd' | 'correction'
 
 // An exercise the athlete skipped and did not do yet; the instant is the last skip (ADR-023).
 export type SkippedMark = { plannedExerciseId: string; skippedAt: string }
@@ -40,6 +40,7 @@ export type WorkoutFlowState = {
     | 'begin'
     | 'timerEnd'
     | 'cancel'
+    | 'correct'
     | null
   // The exercise picked in the sequence during the rest; null when the order decides.
   nextExerciseIndex: number | null
@@ -69,6 +70,7 @@ export type WorkoutFlowAction =
   | { type: 'skip'; nowMs: number }
   | { type: 'end'; nowMs: number }
   | { type: 'adjust'; field: AdjustField; steps: number }
+  | { type: 'correctLastSet'; values: SetValues; nowMs: number }
 
 export function createWorkoutFlow(session: WorkoutSession): WorkoutFlowState {
   return {
@@ -300,6 +302,7 @@ export function deadlineOf(state: WorkoutFlowState): number | null {
 export function announcementOf(state: WorkoutFlowState): string {
   if (state.lastStep === 'begin') return 'Começou'
   if (state.lastStep === 'cancel') return positionText(state)
+  if (state.lastStep === 'correct') return correctedText(state)
   if (state.lastStep === 'skip' && state.phase === 'rest') return upcomingText(state)
   if (state.lastStep === 'advance' || state.lastStep === 'goTo' || state.lastStep === 'skip') {
     return positionText(state)
@@ -315,6 +318,24 @@ export function announcementOf(state: WorkoutFlowState): string {
   if (state.phase === 'finished') return `${recordedText}. Treino concluído${leftOutText(state)}`
   if (state.phase === 'set') return `${recordedText}. ${positionText(state)}`
   return recordedText
+}
+
+// The values of a set as spoken: "42,5 quilos, 10 repetições".
+export function setValuesText(
+  set: Pick<RecordWorkoutSetBody, 'loadG' | 'reps' | 'seconds'>,
+): string {
+  const measure =
+    set.reps === undefined
+      ? valueTextOf('seconds', set.seconds as number)
+      : valueTextOf('reps', set.reps)
+  return `${valueTextOf('loadG', set.loadG)}, ${measure}`
+}
+
+// A correction that closed over a rest that had run out also passes to the next set.
+function correctedText(state: WorkoutFlowState): string {
+  const last = state.recorded.at(-1) as RecordWorkoutSetBody
+  const corrected = `Série corrigida: ${setValuesText(last)}`
+  return state.phase === 'set' ? `${corrected}. ${positionText(state)}` : corrected
 }
 
 function leftOutText(state: WorkoutFlowState): string {
@@ -405,7 +426,7 @@ export function workoutFlowReducer(
     case 'goTo':
       return goTo(state, action.exerciseIndex, action.nowMs)
     case 'openSheet':
-      return isTimerOpen(state) ? state : { ...state, sheet: action.sheet }
+      return canOpenSheet(state, action.sheet) ? { ...state, sheet: action.sheet } : state
     case 'closeSheet':
       return closeSheet(state, action.nowMs)
     case 'skip':
@@ -414,6 +435,95 @@ export function workoutFlowReducer(
       return isTimerOpen(state) ? state : endWorkout(state, action.nowMs)
     case 'adjust':
       return adjustShown(state, action.field, action.steps)
+    case 'correctLastSet':
+      return correctLastSet(state, action.values, action.nowMs)
+  }
+}
+
+// The correction opens over the last recorded set, in the rest or on the finished screen, with no
+// other sheet open; the timer takes no sheet.
+function canOpenSheet(state: WorkoutFlowState, sheet: Exclude<SheetName, 'none'>): boolean {
+  if (isTimerOpen(state)) return false
+  return sheet !== 'correction' || (state.sheet === 'none' && lastSetOf(state) !== null)
+}
+
+export type LastSetView = {
+  set: RecordWorkoutSetBody
+  exerciseName: string
+  kind: ExerciseKind
+  setsTotal: number
+}
+
+// The set the correction would change: the last recorded one, while the athlete is in the rest or
+// the workout is finished. Null on the set screen, in the timer and before any record.
+export function lastSetOf(state: WorkoutFlowState): LastSetView | null {
+  if (state.phase !== 'rest' && state.phase !== 'finished') return null
+  const set = state.recorded.at(-1)
+  if (set === undefined) return null
+  const planned = state.session.day.exercises.find(
+    ({ plannedExerciseId }) => plannedExerciseId === set.plannedExerciseId,
+  ) as TodayExercise
+  return {
+    set,
+    exerciseName: planned.exercise.name,
+    kind: planned.exercise.kind,
+    setsTotal: planned.sets,
+  }
+}
+
+// "Salvar" of the correction sheet. Valid new values replace the load and the measure of the last
+// set; equal ones only close the sheet. Closing works as closeSheet: a rest that ran out under the
+// sheet passes to the next set now, and only then does the guard start.
+function correctLastSet(
+  state: WorkoutFlowState,
+  values: SetValues,
+  nowMs: number,
+): WorkoutFlowState {
+  const last = lastSetOf(state)
+  if (state.sheet !== 'correction' || last === null || !isValidCorrection(last.kind, values)) {
+    return state
+  }
+  const corrected = isSameValues(last.set, values) ? state : withCorrectedLastSet(state, values)
+  return { ...closeSheet(corrected, nowMs), lastStep: 'correct' }
+}
+
+function isValidCorrection(kind: ExerciseKind, values: SetValues): boolean {
+  const hasOwnMeasure = kind === 'reps' ? values.seconds === null : values.reps === null
+  return hasOwnMeasure && isValidValues(values)
+}
+
+function isSameValues(set: RecordWorkoutSetBody, values: SetValues): boolean {
+  return (
+    set.loadG === values.loadG &&
+    (set.reps ?? null) === values.reps &&
+    (set.seconds ?? null) === values.seconds
+  )
+}
+
+// The next set of the exercise starts from the corrected load and reps. The corrected time goes
+// along only when the recorded time was the one carried: a timed set ended early records less
+// than the time shown, and that shown time stays (FR-007).
+function withCorrectedLastSet(state: WorkoutFlowState, values: SetValues): WorkoutFlowState {
+  const last = state.recorded.at(-1) as RecordWorkoutSetBody
+  const planned = state.session.day.exercises.find(
+    ({ plannedExerciseId }) => plannedExerciseId === last.plannedExerciseId,
+  ) as TodayExercise
+  const carried = state.carriedValues[planned.plannedExerciseId] ?? filledValuesOf(planned)
+  const measure =
+    planned.exercise.kind === 'reps'
+      ? { reps: values.reps }
+      : { seconds: last.seconds === carried.seconds ? values.seconds : carried.seconds }
+  const body: RecordWorkoutSetBody =
+    planned.exercise.kind === 'reps'
+      ? { ...last, loadG: values.loadG, reps: values.reps as number }
+      : { ...last, loadG: values.loadG, seconds: values.seconds as number }
+  return {
+    ...state,
+    recorded: [...state.recorded.slice(0, -1), body],
+    carriedValues: {
+      ...state.carriedValues,
+      [planned.plannedExerciseId]: { ...carried, loadG: values.loadG, ...measure },
+    },
   }
 }
 

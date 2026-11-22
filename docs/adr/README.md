@@ -29,6 +29,7 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-021](021-sincronizacao-da-fila-sem-sinal.md) | Sincronização da fila de séries sem sinal | Aceita |
 | [ADR-022](022-fim-do-treino-na-fila-de-sincronizacao.md) | Fim do treino na fila de sincronização | Aceita |
 | [ADR-023](023-exercicio-pulado-na-fila-de-sincronizacao.md) | Exercício pulado na fila de sincronização | Aceita |
+| [ADR-025](025-correcao-da-serie-na-fila-de-sincronizacao.md) | Correção da série na fila de sincronização | Aceita |
 
 ## Regras
 

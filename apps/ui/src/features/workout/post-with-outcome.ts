@@ -2,6 +2,7 @@ import { SEND_TIMEOUT_MS } from './workout.config'
 import type { SendOutcome } from './workout-set.types'
 
 export type PostWithOutcome = {
+  method?: 'POST' | 'PATCH'
   path: string
   body: unknown
   // The statuses that mean a domain refusal; every other failure is retried.
@@ -11,6 +12,7 @@ export type PostWithOutcome = {
 
 // A timer of the page, not AbortSignal.timeout, so the tests drive it with fake timers.
 export async function postWithOutcome({
+  method = 'POST',
   path,
   body,
   rejectedStatuses,
@@ -20,7 +22,7 @@ export async function postWithOutcome({
   const timer = setTimeout(() => controller.abort(), SEND_TIMEOUT_MS)
   try {
     const response = await fetch(path, {
-      method: 'POST',
+      method,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
       credentials: 'same-origin',

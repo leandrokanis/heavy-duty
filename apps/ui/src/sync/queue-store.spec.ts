@@ -67,3 +67,44 @@ describe('Given a skip added to the Dexie queue store', () => {
     })
   })
 })
+
+describe('Given a set and a correction of it in the Dexie queue store', () => {
+  describe('When the store replaces the correction and a new LocalDb instance opens the database', () => {
+    it('Then load should return one correction with the new body at the end of the order, and the database should still be at version 1', async () => {
+      const databaseName = `queue-store-${crypto.randomUUID()}`
+      const writer = createDexieQueueStore(new LocalDb(databaseName))
+      const correction = { kind: 'correction', workoutId: WORKOUT_ID, setId: 'set-1' } as const
+      await writer.add({
+        kind: 'set',
+        workoutId: WORKOUT_ID,
+        body: pendingSetBody({ id: 'set-1' }),
+        queuedAt: 1000,
+      })
+      await writer.add({ ...correction, body: { loadG: 42500, reps: 10 }, queuedAt: 1000 })
+      await writer.add({
+        kind: 'set',
+        workoutId: WORKOUT_ID,
+        body: pendingSetBody({ id: 'set-2', setNumber: 2 }),
+        queuedAt: 1000,
+      })
+
+      await writer.replace({ ...correction, body: { loadG: 40000, reps: 10 }, queuedAt: 2000 })
+
+      const db = new LocalDb(databaseName)
+      const { pending } = await createDexieQueueStore(db).load()
+      expect({
+        items: pending.map(({ kind, id }) => [kind, id]),
+        correctionBody: pending.find(({ kind }) => kind === 'correction')?.body,
+        version: db.verno,
+      }).toEqual({
+        items: [
+          ['set', 'set-1'],
+          ['set', 'set-2'],
+          ['correction', `${WORKOUT_ID}:correction:set-1`],
+        ],
+        correctionBody: { loadG: 40000, reps: 10 },
+        version: 1,
+      })
+    })
+  })
+})

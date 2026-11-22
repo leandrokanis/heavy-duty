@@ -6,8 +6,10 @@ import { Volume2, VolumeX } from 'lucide-react'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { clearActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
 import { useSyncQueue } from '@/sync/sync-context'
+import { CorrectionSheet } from './correction-sheet'
 import type { AdjustField } from './drag-adjust'
 import { EndSheet } from './end-sheet'
+import { LastSetButton } from './last-set-button'
 import { LeftOutSummary } from './left-out-summary'
 import { PendingSetsIndicator } from './pending-sets-indicator'
 import { RejectedSetsNotice } from './rejected-sets-notice'
@@ -25,6 +27,7 @@ import {
   currentExercise,
   deadlineOf,
   exerciseProgressOf,
+  lastSetOf,
   leftOutOf,
   type SetValues,
   sequenceOf,
@@ -35,6 +38,7 @@ import {
   type WorkoutFlowState,
   workoutFlowReducer,
 } from './workout-flow'
+import type { RecordWorkoutSetBody } from './workout-set.types'
 
 export type WorkoutScreenProps = {
   // The state to start from: a new workout or one restored from the device.
@@ -44,7 +48,12 @@ export type WorkoutScreenProps = {
   tonePlayer?: TonePlayer
 }
 
-// Puts each new set in the queue before anything else (the data that matters), then the exercises
+function valuesKeyOf({ loadG, reps, seconds }: RecordWorkoutSetBody): string {
+  return `${loadG}:${reps ?? ''}:${seconds ?? ''}`
+}
+
+// Puts each new set in the queue before anything else (the data that matters), then the corrections
+// of sets already queued (ADR-025), then the exercises
 // left out, then the end of the workout, then saves the workout in progress; the rest starts without waiting for the send
 // (FR-001, FR-005, FR-009). An ended workout is cleared from the device and handed to onFinish
 // once its sets and its finish are queued (FR-018). A restored flow starts with its sets already
@@ -55,17 +64,26 @@ function usePersistWorkout(
   onFinish: () => void,
 ): () => void {
   const queue = useSyncQueue()
-  const queued = useRef(new Set(initial.recorded.map(({ id }) => id)))
+  // The values of each set as they were last queued, by set id: a recorded set whose values differ
+  // goes to the queue as a correction, after the set itself.
+  const queued = useRef(new Map(initial.recorded.map((body) => [body.id, valuesKeyOf(body)])))
   const finishQueued = useRef(false)
   const closed = useRef(false)
   useEffect(() => {
     if (state === initial && state.phase !== 'ended') return
     const fresh = state.recorded.filter(({ id }) => !queued.current.has(id))
-    for (const { id } of fresh) queued.current.add(id)
+    const corrected = state.recorded.filter(
+      (body) => queued.current.has(body.id) && queued.current.get(body.id) !== valuesKeyOf(body),
+    )
+    for (const body of [...fresh, ...corrected]) queued.current.set(body.id, valuesKeyOf(body))
     const finish = finishQueued.current ? null : state.finish
     if (finish) finishQueued.current = true
     void (async () => {
       for (const body of fresh) await queue.enqueue(state.session.workoutId, body)
+      for (const { id, loadG, reps, seconds } of corrected) {
+        const measure = reps === undefined ? { seconds } : { reps }
+        await queue.enqueueCorrection(state.session.workoutId, id, { loadG, ...measure })
+      }
       // A workout with no set recorded has no finish, so no skip goes either (FR-016).
       if (finish) {
         for (const { plannedExerciseId, skippedAt } of leftOutOf(state)) {
@@ -235,6 +253,8 @@ export function WorkoutScreen({
   const { day } = state.session
   const exerciseNumber = exerciseProgressOf(state)
   const topControlRef = useRef<HTMLButtonElement>(null)
+  const lastSetButtonRef = useRef<HTMLButtonElement>(null)
+  const lastSet = lastSetOf(state)
   const setNumber = state.setNumber
   const planned: TodayExercise = currentExercise(state)
   const resting = state.phase === 'rest'
@@ -324,6 +344,13 @@ export function WorkoutScreen({
       {resting && restMsLeft !== null ? (
         <RestArea msLeft={restMsLeft} planned={planned} upcoming={upcoming} />
       ) : null}
+      {lastSet ? (
+        <LastSetButton
+          ref={lastSetButtonRef}
+          set={lastSet.set}
+          onOpen={() => dispatch({ type: 'openSheet', sheet: 'correction' })}
+        />
+      ) : null}
       <div className="mt-auto flex flex-col gap-(--space-16)">
         <RejectedSetsNotice />
         <PendingSetsIndicator />
@@ -392,6 +419,17 @@ export function WorkoutScreen({
         onConfirm={() => dispatch({ type: 'end', nowMs: Date.now() })}
         onContinue={() => dispatch({ type: 'closeSheet', nowMs: Date.now() })}
       />
+      {lastSet ? (
+        <CorrectionSheet
+          open={state.sheet === 'correction'}
+          exerciseName={lastSet.exerciseName}
+          kind={lastSet.kind}
+          set={lastSet.set}
+          returnFocusRef={lastSetButtonRef}
+          onCancel={() => dispatch({ type: 'closeSheet', nowMs: Date.now() })}
+          onSave={(values) => dispatch({ type: 'correctLastSet', values, nowMs: Date.now() })}
+        />
+      ) : null}
       {/* Mounted from the start: screen readers skip a live region born with its text. */}
       <p role="status" aria-live="polite" className="sr-only">
         {announcementOf(state)}

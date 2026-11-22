@@ -109,6 +109,19 @@ A US-F03-05 acrescenta a ação "Pular" sobre o mesmo reducer:
 5. Quando só restam exercícios pulados, a última série registrada leva à fase `finished`. A tela mostra "Treino concluído" e a seção "Ficaram de fora" (`left-out-summary.tsx`) com o nome e "N de M" de cada exercício de `leftOutOf`. A barra "Exercícios" conta só os feitos.
 6. O efeito da `WorkoutScreen` enfileira as séries novas, depois um item `skip` por exercício de `leftOutOf` (`enqueueSkip`, ID `${workoutId}:skip:${plannedExerciseId}`) e, por fim, o fim do treino. Sem `finish`, nada é enfileirado. A fila envia o pulado para `POST /api/workouts/{workoutId}/skips` (`workout-skip-client.ts`) com as regras da ADR-023.
 
+## Correção da última série
+
+A US-F04-02 acrescenta a folha "Corrigir última série" sobre o mesmo reducer:
+
+1. `lastSetOf(state)` devolve a última série registrada, o nome e o tipo do exercício e o total de séries, só no descanso e no treino concluído. Nas outras fases devolve `null`. O botão `LastSetButton` (`last-set-button.tsx`) mostra "45 kg · 10 rep" ou "0 kg · 45 s" e tem o nome acessível "Corrigir última série: 45 quilos, 10 repetições". O botão fica abaixo do anel do descanso e abaixo de "Ficaram de fora" no treino concluído. O foco volta a ele quando a folha fecha.
+2. O toque despacha `openSheet` com `'correction'`. O reducer só abre a folha com série registrada, no descanso ou no treino concluído, e sem outra folha aberta. A folha `CorrectionSheet` (`correction-sheet.tsx`, `Drawer` do Base UI) tem o título "Corrigir última série", o texto "Supino reto · série 1", duas `ValueWheel` (carga e repetições ou tempo) e os botões "Cancelar" e "Salvar". O ajuste fica em estado local de `CorrectionForm`, montado com o popup, então cada abertura parte dos valores registrados e "Cancelar" não deixa rascunho.
+3. "Salvar" despacha `correctLastSet` com os valores finais. Valores iguais aos registrados só fecham a folha. Valores diferentes trocam `loadG` e `reps` ou `seconds` de `recorded.at(-1)` e mantêm `id`, `setNumber`, `plannedExerciseId`, `exerciseId`, `workout` e `performedAt`. Valores fora do mínimo, não inteiros ou com a medida do outro tipo deixam o estado como estava. A segunda "Salvar" encontra a folha fechada e não faz nada.
+4. `carriedValues` do exercício recebe a carga e as repetições corrigidas, para a série seguinte partir delas. O tempo corrigido só vai à série seguinte quando o tempo registrado era igual ao tempo levado; a série de tempo encerrada antes registrou menos que o exibido, e o tempo exibido continua.
+5. O fechamento segue `closeSheet`: com o descanso vencido sob a folha, a série seguinte aparece e a guarda de 0,8 s começa nesse instante. `lastStep` vira `correct` em todos os casos que fecham, e `lastStepAtMs` só muda quando há passagem.
+6. O efeito da `WorkoutScreen` guarda, por ID de série, os valores já enfileirados. Uma série com valores diferentes vira `enqueueCorrection` (ID `${workoutId}:correction:${setId}`), depois das séries novas e antes dos pulados e do fim. Na retomada, o mapa parte das séries restauradas, então nada é enfileirado de novo. A fila envia a correção para `PATCH /api/workouts/{workoutId}/sets/{setId}` (`workout-set-correction-client.ts`) com as regras da ADR-025.
+7. `announcementOf` diz "Série corrigida: 42,5 quilos, 10 repetições" e acrescenta a posição ("Série 2 de 3") quando o fechamento passou à série seguinte. `restoreWorkoutFlow` fecha a folha, e a série volta com os valores corrigidos.
+8. A folha da sequência (US-F03-06) mostra a série corrigida quando o exercício está feito. A folha não oferece correção de série que não seja a última.
+
 ## Fluxo da série com um toque
 
 A US-F03-02 liga o botão "Próximo" da tela de treino, e a US-F05-01 completa o descanso:
