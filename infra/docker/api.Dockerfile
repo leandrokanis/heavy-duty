@@ -1,6 +1,6 @@
 # Production images of the API (ADR-015) and of the daily backup (ADR-018).
 # Build with an explicit target: api or backup.
-FROM restic/restic:0.18.1 AS restic
+FROM restic/restic:0.20.0 AS restic
 
 FROM node:24.22.2-bookworm-slim AS base
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
