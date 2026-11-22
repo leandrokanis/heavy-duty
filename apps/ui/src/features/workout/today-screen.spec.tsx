@@ -522,3 +522,112 @@ describe('Given 1 of 2 sets recorded in letter A and the sequence sheet open', (
     })
   })
 })
+
+describe('Given the letters of the prototype layout', () => {
+  describe('When the letters show', () => {
+    it('Then each row should end with a decorative arrow and its name should still begin with the letter', async () => {
+      await openLetters()
+
+      const rows = screen.getAllByRole('button')
+
+      expect(
+        rows.map((row) => ({
+          arrow: row.querySelector('svg')?.getAttribute('aria-hidden'),
+          startsWithLetter: /^[ACB]/.test(row.getAttribute('aria-label') ?? row.textContent ?? ''),
+        })),
+      ).toEqual([
+        { arrow: 'true', startsWithLetter: true },
+        { arrow: 'true', startsWithLetter: true },
+        { arrow: 'true', startsWithLetter: true },
+      ])
+    })
+  })
+
+  describe('When a letter has no name', () => {
+    it('Then the button should be named by the letter alone', async () => {
+      await openLetters(todayBody([todayDay('A', null, [SUPINO_RETO])], null))
+
+      expect(screen.getByRole('button', { name: 'A' })).toBeInTheDocument()
+    })
+  })
+
+  describe('When the letters are loading', () => {
+    it('Then the skeleton should have three rows inside one hidden element', () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() => new Promise<Response>(() => {})),
+      )
+
+      renderToday()
+      const skeleton = screen.getByRole('main').querySelector('[aria-hidden="true"]')
+
+      expect(skeleton?.children).toHaveLength(3)
+    })
+  })
+
+  describe('When the program has no exercises', () => {
+    it('Then the whole message should stay in one element', async () => {
+      stubFetch(json(200, todayBody([todayDay('A', 'Superior', [], 0)], null)))
+
+      renderToday()
+
+      expect((await screen.findByText(NO_EXERCISES)).textContent).toBe(NO_EXERCISES)
+    })
+  })
+})
+
+describe("Given the sheet of letter 'A' in the prototype layout", () => {
+  async function openSheet(body = LETTERS_ACB, letter = /^A/) {
+    await openLetters(body)
+    fireEvent.click(screen.getByRole('button', { name: letter }))
+    return screen.findByRole('dialog')
+  }
+
+  describe('When the sheet opens', () => {
+    it('Then the dialog should be named by the letter and the name', async () => {
+      await openSheet()
+
+      expect(screen.getByRole('dialog', { name: 'A Superior' })).toBeInTheDocument()
+    })
+
+    it('Then Fechar and Começar should be the last two buttons, in that order, with only one Fechar', async () => {
+      const sheet = await openSheet()
+      const buttons = within(sheet).getAllByRole('button')
+
+      expect({
+        last: buttons.slice(-2).map((button) => button.textContent),
+        closes: within(sheet).getAllByRole('button', { name: 'Fechar' }),
+      }).toEqual({ last: ['Fechar', 'Começar'], closes: [buttons.at(-2)] })
+    })
+
+    it('Then the clock icon should be decorative', async () => {
+      const sheet = await openSheet()
+
+      expect(sheet.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
+    })
+  })
+
+  describe('When the athlete presses Escape', () => {
+    it('Then the sheet should close with no POST', async () => {
+      const fetchMock = await openLetters()
+      fireEvent.click(screen.getByRole('button', { name: /^A/ }))
+      await screen.findByRole('dialog')
+
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+      expect(fetchMock.mock.calls.map(([, init]) => init?.method ?? 'GET')).toEqual(['GET'])
+    })
+  })
+
+  describe('When the letter has no name', () => {
+    it('Then the heading and the name of the dialog should be the letter alone', async () => {
+      const sheet = await openSheet(todayBody([todayDay('A', null, [SUPINO_RETO])], null))
+
+      expect({
+        heading: within(sheet).getByRole('heading').textContent,
+        dialog: screen.getByRole('dialog', { name: 'A' }) !== null,
+      }).toEqual({ heading: 'A', dialog: true })
+    })
+  })
+})

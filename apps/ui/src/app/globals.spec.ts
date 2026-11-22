@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { TOAST_EXIT_MS, TOAST_VISIBLE_MS } from '../components/ui/toast'
+import { TICK_MS } from '../features/workout/workout.config'
 
 // Body of the first block opened by the given prelude, e.g. '@media (prefers-contrast: more)'.
 function blockAfter(css: string, prelude: string): string {
@@ -281,6 +282,34 @@ describe('Given globals.css', () => {
         toast: readToken(css, '--duration-toast'),
         base: readToken(css, '--duration-base'),
       }).toEqual({ toast: `${TOAST_VISIBLE_MS}ms`, base: `${TOAST_EXIT_MS}ms` })
+    })
+  })
+  describe('When the ring tick duration is read', () => {
+    it('Then --duration-tick should match TICK_MS of the workout clock', () => {
+      expect(readToken(css, '--duration-tick')).toBe(`${TICK_MS}ms`)
+    })
+  })
+  describe('When the countdown animation is read', () => {
+    const popFrames = (body: string) => body.replace(/\s+/g, ' ')
+    it('Then countdown-pop should scale from 1.5 down to 0.92 with the opacity of the prototype', () => {
+      const frames = popFrames(blockAfter(css, '@keyframes countdown-pop'))
+      expect(frames).toContain('0% { opacity: 0; transform: scale(1.5); }')
+      expect(frames).toContain('25% { opacity: 1; transform: scale(1); }')
+      expect(frames).toContain('100% { opacity: 0.85; transform: scale(0.92); }')
+    })
+    it('Then countdown-pop should change only the opacity with reduced motion', () => {
+      const reduced = blockAfter(
+        css,
+        '@media (prefers-reduced-motion: reduce) {\n  @keyframes countdown-pop',
+      )
+      const frames = popFrames(blockAfter(reduced, '@keyframes countdown-pop'))
+      expect({
+        hasOpacity: frames.includes('opacity'),
+        hasTransform: frames.includes('transform'),
+      }).toEqual({
+        hasOpacity: true,
+        hasTransform: false,
+      })
     })
   })
   describe('When a dialog container takes focus', () => {

@@ -18,3 +18,9 @@ export function formatRestClock(seconds: number): string {
   const minutes = Math.floor(seconds / SECONDS_PER_MINUTE)
   return `${minutes}:${String(seconds % SECONDS_PER_MINUTE).padStart(2, '0')}`
 }
+
+// The short form of a set on the screen: "42,5 kg · 10 rep" or "0 kg · 45 s".
+export function formatSetShort(set: { loadG: number; reps?: number; seconds?: number }): string {
+  const measure = set.reps === undefined ? `${set.seconds} s` : `${set.reps} rep`
+  return `${formatLoadKg(set.loadG)} kg · ${measure}`
+}

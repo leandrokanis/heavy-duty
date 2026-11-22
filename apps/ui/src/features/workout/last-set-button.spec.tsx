@@ -38,3 +38,17 @@ describe('Given the last set of prancha at 0 g and 45 s', () => {
     })
   })
 })
+
+describe('Given the last set button of the prototype layout', () => {
+  describe('When it is on screen', () => {
+    it('Then the pencil should be decorative and the text should stay the values alone', () => {
+      render(<LastSetButton set={{ loadG: 45000, reps: 10 }} onOpen={vi.fn()} />)
+      const button = screen.getByRole('button')
+
+      expect({
+        pencil: button.querySelector('svg')?.getAttribute('aria-hidden'),
+        text: button.textContent,
+      }).toEqual({ pencil: 'true', text: '45 kg · 10 rep' })
+    })
+  })
+})
