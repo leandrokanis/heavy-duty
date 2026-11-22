@@ -1,13 +1,22 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { listWorkouts } from '../../modules/workouts/workout-history.service.js'
+import { removeWorkout } from '../../modules/workouts/workout-removal.service.js'
+import { editWorkoutSet } from '../../modules/workouts/workout-set-edit.service.js'
 import {
+  EditWorkoutSetInputSchema,
   ListWorkoutsQuerySchema,
+  RemoveWorkoutInputSchema,
   WorkoutHistorySchema,
+  WorkoutRemovalSchema,
+  WorkoutSetEditSchema,
 } from '../../modules/workouts/workouts.schemas.js'
 import type { ToolDeps } from './index.js'
 import { runTool } from './tool-result.js'
 
-export function registerWorkoutTools(server: McpServer, { db }: ToolDeps): void {
+const CONFIRMATION_HINT =
+  'Two calls are needed. The first call, without confirmationCode, changes nothing and returns a preview (applied false) with a confirmationCode. Show the preview to the PO and wait for the confirmation of the PO in the conversation; only then repeat the same request with the confirmationCode. The code is valid only for the same request on the same workout state; if the workout changed, the call is refused and a new preview is needed.'
+
+export function registerWorkoutTools(server: McpServer, { db, now }: ToolDeps): void {
   server.registerTool(
     'list_workouts',
     {
@@ -18,5 +27,27 @@ export function registerWorkoutTools(server: McpServer, { db }: ToolDeps): void 
       annotations: { readOnlyHint: true },
     },
     (input) => runTool(() => listWorkouts(db, input)),
+  )
+
+  server.registerTool(
+    'remove_workout',
+    {
+      description: `Remove a recorded workout with its sets and skips; this cannot be undone. The workoutId comes from list_workouts. ${CONFIRMATION_HINT} A workout without finishedAt may come back if the phone still has sets to send.`,
+      inputSchema: RemoveWorkoutInputSchema,
+      outputSchema: WorkoutRemovalSchema,
+      annotations: { readOnlyHint: false, destructiveHint: true },
+    },
+    (input) => runTool(() => removeWorkout(db, input)),
+  )
+
+  server.registerTool(
+    'update_workout_set',
+    {
+      description: `Replace the load and the measure of a recorded set. The workoutId and the setId come from list_workouts; loadG is in grams and the measure is reps (reps exercise) or seconds (time exercise), never both. ${CONFIRMATION_HINT}`,
+      inputSchema: EditWorkoutSetInputSchema,
+      outputSchema: WorkoutSetEditSchema,
+      annotations: { readOnlyHint: false, destructiveHint: true },
+    },
+    (input) => runTool(() => editWorkoutSet(db, input, now)),
   )
 }

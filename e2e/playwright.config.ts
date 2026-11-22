@@ -26,6 +26,7 @@ const TIMED_EXERCISE_SPEC = /timed-exercise\.feature\.spec\.js$/
 const DRAG_ADJUST_SPEC = /drag-adjust\.feature\.spec\.js$/
 const CORRECT_LAST_SET_SPEC = /correct-last-set\.feature\.spec\.js$/
 const LIST_WORKOUTS_SPEC = /list-workouts\.feature\.spec\.js$/
+const EDIT_REMOVE_WORKOUT_SPEC = /edit-remove-workout\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -67,6 +68,7 @@ export default defineConfig({
         DRAG_ADJUST_SPEC,
         CORRECT_LAST_SET_SPEC,
         LIST_WORKOUTS_SPEC,
+        EDIT_REMOVE_WORKOUT_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -184,6 +186,15 @@ export default defineConfig({
       testMatch: LIST_WORKOUTS_SPEC,
       fullyParallel: false,
       dependencies: ['correct-last-set'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Removes a workout of a fixed week of 2025 and refuses an edit through the MCP, so it
+    // runs alone and one scenario at a time, after the listing of the workouts.
+    {
+      name: 'edit-remove-workout',
+      testMatch: EDIT_REMOVE_WORKOUT_SPEC,
+      fullyParallel: false,
+      dependencies: ['list-workouts'],
       use: { ...devices['Pixel 7'] },
     },
   ],

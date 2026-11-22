@@ -2,6 +2,7 @@ import type { Database } from '../../db/connection.js'
 import { DomainError } from '../../errors/domain-error.js'
 import { parseUtcInstant } from './utc-instant.js'
 import {
+  findHistoryWorkoutRow,
   type HistorySetRow,
   type HistorySkipRow,
   type HistoryWorkoutRow,
@@ -52,6 +53,22 @@ export function listWorkouts(db: Database, query: ListWorkoutsQuery): WorkoutHis
   const sets = listSetsOfWorkouts(db, workoutIds)
   const skips = listSkipsOfWorkouts(db, workoutIds)
   return { workouts: rows.map((row) => toHistoryWorkout(row, sets, skips)) }
+}
+
+export type WorkoutSnapshot = { workout: HistoryWorkout; skippedExerciseIds: string[] }
+
+// The history shape of one workout, plus every skipped exercise, even one that was done later.
+export function findWorkoutSnapshot(db: Database, workoutId: string): WorkoutSnapshot | undefined {
+  const row = findHistoryWorkoutRow(db, workoutId)
+  if (!row) {
+    return undefined
+  }
+  const sets = listSetsOfWorkouts(db, [workoutId])
+  const skips = listSkipsOfWorkouts(db, [workoutId])
+  return {
+    workout: toHistoryWorkout(row, sets, skips),
+    skippedExerciseIds: skips.map((skip) => skip.exercise.id).sort(),
+  }
 }
 
 function toHistoryWorkout(

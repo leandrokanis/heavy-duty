@@ -25,12 +25,7 @@ export type HistorySkipRow = { workoutId: string; exercise: ExerciseSummary }
 
 export type HistorySetRow = HistorySet & { workoutId: string; exercise: ExerciseSummary }
 
-// Both bounds are UTC instants in the toISOString() form, so text order is time order.
-export function listWorkoutRowsStartedBetween(
-  db: Database,
-  fromInstant: string,
-  toInstant: string,
-): HistoryWorkoutRow[] {
+function selectHistoryWorkouts(db: Database) {
   return db
     .select({
       id: workouts.id,
@@ -45,9 +40,25 @@ export function listWorkoutRowsStartedBetween(
     .from(workouts)
     .innerJoin(programs, eq(workouts.programId, programs.id))
     .leftJoin(programDays, eq(workouts.programDayId, programDays.id))
+}
+
+// Both bounds are UTC instants in the toISOString() form, so text order is time order.
+export function listWorkoutRowsStartedBetween(
+  db: Database,
+  fromInstant: string,
+  toInstant: string,
+): HistoryWorkoutRow[] {
+  return selectHistoryWorkouts(db)
     .where(and(gte(workouts.startedAt, fromInstant), lt(workouts.startedAt, toInstant)))
     .orderBy(asc(workouts.startedAt), asc(workouts.id))
     .all()
+}
+
+export function findHistoryWorkoutRow(
+  db: Database,
+  workoutId: string,
+): HistoryWorkoutRow | undefined {
+  return selectHistoryWorkouts(db).where(eq(workouts.id, workoutId)).get()
 }
 
 export function listSetsOfWorkouts(db: Database, workoutIds: string[]): HistorySetRow[] {

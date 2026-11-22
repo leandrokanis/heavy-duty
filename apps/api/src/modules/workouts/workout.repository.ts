@@ -51,6 +51,11 @@ export function findWorkoutRow(db: Database, workoutId: string): WorkoutRow | un
     .get()
 }
 
+// Sets and skips go with it, by ON DELETE CASCADE.
+export function deleteWorkout(db: Database, workoutId: string): void {
+  db.delete(workouts).where(eq(workouts.id, workoutId)).run()
+}
+
 export function insertWorkout(db: Database, workout: NewWorkout): void {
   db.insert(workouts).values(workout).run()
 }

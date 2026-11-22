@@ -225,6 +225,47 @@ export const WorkoutHistorySchema = z
   .object({ workouts: z.array(HistoryWorkoutSchema) })
   .openapi('WorkoutHistory')
 
+// Optional free strings, so a missing or empty value reaches the service and gets its domain error.
+export const RemoveWorkoutInputSchema = z.object({
+  workoutId: z.string().optional(),
+  confirmationCode: z.string().optional(),
+})
+
+export const WorkoutRemovalSchema = z.object({
+  applied: z.boolean(),
+  confirmationCode: z.string().nullable(),
+  workout: HistoryWorkoutSchema,
+})
+
+export const EditWorkoutSetInputSchema = z.object({
+  workoutId: z.string().optional(),
+  setId: z.string().optional(),
+  loadG: z.number().int().optional(),
+  reps: z.number().int().optional(),
+  seconds: z.number().int().optional(),
+  confirmationCode: z.string().optional(),
+})
+
+export const SetValuesSchema = z.object({
+  loadG: z.number().int(),
+  reps: z.number().int().nullable(),
+  seconds: z.number().int().nullable(),
+})
+
+export const WorkoutSetEditSchema = z.object({
+  applied: z.boolean(),
+  confirmationCode: z.string().nullable(),
+  workout: z.object({ id: z.string(), letter: z.string(), startedAt: z.string() }),
+  exercise: ExerciseSummarySchema,
+  set: z.object({ id: z.string(), setNumber: z.number().int() }),
+  before: SetValuesSchema,
+  after: SetValuesSchema,
+})
+
+export type EditWorkoutSetInput = z.infer<typeof EditWorkoutSetInputSchema>
+export type WorkoutSetEdit = z.infer<typeof WorkoutSetEditSchema>
+export type RemoveWorkoutInput = z.infer<typeof RemoveWorkoutInputSchema>
+export type WorkoutRemoval = z.infer<typeof WorkoutRemovalSchema>
 export type ListWorkoutsQuery = z.infer<typeof ListWorkoutsQuerySchema>
 export type ExerciseSummary = z.infer<typeof ExerciseSummarySchema>
 export type HistorySet = z.infer<typeof HistorySetSchema>
