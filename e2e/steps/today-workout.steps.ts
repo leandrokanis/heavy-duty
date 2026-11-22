@@ -4,6 +4,7 @@ import { postPlannedExercise } from './catalog-api.js'
 import { type ProgramState, programIdOf, test } from './program-fixtures.js'
 import { addDay, createProgram, toExerciseSlug, toLoadG, toTarget } from './program-helpers.js'
 import { clearWorkouts, deactivatePrograms, recordWorkout } from './workout-fixtures.js'
+import { expectWheel } from './workout-helpers.js'
 
 const { Given, When, Then } = createBdd(test)
 
@@ -125,8 +126,9 @@ Then(
   'the workout screen should show {string} with {string} and {string}',
   async ({ page }, name: string, load: string, target: string) => {
     await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
-    await expect(page.getByRole('group', { name: 'Carga' })).toHaveText(load.replace(' ', ''))
-    await expect(page.getByRole('group', { name: 'Alvo' })).toHaveText(target.replace(' ', ''))
+    await expectWheel(page, 'Carga', load.replace(' kg', ''))
+    if (target.endsWith(' rep')) await expectWheel(page, 'Repetições', target.replace(' rep', ''))
+    else await expectWheel(page, 'Tempo', target.replace(' s', ''))
   },
 )
 
@@ -161,7 +163,7 @@ Then('the sheet controls should be at least 56 px tall', async ({ page }) => {
 })
 
 Then('the workout screen should not be showing', async ({ page }) => {
-  await expect(page.getByRole('group', { name: 'Carga' })).toHaveCount(0)
+  await expect(page.getByRole('spinbutton', { name: 'Carga' })).toHaveCount(0)
 })
 
 Then('the screen should show the days of the program again', async ({ page }) => {

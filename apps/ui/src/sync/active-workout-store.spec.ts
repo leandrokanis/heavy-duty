@@ -110,3 +110,24 @@ describe('Given the shared store of the page', () => {
     })
   })
 })
+
+describe('Given an active workout saved with an adjusted draft of 45000 g and 8 reps', () => {
+  describe('When loadActiveWorkout runs', () => {
+    it('Then should return the same draft', async () => {
+      const { store } = freshStore()
+      const adjusted = workoutFlowReducer(
+        workoutFlowReducer(createWorkoutFlow(SAVED.session), {
+          type: 'adjust',
+          field: 'loadG',
+          steps: 1,
+        }),
+        { type: 'adjust', field: 'reps', steps: -2 },
+      )
+      await store.save(adjusted, T0)
+
+      const loaded = await store.load(T0)
+
+      expect(loaded?.draft).toEqual({ loadG: 45_000, reps: 8, seconds: null })
+    })
+  })
+})

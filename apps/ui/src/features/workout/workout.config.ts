@@ -9,3 +9,9 @@ export const RESUME_LIMIT_MS = 2 * 60 * 60 * 1000
 
 // The count before a timed exercise starts, in the prototype of the PO.
 export const COUNTDOWN_MS = 3000
+
+// Estimate from the prototype: one step of the wheel per 22 px of drag; to confirm on the phone.
+export const DRAG_STEP_PX = 22
+
+// The prototype wheel changes one step per 40 px of mouse wheel.
+export const WHEEL_STEP_PX = 40

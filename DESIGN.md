@@ -343,7 +343,16 @@ O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar na pr
 
 ### 16.3. Ajuste por arrasto
 
-O critério 2.5.7 das WCAG 2.2 (nível AA) pede uma alternativa de ponteiro único para toda ação feita por arrasto [WCAG22]. O ajuste por arrasto da F04 DEVE ter alternativa por toque, como botões de mais e menos que mudam o valor em um passo. A alternativa mantém a meta O5, porque não abre teclado [a confirmar com o PO: forma da alternativa na onda 4].
+O critério 2.5.7 das WCAG 2.2 (nível AA) pede uma alternativa de ponteiro único para toda ação feita por arrasto [WCAG22]. O ajuste por arrasto da F04 DEVE ter alternativa por toque.
+
+- **Forma da roda.** Cada valor ajustável (carga, repetições ou tempo) é uma roda: o valor atual em destaque, o valor um passo acima em cima e o valor um passo abaixo embaixo, menores e esmaecidos. Abaixo do mínimo, a posição de baixo fica vazia. A roda NÃO DEVE ter texto de instrução.
+- **Direção.** O valor maior fica acima, então arrastar para baixo aumenta o valor e arrastar para cima diminui. A roda do mouse para cima aumenta.
+- **Alternativa por toque.** Os botões "−" e "+" ficam ao lado da roda, com 56 px de altura, e mudam o valor em um passo por toque. O botão "−" fica desativado no mínimo e continua focável. A alternativa não abre teclado e mantém a meta O5.
+- **Teclado.** As setas para cima e para a direita aumentam um passo, e as setas para baixo e para a esquerda diminuem.
+- **Passos e mínimos.** Carga: passo de 2,5 kg, mínimo de 0 kg. Repetições: passo de 1, mínimo de 1. Tempo: passo de 5 s, mínimo de 1 s. O passo soma ao valor exibido, sem arredondar para um múltiplo.
+- **Distância do arrasto.** Um passo vale 22 px de arrasto (`DRAG_STEP_PX`) `[a confirmar no celular]`.
+- **Movimento.** Com `prefers-reduced-motion: reduce`, a roda não anima o deslocamento: o valor troca na hora (Seção 15).
+- **Acessibilidade.** Cada roda tem papel `spinbutton`, com nome igual ao rótulo, `aria-valuenow`, `aria-valuemin` e `aria-valuetext` por extenso, como "42,5 quilos".
 
 ## 17. Estados da interface
 

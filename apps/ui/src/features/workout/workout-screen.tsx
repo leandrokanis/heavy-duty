@@ -6,8 +6,8 @@ import { Volume2, VolumeX } from 'lucide-react'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { clearActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
 import { useSyncQueue } from '@/sync/sync-context'
+import type { AdjustField } from './drag-adjust'
 import { EndSheet } from './end-sheet'
-import { formatLoadKg } from './format'
 import { LeftOutSummary } from './left-out-summary'
 import { PendingSetsIndicator } from './pending-sets-indicator'
 import { RejectedSetsNotice } from './rejected-sets-notice'
@@ -18,6 +18,7 @@ import { TimerRing } from './timer-ring'
 import type { TodayExercise } from './today.types'
 import { defaultTonePlayer, type TonePlayer } from './tone-player'
 import { useScreenWakeLock } from './use-screen-wake-lock'
+import { ValueWheel } from './value-wheel'
 import {
   announcementOf,
   canSkipOf,
@@ -25,7 +26,9 @@ import {
   deadlineOf,
   exerciseProgressOf,
   leftOutOf,
+  type SetValues,
   sequenceOf,
+  shownValuesOf,
   type TimerReading,
   timerReadingOf,
   upcomingExercise,
@@ -39,25 +42,6 @@ export type WorkoutScreenProps = {
   onFinish: () => void
   // The sound of the timer; a test passes one that records the cues.
   tonePlayer?: TonePlayer
-}
-
-type Measure = { value: string; unit: string }
-
-function targetOf(planned: TodayExercise): Measure {
-  if (planned.exercise.kind === 'time') return { value: String(planned.targetSeconds), unit: 's' }
-  return { value: String(planned.targetReps), unit: 'rep' }
-}
-
-function MeasureValue({ label, measure }: { label: string; measure: Measure }) {
-  return (
-    // biome-ignore lint/a11y/useSemanticElements: a read-only value is not a form, so no fieldset.
-    <div role="group" aria-label={label} className="flex items-baseline gap-(--space-8)">
-      <span className="text-[5rem] leading-none font-(--font-weight-semibold) tabular-nums">
-        {measure.value}
-      </span>
-      <span className="text-[1.25rem] font-(--font-weight-regular) opacity-60">{measure.unit}</span>
-    </div>
-  )
 }
 
 // Puts each new set in the queue before anything else (the data that matters), then the exercises
@@ -159,14 +143,35 @@ function CountdownArea({ value }: { value: number }) {
   )
 }
 
-function SetArea({ planned, afterPassage }: { planned: TodayExercise; afterPassage: boolean }) {
+function SetArea({
+  planned,
+  values,
+  afterPassage,
+  onAdjust,
+}: {
+  planned: TodayExercise
+  values: SetValues
+  afterPassage: boolean
+  onAdjust: (field: AdjustField, steps: number) => void
+}) {
+  const timed = planned.exercise.kind === 'time'
   return (
     <div
       data-cue={afterPassage ? 'rest-end' : undefined}
       className="flex flex-col gap-(--space-24) data-[cue=rest-end]:animate-[rest-end_var(--duration-base)_ease-out]"
     >
-      <MeasureValue label="Carga" measure={{ value: formatLoadKg(planned.loadG), unit: 'kg' }} />
-      <MeasureValue label="Alvo" measure={targetOf(planned)} />
+      <ValueWheel
+        field="loadG"
+        label="Carga"
+        value={values.loadG}
+        onAdjust={(steps) => onAdjust('loadG', steps)}
+      />
+      <ValueWheel
+        field={timed ? 'seconds' : 'reps'}
+        label={timed ? 'Tempo' : 'Repetições'}
+        value={(timed ? values.seconds : values.reps) as number}
+        onAdjust={(steps) => onAdjust(timed ? 'seconds' : 'reps', steps)}
+      />
     </div>
   )
 }
@@ -202,12 +207,12 @@ function RestArea({
 
 const WARNING_SECONDS = 3
 
-function ExecutionArea({ msLeft, planned }: { msLeft: number; planned: TodayExercise }) {
+function ExecutionArea({ msLeft, totalSeconds }: { msLeft: number; totalSeconds: number }) {
   return (
     <TimerRing
       tone={Math.ceil(msLeft / 1000) <= WARNING_SECONDS ? 'warning' : 'default'}
       msLeft={msLeft}
-      totalSeconds={planned.targetSeconds as number}
+      totalSeconds={totalSeconds}
       progressLabel="Execução restante"
       timerLabel="Tempo de execução"
     />
@@ -304,14 +309,16 @@ export function WorkoutScreen({
           // A new key per set restarts the rest-end animation on every passage.
           key={`${state.exerciseIndex}-${setNumber}`}
           planned={planned}
+          values={shownValuesOf(state)}
           afterPassage={state.lastStepAtMs !== null}
+          onAdjust={(field, steps) => dispatch({ type: 'adjust', field, steps })}
         />
       ) : null}
       {reading.stage === 'countdown' ? <CountdownArea value={reading.value} /> : null}
       {reading.stage === 'execution' ? (
         <ExecutionArea
           msLeft={Math.max(0, (deadlineOf(state) as number) - nowMs)}
-          planned={planned}
+          totalSeconds={shownValuesOf(state).seconds as number}
         />
       ) : null}
       {resting && restMsLeft !== null ? (

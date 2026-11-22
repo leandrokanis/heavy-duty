@@ -2,6 +2,7 @@ import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { test, workoutIdOf } from './program-fixtures.js'
 import { readWorkoutSets } from './workout-fixtures.js'
+import { expectWheel } from './workout-helpers.js'
 
 const { When, Then } = createBdd(test)
 
@@ -83,7 +84,7 @@ Then(
   'the screen should show {string} with the target {string} s and set {string}',
   async ({ page }, name: string, target: string, sets: string) => {
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(name)
-    await expect(page.getByRole('group', { name: 'Alvo' })).toHaveText(`${target}s`)
+    await expectWheel(page, 'Tempo', target)
     await expect(page.getByRole('progressbar', { name: 'Séries' })).toHaveAttribute(
       'aria-valuetext',
       sets,

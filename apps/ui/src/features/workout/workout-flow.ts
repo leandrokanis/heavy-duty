@@ -1,4 +1,5 @@
 import { createClientId } from './client-id'
+import { type AdjustField, adjustValue, MINIMUMS } from './drag-adjust'
 import type { TodayDay, TodayExercise } from './today.types'
 import { COUNTDOWN_MS, DOUBLE_TAP_GUARD_MS } from './workout.config'
 import type { FinishWorkoutBody } from './workout-finish.types'
@@ -12,6 +13,9 @@ export type WorkoutSession = {
   programId: string
   day: TodayDay
 }
+
+// The numbers on the set screen; reps or seconds is null for the other kind of exercise.
+export type SetValues = { loadG: number; reps: number | null; seconds: number | null }
 
 export type SheetName = 'none' | 'sequence' | 'confirmEnd'
 
@@ -48,6 +52,10 @@ export type WorkoutFlowState = {
   finish: FinishWorkoutBody | null
   // The sets as the API takes them; sending is the queue's job, so no status lives here.
   recorded: RecordWorkoutSetBody[]
+  // The values the athlete adjusted on the set on screen; null while nothing is adjusted.
+  draft: SetValues | null
+  // By planned exercise, the values the next set of it starts from, after its last record.
+  carriedValues: Record<string, SetValues>
 }
 
 export type WorkoutFlowAction =
@@ -60,6 +68,7 @@ export type WorkoutFlowAction =
   | { type: 'closeSheet'; nowMs: number }
   | { type: 'skip'; nowMs: number }
   | { type: 'end'; nowMs: number }
+  | { type: 'adjust'; field: AdjustField; steps: number }
 
 export function createWorkoutFlow(session: WorkoutSession): WorkoutFlowState {
   return {
@@ -76,6 +85,8 @@ export function createWorkoutFlow(session: WorkoutSession): WorkoutFlowState {
     sheet: 'none',
     finish: null,
     recorded: [],
+    draft: null,
+    carriedValues: {},
   }
 }
 
@@ -227,6 +238,17 @@ export function leftOutOf(state: WorkoutFlowState): LeftOutItem[] {
   })
 }
 
+function filledValuesOf(planned: TodayExercise): SetValues {
+  return { loadG: planned.loadG, reps: planned.targetReps, seconds: planned.targetSeconds }
+}
+
+// The values on the set screen: the adjusted ones, else those the last record of the exercise
+// carries, else the filled ones (decision 29).
+export function shownValuesOf(state: WorkoutFlowState): SetValues {
+  const planned = currentExercise(state)
+  return state.draft ?? state.carriedValues[planned.plannedExerciseId] ?? filledValuesOf(planned)
+}
+
 export function currentExercise(state: WorkoutFlowState): TodayExercise {
   return state.session.day.exercises[state.exerciseIndex] as TodayExercise
 }
@@ -256,9 +278,9 @@ export function timerReadingOf(state: WorkoutFlowState, nowMs: number): TimerRea
     return { stage: 'countdown', value: Math.min(3, Math.max(1, number)), lastStep, atMs: nowMs }
   }
   if (state.phase === 'timing' && deadlineMs !== null) {
-    const targetSeconds = currentExercise(state).targetSeconds as number
+    const shownSeconds = shownValuesOf(state).seconds as number
     const secondsLeft = Math.ceil((deadlineMs - nowMs) / MS_PER_SECOND)
-    const value = Math.min(targetSeconds, Math.max(0, secondsLeft))
+    const value = Math.min(shownSeconds, Math.max(0, secondsLeft))
     return { stage: 'execution', value, lastStep, atMs: nowMs }
   }
   return { stage: 'off', value: 0, lastStep, atMs: nowMs }
@@ -268,8 +290,8 @@ export function timerReadingOf(state: WorkoutFlowState, nowMs: number): TimerRea
 export function deadlineOf(state: WorkoutFlowState): number | null {
   if (state.phase === 'countdown') return state.executionStartsAtMs
   if (state.phase === 'timing') {
-    const targetSeconds = currentExercise(state).targetSeconds as number
-    return (state.executionStartsAtMs as number) + targetSeconds * MS_PER_SECOND
+    const shownSeconds = shownValuesOf(state).seconds as number
+    return (state.executionStartsAtMs as number) + shownSeconds * MS_PER_SECOND
   }
   return state.phase === 'rest' ? state.restEndsAtMs : null
 }
@@ -321,10 +343,27 @@ function positionText(state: WorkoutFlowState): string {
   return isNewOnScreen ? `${planned.exercise.name}, série ${numbers}` : `Série ${numbers}`
 }
 
+function isValidValues(values: SetValues | null | undefined): values is SetValues {
+  if (!values) return false
+  const fields: AdjustField[] = ['loadG', 'reps', 'seconds']
+  return fields.every((field) => {
+    const value = values[field]
+    return value === null || (Number.isSafeInteger(value) && value >= MINIMUMS[field])
+  })
+}
+
 // Brings a saved state back: a rest that ended with the app closed is over, a timer waits for the
 // screen to settle it, and no tap of the last session guards against the first tap of this one.
+// Saved values that are not integers above the minimum are dropped, so the body stays valid.
 export function restoreWorkoutFlow(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
-  const saved: WorkoutFlowState = { ...state, skipped: state.skipped ?? [] }
+  const saved: WorkoutFlowState = {
+    ...state,
+    skipped: state.skipped ?? [],
+    draft: isValidValues(state.draft) ? state.draft : null,
+    carriedValues: Object.fromEntries(
+      Object.entries(state.carriedValues ?? {}).filter(([, values]) => isValidValues(values)),
+    ),
+  }
   const settled = hasRestEnded(saved, nowMs) ? advance(saved, nowMs) : saved
   return {
     ...settled,
@@ -373,7 +412,18 @@ export function workoutFlowReducer(
       return skipExercise(state, action.nowMs)
     case 'end':
       return isTimerOpen(state) ? state : endWorkout(state, action.nowMs)
+    case 'adjust':
+      return adjustShown(state, action.field, action.steps)
   }
+}
+
+// Only the set on screen, with no sheet over it, takes an adjust, and only the field its exercise has.
+function adjustShown(state: WorkoutFlowState, field: AdjustField, steps: number): WorkoutFlowState {
+  if (state.phase !== 'set' || state.sheet !== 'none') return state
+  const shown = shownValuesOf(state)
+  const value = shown[field]
+  if (value === null) return state
+  return { ...state, draft: { ...shown, [field]: adjustValue(field, value, steps) } }
 }
 
 // Only an exercise with sets to do, other than the one on screen, can be picked (FR-007).
@@ -387,6 +437,7 @@ function goTo(state: WorkoutFlowState, exerciseIndex: number, nowMs: number): Wo
     ...state,
     exerciseIndex,
     setNumber: setsDone + 1,
+    draft: null,
     lastStepAtMs: nowMs,
     lastStep: 'goTo',
   }
@@ -419,7 +470,7 @@ function skipExercise(state: WorkoutFlowState, nowMs: number): WorkoutFlowState 
   }
   const marked = markSkipped(state, currentExercise(state), nowMs)
   const position = nextPositionOf({ ...marked, nextExerciseIndex: null }) as Position
-  return { ...marked, ...position, lastStepAtMs: nowMs, lastStep: 'skip' }
+  return { ...marked, ...position, draft: null, lastStepAtMs: nowMs, lastStep: 'skip' }
 }
 
 function exerciseAt(state: WorkoutFlowState, exerciseIndex: number): TodayExercise {
@@ -469,8 +520,7 @@ function reachTimer(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
     state.phase === 'countdown'
       ? { ...state, phase: 'timing', lastStepAtMs: nowMs, lastStep: 'begin' }
       : state
-  const planned = currentExercise(begun)
-  const endsAtMs = startsAtMs + (planned.targetSeconds as number) * MS_PER_SECOND
+  const endsAtMs = startsAtMs + (shownValuesOf(begun).seconds as number) * MS_PER_SECOND
   if (nowMs < endsAtMs) return begun
   return recordSet(begun, {
     performedAtMs: endsAtMs,
@@ -479,18 +529,17 @@ function reachTimer(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
   })
 }
 
-// The athlete ends the execution: the recorded time is the target minus the seconds the ring
+// The athlete ends the execution: the recorded time is the shown time minus the seconds the ring
 // shows, at least 1 (decision 33).
 function endEarly(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
-  const planned = currentExercise(state)
-  const targetSeconds = planned.targetSeconds as number
-  const endsAtMs = (state.executionStartsAtMs as number) + targetSeconds * MS_PER_SECOND
-  const shownSeconds = Math.ceil((endsAtMs - nowMs) / MS_PER_SECOND)
+  const shownSeconds = shownValuesOf(state).seconds as number
+  const endsAtMs = (state.executionStartsAtMs as number) + shownSeconds * MS_PER_SECOND
+  const ringSeconds = Math.ceil((endsAtMs - nowMs) / MS_PER_SECOND)
   return recordSet(state, {
     performedAtMs: nowMs,
     stepAtMs: nowMs,
     lastStep: 'record',
-    seconds: Math.max(1, targetSeconds - shownSeconds),
+    seconds: Math.max(1, shownSeconds - ringSeconds),
   })
 }
 
@@ -540,6 +589,7 @@ function advance(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
     phase: 'set',
     restEndsAtMs: null,
     nextExerciseIndex: null,
+    draft: null,
     lastStepAtMs: nowMs,
     lastStep: 'advance',
   }
@@ -565,6 +615,8 @@ function recordSet(state: WorkoutFlowState, options: RecordOptions): WorkoutFlow
     lastStep,
     skipped: state.skipped.filter((mark) => mark.plannedExerciseId !== planned.plannedExerciseId),
     recorded: [...state.recorded, setBodyOf(state, planned, performedAtMs, options.seconds)],
+    draft: null,
+    carriedValues: { ...state.carriedValues, [planned.plannedExerciseId]: shownValuesOf(state) },
   }
   // The last set of the day wins over a 0 s rest: there is no position to advance to.
   if (nextPositionOf(withSet) === null) {
@@ -587,10 +639,11 @@ function setBodyOf(
   seconds?: number,
 ): RecordWorkoutSetBody {
   const { session } = state
+  const shown = shownValuesOf(state)
   const measure =
     planned.exercise.kind === 'time'
-      ? { seconds: seconds ?? (planned.targetSeconds as number) }
-      : { reps: planned.targetReps as number }
+      ? { seconds: seconds ?? (shown.seconds as number) }
+      : { reps: shown.reps as number }
   return {
     id: createClientId(nowMs),
     workout: {
@@ -601,7 +654,7 @@ function setBodyOf(
     plannedExerciseId: planned.plannedExerciseId,
     exerciseId: planned.exercise.id,
     setNumber: state.setNumber,
-    loadG: planned.loadG,
+    loadG: shown.loadG,
     ...measure,
     performedAt: new Date(nowMs).toISOString(),
   }

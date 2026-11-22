@@ -202,6 +202,11 @@ describe("Given the sheet of letter 'A' is open", () => {
   })
 })
 
+// The value the wheel of a field shows, spoken: the athlete reads it from the wheel.
+function shownOf(name: string): string {
+  return screen.getByRole('spinbutton', { name }).getAttribute('aria-valuetext') ?? ''
+}
+
 async function startLetter(body = LETTERS_ACB, letter = /^A/) {
   await openLetters(body)
   fireEvent.click(screen.getByRole('button', { name: letter }))
@@ -217,16 +222,16 @@ describe("Given letter 'A' with supino-reto at 42500 g for 10 reps first, then p
 
       expect({
         title: title.textContent,
-        load: screen.getByRole('group', { name: 'Carga' }).textContent,
-        target: screen.getByRole('group', { name: 'Alvo' }).textContent,
+        load: shownOf('Carga'),
+        target: shownOf('Repetições'),
         exercises: screen
           .getByRole('progressbar', { name: 'Exercícios' })
           .getAttribute('aria-valuetext'),
         sets: screen.getByRole('progressbar', { name: 'Séries' }).getAttribute('aria-valuetext'),
       }).toEqual({
         title: 'Supino reto',
-        load: '42,5kg',
-        target: '10rep',
+        load: '42,5 quilos',
+        target: '10 repetições',
         exercises: '1 de 2',
         sets: '1 de 3',
       })
@@ -275,9 +280,9 @@ describe("Given letter 'A' with prancha first, 3 x 45 s at 0 g", () => {
 
       expect({
         title: title.textContent,
-        load: screen.getByRole('group', { name: 'Carga' }).textContent,
-        target: screen.getByRole('group', { name: 'Alvo' }).textContent,
-      }).toEqual({ title: 'Prancha', load: '0kg', target: '45s' })
+        load: shownOf('Carga'),
+        target: shownOf('Tempo'),
+      }).toEqual({ title: 'Prancha', load: '0 quilos', target: '45 segundos' })
     })
   })
 })
