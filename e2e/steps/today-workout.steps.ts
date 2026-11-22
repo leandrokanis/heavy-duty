@@ -3,6 +3,7 @@ import { createBdd, type DataTable } from 'playwright-bdd'
 import { postPlannedExercise } from './catalog-api.js'
 import { type ProgramState, programIdOf, test } from './program-fixtures.js'
 import { addDay, createProgram, toExerciseSlug, toLoadG, toTarget } from './program-helpers.js'
+import { settledBox } from './touch-target.js'
 import { clearWorkouts, deactivatePrograms, recordWorkout } from './workout-fixtures.js'
 import { expectWheel } from './workout-helpers.js'
 
@@ -155,7 +156,7 @@ Then('the sheet controls should be at least 56 px tall', async ({ page }) => {
   const sheet = page.getByRole('dialog')
   const heights = await Promise.all(
     ['Começar', 'Fechar'].map(
-      async (name) => (await sheet.getByRole('button', { name }).boundingBox())?.height ?? 0,
+      async (name) => (await settledBox(sheet.getByRole('button', { name })))?.height ?? 0,
     ),
   )
 

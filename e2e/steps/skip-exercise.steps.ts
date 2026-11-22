@@ -1,6 +1,7 @@
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { test } from './program-fixtures.js'
+import { settledBox } from './touch-target.js'
 import { readOnlyWorkoutId, readWorkoutSkips } from './workout-fixtures.js'
 import { recordThreeSets } from './workout-helpers.js'
 
@@ -40,7 +41,7 @@ When(
 Then(
   'the button {string} should be at least 56 px tall and the sheet should not scroll sideways',
   async ({ page }, name: string) => {
-    const box = await dialogOf(page).getByRole('button', { name }).boundingBox()
+    const box = await settledBox(dialogOf(page).getByRole('button', { name }))
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET_PX)
     const overflow = await page.evaluate(() => ({
       page: document.documentElement.scrollWidth - document.documentElement.clientWidth,

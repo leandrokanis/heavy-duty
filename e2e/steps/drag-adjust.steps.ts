@@ -1,6 +1,7 @@
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { test } from './program-fixtures.js'
+import { settledBox } from './touch-target.js'
 import { expectWheel } from './workout-helpers.js'
 
 const { Given, When, Then } = createBdd(test)
@@ -20,7 +21,7 @@ Given('the athlete is on the exercise {string}', async ({ page }, name: string) 
 
 // Down raises the value: the larger value sits above, so the finger pulls it down.
 async function dragWheel(page: Page, name: string, steps: number, direction: string) {
-  const box = await page.getByRole('spinbutton', { name }).boundingBox()
+  const box = await settledBox(page.getByRole('spinbutton', { name }))
   if (!box) throw new Error(`The wheel ${name} is not on screen`)
   const x = box.x + box.width / 2
   const y = box.y + box.height / 2

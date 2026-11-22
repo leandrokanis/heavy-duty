@@ -4,6 +4,7 @@ import { createBdd } from 'playwright-bdd'
 import { APP_BASE_URL } from './catalog-api.js'
 import { type ProgramState, test, workoutIdOf } from './program-fixtures.js'
 import { toExerciseSlug } from './program-helpers.js'
+import { settledBox } from './touch-target.js'
 import { readWorkout, readWorkoutSets } from './workout-fixtures.js'
 
 const { Given, When, Then } = createBdd(test)
@@ -208,7 +209,7 @@ Then('the rest should show {string} one second later', async ({ page }, clock: s
 Then(
   'the {string} button should be at least 56 px tall in the lower half of the screen',
   async ({ page }, name: string) => {
-    const box = await page.getByRole('button', { name }).boundingBox()
+    const box = await settledBox(page.getByRole('button', { name }))
     const viewport = page.viewportSize()
 
     expect({

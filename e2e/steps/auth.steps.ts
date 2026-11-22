@@ -11,6 +11,7 @@ import {
   type VirtualCredential,
 } from './auth-fixtures.js'
 import { APP_BASE_URL } from './catalog-api.js'
+import { settledBox } from './touch-target.js'
 
 const { Given, When, Then } = createBdd(test)
 
@@ -39,7 +40,7 @@ async function copyPasskeys(authenticator: VirtualAuthenticator, credentials: Vi
 }
 
 async function expectTouchTarget(page: Page, name: string) {
-  const box = await page.getByRole('button', { name }).boundingBox()
+  const box = await settledBox(page.getByRole('button', { name }))
   expect({
     width: (box?.width ?? 0) >= TOUCH_TARGET_MIN_PX,
     height: (box?.height ?? 0) >= TOUCH_TARGET_MIN_PX,
