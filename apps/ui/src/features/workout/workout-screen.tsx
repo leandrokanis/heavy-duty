@@ -2,6 +2,7 @@
 
 import { Button } from '@base-ui/react/button'
 import { Progress } from '@base-ui/react/progress'
+import { Volume2, VolumeX } from 'lucide-react'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { clearActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
 import { useSyncQueue } from '@/sync/sync-context'
@@ -10,17 +11,23 @@ import { formatLoadKg } from './format'
 import { LeftOutSummary } from './left-out-summary'
 import { PendingSetsIndicator } from './pending-sets-indicator'
 import { RejectedSetsNotice } from './rejected-sets-notice'
-import { RestRing } from './rest-ring'
 import { SequenceSheet } from './sequence-sheet'
+import { useSoundPreference } from './sound-preference'
+import { cueBetween } from './timer-cues'
+import { TimerRing } from './timer-ring'
 import type { TodayExercise } from './today.types'
+import { defaultTonePlayer, type TonePlayer } from './tone-player'
 import { useScreenWakeLock } from './use-screen-wake-lock'
 import {
   announcementOf,
   canSkipOf,
   currentExercise,
+  deadlineOf,
   exerciseProgressOf,
   leftOutOf,
   sequenceOf,
+  type TimerReading,
+  timerReadingOf,
   upcomingExercise,
   type WorkoutFlowState,
   workoutFlowReducer,
@@ -30,6 +37,8 @@ export type WorkoutScreenProps = {
   // The state to start from: a new workout or one restored from the device.
   flow: WorkoutFlowState
   onFinish: () => void
+  // The sound of the timer; a test passes one that records the cues.
+  tonePlayer?: TonePlayer
 }
 
 type Measure = { value: string; unit: string }
@@ -94,23 +103,60 @@ function usePersistWorkout(
   }
 }
 
-const REST_TICK_MS = 250
+const TICK_MS = 250
 
-// Reads the clock on every tick instead of counting ticks, so the rest does not drift and the
-// first tick after the screen wakes up ends a rest that ran out in the background.
-function useRestClock(restEndsAtMs: number | null, onEnd: (nowMs: number) => void): number | null {
+// Reads the clock on every tick instead of counting ticks, so a phase does not drift and the first
+// tick after the screen wakes up settles a phase that ran out in the background. The deadline is
+// also checked when it arrives, so a restored timer that already ran out settles at once.
+function usePhaseClock(deadlineMs: number | null, onReach: (nowMs: number) => void): number {
   const [, setTick] = useState(0)
   useEffect(() => {
-    if (restEndsAtMs === null) return
-    const interval = setInterval(() => {
+    if (deadlineMs === null) return
+    const check = () => {
       const nowMs = Date.now()
-      if (nowMs >= restEndsAtMs) onEnd(nowMs)
+      if (nowMs >= deadlineMs) onReach(nowMs)
       else setTick((tick) => tick + 1)
-    }, REST_TICK_MS)
+    }
+    check()
+    const interval = setInterval(check, TICK_MS)
     return () => clearInterval(interval)
-  }, [restEndsAtMs, onEnd])
-  if (restEndsAtMs === null) return null
-  return Math.max(0, restEndsAtMs - Date.now())
+  }, [deadlineMs, onReach])
+  return Date.now()
+}
+
+// Plays the cue between the reading before and the one now. An idle screen has no clock, so its
+// last reading is as old as the last render; the age counts only while a timer runs.
+function useTimerCues(reading: TimerReading, tonePlayer: TonePlayer, soundOn: boolean): void {
+  const previous = useRef<TimerReading | null>(null)
+  useEffect(() => {
+    const before = previous.current
+    previous.current = reading
+    if (before === null) return
+    const cue = cueBetween(
+      before.stage === 'off' ? { ...before, atMs: reading.atMs } : before,
+      reading,
+    )
+    if (cue === null || !soundOn) return
+    try {
+      tonePlayer.play(cue)
+    } catch {
+      // The timer does not depend on the sound (FR-013).
+    }
+  }, [reading, tonePlayer, soundOn])
+}
+
+function CountdownArea({ value }: { value: number }) {
+  return (
+    <div
+      role="timer"
+      aria-label="Contagem para começar"
+      // A new key per number restarts the animation; with reduced motion it only fades.
+      key={value}
+      className="grid place-items-center py-(--space-24) text-[8rem] leading-none font-(--font-weight-semibold) tabular-nums animate-[rest-end_var(--duration-base)_ease-out]"
+    >
+      {value}
+    </div>
+  )
 }
 
 function SetArea({ planned, afterPassage }: { planned: TodayExercise; afterPassage: boolean }) {
@@ -136,7 +182,12 @@ function RestArea({
 }) {
   return (
     <div className="flex flex-col gap-(--space-24)">
-      <RestRing msLeft={msLeft} restSeconds={planned.restSeconds} />
+      <TimerRing
+        msLeft={msLeft}
+        totalSeconds={planned.restSeconds}
+        progressLabel="Descanso restante"
+        timerLabel="Descanso"
+      />
       {upcoming ? (
         <p className="flex flex-col items-center gap-(--space-4)">
           <span className="text-[0.9375rem] opacity-60">A seguir</span>
@@ -149,13 +200,31 @@ function RestArea({
   )
 }
 
+const WARNING_SECONDS = 3
+
+function ExecutionArea({ msLeft, planned }: { msLeft: number; planned: TodayExercise }) {
+  return (
+    <TimerRing
+      tone={Math.ceil(msLeft / 1000) <= WARNING_SECONDS ? 'warning' : 'default'}
+      msLeft={msLeft}
+      totalSeconds={planned.targetSeconds as number}
+      progressLabel="Execução restante"
+      timerLabel="Tempo de execução"
+    />
+  )
+}
+
 function dotClassOf(index: number, recordedCount: number, resting: boolean): string {
   if (index < recordedCount) return 'bg-[CanvasText]'
   if (index === recordedCount && !resting) return 'border-2 border-[CanvasText]'
   return 'bg-[color-mix(in_srgb,CanvasText_20%,transparent)]'
 }
 
-export function WorkoutScreen({ flow, onFinish }: WorkoutScreenProps) {
+export function WorkoutScreen({
+  flow,
+  onFinish,
+  tonePlayer = defaultTonePlayer,
+}: WorkoutScreenProps) {
   const [state, dispatch] = useReducer(workoutFlowReducer, flow)
   const stopSaving = usePersistWorkout(flow, state, onFinish)
   const { day } = state.session
@@ -166,15 +235,23 @@ export function WorkoutScreen({ flow, onFinish }: WorkoutScreenProps) {
   const resting = state.phase === 'rest'
   const totalSets = day.exercises.reduce((total, { sets }) => total + sets, 0)
   const finished = state.phase === 'finished'
-  const endRest = useCallback((nowMs: number) => dispatch({ type: 'restEnd', nowMs }), [])
+  const timerOpen = state.phase === 'countdown' || state.phase === 'timing'
+  const reachDeadline = useCallback(
+    (nowMs: number) => dispatch({ type: resting ? 'restEnd' : 'timerReach', nowMs }),
+    [resting],
+  )
   const close = async () => {
     stopSaving()
     await clearActiveWorkout()
     onFinish()
   }
-  const restMsLeft = useRestClock(state.restEndsAtMs, endRest)
+  const [soundOn, setSoundOn] = useSoundPreference()
+  const nowMs = usePhaseClock(deadlineOf(state), reachDeadline)
+  const reading = timerReadingOf(state, nowMs)
+  useTimerCues(reading, tonePlayer, soundOn)
+  const restMsLeft = state.restEndsAtMs === null ? null : Math.max(0, state.restEndsAtMs - nowMs)
   const upcoming = upcomingExercise(state)
-  useScreenWakeLock(resting)
+  useScreenWakeLock(resting || timerOpen)
   const recordedCount = state.recorded.filter(
     (body) => body.plannedExerciseId === planned.plannedExerciseId,
   ).length
@@ -183,7 +260,9 @@ export function WorkoutScreen({ flow, onFinish }: WorkoutScreenProps) {
       <Button
         ref={topControlRef}
         aria-label={`Sequência do treino, letra ${day.letter}, exercício ${exerciseNumber} de ${day.exercises.length}`}
-        className="glass flex min-h-(--target-workout) items-center gap-(--space-16) rounded-(--radius-capsule) px-(--space-20) active:opacity-60"
+        className="glass flex min-h-(--target-workout) items-center gap-(--space-16) rounded-(--radius-capsule) px-(--space-20) active:opacity-60 data-[disabled]:opacity-40"
+        disabled={timerOpen}
+        focusableWhenDisabled
         onClick={() => dispatch({ type: 'openSheet', sheet: 'sequence' })}
       >
         <span className="text-[1.25rem] font-(--font-weight-semibold)">{day.letter}</span>
@@ -228,15 +307,53 @@ export function WorkoutScreen({ flow, onFinish }: WorkoutScreenProps) {
           afterPassage={state.lastStepAtMs !== null}
         />
       ) : null}
+      {reading.stage === 'countdown' ? <CountdownArea value={reading.value} /> : null}
+      {reading.stage === 'execution' ? (
+        <ExecutionArea
+          msLeft={Math.max(0, (deadlineOf(state) as number) - nowMs)}
+          planned={planned}
+        />
+      ) : null}
       {resting && restMsLeft !== null ? (
         <RestArea msLeft={restMsLeft} planned={planned} upcoming={upcoming} />
       ) : null}
       <div className="mt-auto flex flex-col gap-(--space-16)">
         <RejectedSetsNotice />
         <PendingSetsIndicator />
+        {timerOpen ? (
+          <div className="flex gap-(--space-16)">
+            <Button
+              className="glass flex min-h-(--target-workout) flex-1 items-center justify-center rounded-(--radius-capsule) px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) active:opacity-60"
+              onClick={() => dispatch({ type: 'cancel', nowMs: Date.now() })}
+            >
+              Cancelar
+            </Button>
+            <Button
+              aria-pressed={soundOn}
+              onClick={() => {
+                // Turning the sound on is a tap, so the browser lets the audio play from here.
+                if (!soundOn) tonePlayer.unlock()
+                setSoundOn(!soundOn)
+              }}
+              className="glass flex min-h-(--target-workout) items-center gap-(--space-8) rounded-(--radius-capsule) px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) active:opacity-60"
+            >
+              {soundOn ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
+              Som
+            </Button>
+          </div>
+        ) : null}
         <Button
-          className="min-h-(--target-workout) w-full rounded-(--radius-capsule) bg-[CanvasText] px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) text-[Canvas] active:opacity-60"
-          onClick={finished ? close : () => dispatch({ type: 'next', nowMs: Date.now() })}
+          className="min-h-(--target-workout) w-full rounded-(--radius-capsule) bg-[CanvasText] px-(--space-24) text-[1.0625rem] font-(--font-weight-semibold) text-[Canvas] active:opacity-60 data-[disabled]:opacity-40"
+          disabled={state.phase === 'countdown'}
+          focusableWhenDisabled
+          onClick={
+            finished
+              ? close
+              : () => {
+                  tonePlayer.unlock()
+                  dispatch({ type: 'next', nowMs: Date.now() })
+                }
+          }
         >
           {finished ? 'Fechar' : 'Próximo'}
         </Button>

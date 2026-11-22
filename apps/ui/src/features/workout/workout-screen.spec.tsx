@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { clearActiveWorkout, loadActiveWorkout } from '@/sync/active-workout-store'
 import { createMemoryQueueStore } from '@/sync/queue-store'
@@ -6,6 +6,8 @@ import { SYNC_RETRY_INTERVAL_MS } from '@/sync/sync.config'
 import { SyncProvider, sendPendingItem } from '@/sync/sync-context'
 import { createSyncQueue, type SendItem, type SyncQueue } from '@/sync/sync-queue'
 import { CRUCIFIXO, PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayDay } from './test-today'
+import type { Cue } from './timer-cues'
+import type { TonePlayer } from './tone-player'
 import {
   createWorkoutFlow,
   restoreWorkoutFlow,
@@ -33,11 +35,12 @@ function renderWorkout(
   onFinish = vi.fn(),
   send: SendItem = sendPendingItem,
   flow = flowOf(exercises),
+  tonePlayer?: TonePlayer,
 ): { queue: SyncQueue } {
   const queue = createSyncQueue({ store: createMemoryQueueStore(), send })
   render(
     <SyncProvider queue={queue}>
-      <WorkoutScreen flow={flow} onFinish={onFinish} />
+      <WorkoutScreen flow={flow} onFinish={onFinish} tonePlayer={tonePlayer} />
     </SyncProvider>,
   )
   return { queue }
@@ -45,6 +48,13 @@ function renderWorkout(
 
 // Letter 'A' of the spec: supino-reto 3 x 10 at 42,5 kg resting 90 s, then triceps-polia 3 x 12.
 const LETTER_A = [SUPINO_RETO, TRICEPS_POLIA]
+
+// A tone player that records what plays, so the test hears the cues without audio.
+function recordingPlayer(): { player: TonePlayer; cues: Cue[]; unlock: ReturnType<typeof vi.fn> } {
+  const cues: Cue[] = []
+  const unlock = vi.fn()
+  return { player: { unlock, play: (cue) => cues.push(cue) }, cues, unlock }
+}
 
 function stubFetch(...responses: (Response | Error | 'pending')[]) {
   const fetchMock = vi.fn()
@@ -84,6 +94,7 @@ function tapNext() {
 }
 
 afterEach(async () => {
+  localStorage.clear()
   vi.useRealTimers()
   Reflect.deleteProperty(navigator, 'wakeLock')
   await clearActiveWorkout()
@@ -1315,6 +1326,415 @@ describe('Given the API refused every set of supino-reto after the athlete recor
 
       const sets = within(dialog).getByRole('list', { name: 'Séries de Supino reto' })
       expect(within(sets).getAllByText(/^Série \d: /)).toHaveLength(3)
+    })
+  })
+})
+
+const ONLY_PRANCHA = [PRANCHA]
+
+function countdownClock() {
+  return screen.getByRole('timer', { name: 'Contagem para começar' }).textContent
+}
+
+function ariaDisabled(name: string) {
+  return screen.getByRole('button', { name }).getAttribute('aria-disabled')
+}
+
+const TOP_CONTROL_ONLY_PRANCHA = 'Sequência do treino, letra A, exercício 1 de 1'
+
+describe('Given the workout screen on set 1 of prancha, a timed exercise', () => {
+  describe('When the athlete taps Próximo', () => {
+    it('Then the count should read 3, 2, 1 with a cue each, with Próximo and the sequence control disabled and no set queued', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch('pending')
+      const { player, cues, unlock } = recordingPlayer()
+      const { queue } = renderWorkout(ONLY_PRANCHA, vi.fn(), sendPendingItem, undefined, player)
+
+      await act(async () => tapNext())
+      const atTap = {
+        count: countdownClock(),
+        next: ariaDisabled('Próximo'),
+        topControl: ariaDisabled(TOP_CONTROL_ONLY_PRANCHA),
+        pendingSets: pendingSetCount(queue),
+        unlocked: unlock.mock.calls.length,
+        cues: [...cues],
+      }
+      await act(async () => vi.advanceTimersByTimeAsync(1000))
+      const afterOneSecond = countdownClock()
+      await act(async () => vi.advanceTimersByTimeAsync(1000))
+      const afterTwoSeconds = countdownClock()
+      await act(async () => tapNext())
+
+      expect({
+        atTap,
+        afterOneSecond,
+        afterTwoSeconds,
+        cuesAfterTwoSeconds: cues,
+        countAfterTapOnCount: countdownClock(),
+      }).toEqual({
+        atTap: {
+          count: '3',
+          next: 'true',
+          topControl: 'true',
+          pendingSets: 0,
+          unlocked: 1,
+          cues: ['count'],
+        },
+        afterOneSecond: '2',
+        afterTwoSeconds: '1',
+        cuesAfterTwoSeconds: ['count', 'count', 'count'],
+        countAfterTapOnCount: '1',
+      })
+    })
+  })
+})
+
+function executionClock() {
+  return screen.getByRole('timer', { name: 'Tempo de execução' }).textContent
+}
+
+describe('Given the count of prancha at 1', () => {
+  describe('When the count ends', () => {
+    it('Then the start cue should play and the ring should show 0:45 with Cancelar and Som, announced as Começou', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch('pending')
+      const { player, cues } = recordingPlayer()
+      renderWorkout(ONLY_PRANCHA, vi.fn(), sendPendingItem, undefined, player)
+      await act(async () => tapNext())
+
+      for (let second = 0; second < 3; second++) {
+        await act(async () => vi.advanceTimersByTimeAsync(1000))
+      }
+      const ring = screen.getByRole('progressbar', { name: 'Execução restante' })
+
+      expect({
+        cues,
+        clock: executionClock(),
+        ring: {
+          now: ring.getAttribute('aria-valuenow'),
+          max: ring.getAttribute('aria-valuemax'),
+          text: ring.getAttribute('aria-valuetext'),
+        },
+        timerInsideRing: ring.contains(screen.getByRole('timer', { name: 'Tempo de execução' })),
+        announced: screen.getByRole('status').textContent,
+        controls: [
+          screen.queryByRole('button', { name: 'Cancelar' }) !== null,
+          screen.queryByRole('button', { name: 'Som' }) !== null,
+        ],
+      }).toEqual({
+        cues: ['count', 'count', 'count', 'start'],
+        clock: '0:45',
+        ring: { now: '45', max: '45', text: '0:45' },
+        timerInsideRing: false,
+        announced: 'Começou',
+        controls: [true, true],
+      })
+    })
+  })
+})
+
+async function passSeconds(seconds: number) {
+  for (let second = 0; second < seconds; second++) {
+    await act(async () => vi.advanceTimersByTimeAsync(1000))
+  }
+}
+
+function ringTone() {
+  return screen
+    .getByRole('timer', { name: 'Tempo de execução' })
+    .parentElement?.getAttribute('data-tone')
+}
+
+describe('Given the execution of prancha running', () => {
+  describe('When it goes from 4 s left to the end', () => {
+    it('Then the ring should turn to warning at 3 s with a cue each second, then play the end cue, queue 45 s and rest for 1:00', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const fetchMock = stubFetch(created())
+      const { player, cues } = recordingPlayer()
+      renderWorkout(ONLY_PRANCHA, vi.fn(), sendPendingItem, undefined, player)
+      await act(async () => tapNext())
+      await passSeconds(3 + 41)
+      const at4 = { tone: ringTone(), clock: executionClock() }
+      cues.length = 0
+
+      await passSeconds(1)
+      const at3 = { tone: ringTone(), clock: executionClock() }
+      await passSeconds(3)
+
+      expect({
+        at4,
+        at3,
+        cues,
+        set: sentBodies(fetchMock)[0],
+        rest: restClock(),
+        announced: screen.getByRole('status').textContent,
+      }).toEqual({
+        at4: { tone: null, clock: '0:04' },
+        at3: { tone: 'warning', clock: '0:03' },
+        cues: ['warning', 'warning', 'warning', 'end'],
+        set: expect.objectContaining({ setNumber: 1, seconds: 45, loadG: 0 }),
+        rest: '1:00',
+        announced: 'Série 1 de 3 registrada',
+      })
+    })
+  })
+})
+
+describe('Given the execution of prancha with 0:30 on the ring', () => {
+  describe('When the athlete taps Próximo', () => {
+    it('Then should queue 15 s, rest for 1:00 with no end cue, and ignore a second tap 300 ms later', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const fetchMock = stubFetch(created(), created())
+      const { player, cues } = recordingPlayer()
+      renderWorkout(ONLY_PRANCHA, vi.fn(), sendPendingItem, undefined, player)
+      await act(async () => tapNext())
+      await passSeconds(3 + 15)
+      const before = executionClock()
+
+      await act(async () => tapNext())
+      await act(async () => vi.advanceTimersByTimeAsync(300))
+      await act(async () => tapNext())
+
+      expect({
+        before,
+        sets: sentBodies(fetchMock).map(({ seconds }) => seconds),
+        rest: restClock(),
+        endCue: cues.includes('end'),
+      }).toEqual({ before: '0:30', sets: [15], rest: '1:00', endCue: false })
+    })
+  })
+})
+
+describe.each([
+  { name: 'the count', secondsBefore: 1 },
+  { name: 'the execution', secondsBefore: 3 + 15 },
+])('Given the timer of prancha in $name', ({ secondsBefore }) => {
+  describe('When the athlete taps Cancelar', () => {
+    it('Then prancha should be back on set 1 of 3 with the target of 45 s, nothing queued and no new cue, and a quick Próximo should not reopen the count', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch('pending')
+      const { player, cues } = recordingPlayer()
+      const { queue } = renderWorkout(ONLY_PRANCHA, vi.fn(), sendPendingItem, undefined, player)
+      await act(async () => tapNext())
+      await passSeconds(secondsBefore)
+      const cuesBefore = [...cues]
+
+      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Cancelar' })))
+      await act(async () => vi.advanceTimersByTimeAsync(300))
+      await act(async () => tapNext())
+
+      expect({
+        title: screen.getByRole('heading').textContent,
+        target: within(screen.getByRole('group', { name: 'Alvo' })).getByText('45').textContent,
+        timers: screen.queryAllByRole('timer').length,
+        pendingSets: pendingSetCount(queue),
+        newCues: cues.length - cuesBefore.length,
+        topControl: ariaDisabled(TOP_CONTROL_ONLY_PRANCHA),
+        announced: screen.getByRole('status').textContent,
+      }).toEqual({
+        title: 'Prancha',
+        target: '45',
+        timers: 0,
+        pendingSets: 0,
+        newCues: 0,
+        topControl: 'false',
+        announced: 'Prancha, série 1 de 3',
+      })
+    })
+  })
+})
+
+function soundSwitch() {
+  return screen.getByRole('button', { name: 'Som' })
+}
+
+describe('Given the count of prancha with the sound on', () => {
+  describe('When the athlete taps Som and lets the execution end', () => {
+    it('Then no cue should play, the timer and the record should stay the same, Começou should be announced, and a new screen should open with the sound off', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const fetchMock = stubFetch(created())
+      const { player, cues } = recordingPlayer()
+      renderWorkout(ONLY_PRANCHA, vi.fn(), sendPendingItem, undefined, player)
+      await act(async () => tapNext())
+      cues.length = 0
+
+      fireEvent.click(soundSwitch())
+      const pressedAfterTap = soundSwitch().getAttribute('aria-pressed')
+      await passSeconds(3)
+      const atStart = { clock: executionClock(), announced: screen.getByRole('status').textContent }
+      await passSeconds(45)
+
+      cleanup()
+      renderWorkout(ONLY_PRANCHA, vi.fn(), sendPendingItem, undefined, player)
+      await act(async () => tapNext())
+      expect({
+        pressedAfterTap,
+        cues,
+        atStart,
+        sets: sentBodies(fetchMock).map(({ seconds }) => seconds),
+        pressedOnNewScreen: soundSwitch().getAttribute('aria-pressed'),
+      }).toEqual({
+        pressedAfterTap: 'false',
+        cues: [],
+        atStart: { clock: '0:45', announced: 'Começou' },
+        sets: [45],
+        pressedOnNewScreen: 'false',
+      })
+    })
+  })
+})
+
+describe('Given a tone player whose play throws', () => {
+  describe('When the count runs and the execution begins', () => {
+    it('Then the timer should go on and no error should show on screen', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch('pending')
+      const failing: TonePlayer = {
+        unlock: () => {},
+        play: () => {
+          throw new Error('no audio')
+        },
+      }
+      renderWorkout(ONLY_PRANCHA, vi.fn(), sendPendingItem, undefined, failing)
+      await act(async () => tapNext())
+
+      await passSeconds(3)
+
+      expect({ clock: executionClock(), alerts: screen.queryAllByRole('alert').length }).toEqual({
+        clock: '0:45',
+        alerts: 0,
+      })
+    })
+  })
+})
+
+describe('Given the letter B with only prancha, 1 set', () => {
+  describe('When the execution reaches zero', () => {
+    it('Then should queue 45 s, show Treino concluído with no rest and no dialog, and announce it', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const fetchMock = stubFetch(created(), created())
+      renderWorkout([{ ...PRANCHA, sets: 1 }])
+      await act(async () => tapNext())
+
+      await passSeconds(3 + 45)
+
+      expect({
+        sets: sentBodies(fetchMock)
+          .filter((body) => 'seconds' in body)
+          .map(({ seconds }) => seconds),
+        rests: screen.queryAllByRole('timer', { name: 'Descanso' }).length,
+        title: screen.getByRole('heading').textContent,
+        dialogs: screen.queryAllByRole('dialog').length,
+        announced: screen.getByRole('status').textContent,
+      }).toEqual({
+        sets: [45],
+        rests: 0,
+        title: 'Treino concluído',
+        dialogs: 0,
+        announced: 'Série 1 de 1 registrada. Treino concluído',
+      })
+    })
+  })
+})
+
+describe('Given an execution of prancha restored after its end passed 40 s ago', () => {
+  describe('When the screen mounts', () => {
+    it('Then should queue 45 s performed at the end and rest for the 20 s that are left', async () => {
+      const running = workoutFlowReducer(
+        workoutFlowReducer(flowOf(ONLY_PRANCHA), { type: 'next', nowMs: T0 }),
+        { type: 'timerReach', nowMs: T0 + 3000 },
+      )
+      vi.useFakeTimers({ now: T0 + 88_000 })
+      const fetchMock = stubFetch(created())
+
+      await act(async () => {
+        renderWorkout(
+          ONLY_PRANCHA,
+          vi.fn(),
+          sendPendingItem,
+          restoreWorkoutFlow(running, T0 + 88_000),
+        )
+      })
+
+      expect({
+        sets: sentBodies(fetchMock).map(({ seconds, performedAt }) => ({ seconds, performedAt })),
+        rest: restClock(),
+      }).toEqual({
+        sets: [{ seconds: 45, performedAt: new Date(T0 + 48_000).toISOString() }],
+        rest: '0:20',
+      })
+    })
+  })
+})
+
+describe('Given the execution of prancha at 0:30 and the screen off for 40 s', () => {
+  describe('When the clock jumps and the next tick comes', () => {
+    it('Then should queue 45 s, rest for 0:50 and play no late end cue', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const fetchMock = stubFetch(created())
+      const { player, cues } = recordingPlayer()
+      renderWorkout(ONLY_PRANCHA, vi.fn(), sendPendingItem, undefined, player)
+      await act(async () => tapNext())
+      await passSeconds(3 + 15)
+
+      vi.setSystemTime(T0 + 58_000)
+      await act(async () => vi.advanceTimersByTimeAsync(250))
+
+      expect({
+        sets: sentBodies(fetchMock).map(({ seconds }) => seconds),
+        rest: restClock(),
+        endCue: cues.includes('end'),
+      }).toEqual({ sets: [45], rest: '0:50', endCue: false })
+    })
+  })
+})
+
+function stubWakeLock() {
+  const release = vi.fn(async () => {})
+  const request = vi.fn(async () => ({ released: false, release }))
+  Object.defineProperty(navigator, 'wakeLock', { value: { request }, configurable: true })
+  return { request, release }
+}
+
+describe('Given the screen of prancha with the wake lock supported', () => {
+  describe('When the athlete taps Próximo and the count, the execution and the rest follow', () => {
+    it('Then the screen should be asked to stay on once, at the tap, and not again at each passage', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const { request } = stubWakeLock()
+      stubFetch(created())
+      renderWorkout(ONLY_PRANCHA)
+
+      await act(async () => tapNext())
+      const atTap = request.mock.calls.length
+      await passSeconds(3)
+      const inExecution = request.mock.calls.length
+      await passSeconds(45)
+
+      expect({ atTap, inExecution, inRest: request.mock.calls.length }).toEqual({
+        atTap: 1,
+        inExecution: 1,
+        inRest: 1,
+      })
+    })
+  })
+})
+
+describe.each([
+  { name: 'the count', secondsBefore: 1 },
+  { name: 'the execution', secondsBefore: 3 + 15 },
+])('Given the timer of prancha in $name with the wake lock held', ({ secondsBefore }) => {
+  describe('When the athlete taps Cancelar', () => {
+    it('Then the wake lock should be released', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const { release } = stubWakeLock()
+      stubFetch('pending')
+      renderWorkout(ONLY_PRANCHA)
+      await act(async () => tapNext())
+      await passSeconds(secondsBefore)
+
+      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Cancelar' })))
+
+      expect(release).toHaveBeenCalledTimes(1)
     })
   })
 })

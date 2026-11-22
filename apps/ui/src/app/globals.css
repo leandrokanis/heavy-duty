@@ -40,6 +40,8 @@
   --material-glass: blur(20px) saturate(180%);
   --material-glass-fill: color-mix(in srgb, Canvas 72%, transparent);
   --color-background-elevated: Canvas;
+  /* Section 18: provisional attention colour, 3:1 or more against Canvas in both themes (WCAG 1.4.11). */
+  --color-warning: light-dark(#b45309, #fbbf24);
 }
 
 html {

@@ -307,8 +307,14 @@ O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar na pr
 - O fim da execução DEVE ter um sinal sonoro de fim, distinto dos outros, e DEVE registrar a série e iniciar o descanso sem pedir toque.
 - Durante a execução, "Próximo" DEVE encerrar a série antes do fim e registrar o tempo feito. "Cancelar" DEVE voltar à série sem registrar.
 - Durante a contagem de 3 segundos, "Próximo" DEVE ficar desativado, para um toque duplo não encerrar a série logo no começo.
-- O anel e os números DEVEM bastar sem som: no iPhone, o som da página pode não tocar com o modo silencioso ligado [a confirmar na US-F03-07].
-- A tela DEVERIA ficar acesa durante a execução e o descanso, com a Screen Wake Lock API onde o navegador aceitar [a confirmar: suporte em 2026].
+- O anel e os números DEVEM bastar sem som: no iPhone, o som da página pode não tocar com o modo silencioso ligado [a confirmar: teste no iPhone durante um treino real].
+- A tela DEVERIA ficar acesa durante a contagem, a execução e o descanso, com a Screen Wake Lock API onde o navegador aceitar [a confirmar: suporte em 2026].
+- O encerramento antes do fim DEVE registrar o tempo feito: o alvo menos o tempo exibido no anel, com mínimo de 1 s.
+- "Cancelar" DEVE existir na contagem e na execução, e DEVE voltar à mesma série sem registrar nada. Um toque em "Próximo" menos de 0,8 s depois de "Cancelar" NÃO DEVE ter efeito.
+- O controle da sequência, no topo, DEVE ficar desativado durante a contagem e a execução.
+- A tela do cronômetro DEVE ter a chave "Som" (`aria-pressed`). A escolha DEVE ficar guardada no aparelho e vir ligada por padrão. Ligar o som DEVE liberar o áudio dentro do toque.
+- Os nomes acessíveis DEVEM ser "Contagem para começar" (contagem), "Tempo de execução" (tempo, `timer`) e "Execução restante" (anel, `progressbar`). O início da execução DEVE ser anunciado como "Começou" na região `aria-live="polite"`.
+- A volta do segundo plano DEVE resolver a execução pelo relógio: a série vale o alvo, o descanso conta do fim da execução, e nenhum sinal atrasado toca.
 
 ### 15.2. Descanso
 
@@ -375,6 +381,7 @@ Os tokens de material são provisórios e ficam no `:root` de `globals.css`, a p
 | `--material-glass` | `blur(20px) saturate(180%)`, usado no `backdrop-filter` |
 | `--material-glass-fill` | `color-mix(in srgb, Canvas 72%, transparent)` |
 | `--color-background-elevated` | `Canvas`, o fundo opaco da Seção 12 |
+| `--color-warning` | `light-dark(#b45309, #fbbf24)`, a cor de atenção dos últimos 3 segundos da execução e do indicador de séries pendentes; contraste de 3:1 ou mais contra `Canvas` nos dois temas (WCAG 1.4.11) `[a confirmar: valores do PO]` |
 
 ## 19. Verificação geométrica
 
