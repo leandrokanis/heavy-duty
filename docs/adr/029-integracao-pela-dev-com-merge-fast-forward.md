@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Aceita |
+| Status | Substituída por ADR-030 na parte da produção |
 | Data | 2026-11-22 |
 | Decisor | PO |
 | Requisitos relacionados | ADR-028, `docs/convencoes/git.md`, `docs/qualidade.md` |

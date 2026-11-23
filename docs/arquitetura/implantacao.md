@@ -55,8 +55,8 @@ O `.env.example` ainda não lista estas variáveis: a inclusão é tarefa manual
 | Ambiente `production` | Environments do repositório | Agrupa o job `deploy`; aceita regra de aprovação, se o PO quiser |
 | Branch padrão | Configurações gerais | `dev` |
 | Proteção da `dev` | Branches do repositório | Exige os checks `Lint, types, tests and API contract`, `End-to-end tests` e `Production images` no commit enviado e histórico linear; bloqueia push forçado e remoção |
-| Proteção da `main` | Branches do repositório | Exige PR e os checks `Lint, types, tests and API contract`, `End-to-end tests` e `Production images` antes do merge |
-| Tipos de merge | Configurações gerais | Só merge commit; squash e rebase desligados |
+| Proteção da `main` | Branches do repositório | Exige PR e os checks `Lint, types, tests and API contract`, `End-to-end tests` e `Production images`; bloqueia push forçado. O mantenedor avança a `main` por fast-forward com a isenção de administrador (ADR-030) |
+| Tipos de merge | Configurações gerais | Squash e rebase desligados. O botão de merge do PR não é usado (ADR-030) |
 
 ## Configuração inicial
 

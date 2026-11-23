@@ -13,7 +13,7 @@ As palavras-chave seguem o BCP 14 [RFC2119] [RFC8174], com a tabela de `docs/con
 | Branch | Papel |
 |---|---|
 | `dev` | Branch de desenvolvimento e branch padrão do repositório. Recebe cada tarefa por merge fast-forward (Seção 5) |
-| `main` | Produção. Recebe a `dev` por pull request (Seção 6), e cada merge publica as imagens e faz o deploy (ADR-028) |
+| `main` | Produção. Avança por fast-forward até a `dev`, depois do pull request (Seção 6), e cada avanço publica as imagens e faz o deploy (ADR-028, ADR-030) |
 
 - A `dev` DEVE ter histórico linear. Ela NÃO DEVE receber merge commit, squash ou rebase feito pelo GitHub, nem push forçado.
 - A `main` DEVE receber código só por pull request da `dev`.
@@ -139,8 +139,13 @@ O pull request de contribuição externa e o do Dependabot apontam para a `dev`.
 
 - O pull request da `dev` para a `main` é a entrega de uma onda ou de uma correção para a produção, e é o ponto da revisão humana de código (`docs/qualidade.md`).
 - O pull request DEVE usar o modelo de `.github/pull_request_template.md` e listar as stories que entrega.
-- O pull request DEVE passar nas verificações de `docs/qualidade.md` antes do merge.
-- O merge DEVE ser por merge commit. Squash e rebase pelo GitHub reescrevem os commits, e a `main` deixa de ter os commits da `dev`.
+- O pull request DEVE passar nas verificações de `docs/qualidade.md` antes da integração.
+- A integração DEVE ser por fast-forward, com `git push origin dev:main`, feito pelo mantenedor (ADR-030). O pull request NÃO DEVE ser integrado pelo botão do GitHub: merge commit, squash e rebase ficam fora.
+- O GitHub marca o pull request como integrado quando o commit chega à `main`. O mantenedor fecha as issues entregues, porque o "Closes" só vale para a branch padrão.
+
+```sh
+git fetch origin && git push origin origin/dev:main
+```
 
 ## 7. Referências
 
