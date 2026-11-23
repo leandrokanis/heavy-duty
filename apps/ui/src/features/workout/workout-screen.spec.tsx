@@ -75,7 +75,10 @@ function created() {
 }
 
 function sentBodies(fetchMock: ReturnType<typeof vi.fn>): Record<string, unknown>[] {
-  return fetchMock.mock.calls.map(([, init]) => JSON.parse((init as RequestInit).body as string))
+  // The finished screen also reads the windows with a GET, which has no body.
+  return fetchMock.mock.calls
+    .filter(([, init]) => (init as RequestInit | undefined)?.body !== undefined)
+    .map(([, init]) => JSON.parse((init as RequestInit).body as string))
 }
 
 function buttonState(name: string) {
@@ -622,6 +625,61 @@ describe('Given the last set of the day with the network failing', () => {
         pending: 1,
         onFinish: 1,
       })
+    })
+  })
+})
+
+const TRICEPS_WINDOWS = {
+  now: new Date(T0).toISOString(),
+  groups: [
+    {
+      muscleGroup: { slug: 'triceps', name: 'tríceps' },
+      state: 'resting',
+      lastTrainedAt: new Date(T0).toISOString(),
+      opensAt: new Date(T0 + 48 * 3_600_000).toISOString(),
+      closesAt: new Date(T0 + 96 * 3_600_000).toISOString(),
+    },
+  ],
+}
+
+describe('Given a workout of triceps-polia finished with the queue sent', () => {
+  describe('When the finished-workout screen settles', () => {
+    it('Then should show the section "Janelas reabrem" with the triceps row and keep Fechar visible', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const fetchMock = vi.fn(async (url: string) =>
+        url === '/api/windows' ? new Response(JSON.stringify(TRICEPS_WINDOWS)) : created(),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+      renderWorkout([TRICEPS_ONE_SET])
+
+      await act(async () => tapNext())
+
+      const region = screen.getByRole('region', { name: 'Janelas reabrem' })
+      expect({
+        row: within(region).getByRole('img').getAttribute('aria-label'),
+        close: buttonState('Fechar'),
+      }).toEqual({
+        row: expect.stringMatching(/^Tríceps, abre .+ às \d{1,2}h(\d{2})?$/),
+        close: 'enabled',
+      })
+    })
+  })
+})
+
+describe('Given a workout of triceps-polia finished with the set still in the queue', () => {
+  describe('When the finished-workout screen settles', () => {
+    it('Then should not ask for the windows and should not show the section', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const fetchMock = vi.fn(async () => new Response(JSON.stringify(TRICEPS_WINDOWS)))
+      vi.stubGlobal('fetch', fetchMock)
+      renderWorkout([TRICEPS_ONE_SET], vi.fn(), async () => ({ status: 'retry' }))
+
+      await act(async () => tapNext())
+
+      expect({
+        asked: fetchMock.mock.calls.length,
+        section: screen.queryByRole('region', { name: 'Janelas reabrem' }),
+      }).toEqual({ asked: 0, section: null })
     })
   })
 })

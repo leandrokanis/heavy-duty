@@ -747,3 +747,27 @@ describe('Given the phone kept the windows of the last opening with network', ()
     })
   })
 })
+
+describe('Given a set of chest still in the queue when the letters open', () => {
+  describe('When the queue sends it and becomes empty', () => {
+    it('Then the letters should ask the windows again and show chest from this workout', async () => {
+      vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'], now: WINDOWS_NOW_MS })
+      const send = vi
+        .fn<SendItem>()
+        .mockResolvedValueOnce({ status: 'retry' }) // the enqueue
+        .mockResolvedValue({ status: 'confirmed' })
+      const queue = createSyncQueue({ store: createMemoryQueueStore(), send })
+      await queue.enqueue('workout-1', pendingSetBody())
+      stubFetch(json(200, todayBody()))
+      const answers = [
+        json(200, { now: new Date(WINDOWS_NOW_MS).toISOString(), groups: [] }),
+        json(200, windowsBody(WINDOWS_NOW_MS + 30_000)),
+      ]
+      windowsAnswer = () => answers.shift() ?? json(500)
+
+      renderToday(send, queue)
+
+      expect(await screen.findByText(/^Peito · fecha hoje/)).toBeInTheDocument()
+    })
+  })
+})

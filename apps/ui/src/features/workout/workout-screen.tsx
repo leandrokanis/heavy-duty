@@ -17,6 +17,8 @@ import { LastSetButton } from './last-set-button'
 import { LeftOutSummary } from './left-out-summary'
 import { LetterBadge } from './letter-badge'
 import { QueueNotices } from './queue-notices'
+import { reopenRowsOf } from './reopen-rows'
+import { ReopenSummary } from './reopen-summary'
 import { SequenceSheet } from './sequence-sheet'
 import { SetDots } from './set-dots'
 import { SetPips } from './set-pips'
@@ -25,6 +27,7 @@ import { cueBetween } from './timer-cues'
 import { RingSvg, TimerRing } from './timer-ring'
 import type { TodayExercise } from './today.types'
 import { defaultTonePlayer, type TonePlayer } from './tone-player'
+import { useReopenWindows } from './use-reopen-windows'
 import { useScreenWakeLock } from './use-screen-wake-lock'
 import { ValueWheel } from './value-wheel'
 import { TICK_MS } from './workout.config'
@@ -56,6 +59,10 @@ export type WorkoutScreenProps = {
   tonePlayer?: TonePlayer
 }
 
+function firstSetMsOf(recorded: RecordWorkoutSetBody[]): number {
+  return Math.min(...recorded.map(({ performedAt }) => Date.parse(performedAt)))
+}
+
 function valuesKeyOf({ loadG, reps, seconds }: RecordWorkoutSetBody): string {
   return `${loadG}:${reps ?? ''}:${seconds ?? ''}`
 }
@@ -70,8 +77,12 @@ function usePersistWorkout(
   initial: WorkoutFlowState,
   state: WorkoutFlowState,
   onFinish: () => void,
-): () => void {
+): { stop: () => void; allQueued: boolean } {
   const queue = useSyncQueue()
+  // The state whose items were all queued; a finished workout restored from the device was queued before.
+  const [queuedState, setQueuedState] = useState<WorkoutFlowState | null>(
+    initial.phase === 'finished' ? initial : null,
+  )
   // The values of each set as they were last queued, by set id: a recorded set whose values differ
   // goes to the queue as a correction, after the set itself.
   const queued = useRef(new Map(initial.recorded.map((body) => [body.id, valuesKeyOf(body)])))
@@ -99,6 +110,7 @@ function usePersistWorkout(
         }
         await queue.enqueueFinish(state.session.workoutId, finish)
       }
+      setQueuedState(state)
       if (state.phase === 'ended') {
         closed.current = true
         await clearActiveWorkout()
@@ -108,8 +120,11 @@ function usePersistWorkout(
       }
     })()
   }, [initial, state, queue, onFinish])
-  return () => {
-    closed.current = true
+  return {
+    stop: () => {
+      closed.current = true
+    },
+    allQueued: queuedState === state,
   }
 }
 
@@ -244,7 +259,7 @@ export function WorkoutScreen({
   tonePlayer = defaultTonePlayer,
 }: WorkoutScreenProps) {
   const [state, dispatch] = useReducer(workoutFlowReducer, flow)
-  const stopSaving = usePersistWorkout(flow, state, onFinish)
+  const { stop: stopSaving, allQueued } = usePersistWorkout(flow, state, onFinish)
   const toast = useToast()
   const { day } = state.session
   const exerciseNumber = exerciseProgressOf(state)
@@ -256,6 +271,7 @@ export function WorkoutScreen({
   const resting = state.phase === 'rest'
   const totalSets = day.exercises.reduce((total, { sets }) => total + sets, 0)
   const finished = state.phase === 'finished'
+  const windows = useReopenWindows(finished && allQueued && state.recorded.length > 0)
   const timerOpen = state.phase === 'countdown' || state.phase === 'timing'
   const reachDeadline = useCallback(
     (nowMs: number) => dispatch({ type: resting ? 'restEnd' : 'timerReach', nowMs }),
@@ -377,6 +393,19 @@ export function WorkoutScreen({
           <div className="mt-(--space-24) w-full">
             <LeftOutSummary items={leftOutOf(state)} />
           </div>
+          {windows ? (
+            <div className="mt-(--space-24) w-full">
+              <ReopenSummary
+                rows={reopenRowsOf({
+                  day,
+                  recorded: state.recorded,
+                  windows,
+                  workoutStartMs: firstSetMsOf(state.recorded),
+                })}
+                nowMs={Date.parse(windows.now)}
+              />
+            </div>
+          ) : null}
         </div>
       ) : (
         <>

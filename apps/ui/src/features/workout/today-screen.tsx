@@ -1,10 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { OfflineNotice } from '@/features/auth/offline-notice'
 import { SignInScreen } from '@/features/auth/sign-in-screen'
 import { loadActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
-import { useSyncQueue } from '@/sync/sync-context'
+import { useSyncQueue, useSyncSnapshot } from '@/sync/sync-context'
 import { type LoadedToday, loadToday } from '@/sync/today-cache'
 import { loadWindows } from '@/sync/windows-cache'
 import { createClientId } from './client-id'
@@ -42,6 +42,13 @@ export function TodayScreen() {
   // 'pending' until the device has answered whether a workout is in progress.
   const [flow, setFlow] = useState<WorkoutFlowState | null | 'pending'>('pending')
 
+  const reloadWindows = useCallback(() => {
+    loadWindows().then((loaded) => {
+      setWindows(loaded.status === 'ok' ? loaded.windows : null)
+      setNowMs(Date.now())
+    })
+  }, [])
+
   // The queue sends again after each answer of the API, as it may be a session that came back.
   const refresh = useCallback(() => {
     setResult(null)
@@ -49,11 +56,19 @@ export function TodayScreen() {
       setResult(loaded)
       if (loaded.status === 'ok' && !('fromCache' in loaded)) void queue.flush()
     })
-    loadWindows().then((loaded) => {
-      setWindows(loaded.status === 'ok' ? loaded.windows : null)
-      setNowMs(Date.now())
-    })
-  }, [queue])
+    reloadWindows()
+  }, [queue, reloadWindows])
+
+  // The windows asked before the queue sent the sets of a workout miss it: ask again once it is empty.
+  const pendingCount = useSyncSnapshot().pending.length
+  const hadPending = useRef(false)
+  useEffect(() => {
+    if (pendingCount > 0) hadPending.current = true
+    else if (hadPending.current) {
+      hadPending.current = false
+      reloadWindows()
+    }
+  }, [pendingCount, reloadWindows])
 
   useEffect(() => {
     const timer = setInterval(() => setNowMs(Date.now()), WINDOW_TICK_MS)
@@ -67,16 +82,14 @@ export function TodayScreen() {
     )
   }, [refresh])
 
+  // Stable, as the workout screen hands an ended workout to it from an effect that depends on it.
+  const finishWorkout = useCallback(() => {
+    setFlow(null)
+    refresh()
+  }, [refresh])
+
   if (flow !== null && flow !== 'pending') {
-    return (
-      <WorkoutScreen
-        flow={flow}
-        onFinish={() => {
-          setFlow(null)
-          refresh()
-        }}
-      />
-    )
+    return <WorkoutScreen flow={flow} onFinish={finishWorkout} />
   }
   if (result?.status === 'offline') return <OfflineNotice onRetry={refresh} />
   if (result?.status === 'unauthenticated') {

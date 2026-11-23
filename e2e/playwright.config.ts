@@ -31,6 +31,7 @@ const GROUP_VOLUME_SPEC = /group-volume\.feature\.spec\.js$/
 const WINDOW_SIMULATION_SPEC = /window-simulation\.feature\.spec\.js$/
 const GROUP_WINDOW_SPEC = /group-window\.feature\.spec\.js$/
 const WINDOW_ON_TODAY_SPEC = /window-on-today\.feature\.spec\.js$/
+const REOPEN_ON_FINISH_SPEC = /reopen-on-finish\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -77,6 +78,7 @@ export default defineConfig({
         WINDOW_SIMULATION_SPEC,
         GROUP_WINDOW_SPEC,
         WINDOW_ON_TODAY_SPEC,
+        REOPEN_ON_FINISH_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -239,6 +241,15 @@ export default defineConfig({
       testMatch: WINDOW_ON_TODAY_SPEC,
       fullyParallel: false,
       dependencies: ['group-window'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Plays whole workouts on the real clock and reads the reopening on the finished screen, so
+    // it runs alone and one scenario at a time, after the windows on the workout of the day.
+    {
+      name: 'reopen-on-finish',
+      testMatch: REOPEN_ON_FINISH_SPEC,
+      fullyParallel: false,
+      dependencies: ['window-on-today'],
       use: { ...devices['Pixel 7'] },
     },
   ],

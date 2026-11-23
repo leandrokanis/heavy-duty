@@ -629,8 +629,8 @@ Funcionalidade: Janela de atividade por grupo
 
   Cenário: reabertura de treino encerrado antes
     Dado que o atleta encerrou a letra A antes dos exercícios de ombros
-    Quando a tela de treino terminado aparece
-    Então ela mostra a reabertura só dos grupos que tiveram série registrada
+    Quando a lista de letras aparece e a fila de envio esvazia
+    Então a letra A mostra a janela só dos grupos que tiveram série registrada
 ```
 
 ### F10. Progresso por grupo e esfriamento (ondas 6a e 6b)
@@ -1157,6 +1157,7 @@ Funcionalidade: Avisos por e-mail
 | D45 | A onda 5 segue sem o go/no-go de quatro semanas de uso, e a janela aparece no celular sem esperar os dados do MVP. Substitui a espera da D38 |
 | D46 | A série de exercício por tempo marca o grupo como treinado, com volume zero; os segundos aparecem à parte (responde à Q07) |
 | D47 | A janela abre 24 h depois do treino, mais 1 h a cada 60 kg de volume ajustado, com teto de 72 h, e fecha 120 h depois do treino. O objetivo corrige o volume (força 130%, hipertrofia 100%, resistência 75%). O músculo secundário também abre a janela, com metade do volume. O treino antes de a janela abrir é neutro, e a janela ignora o sono (ADR-031) |
+| D48 | O treino encerrado antes volta para a lista de letras, sem a tela de treino terminado. A reabertura desse treino aparece nos selos da janela de cada letra, que buscam as janelas de novo quando a fila de envio esvazia (US-F07-03) |
 
 ---
 
