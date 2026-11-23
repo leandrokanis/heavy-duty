@@ -23,7 +23,7 @@ export function AuthScreenLayout({
   message,
 }: AuthScreenLayoutProps) {
   return (
-    <main className="flex min-h-dvh items-center justify-center px-(--space-24) pt-(--space-24) pb-[calc(var(--space-24)+var(--space-32)*2)]">
+    <main className="flex flex-1 items-center justify-center px-(--space-24) pt-(--space-24) pb-[calc(var(--space-24)+var(--space-32)*2)]">
       <div className="relative flex w-full max-w-[640px] flex-col items-center">
         <div className={`flex size-21 items-center justify-center ${ICON_CLASS[icon]}`}>
           {icon === 'app' ? (

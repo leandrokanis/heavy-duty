@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 // useSearchParams needs a Suspense boundary to prerender, see the Next.js App Router docs.
 export default function AuthorizationPage() {
   return (
-    <Suspense fallback={<main aria-busy="true" className="min-h-dvh" />}>
+    <Suspense fallback={<main aria-busy="true" className="flex-1" />}>
       <AuthorizationScreen />
     </Suspense>
   )

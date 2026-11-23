@@ -78,7 +78,7 @@ export function TodayScreen() {
   return (
     <main
       aria-busy={result === null || flow === 'pending' ? 'true' : undefined}
-      className="mx-auto flex min-h-dvh w-full max-w-[640px] flex-col px-(--space-margin-inline) pt-(--space-12) pb-(--space-24)"
+      className="mx-auto flex flex-1 w-full max-w-[640px] flex-col px-(--space-margin-inline) pt-(--space-12) pb-(--space-24)"
     >
       <h1 className="m-0 font-(--font-weight-bold) text-(length:--font-size-large-title) leading-(--font-leading-tight) tracking-(--font-tracking-tight)">
         Heavy Duty

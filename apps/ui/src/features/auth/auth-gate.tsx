@@ -41,5 +41,5 @@ export function AuthGate({ children }: AuthGateProps) {
     return <SignInScreen onSignedIn={() => setSession('authenticated')} />
   }
   if (session === 'offline') return <OfflineNotice onRetry={checkSession} />
-  return <main aria-busy="true" className="min-h-dvh" />
+  return <main aria-busy="true" className="flex-1" />
 }

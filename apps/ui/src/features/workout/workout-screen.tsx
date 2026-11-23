@@ -305,7 +305,7 @@ export function WorkoutScreen({
     dispatch(action)
   }
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[640px] flex-col px-(--space-margin-inline)">
+    <main className="mx-auto flex flex-1 w-full max-w-[640px] flex-col px-(--space-margin-inline)">
       <MotionButton
         ref={topControlRef}
         tapScale={1}

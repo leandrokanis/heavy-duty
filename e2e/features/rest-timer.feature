@@ -51,3 +51,18 @@ Feature: Rest that counts down on its own and a "Próximo" that skips it
     When the athlete taps "Próximo" at "2026-11-21T18:31:05.000Z"
     Then the set of "Tríceps na polia" should be recorded with load 20000 g, 12 reps and set number 1 in the workout of the day "A"
     And the screen should show the heading "Treino concluído" with no rest and no dialog
+
+  @BUG-44
+  Scenario: workout screens fit the visible area under the safe-area insets
+    Given the device has safe-area insets of 47 px at the top and 34 px at the bottom
+    And the athlete started the day "A" at "2026-11-21T18:30:00.000Z"
+    Then the page should not scroll
+    When the athlete taps "Próximo" at "2026-11-21T18:31:05.000Z"
+    Then the rest screen should be visible
+    And the page should not scroll
+
+  @BUG-44
+  Scenario: the workout of the day fits the visible area under the safe-area insets
+    Given the device has safe-area insets of 47 px at the top and 34 px at the bottom
+    When the athlete opens the app
+    Then the page should not scroll

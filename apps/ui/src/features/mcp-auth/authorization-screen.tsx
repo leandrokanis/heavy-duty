@@ -17,7 +17,7 @@ type ScreenState =
   | Extract<AuthorizationPreview, { kind: 'consent' | 'refused' | 'offline' }>
 
 const MAIN_CLASS =
-  'mx-auto flex min-h-dvh w-full max-w-[640px] flex-col justify-center px-(--space-margin-inline) py-(--space-24)'
+  'mx-auto flex flex-1 w-full max-w-[640px] flex-col justify-center px-(--space-margin-inline) py-(--space-24)'
 const TITLE_CLASS =
   'm-0 font-(--font-weight-bold) text-(length:--font-size-large-title) leading-(--font-leading-tight) tracking-(--font-tracking-tight)'
 
@@ -51,7 +51,7 @@ export function AuthorizationScreen() {
     setState(result)
   }
 
-  if (state.kind === 'loading') return <main aria-busy="true" className="min-h-dvh" />
+  if (state.kind === 'loading') return <main aria-busy="true" className="flex-1" />
   if (state.kind === 'offline') return <OfflineNotice onRetry={loadPreview} />
   if (state.kind === 'refused') {
     return (
