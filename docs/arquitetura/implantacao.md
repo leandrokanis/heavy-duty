@@ -50,7 +50,7 @@ O `.env.example` ainda não lista estas variáveis: a inclusão é tarefa manual
 
 | Item | Onde | Uso |
 |---|---|---|
-| `COOLIFY_WEBHOOK` | Segredo do repositório | URL do webhook de deploy do recurso no Coolify |
+| `COOLIFY_WEBHOOK` | Segredo do repositório | URL do webhook de deploy do recurso no Coolify, com `https://`. O job `deploy` falha com URL `http://` ou com resposta fora da faixa 2xx |
 | `COOLIFY_TOKEN` | Segredo do repositório | Token de API do Coolify, com permissão de deploy |
 | Ambiente `production` | Environments do repositório | Agrupa o job `deploy`; aceita regra de aprovação, se o PO quiser |
 | Branch padrão | Configurações gerais | `dev` |

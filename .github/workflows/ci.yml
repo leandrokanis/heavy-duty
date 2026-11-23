@@ -202,5 +202,22 @@ jobs:
             echo "::error::Set the COOLIFY_WEBHOOK and COOLIFY_TOKEN secrets (docs/arquitetura/implantacao.md)."
             exit 1
           fi
-          curl --fail-with-body --silent --show-error --max-time 60 \
-            --header "Authorization: Bearer $COOLIFY_TOKEN" "$COOLIFY_WEBHOOK"
+          case "$COOLIFY_WEBHOOK" in
+            https://*) ;;
+            *)
+              echo "::error::COOLIFY_WEBHOOK must start with https://; an http URL answers with a redirect and deploys nothing."
+              exit 1
+              ;;
+          esac
+          # Without --location a redirect is not followed, so only a 2xx from Coolify itself counts as a deploy.
+          status=$(curl --silent --show-error --max-time 60 --output response.txt --write-out '%{http_code}' \
+            --header "Authorization: Bearer $COOLIFY_TOKEN" "$COOLIFY_WEBHOOK")
+          cat response.txt
+          echo
+          case "$status" in
+            2??) echo "Coolify accepted the deployment (HTTP $status)." ;;
+            *)
+              echo "::error::Coolify answered HTTP $status; the deployment did not start."
+              exit 1
+              ;;
+          esac
