@@ -19,7 +19,7 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Termo | Definição | Código | Não usar |
 |---|---|---|---|
 | Programa | Plano de treino com um objetivo e uma ou mais letras. Só um programa é o ativo por vez, e o programa criado passa a ser o ativo | `Program`, com `isActive` | ficha, rotina, plano |
-| Objetivo | Finalidade do programa: força, hipertrofia ou resistência. Define a janela-base | `Goal = 'strength' \| 'hypertrophy' \| 'endurance'` | meta |
+| Objetivo | Finalidade do programa: força, hipertrofia ou resistência. Corrige o volume no cálculo da janela (ADR-031) | `Goal = 'strength' \| 'hypertrophy' \| 'endurance'` | meta |
 | Letra | Divisão do programa (A, B, C…) com a lista de exercícios de um dia de treino e um nome livre opcional, como "Superior" | `ProgramDay`, com `letter` e `label` | treino A, split |
 | Exercício do programa | Exercício dentro de uma letra, com séries, alvo, carga e descanso | `PlannedExercise` | — |
 | Alvo | Repetições (exercício de repetição) ou segundos (exercício de tempo) por série | `targetReps`, `targetSeconds` | — |
@@ -43,7 +43,7 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Ajuste por arrasto | Mudança de carga, repetições ou tempo por arrasto, em passos fixos, sem teclado | `dragAdjust` | slider |
 | Histórico | Conjunto dos treinos registrados | `history` | log |
 | Fila de envio | Séries registradas no celular que aguardam a confirmação da API, guardadas no aparelho e enviadas em ordem de registro. A série que a API recusa por regra de domínio sai da fila e vira aviso | `pendingSets` | buffer, cache |
-| Volume | Soma de carga × repetições por grupo muscular num intervalo. A fórmula para exercício de tempo está em aberto (Q07) | `volume` | — |
+| Volume | Soma de carga × repetições por grupo muscular num intervalo. O exercício por tempo soma segundos à parte, fora do volume (D46) | `volume` | — |
 
 ## Acesso
 
@@ -66,13 +66,13 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 
 | Termo | Definição | Código | Não usar |
 |---|---|---|---|
-| Janela de atividade | Intervalo, por grupo muscular, em que treinar o grupo rende mais progresso. O app calcula a abertura e a duração | `ActivityWindow` | janela de treino |
+| Janela de atividade | Intervalo, por grupo muscular, em que treinar o grupo rende mais progresso. Abre depois de uma base mais o volume ajustado, com teto, e fecha a um prazo fixo do treino (ADR-031) | `ActivityWindow` | janela de treino |
 | Estado da janela | Situação atual da janela de um grupo muscular, pelo último treino do grupo: descansando (`resting`, antes da abertura), em janela (`open`), esfriando (`cooling`, desde o fechamento) ou sem janela (`none`, grupo nunca treinado) | `WindowState` | fase, status |
 | Relação com a janela anterior | Posição de um treino do grupo em relação à janela do treino anterior do mesmo grupo: `first` (sem treino anterior), `early` (antes de abrir), `in_window` (aberta) ou `late` (depois de fechar) | `WindowRelation` | — |
 | Desfecho da janela | O que aconteceu com a janela de um treino: `used` (o próximo treino caiu nela), `replaced` (o próximo treino veio antes de abrir), `missed` (fechou sem treino), `open` (aberta agora) ou `pending` (abre depois de agora) | `WindowOutcome` | — |
 | Esfriar | Estado do grupo muscular quando a janela passa sem treino. Enquanto esfria, o grupo perde nível aos poucos | `cooling` | zerar |
 | Progresso | Barra por grupo muscular que cresce com o treino, mais dentro da janela, e esvazia enquanto o grupo esfria. Cheia, sobe o nível do grupo; vazia, o grupo cai um nível | `progress` | — |
-| Volume ajustado | Volume corrigido pela base do objetivo do programa. Entra só no cálculo da janela | `adjustedVolume` | intensidade |
+| Volume ajustado | Volume vezes o fator do objetivo do programa (força 130%, hipertrofia 100%, resistência 75%). Entra só no cálculo da janela (ADR-031) | `adjustedVolume` | intensidade |
 | Pontos | O que cada série rende, relativo ao plano: a série que bate o planejado vale 10; em dobro dentro da janela | `points` | XP, moedas |
 | Nível | Degrau de 1 a 20 de cada grupo muscular, que mede a forma atual: sobe quando a barra de progresso enche e cai aos poucos quando o grupo esfria | `level` | rank |
 | Nível geral | Nível do grupo mais fraco entre os que o programa treina | `overallLevel` | nível do atleta, média |

@@ -28,7 +28,7 @@ type JsonRpcResponse = {
     structuredContent?: unknown
     isError?: boolean
     content?: { type: string; text: string }[]
-    tools?: { name: string; annotations?: { readOnlyHint?: boolean } }[]
+    tools?: { name: string; description?: string; annotations?: { readOnlyHint?: boolean } }[]
   }
 }
 
@@ -294,8 +294,8 @@ describe('Given the athlete trained back on Monday and Thursday at 7h in Brasili
         [
           'back',
           [
-            [MONDAY_7H, 'first', '2025-03-05T22:00:00.000Z', '2025-03-07T22:00:00.000Z'],
-            [THURSDAY_7H, 'in_window', '2025-03-08T22:00:00.000Z', '2025-03-10T22:00:00.000Z'],
+            [MONDAY_7H, 'first', '2025-03-05T06:00:00.000Z', '2025-03-08T10:00:00.000Z'],
+            [THURSDAY_7H, 'in_window', '2025-03-08T06:00:00.000Z', '2025-03-11T10:00:00.000Z'],
           ],
         ],
       ])
@@ -309,10 +309,10 @@ describe('Given the athlete trained back on Monday and Thursday at 7h in Brasili
       expect(simulation.parameters).toEqual({
         secondaryVolumePercent: 50,
         goalVolumePercent: { strength: 130, hypertrophy: 100, endurance: 75 },
-        baseOpenHours: { strength: 40, hypertrophy: 40, endurance: 40 },
+        baseOpenHours: { strength: 24, hypertrophy: 24, endurance: 24 },
         openMinutesPerAdjustedKg: 1,
         maxOpenHours: 72,
-        openDurationHours: { strength: 48, hypertrophy: 48, endurance: 48 },
+        closeAfterHours: { strength: 120, hypertrophy: 120, endurance: 120 },
       })
     })
   })
@@ -326,6 +326,19 @@ describe('Given the athlete trained back on Monday and Thursday at 7h in Brasili
 
       expect(tool?.annotations?.readOnlyHint).toBe(true)
     })
+
+    it('Then the simulate_activity_windows description should explain the fixed closing and the secondary muscle', async () => {
+      const { app } = createProgramTestApp()
+
+      const listed = await rpc(app, 'tools/list', {})
+      const tool = listed.result?.tools?.find(({ name }) => name === 'simulate_activity_windows')
+
+      expect(tool?.description).toEqual(
+        expect.stringContaining('closes closeAfterHours after the training'),
+      )
+      expect(tool?.description).not.toEqual(expect.stringContaining('openDurationHours'))
+      expect(tool?.description).toEqual(expect.stringContaining('primary or secondary muscle'))
+    })
   })
 })
 
@@ -334,27 +347,27 @@ function simulateRaw(app: App, args: Record<string, unknown>) {
 }
 
 describe('Given a back training on Monday at 7h in Brasilia', () => {
-  describe('When simulate_activity_windows is called with baseOpenHours.hypertrophy 24', () => {
-    it('Then the window should open 24 h plus the volume time after and the response should show 24', async () => {
+  describe('When simulate_activity_windows is called with baseOpenHours.hypertrophy 30', () => {
+    it('Then the window should open 30 h plus the volume time after and the response should show 30', async () => {
       const { app, record } = await givenCatalogAndProgram()
       record(MONDAY_7H, sets('remada', 3, 40000, 10))
 
-      const simulation = await simulate(app, { parameters: { baseOpenHours: { hypertrophy: 24 } } })
+      const simulation = await simulate(app, { parameters: { baseOpenHours: { hypertrophy: 30 } } })
 
       expect([
         simulation.groups[0]?.trainings[0]?.window.opensAt,
         (simulation.parameters.baseOpenHours as Record<string, number>).hypertrophy,
-      ]).toEqual(['2025-03-05T06:00:00.000Z', 24])
+      ]).toEqual(['2025-03-05T12:00:00.000Z', 30])
     })
 
     it('Then the next simulation without parameters should use the starting ones', async () => {
       const { app, record } = await givenCatalogAndProgram()
       record(MONDAY_7H, sets('remada', 3, 40000, 10))
-      await simulate(app, { parameters: { baseOpenHours: { hypertrophy: 24 } } })
+      await simulate(app, { parameters: { baseOpenHours: { hypertrophy: 30 } } })
 
       const simulation = await simulate(app)
 
-      expect(simulation.groups[0]?.trainings[0]?.window.opensAt).toBe('2025-03-05T22:00:00.000Z')
+      expect(simulation.groups[0]?.trainings[0]?.window.opensAt).toBe('2025-03-05T06:00:00.000Z')
     })
   })
 })
@@ -467,7 +480,7 @@ describe('Given an invalid filter', () => {
   })
 })
 
-describe('Given the whole history with back trained twice and chest and triceps once', () => {
+describe('Given the whole history with back trained twice, chest once and triceps once as a secondary muscle', () => {
   describe('When simulate_activity_windows is called with no interval', () => {
     it('Then should return the groups with training in catalog order and the baseline of each', async () => {
       const { app, record } = await givenCatalogAndProgram()
@@ -482,6 +495,7 @@ describe('Given the whole history with back trained twice and chest and triceps 
       ).toEqual([
         ['chest', { windowsUsed: 0, windowsMissed: 1, trainedEarly: 0, usedPercent: 0 }],
         ['back', { windowsUsed: 1, windowsMissed: 1, trainedEarly: 0, usedPercent: 50 }],
+        ['triceps', { windowsUsed: 0, windowsMissed: 1, trainedEarly: 0, usedPercent: 0 }],
       ])
     })
   })

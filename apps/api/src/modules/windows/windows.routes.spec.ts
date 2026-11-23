@@ -88,7 +88,7 @@ function groupOf(windows: ActivityWindows, slug: string) {
 
 describe('Given chest trained now, at 7h in Brasilia, with 1,200 kg of volume', () => {
   describe('When GET /api/windows is called', () => {
-    it('Then chest should be resting, with the opening 60 h after the training', async () => {
+    it('Then chest should be resting, with the opening 44 h after the training', async () => {
       const { app, train } = await givenCatalogAndHistory()
       train('supino-reto', '2026-11-21T10:00:00.000Z')
 
@@ -97,8 +97,8 @@ describe('Given chest trained now, at 7h in Brasilia, with 1,200 kg of volume', 
       expect(chest).toMatchObject({
         state: 'resting',
         lastTrainedAt: '2026-11-21T10:00:00.000Z',
-        opensAt: '2026-11-23T22:00:00.000Z',
-        closesAt: '2026-11-25T22:00:00.000Z',
+        opensAt: '2026-11-23T06:00:00.000Z',
+        closesAt: '2026-11-26T10:00:00.000Z',
       })
     })
   })
@@ -112,7 +112,7 @@ describe('Given the window of back opened and has not closed', () => {
 
       const back = groupOf(await getWindows(app), 'back')
 
-      expect(back).toMatchObject({ state: 'open', closesAt: '2026-11-22T22:00:00.000Z' })
+      expect(back).toMatchObject({ state: 'open', closesAt: '2026-11-23T10:00:00.000Z' })
     })
   })
 })
@@ -126,7 +126,7 @@ describe('Given the window of quadriceps closed with no training of quadriceps',
       const windows = await getWindows(app)
 
       expect([groupOf(windows, 'quadriceps'), groupOf(windows, 'calves')]).toMatchObject([
-        { state: 'cooling', closesAt: '2026-11-16T22:00:00.000Z' },
+        { state: 'cooling', closesAt: '2026-11-17T10:00:00.000Z' },
         { state: 'none', lastTrainedAt: null, opensAt: null, closesAt: null },
       ])
     })

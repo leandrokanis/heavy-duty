@@ -26,7 +26,7 @@ Os nomes no código estão em `../CONTEXT.md`, Seção "Gamificação".
 
 - **Janela de atividade:** o intervalo, calculado pelo app, em que treinar um grupo muscular rende o progresso cheio.
 - **Período:** um bloco de 12 semanas com começo e fim. Não usar "temporada".
-- **Volume ajustado:** o volume registrado (séries × repetições × carga), corrigido pela base do objetivo do programa. Entra só no cálculo da janela; os pontos não usam esse ajuste (**Decisão**).
+- **Volume ajustado:** o volume registrado (séries × repetições × carga), vezes o fator do objetivo do programa (força 130%, hipertrofia 100%, resistência 75%). Entra só no cálculo da janela; os pontos não usam esse ajuste (**Decisão**).
 - **Progresso:** a barra de cada grupo muscular. Cresce com o treino e esvazia enquanto o grupo esfria.
 - **Esfriar:** o estado de um grupo cuja janela passou sem treino. Enquanto esfria, o grupo perde nível aos poucos.
 - **Pontos:** o que cada série rende, relativo ao plano: a série que bate o planejado vale 10. Valem em dobro dentro da janela.
@@ -43,7 +43,7 @@ Os nomes no código estão em `../CONTEXT.md`, Seção "Gamificação".
 ## Regras do jogo decididas pelo PO
 
 1. **Janela por grupo muscular.** O app calcula quando ela abre e quanto tempo fica aberta, a partir do último treino daquele grupo. O PO não define isso previamente.
-2. **Cálculo da janela.** O objetivo do programa (força, hipertrofia, resistência) define a janela-base, e o volume ajustado do treino estica ou encurta essa base.
+2. **Cálculo da janela.** A janela abre 24 h depois do treino, mais 1 hora a cada 60 kg de volume ajustado, com teto de 72 h, e fecha 120 h depois do treino. O músculo secundário também abre a janela, com metade do volume (ADR-031).
 3. **O que conta.** Só musculação, em qualquer divisão (corpo inteiro, ABC, superior/inferior). O BJJ fica fora.
 4. **Sem frequência-alvo fixa.** A frequência é consequência das janelas, não uma meta pressuposta.
 5. **Progresso.** Uma barra por grupo muscular. Treinar dentro da janela faz a barra crescer mais; fora dela, cresce menos.
@@ -153,8 +153,7 @@ A frase de intenção e o mapa final são congelados num retrato, exibido ao lad
 - **Parâmetros dos pontos e do nível (PRD, Q11).** O protótipo usa 10 pontos por série no plano, 60 por grupo num treino completo e o 20 em cerca de 4 semanas. Os números saem dos dados reais.
 - **Sequência de semanas (PRD, Q12).** Uma sequência que zera castiga o retorno, como no esfriamento. A **Proposta** é uma proteção por período; a alternativa é tirar a sequência do desenho.
 - **Quanto rende um treino fora da janela?** Ainda não há proporção definida (metade, um terço).
-- **Horas-base por objetivo e ajuste pelo volume (PRD, H03 e EN01).** Não há fórmula consagrada; a calibração vem dos dados reais do PO.
-- **Volume de exercícios por tempo (PRD, Q07)**, como a prancha, que não têm repetições × carga.
+- **Recalibração da janela (PRD, H03 e EN01).** A regra da ADR-031 saiu da literatura, sem fórmula consagrada; os dados reais do PO podem trocar os números pela simulação.
 - **Ativação secundária (PRD, Q08).** Um músculo ativado de forma secundária conta o volume inteiro para o grupo, ou só uma parte? Com 11 grupos, a resposta pesa mais: o supino ativa peito, tríceps e ombros. A **Proposta** é metade (PRD, D30).
 - **Janela contra plano (PRD, Q06).** Quando as janelas abertas sugerem uma letra do programa e a ordem do plano sugere outra, qual vale? **Proposta:** a recuperação decide quais letras podem ser feitas, porque treinar um grupo antes de ele se recuperar rende menos e aumenta o risco de lesão. Sai da sugestão a letra cujos grupos estão na maioria descansando. Entre as outras, o grupo esfriando vem primeiro (recuperado e perdendo nível), depois o grupo em janela, e o grupo mais fraco desempata. O atalho do nível geral segue a mesma regra.
 - **Perda de nível e biologia.** Do 20 ao 1 em 4 a 5 semanas é mais rápido que a perda real de força, que costuma se manter por algumas semanas sem treino [a confirmar]. É uma escolha de jogo, para dar peso à regularidade.

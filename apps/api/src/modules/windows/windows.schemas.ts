@@ -55,7 +55,7 @@ export const WindowParameterOverridesSchema = z
     baseOpenHours: ByGoalOverrideSchema.optional(),
     openMinutesPerAdjustedKg: z.number().optional().openapi({ example: 1 }),
     maxOpenHours: z.number().optional().openapi({ example: 72 }),
-    openDurationHours: ByGoalOverrideSchema.optional(),
+    closeAfterHours: ByGoalOverrideSchema.optional(),
   })
   .openapi('WindowParameterOverrides')
 
@@ -66,7 +66,7 @@ export const WindowParametersSchema = z
     baseOpenHours: ByGoalSchema,
     openMinutesPerAdjustedKg: z.number().int().openapi({ example: 1 }),
     maxOpenHours: z.number().int().openapi({ example: 72 }),
-    openDurationHours: ByGoalSchema,
+    closeAfterHours: ByGoalSchema,
   })
   .openapi('WindowParameters')
 

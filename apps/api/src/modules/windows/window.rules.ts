@@ -38,7 +38,7 @@ export function windowOf(
   return {
     adjustedVolumeG,
     opensAtMs,
-    closesAtMs: opensAtMs + parameters.openDurationHours[training.goal] * HOUR_MS,
+    closesAtMs: training.trainedAtMs + parameters.closeAfterHours[training.goal] * HOUR_MS,
   }
 }
 
@@ -57,7 +57,7 @@ export function windowStateOf(
   return STATE_OF_POSITION[positionIn(windowOf(lastTraining, parameters), nowMs)]
 }
 
-// Only a primary muscle makes a group trained; a secondary one adds volume but opens no window.
+// A group is trained by a set where it is a primary or a secondary muscle, at the last such set.
 export function groupTrainingsOf(
   sets: WindowSet[],
   parameters: GameParameters,
@@ -69,14 +69,14 @@ export function groupTrainingsOf(
   const trainings = new Map<string, GroupTraining[]>()
   for (const [workoutId, workoutSets] of setsOfWorkout) {
     const volumes = volumeByMuscleGroup(workoutSets, parameters)
-    const lastPrimarySetMs = new Map<string, number>()
+    const lastSetMs = new Map<string, number>()
     for (const set of workoutSets) {
-      for (const slug of set.primaryGroupSlugs) {
-        lastPrimarySetMs.set(slug, Math.max(lastPrimarySetMs.get(slug) ?? 0, set.performedAtMs))
+      for (const slug of [...set.primaryGroupSlugs, ...set.secondaryGroupSlugs]) {
+        lastSetMs.set(slug, Math.max(lastSetMs.get(slug) ?? 0, set.performedAtMs))
       }
     }
     const { letter, goal } = workoutSets[0] as WindowSet
-    for (const [slug, trainedAtMs] of lastPrimarySetMs) {
+    for (const [slug, trainedAtMs] of lastSetMs) {
       const list = trainings.get(slug) ?? []
       list.push({ workoutId, letter, trainedAtMs, goal, volumeG: volumes.get(slug)?.volumeG ?? 0 })
       trainings.set(slug, list)

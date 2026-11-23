@@ -52,7 +52,7 @@ A gamificação usa pontos, níveis por grupo muscular, recordes, medalhas e ran
 Equilíbrio: white hat 16 contra black hat 19. Ponto fraco: o lado esquerdo do octógono (2, 4, 6, motivação extrínseca) soma 23, contra 10 do lado direito (3, 5, 7, intrínseca). O risco de perda de força entre a quinta e a oitava semana está registrado como R04.
 
 **Regras de jogo decididas pelo PO:**
-- A janela é por grupo muscular, e o próprio app calcula quando ela abre e quanto tempo fica aberta, a partir do último treino. O objetivo do programa define a janela-base, e o volume registrado a ajusta.
+- A janela é por grupo muscular, e o próprio app calcula quando ela abre e quanto tempo fica aberta, a partir do último treino. O volume registrado, corrigido pelo objetivo do programa, define quando a janela abre (D47).
 - Só musculação conta, em qualquer divisão.
 - O progresso é uma barra por grupo, que cresce mais quando o grupo é treinado dentro da janela.
 - Quando a janela passa sem treino, o grupo esfria e começa a perder nível no mesmo instante, aos poucos, com o tempo. O app avisa antes de cada queda, os níveis perdidos voltam com pontos em dobro até o melhor nível do grupo, e medalhas, recordes, retratos e o melhor nível nunca se perdem (D24).
@@ -150,6 +150,7 @@ O próximo ciclo trimestral, em meados de dezembro de 2026, é marco do MVP, nã
 ### Go/no-go
 - **Go para a onda 5:** os critérios de perseverar foram atingidos.
 - **No-go:** registros ainda no app pago depois de quatro semanas; pivotar o fluxo da academia.
+- **Dispensado (D45):** em 2026-11-22, o PO dispensou a espera das quatro semanas, e a onda 5 seguiu sem o go/no-go.
 
 ---
 
@@ -180,7 +181,7 @@ O próximo ciclo trimestral, em meados de dezembro de 2026, é marco do MVP, nã
 | F19 | Medalhas e ranking pessoal | Feature | 7b | E | $ | ♥♥ | Amarelo | Medalhas e ranking guardam o histórico de longo prazo (Octalysis 4) | Medalhas, inclusive ocultas, numa estante; treinos do período ordenados por pontos |
 
 ### Enabler de exploração
-- **EN01, calibrar a janela (de F07).** Pergunta: que horas-base por objetivo e que ajuste pelo volume fazem a janela parecer certa no uso real? Insumo: o histórico registrado durante o MVP. Aprendizado esperado: uma regra de cálculo validada pelo PO antes de a janela aparecer.
+- **EN01, calibrar a janela (de F07).** Pergunta: que horas-base por objetivo e que ajuste pelo volume fazem a janela parecer certa no uso real? Insumo: o histórico registrado durante o MVP. Aprendizado esperado: uma regra de cálculo validada pelo PO antes de a janela aparecer. A primeira regra saiu da literatura, sem os dados do MVP (D45, D47); a recalibração com o histórico real fica para depois.
 
 ---
 
@@ -512,7 +513,7 @@ Funcionalidade: Histórico
 
 - **US-F15a-01.** Como planejador, quero consultar pelo Claude o volume semanal de cada grupo muscular, para medir a progressão de carga (O4) sem conta manual.
 
-O volume é a soma de carga × repetições. O músculo secundário conta metade para o grupo (D40). Até a decisão da Q07, o exercício por tempo aparece em segundos, fora do volume em kg.
+O volume é a soma de carga × repetições. O músculo secundário conta metade para o grupo (D40). O exercício por tempo aparece em segundos, fora do volume em kg, e marca o grupo como treinado (D46).
 
 ```gherkin
 # language: pt
@@ -539,9 +540,9 @@ Funcionalidade: Volume por grupo muscular
 ### EN01. Calibrar a janela (onda 5)
 
 - **EN01-01.** Como planejador, quero simular pelo Claude as janelas de cada grupo muscular sobre o histórico registrado, com os parâmetros que eu escolher, para calibrar a regra antes de a janela aparecer no celular.
-- **EN01-02.** Como PO, quero validar a regra e os parâmetros da janela com as quatro semanas de dados do MVP, para que a janela estreie crível.
+- **EN01-02.** Como PO, quero validar a regra e os parâmetros da janela com a literatura sobre recuperação e frequência de treino, para que a janela estreie crível.
 
-A regra de partida sai da literatura sobre recuperação (H03) e dos valores do protótipo; os dados reais ajustam o volume e confirmam a regra (D38). A EN01-02 não tem tela: a saída é uma ADR com a regra e os parâmetros validados, e a troca dos parâmetros no código.
+A regra de partida sai da literatura sobre recuperação (H03) e dos valores do protótipo. A EN01-02 não tem tela: a saída é a ADR-031, com a regra e os parâmetros validados pelo PO a partir da literatura (D47), e a troca dos parâmetros no código. A recalibração com o histórico real fica para depois e não perde dado (ADR-010).
 
 ```gherkin
 # language: pt
@@ -574,7 +575,7 @@ Funcionalidade: Simulação da janela
 - **US-F07-02.** Como atleta, quero ver no treino do dia quais grupos de cada letra estão em janela e até quando, para escolher o treino sem pensar.
 - **US-F07-03.** Como atleta, quero ver no fim do treino quando cada grupo trabalhado reabre, para saber o efeito do treino que acabei de fazer.
 
-A janela de cada grupo é calculada a partir do último treino do grupo: o objetivo do programa define a janela-base, e o volume ajustado do treino estica ou encurta a base. Um grupo está descansando antes de a janela abrir, em janela enquanto ela está aberta e esfriando depois de ela fechar sem treino. A janela só aparece no celular depois da EN01-02.
+A janela de cada grupo é calculada a partir do último treino do grupo, pelo músculo principal ou secundário: ela abre depois de uma base mais o volume ajustado do treino, com teto, e fecha a um prazo fixo do treino (D47). Um grupo está descansando antes de a janela abrir, em janela enquanto ela está aberta e esfriando depois de ela fechar sem treino. A janela só aparece no celular depois da EN01-02.
 
 ```gherkin
 # language: pt
@@ -1080,13 +1081,12 @@ Funcionalidade: Avisos por e-mail
 ### Questões em aberto
 - **Q01:** o primeiro período começa fora do ciclo; os períodos seguintes se realinham ao ciclo trimestral?
 - **Q04:** o primeiro treino depois de um esfriamento rende o progresso cheio ("bem-vindo de volta")?
-- **Q07:** como calcular o volume de um exercício por tempo?
 - **Q09:** a academia tem sinal de celular e Wi-Fi confiáveis?
 - **Q14:** em que dia e hora sai o resumo semanal, e qual é o endereço de remetente dos e-mails (F17)?
 - **Q15:** quanto rende um treino fora da janela, com o grupo ainda descansando (metade, um terço)?
 - **Q16:** com quantas horas de antecedência saem os avisos de abertura, de fechamento e de queda?
 - **Q17:** quais são as medalhas e o critério de cada uma? A proposta sai na especificação da US-F19-01.
-- **Resolvidas:** Q02 (D44), Q03 (a F13 foi removida), Q05 (MVP sem gamificação, D18), Q06 (D39), Q08 (D40), Q10 (D37), Q11 (D41), Q12 (D42) e Q13 (D43).
+- **Resolvidas:** Q02 (D44), Q03 (a F13 foi removida), Q05 (MVP sem gamificação, D18), Q06 (D39), Q07 (D46), Q08 (D40), Q10 (D37), Q11 (D41), Q12 (D42) e Q13 (D43).
 
 ### Hipóteses e validações pendentes (o PO é o único papel)
 
@@ -1154,6 +1154,9 @@ Funcionalidade: Avisos por e-mail
 | D42 | A sequência de semanas tem uma proteção por período (responde à Q12) |
 | D43 | O grupo esfriando perde cerca de 40 pontos por dia, e vai do nível 20 ao 1 em 4 a 5 semanas. O ritmo muda com a calibração (responde à Q13) |
 | D44 | O celular é um iPhone. O aviso exige o app instalado na tela inicial, com iOS 16.4 ou posterior (responde à Q02) |
+| D45 | A onda 5 segue sem o go/no-go de quatro semanas de uso, e a janela aparece no celular sem esperar os dados do MVP. Substitui a espera da D38 |
+| D46 | A série de exercício por tempo marca o grupo como treinado, com volume zero; os segundos aparecem à parte (responde à Q07) |
+| D47 | A janela abre 24 h depois do treino, mais 1 h a cada 60 kg de volume ajustado, com teto de 72 h, e fecha 120 h depois do treino. O objetivo corrige o volume (força 130%, hipertrofia 100%, resistência 75%). O músculo secundário também abre a janela, com metade do volume. O treino antes de a janela abrir é neutro, e a janela ignora o sono (ADR-031) |
 
 ---
 
@@ -1170,7 +1173,6 @@ Funcionalidade: Avisos por e-mail
 ---
 
 ## Próximos passos sugeridos
-1. Publicar o MVP no kasparov e registrar todos os treinos por quatro semanas, para o go/no-go da onda 5 (Seção 6).
-2. Responder às Q04, Q07, Q14, Q15, Q16, Q17 e Q01 antes das stories que cada uma bloqueia. Cada questão e cada story têm uma issue no GitHub, com as dependências.
-3. Testar a entrega de e-mail pelo kasparov antes da onda 7a (R09).
-4. Rodar a EN01 com o histórico real antes de a janela aparecer no celular.
+1. Responder às Q04, Q14, Q15, Q16, Q17 e Q01 antes das stories que cada uma bloqueia. Cada questão e cada story têm uma issue no GitHub, com as dependências.
+2. Testar a entrega de e-mail pelo kasparov antes da onda 7a (R09).
+3. Recalibrar a janela com o histórico real pela simulação da EN01-01 (ADR-031).

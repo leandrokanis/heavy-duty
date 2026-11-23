@@ -11,30 +11,32 @@ import { GAME_PARAMETERS } from './windows.config.js'
 const HOUR_MS = 60 * 60 * 1000
 const TRAINED_AT_MS = Date.parse('2025-03-03T10:00:00.000Z')
 
-describe('Given a chest workout in a hypertrophy program with 1,200,000 g of volume', () => {
-  describe('When the window of the training is computed with the starting parameters', () => {
-    it('Then should open 40 h plus 20 h after the training and close 48 h after opening', () => {
-      const training = {
-        trainedAtMs: TRAINED_AT_MS,
-        goal: 'hypertrophy' as const,
-        volumeG: 1200000,
-      }
+describe('Given a hypertrophy training of the window starting parameters', () => {
+  describe('When the window is computed', () => {
+    it.each([
+      { case: 'a chest training with 4,000 kg', volumeG: 4000000, opensAfterH: 72 },
+      { case: 'a biceps training with 1,200 kg', volumeG: 1200000, opensAfterH: 44 },
+    ])(
+      'Then $case should open $opensAfterH h after the training and close 120 h after it',
+      ({ volumeG, opensAfterH }) => {
+        const training = { trainedAtMs: TRAINED_AT_MS, goal: 'hypertrophy' as const, volumeG }
 
-      const window = windowOf(training, GAME_PARAMETERS)
+        const window = windowOf(training, GAME_PARAMETERS)
 
-      expect({
-        opensAt: new Date(window.opensAtMs).toISOString(),
-        openDurationMs: window.closesAtMs - window.opensAtMs,
-      }).toEqual({ opensAt: '2025-03-05T22:00:00.000Z', openDurationMs: 48 * HOUR_MS })
-    })
+        expect({
+          opensAfterMs: window.opensAtMs - TRAINED_AT_MS,
+          closesAfterMs: window.closesAtMs - TRAINED_AT_MS,
+        }).toEqual({ opensAfterMs: opensAfterH * HOUR_MS, closesAfterMs: 120 * HOUR_MS })
+      },
+    )
   })
 })
 
 describe('Given the same chest training with 1,200,000 g of volume in each goal', () => {
   describe('When the window is computed with the starting parameters', () => {
     it.each([
-      { goal: 'strength' as const, adjustedVolumeG: 1560000, opensAt: '2025-03-06T04:00:00.000Z' },
-      { goal: 'endurance' as const, adjustedVolumeG: 900000, opensAt: '2025-03-05T17:00:00.000Z' },
+      { goal: 'strength' as const, adjustedVolumeG: 1560000, opensAt: '2025-03-05T12:00:00.000Z' },
+      { goal: 'endurance' as const, adjustedVolumeG: 900000, opensAt: '2025-03-05T01:00:00.000Z' },
     ])(
       'Then $goal should have adjusted volume $adjustedVolumeG and open at $opensAt',
       ({ goal, adjustedVolumeG, opensAt }) => {
@@ -99,10 +101,34 @@ describe('Given a workout with a bench press set and a triceps pushdown set', ()
 
 describe('Given a workout with only bench press sets', () => {
   describe('When the trainings of each group are computed', () => {
-    it('Then triceps should have no training', () => {
+    it('Then triceps should have a training at the set instant with half of the volume', () => {
       const trainings = groupTrainingsOf([workoutSet()], GAME_PARAMETERS)
 
-      expect([...trainings.keys()]).toEqual(['chest'])
+      expect({
+        groups: [...trainings.keys()].sort(),
+        triceps: trainings.get('triceps')?.map(({ trainedAtMs, volumeG }) => ({
+          trainedAtMs,
+          volumeG,
+        })),
+      }).toEqual({
+        groups: ['chest', 'triceps'],
+        triceps: [{ trainedAtMs: TRAINED_AT_MS, volumeG: 200000 }],
+      })
+    })
+  })
+})
+
+describe('Given a workout with a pushdown set followed by a bench press set', () => {
+  describe('When the trainings of each group are computed', () => {
+    it('Then the triceps instant should be the last set where it is primary or secondary', () => {
+      const sets = [
+        workoutSet({ ...pushdown }),
+        workoutSet({ performedAtMs: TRAINED_AT_MS + HOUR_MS }),
+      ]
+
+      const trainings = groupTrainingsOf(sets, GAME_PARAMETERS)
+
+      expect(trainings.get('triceps')?.[0]?.trainedAtMs).toBe(TRAINED_AT_MS + HOUR_MS)
     })
   })
 })
@@ -142,7 +168,7 @@ describe('Given a workout with only a time exercise of the chest group', () => {
   })
 })
 
-describe('Given two trainings of the same group with no volume, whose first window is 40 h to 88 h after it', () => {
+describe('Given two trainings of the same group with no volume, whose first window is 24 h to 120 h after it', () => {
   const trainingAt = (workoutId: string, hoursAfter: number) => ({
     workoutId,
     letter: 'A',
@@ -154,10 +180,10 @@ describe('Given two trainings of the same group with no volume, whose first wind
 
   describe('When the windows are simulated', () => {
     it.each([
-      { case: 'before it opens', hours: 39, relation: 'early', outcome: 'replaced' },
-      { case: 'exactly when it opens', hours: 40, relation: 'in_window', outcome: 'used' },
-      { case: 'just before it closes', hours: 87, relation: 'in_window', outcome: 'used' },
-      { case: 'exactly when it closes', hours: 88, relation: 'late', outcome: 'missed' },
+      { case: 'before it opens', hours: 23, relation: 'early', outcome: 'replaced' },
+      { case: 'exactly when it opens', hours: 24, relation: 'in_window', outcome: 'used' },
+      { case: 'just before it closes', hours: 119, relation: 'in_window', outcome: 'used' },
+      { case: 'exactly when it closes', hours: 120, relation: 'late', outcome: 'missed' },
     ])(
       'Then a second training $case should be $relation and the first window $outcome',
       ({ hours, relation, outcome }) => {
@@ -174,10 +200,10 @@ describe('Given two trainings of the same group with no volume, whose first wind
     )
 
     it.each([
-      { case: 'before it opens', hours: 39, outcome: 'pending' },
-      { case: 'exactly when it opens', hours: 40, outcome: 'open' },
-      { case: 'just before it closes', hours: 87, outcome: 'open' },
-      { case: 'exactly when it closes', hours: 88, outcome: 'missed' },
+      { case: 'before it opens', hours: 23, outcome: 'pending' },
+      { case: 'exactly when it opens', hours: 24, outcome: 'open' },
+      { case: 'just before it closes', hours: 119, outcome: 'open' },
+      { case: 'exactly when it closes', hours: 120, outcome: 'missed' },
     ])('Then the last window with now $case should be $outcome', ({ hours, outcome }) => {
       const nowMs = TRAINED_AT_MS + hours * HOUR_MS
 
@@ -239,14 +265,14 @@ describe('Given five trainings of a group with 2 used windows, 1 missed, 1 repla
   })
 })
 
-describe('Given a training whose window opens at 2025-03-05T22:00Z and closes at 2025-03-07T22:00Z', () => {
+describe('Given a training whose window opens at 2025-03-05T06:00Z and closes at 2025-03-08T10:00Z', () => {
   const training = { trainedAtMs: TRAINED_AT_MS, goal: 'hypertrophy' as const, volumeG: 1200000 }
 
   describe.each([
-    { case: 'just before the opening', now: '2025-03-05T21:59:59.999Z', state: 'resting' },
-    { case: 'exactly at the opening', now: '2025-03-05T22:00:00.000Z', state: 'open' },
-    { case: 'just before the closing', now: '2025-03-07T21:59:59.999Z', state: 'open' },
-    { case: 'exactly at the closing', now: '2025-03-07T22:00:00.000Z', state: 'cooling' },
+    { case: 'just before the opening', now: '2025-03-05T05:59:59.999Z', state: 'resting' },
+    { case: 'exactly at the opening', now: '2025-03-05T06:00:00.000Z', state: 'open' },
+    { case: 'just before the closing', now: '2025-03-08T09:59:59.999Z', state: 'open' },
+    { case: 'exactly at the closing', now: '2025-03-08T10:00:00.000Z', state: 'cooling' },
   ])('When the state is read $case', ({ now, state }) => {
     it(`Then should be ${state}`, () => {
       expect(windowStateOf(training, GAME_PARAMETERS, Date.parse(now))).toBe(state)

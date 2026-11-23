@@ -6,14 +6,14 @@ export const GAME_PARAMETERS = {
   secondaryVolumePercent: 50,
   // Prototype v1, marked as illustrative.
   goalVolumePercent: { strength: 130, hypertrophy: 100, endurance: 75 },
-  // Prototype v1.
-  baseOpenHours: { strength: 40, hypertrophy: 40, endurance: 40 },
+  // Decision of the PO, from the literature on muscle recovery.
+  baseOpenHours: { strength: 24, hypertrophy: 24, endurance: 24 },
   // Prototype v1: one hour for each 60 kg of adjusted volume.
   openMinutesPerAdjustedKg: 1,
   // Estimate: without a cap, 11 t of leg volume would open after 9 days.
   maxOpenHours: 72,
-  // Estimate: the prototype has no open duration.
-  openDurationHours: { strength: 48, hypertrophy: 48, endurance: 48 },
+  // Decision of the PO: the window closes a fixed time after the training, whatever the volume.
+  closeAfterHours: { strength: 120, hypertrophy: 120, endurance: 120 },
 }
 
 export type GameParameters = typeof GAME_PARAMETERS

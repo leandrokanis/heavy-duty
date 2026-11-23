@@ -15,7 +15,7 @@ export type WindowParameterOverrides = {
   baseOpenHours?: ByGoal | undefined
   openMinutesPerAdjustedKg?: number | undefined
   maxOpenHours?: number | undefined
-  openDurationHours?: ByGoal | undefined
+  closeAfterHours?: ByGoal | undefined
 }
 
 function invalid(path: string): DomainError {
@@ -57,16 +57,21 @@ export function resolveWindowParameters(
     openMinutesPerAdjustedKg:
       overrides?.openMinutesPerAdjustedKg ?? GAME_PARAMETERS.openMinutesPerAdjustedKg,
     maxOpenHours: overrides?.maxOpenHours ?? GAME_PARAMETERS.maxOpenHours,
-    openDurationHours: byGoal(GAME_PARAMETERS.openDurationHours, overrides?.openDurationHours),
+    closeAfterHours: byGoal(GAME_PARAMETERS.closeAfterHours, overrides?.closeAfterHours),
   }
   check(parameters.secondaryVolumePercent, 'secondaryVolumePercent', 0, MAX_PERCENT)
   checkByGoal(parameters.goalVolumePercent, 'goalVolumePercent', 0, MAX_PERCENT)
   checkByGoal(parameters.baseOpenHours, 'baseOpenHours', 1, MAX_HOURS)
   check(parameters.openMinutesPerAdjustedKg, 'openMinutesPerAdjustedKg', 0, MAX_MINUTES_PER_KG)
   check(parameters.maxOpenHours, 'maxOpenHours', 1, MAX_HOURS)
-  checkByGoal(parameters.openDurationHours, 'openDurationHours', 1, MAX_HOURS)
+  checkByGoal(parameters.closeAfterHours, 'closeAfterHours', 1, MAX_HOURS)
   if (GOALS.some((goal) => parameters.baseOpenHours[goal] > parameters.maxOpenHours)) {
     throw invalid('maxOpenHours')
+  }
+  for (const goal of GOALS) {
+    if (parameters.closeAfterHours[goal] <= parameters.maxOpenHours) {
+      throw invalid(`closeAfterHours.${goal}`)
+    }
   }
   return parameters
 }

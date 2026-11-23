@@ -7,13 +7,13 @@ describe('Given overrides of only baseOpenHours.hypertrophy and maxOpenHours', (
   describe('When the window parameters are resolved', () => {
     it('Then should apply them over the starting parameters and keep the rest', () => {
       const parameters = resolveWindowParameters({
-        baseOpenHours: { hypertrophy: 24 },
+        baseOpenHours: { hypertrophy: 30 },
         maxOpenHours: 96,
       })
 
       expect(parameters).toEqual({
         ...GAME_PARAMETERS,
-        baseOpenHours: { strength: 40, hypertrophy: 24, endurance: 40 },
+        baseOpenHours: { strength: 24, hypertrophy: 30, endurance: 24 },
         maxOpenHours: 96,
       })
     })
@@ -21,7 +21,7 @@ describe('Given overrides of only baseOpenHours.hypertrophy and maxOpenHours', (
     it('Then should leave the starting parameters unchanged', () => {
       const before = structuredClone(GAME_PARAMETERS)
 
-      resolveWindowParameters({ baseOpenHours: { hypertrophy: 24 } })
+      resolveWindowParameters({ baseOpenHours: { hypertrophy: 30 } })
 
       expect(GAME_PARAMETERS).toEqual(before)
     })
@@ -52,9 +52,9 @@ describe('Given an invalid override', () => {
       path: 'secondaryVolumePercent',
     },
     {
-      case: 'zero hours of open duration',
-      overrides: { openDurationHours: { hypertrophy: 0 } },
-      path: 'openDurationHours.hypertrophy',
+      case: 'zero hours to close',
+      overrides: { closeAfterHours: { hypertrophy: 0 } },
+      path: 'closeAfterHours.hypertrophy',
     },
     {
       case: 'negative minutes per kg',
@@ -68,11 +68,21 @@ describe('Given an invalid override', () => {
     },
     { case: 'a cap above one year', overrides: { maxOpenHours: 8761 }, path: 'maxOpenHours' },
     {
-      case: 'an open duration above one year',
-      overrides: { openDurationHours: { endurance: 8761 } },
-      path: 'openDurationHours.endurance',
+      case: 'a close time above one year',
+      overrides: { closeAfterHours: { endurance: 8761 } },
+      path: 'closeAfterHours.endurance',
     },
-    { case: 'a cap below the base hours', overrides: { maxOpenHours: 39 }, path: 'maxOpenHours' },
+    {
+      case: 'a close time equal to the cap',
+      overrides: { closeAfterHours: { hypertrophy: 72 } },
+      path: 'closeAfterHours.hypertrophy',
+    },
+    {
+      case: 'a cap equal to the close time',
+      overrides: { maxOpenHours: 120 },
+      path: 'closeAfterHours.strength',
+    },
+    { case: 'a cap below the base hours', overrides: { maxOpenHours: 23 }, path: 'maxOpenHours' },
     {
       case: 'base hours above the cap',
       overrides: { baseOpenHours: { strength: 73 } },
