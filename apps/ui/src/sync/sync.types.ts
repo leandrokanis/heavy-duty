@@ -1,4 +1,5 @@
 import type { Today } from '@/features/workout/today.types'
+import type { ActivityWindows } from '@/features/workout/windows.types'
 import type { FinishWorkoutBody } from '@/features/workout/workout-finish.types'
 import type { WorkoutFlowState } from '@/features/workout/workout-flow'
 import type { RecordWorkoutSetBody } from '@/features/workout/workout-set.types'
@@ -73,7 +74,9 @@ export type QueueContents = { pending: PendingItem[]; rejected: RejectedSet[] }
 
 export type ActiveWorkoutRow = { key: 'current'; savedAtMs: number; state: WorkoutFlowState }
 
-export type ProgramCacheRow = { key: 'today'; savedAtMs: number; today: Today }
+export type ProgramCacheRow =
+  | { key: 'today'; savedAtMs: number; today: Today }
+  | { key: 'windows'; savedAtMs: number; windows: ActivityWindows }
 
 // Where the queue persists; the queue keeps its own in-memory mirror on top of it.
 export interface QueueStore {

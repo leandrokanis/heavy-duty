@@ -702,12 +702,13 @@ O objeto `Today` tem a forma `{ "program": { "id", "name", "goal" } | null, "sug
 
 O objeto `TodayDay` tem a forma `{ "letter", "label", "estimatedDurationSeconds", "exercises": [TodayExercise] }`, com as letras na ordem do plano e os exercícios na ordem da letra. A letra sem exercício vem com `exercises: []` e `estimatedDurationSeconds: 0`.
 
-O objeto `TodayExercise` tem a forma `{ "plannedExerciseId", "exercise": { "id", "slug", "name", "kind" }, "sets", "targetReps", "targetSeconds", "restSeconds", "plannedLoadG", "loadG", "loadSource" }`:
+O objeto `TodayExercise` tem a forma `{ "plannedExerciseId", "exercise": { "id", "slug", "name", "kind" }, "sets", "targetReps", "targetSeconds", "restSeconds", "plannedLoadG", "loadG", "loadSource", "muscleGroups": [{ "slug", "name" }] }`:
 
 - `plannedExerciseId` é o `id` do exercício do programa (linha de `planned_exercises`). A tela envia esse valor na gravação da série (US-F03-02).
 - `plannedLoadG` é a carga do programa, em gramas.
 - `loadG` é a carga preenchida, em gramas: a carga da série mais recente do mesmo exercício no histórico, em qualquer programa e em qualquer letra. Sem série do exercício, é a carga do programa.
 - `loadSource` diz de onde veio a carga preenchida: `last_workout` (histórico) ou `program`.
+- `muscleGroups` lista os grupos musculares dos músculos principais do exercício, uma vez cada, na ordem do catálogo. Os músculos secundários ficam de fora. A tela usa a lista para mostrar o estado da janela de cada letra (US-F07-02).
 - `targetReps` e `targetSeconds` vêm sempre do programa, mesmo que o último treino tenha outro número de repetições.
 - O exercício arquivado no catálogo que continua na letra aparece com o nome do catálogo.
 
@@ -732,7 +733,8 @@ Exemplo, com o Supino reto a 42,5 kg no último treino e a Prancha sem treino:
           "restSeconds": 90,
           "plannedLoadG": 40000,
           "loadG": 42500,
-          "loadSource": "last_workout"
+          "loadSource": "last_workout",
+          "muscleGroups": [{ "slug": "chest", "name": "peito" }]
         },
         {
           "plannedExerciseId": "0193a1b2-0000-7000-8000-000000000402",
@@ -743,7 +745,8 @@ Exemplo, com o Supino reto a 42,5 kg no último treino e a Prancha sem treino:
           "restSeconds": 60,
           "plannedLoadG": 0,
           "loadG": 0,
-          "loadSource": "program"
+          "loadSource": "program",
+          "muscleGroups": [{ "slug": "abs", "name": "abdômen" }]
         }
       ]
     }

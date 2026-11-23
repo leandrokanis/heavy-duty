@@ -6,11 +6,13 @@ import { SignInScreen } from '@/features/auth/sign-in-screen'
 import { loadActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
 import { useSyncQueue } from '@/sync/sync-context'
 import { type LoadedToday, loadToday } from '@/sync/today-cache'
+import { loadWindows } from '@/sync/windows-cache'
 import { createClientId } from './client-id'
 import { LetterList } from './letter-list'
 import { QueueNotices } from './queue-notices'
 import { StartSheet } from './start-sheet'
 import type { Today, TodayDay } from './today.types'
+import type { ActivityWindows } from './windows.types'
 import {
   createWorkoutFlow,
   restoreWorkoutFlow,
@@ -18,6 +20,8 @@ import {
   type WorkoutSession,
 } from './workout-flow'
 import { WorkoutScreen } from './workout-screen'
+
+const WINDOW_TICK_MS = 60_000
 
 const NO_PROGRAM = 'Nenhum programa cadastrado. Monte um programa pelo Claude.'
 const NO_EXERCISES = 'O programa ativo não tem exercícios. Monte o programa pelo Claude.'
@@ -32,6 +36,8 @@ function emptyStateOf(today: Today): string | null {
 export function TodayScreen() {
   const queue = useSyncQueue()
   const [result, setResult] = useState<LoadedToday | null>(null)
+  const [windows, setWindows] = useState<ActivityWindows | null>(null)
+  const [nowMs, setNowMs] = useState(() => Date.now())
   const [sheetDay, setSheetDay] = useState<TodayDay | null>(null)
   // 'pending' until the device has answered whether a workout is in progress.
   const [flow, setFlow] = useState<WorkoutFlowState | null | 'pending'>('pending')
@@ -43,7 +49,16 @@ export function TodayScreen() {
       setResult(loaded)
       if (loaded.status === 'ok' && !('fromCache' in loaded)) void queue.flush()
     })
+    loadWindows().then((loaded) => {
+      setWindows(loaded.status === 'ok' ? loaded.windows : null)
+      setNowMs(Date.now())
+    })
   }, [queue])
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), WINDOW_TICK_MS)
+    return () => clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     refresh()
@@ -88,6 +103,8 @@ export function TodayScreen() {
         {result?.status === 'ok' ? (
           <TodayContent
             today={result.today}
+            windows={windows}
+            nowMs={nowMs}
             onSelect={(day) => {
               if (day.exercises.length > 0) setSheetDay(day)
             }}
@@ -123,7 +140,14 @@ function startSession(programId: string, day: TodayDay): WorkoutSession {
   }
 }
 
-function TodayContent({ today, onSelect }: { today: Today; onSelect: (day: TodayDay) => void }) {
+type TodayContentProps = {
+  today: Today
+  windows: ActivityWindows | null
+  nowMs: number
+  onSelect: (day: TodayDay) => void
+}
+
+function TodayContent({ today, windows, nowMs, onSelect }: TodayContentProps) {
   const emptyState = emptyStateOf(today)
   if (emptyState) {
     return (
@@ -133,7 +157,13 @@ function TodayContent({ today, onSelect }: { today: Today; onSelect: (day: Today
     )
   }
   return (
-    <LetterList days={today.days} suggestedLetter={today.suggestedLetter} onSelect={onSelect} />
+    <LetterList
+      days={today.days}
+      suggestedLetter={today.suggestedLetter}
+      onSelect={onSelect}
+      windows={windows}
+      nowMs={nowMs}
+    />
   )
 }
 

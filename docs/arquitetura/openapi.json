@@ -1230,6 +1230,26 @@
           },
           "loadSource": {
             "$ref": "#/components/schemas/LoadSource"
+          },
+          "muscleGroups": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slug": {
+                  "type": "string",
+                  "example": "chest"
+                },
+                "name": {
+                  "type": "string",
+                  "example": "peito"
+                }
+              },
+              "required": [
+                "slug",
+                "name"
+              ]
+            }
           }
         },
         "required": [
@@ -1241,7 +1261,8 @@
           "restSeconds",
           "plannedLoadG",
           "loadG",
-          "loadSource"
+          "loadSource",
+          "muscleGroups"
         ]
       },
       "LoadSource": {

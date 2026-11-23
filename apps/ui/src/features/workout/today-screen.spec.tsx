@@ -1,5 +1,5 @@
 import { startAuthentication } from '@simplewebauthn/browser'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { clearActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
 import { createMemoryQueueStore } from '@/sync/queue-store'
@@ -7,6 +7,7 @@ import { SyncProvider, sendPendingItem } from '@/sync/sync-context'
 import { createSyncQueue, type SendItem, type SyncQueue } from '@/sync/sync-queue'
 import { pendingSetBody } from '@/sync/test-sets'
 import { clearCachedToday, loadToday } from '@/sync/today-cache'
+import { clearCachedWindows } from '@/sync/windows-cache'
 import { NO_PROGRAM, PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayBody, todayDay } from './test-today'
 import type { TodayDay } from './today.types'
 import { TodayScreen } from './today-screen'
@@ -17,6 +18,9 @@ vi.mock('@simplewebauthn/browser', () => ({
   startAuthentication: vi.fn(),
 }))
 
+// GET /api/windows answers 500 unless a test sets windowsAnswer; it never takes a queued response.
+let windowsAnswer: () => Response = () => json(500)
+
 function stubFetch(...responses: (Response | Error)[]) {
   const fetchMock = vi.fn()
   for (const response of responses) {
@@ -25,7 +29,9 @@ function stubFetch(...responses: (Response | Error)[]) {
       return response
     })
   }
-  vi.stubGlobal('fetch', fetchMock)
+  vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) =>
+    input === '/api/windows' ? Promise.resolve(windowsAnswer()) : fetchMock(input, init),
+  )
   return fetchMock
 }
 
@@ -45,9 +51,11 @@ function renderToday(send: SendItem = sendPendingItem, queue?: SyncQueue) {
 }
 
 afterEach(async () => {
+  windowsAnswer = () => json(500)
   vi.useRealTimers()
   await clearActiveWorkout()
   await clearCachedToday()
+  await clearCachedWindows()
 })
 
 describe('Given no active program', () => {
@@ -520,6 +528,7 @@ describe('Given 1 of 2 sets recorded in letter A and the sequence sheet open', (
         'fetch',
         vi.fn(async (url: string) => {
           calls.push(url)
+          if (url === '/api/windows') return json(500)
           if (url !== '/api/today') return json(200)
           const letter = calls.filter((call) => call === '/api/today').length === 1 ? 'A' : 'B'
           return json(
@@ -655,6 +664,86 @@ describe("Given the sheet of letter 'A' in the prototype layout", () => {
         heading: within(sheet).getByRole('heading').textContent,
         dialog: screen.getByRole('dialog', { name: 'A' }) !== null,
       }).toEqual({ heading: 'A', dialog: true })
+    })
+  })
+})
+
+const WINDOWS_NOW_MS = Date.UTC(2026, 10, 23, 12, 0, 0)
+
+function windowsBody(closesAtMs: number) {
+  return {
+    now: new Date(WINDOWS_NOW_MS).toISOString(),
+    groups: [
+      {
+        muscleGroup: { slug: 'chest', name: 'peito' },
+        state: 'open',
+        lastTrainedAt: new Date(WINDOWS_NOW_MS - 86_400_000).toISOString(),
+        opensAt: new Date(WINDOWS_NOW_MS - 3_600_000).toISOString(),
+        closesAt: new Date(closesAtMs).toISOString(),
+      },
+    ],
+  }
+}
+
+describe('Given letter A trains chest, whose window closes in 30 s', () => {
+  describe('When the athlete opens the app', () => {
+    it('Then letter A should show chest open until the closing', async () => {
+      vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'], now: WINDOWS_NOW_MS })
+      stubFetch(json(200, todayBody()))
+      windowsAnswer = () => json(200, windowsBody(WINDOWS_NOW_MS + 30_000))
+
+      renderToday()
+
+      expect(await screen.findByText(/^Peito · fecha hoje/)).toBeInTheDocument()
+    })
+  })
+
+  describe('When the screen stays open for one minute', () => {
+    it('Then chest should turn into cooling without a new request', async () => {
+      vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'], now: WINDOWS_NOW_MS })
+      stubFetch(json(200, todayBody()))
+      windowsAnswer = () => json(200, windowsBody(WINDOWS_NOW_MS + 30_000))
+      renderToday()
+      await screen.findByText(/^Peito · fecha hoje/)
+
+      await act(async () => {
+        vi.advanceTimersByTime(60_000)
+      })
+
+      expect(screen.getByText('Peito · esfriando há menos de 1 h')).toBeInTheDocument()
+    })
+  })
+
+  describe('When the windows request fails', () => {
+    it('Then the letters should show with no window', async () => {
+      stubFetch(json(200, todayBody()))
+
+      renderToday()
+      await screen.findByRole('button', { name: /^A/ })
+
+      expect(screen.queryByText(/Peito/)).not.toBeInTheDocument()
+    })
+  })
+})
+
+describe('Given the phone kept the windows of the last opening with network', () => {
+  describe('When the athlete opens the app offline', () => {
+    it('Then the badges should come from the stored instants and the current time', async () => {
+      vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'], now: WINDOWS_NOW_MS })
+      stubFetch(json(200, todayBody()))
+      windowsAnswer = () => json(200, windowsBody(WINDOWS_NOW_MS + 3_600_000))
+      renderToday()
+      await screen.findByText(/^Peito · fecha hoje/)
+      cleanup()
+      vi.setSystemTime(WINDOWS_NOW_MS + 5 * 3_600_000)
+      stubFetch(json(200, todayBody()))
+      windowsAnswer = () => {
+        throw new TypeError('Failed to fetch')
+      }
+
+      renderToday()
+
+      expect(await screen.findByText('Peito · esfriando há 4 h')).toBeInTheDocument()
     })
   })
 })

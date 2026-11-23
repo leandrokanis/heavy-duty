@@ -89,6 +89,9 @@
   --color-warning: light-dark(#a86200, #f0a63a);
   --color-warning-soft: light-dark(rgba(168, 98, 0, 0.14), rgba(240, 166, 58, 0.14));
   --color-danger: light-dark(#c9302c, #ff6b62);
+  --color-window-open: light-dark(#0a8ea0, #2bc4d8);
+  --color-window-rest: light-dark(#aeb4c0, #545c6b);
+  --color-window-cooling: light-dark(#6576a0, #8e9cc2);
   --color-backdrop: rgba(8, 10, 16, 0.32);
 
   --material-glass: blur(22px) saturate(1.7);
@@ -189,6 +192,7 @@ body {
     --color-label-secondary: var(--color-label);
     --color-separator: light-dark(#596173, #9ea6b6);
     --color-fill-strong: light-dark(#596173, #9ea6b6);
+    --color-window-rest: light-dark(#596173, #9ea6b6);
   }
 
   .glass {

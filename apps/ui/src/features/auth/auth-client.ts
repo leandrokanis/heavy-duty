@@ -5,6 +5,7 @@ import type {
   RegistrationResponseJSON,
 } from '@simplewebauthn/browser'
 import { clearCachedToday } from '@/sync/today-cache'
+import { clearCachedWindows } from '@/sync/windows-cache'
 
 export type SessionState = 'authenticated' | 'unauthenticated' | 'offline'
 
@@ -70,6 +71,7 @@ export async function verifyEnrollment(
 export async function signOut(): Promise<void> {
   await fetch(SESSION_PATH, { method: 'DELETE', ...SAME_ORIGIN })
   await clearCachedToday()
+  await clearCachedWindows()
   if (typeof caches === 'undefined') return
   const names = await caches.keys()
   await Promise.all(

@@ -1,5 +1,9 @@
 import type { Today, TodayDay, TodayExercise } from './today.types'
 
+export const CHEST = { slug: 'chest', name: 'peito' }
+export const TRICEPS = { slug: 'triceps', name: 'tríceps' }
+export const ABS = { slug: 'abs', name: 'abdômen' }
+
 export const SUPINO_RETO: TodayExercise = {
   plannedExerciseId: 'planned-supino',
   exercise: { id: 'exercise-supino', slug: 'supino-reto', name: 'Supino reto', kind: 'reps' },
@@ -10,6 +14,7 @@ export const SUPINO_RETO: TodayExercise = {
   plannedLoadG: 40000,
   loadG: 42500,
   loadSource: 'last_workout',
+  muscleGroups: [CHEST],
 }
 
 export const PRANCHA: TodayExercise = {
@@ -22,6 +27,7 @@ export const PRANCHA: TodayExercise = {
   plannedLoadG: 0,
   loadG: 0,
   loadSource: 'program',
+  muscleGroups: [ABS],
 }
 
 export const TRICEPS_POLIA: TodayExercise = {
@@ -39,6 +45,7 @@ export const TRICEPS_POLIA: TodayExercise = {
   plannedLoadG: 20000,
   loadG: 20000,
   loadSource: 'program',
+  muscleGroups: [TRICEPS],
 }
 
 export const CRUCIFIXO: TodayExercise = {
@@ -51,6 +58,7 @@ export const CRUCIFIXO: TodayExercise = {
   plannedLoadG: 14000,
   loadG: 14000,
   loadSource: 'program',
+  muscleGroups: [CHEST],
 }
 
 export function todayDay(

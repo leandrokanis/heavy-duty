@@ -20,6 +20,12 @@ export const TodayExerciseSchema = z
     plannedLoadG: z.number().int().openapi({ example: 40000 }),
     loadG: z.number().int().openapi({ example: 42500 }),
     loadSource: LoadSourceSchema,
+    muscleGroups: z.array(
+      z.object({
+        slug: z.string().openapi({ example: 'chest' }),
+        name: z.string().openapi({ example: 'peito' }),
+      }),
+    ),
   })
   .openapi('TodayExercise')
 

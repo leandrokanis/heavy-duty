@@ -99,7 +99,8 @@ Then(
   'the letters should show {string} and {string}',
   async ({ page }, letter: string, label: string) => {
     await expect(
-      page.getByRole('button', { name: new RegExp(`^${letter}\\s*${label}`) }),
+      // Window badges may sit between the name of the letter and its label.
+      page.getByRole('button', { name: new RegExp(`^${letter}(\\s|$).*${label}`) }),
     ).toBeVisible()
   },
 )

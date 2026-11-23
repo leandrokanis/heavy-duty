@@ -30,6 +30,7 @@ const EDIT_REMOVE_WORKOUT_SPEC = /edit-remove-workout\.feature\.spec\.js$/
 const GROUP_VOLUME_SPEC = /group-volume\.feature\.spec\.js$/
 const WINDOW_SIMULATION_SPEC = /window-simulation\.feature\.spec\.js$/
 const GROUP_WINDOW_SPEC = /group-window\.feature\.spec\.js$/
+const WINDOW_ON_TODAY_SPEC = /window-on-today\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -75,6 +76,7 @@ export default defineConfig({
         GROUP_VOLUME_SPEC,
         WINDOW_SIMULATION_SPEC,
         GROUP_WINDOW_SPEC,
+        WINDOW_ON_TODAY_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -228,6 +230,15 @@ export default defineConfig({
       testMatch: GROUP_WINDOW_SPEC,
       fullyParallel: false,
       dependencies: ['window-simulation'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records workouts relative to the real clock, replaces the active program and reads the
+    // badges on the workout of the day, so it runs alone, after the window state.
+    {
+      name: 'window-on-today',
+      testMatch: WINDOW_ON_TODAY_SPEC,
+      fullyParallel: false,
+      dependencies: ['group-window'],
       use: { ...devices['Pixel 7'] },
     },
   ],

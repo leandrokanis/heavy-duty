@@ -4,6 +4,8 @@ import type { Database } from '../../db/connection.js'
 import { exercises, plannedExercises, workoutSets, workouts } from '../../db/schema.js'
 import { createProgramTestApp, type ProgramTestApp } from '../../test/programs.js'
 import { recordWorkout } from '../../test/workouts.js'
+import { addExercise } from '../catalog/exercise.service.js'
+import { addMuscle } from '../catalog/muscle.service.js'
 import type { Today, TodayExercise } from './workouts.schemas.js'
 
 type App = ProgramTestApp['app']
@@ -132,8 +134,36 @@ describe("Given an older inactive program and the active hypertrophy program wit
           plannedLoadG: 40000,
           loadG: 40000,
           loadSource: 'program',
+          muscleGroups: [{ slug: 'chest', name: 'peito' }],
         },
       })
+    })
+  })
+})
+
+describe('Given an exercise with two primary muscles in chest, one in back and a secondary in triceps, planned in letter A', () => {
+  describe('When the athlete requests the workout of the day', () => {
+    it('Then the exercise should list the groups of the primary muscles once each, in catalog order', async () => {
+      const { app, db } = createProgramTestApp()
+      addMuscle(db, { name: 'grande dorsal', muscleGroupSlug: 'back' })
+      addMuscle(db, { name: 'peitoral menor', muscleGroupSlug: 'chest' })
+      addMuscle(db, { name: 'tríceps braquial', muscleGroupSlug: 'triceps' })
+      addExercise(db, {
+        name: 'Pullover',
+        kind: 'reps',
+        primaryMuscleSlugs: ['grande-dorsal', 'peitoral-maior', 'peitoral-menor'],
+        secondaryMuscleSlugs: ['triceps-braquial'],
+      })
+      const programId = await createProgram(app, 'Programa 1')
+      await addDay(app, programId, 'A')
+      await addPlanned(app, programId, 'A', { ...SUPINO_RETO, exerciseSlug: 'pullover' })
+
+      const pullover = exerciseIn(await getToday(app), 'A', 'pullover')
+
+      expect(pullover?.muscleGroups).toEqual([
+        { slug: 'chest', name: 'peito' },
+        { slug: 'back', name: 'costas' },
+      ])
     })
   })
 })
@@ -285,6 +315,7 @@ describe("Given letter 'A' with prancha 3 x 45 s at 0 g and no workout", () => {
         plannedLoadG: 0,
         loadG: 0,
         loadSource: 'program',
+        muscleGroups: [{ slug: 'abs', name: 'abdômen' }],
       })
     })
   })

@@ -19,7 +19,7 @@ async function withDb<T>(use: (db: LocalDb) => Promise<T>): Promise<T | undefine
 
 async function readCachedToday(): Promise<Today | null> {
   const row = await withDb((db) => db.programCache.get(ROW_KEY))
-  return row?.today ?? memoryToday
+  return (row?.key === 'today' ? row.today : undefined) ?? memoryToday
 }
 
 // A 200 refreshes the copy and a 401 deletes it; network, timeout and 5xx fall back to the copy (FR-012).

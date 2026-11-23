@@ -227,7 +227,7 @@ O HIG não especifica botão de ação central sobre a barra de abas. Se o app a
 | Sucesso | `--color-success` | Série registrada, envio concluído e treino concluído |
 | Atenção | `--color-warning` | Envio pendente sem rede |
 | Erro | `--color-danger` | Falha e ação destrutiva |
-| Janela de atividade | `--color-window-open`, `--color-window-cooling` | Reservado para as ondas 5 a 7. A janela aberta também marca o ×2 dos pontos |
+| Janela de atividade | `--color-window-open`, `--color-window-rest`, `--color-window-cooling` | Só o indicador do estado da janela: aberta, descansando e esfriando (onda 5, treino do dia). O texto do selo usa `--color-label`. A janela aberta também marca o ×2 dos pontos (ondas 6 e 7) |
 | Pontos e nível | `--color-game-xp`, `--color-game-xp-2` | Só gamificação: pontos, barra e selo de nível (ondas 5 a 7) |
 | Faixa de nível | `--color-tier-1` a `--color-tier-4` | Só gamificação: selo de nível em bronze, prata, ouro e violeta. Cada faixa também tem forma própria (círculo, escudo, hexágono e estrela), para não depender só da cor (`docs/gamificacao.md`) |
 | Medalha e ranking | `--color-game-gold` | Só gamificação: medalhas e posições do ranking pessoal |
@@ -421,11 +421,15 @@ Na coluna "Contraste alto", "igual" mantém o valor do tema. Dois valores entre 
 | `--color-warning` | `#A86200` | `#F0A63A` | igual | Ícone da pílula de envio pendente, anel e tempo do cronômetro nos últimos 3 s | Protótipo v1, `--warning` |
 | `--color-warning-soft` | `rgba(168,98,0,.14)` | `rgba(240,166,58,.14)` | igual | Fundo da pílula da fila de envio | Protótipo v1, `.pill` |
 | `--color-danger` | `#C9302C` | `#FF6B62` | igual | Mensagem de erro e ação destrutiva | Protótipo v1, `--danger` |
+| `--color-window-open` | `#0A8EA0` | `#2BC4D8` | igual | Indicador da janela aberta no selo do grupo (Seção 11.1) | Protótipo v1, `--win-open` |
+| `--color-window-rest` | `#AEB4C0` | `#545C6B` | `#596173` `#9EA6B6` | Indicador da janela descansando no selo do grupo | Protótipo v1, `--win-rest`; contraste alto do Projeto |
+| `--color-window-cooling` | `#6576A0` | `#8E9CC2` | igual | Indicador do grupo esfriando no selo, sempre com hachura | Protótipo v1, `--win-cool` |
 | `--color-backdrop` | `rgba(8,10,16,.32)` | `rgba(8,10,16,.32)` | igual | Fundo escurecido atrás da folha | Protótipo v1, `.backdrop` |
 
 Regras de uso da cor, além das da Seção 11.1:
 
 - Sucesso e atenção marcam só ícone e indicador. Texto normal usa `--color-label` (Seção 11.3). A exceção é o tempo do cronômetro nos últimos 3 s, em `--color-warning`: é texto grande (4 rem, peso 700) e mede 4,29:1 no tema claro, acima do mínimo de 3:1 do texto grande.
+- O selo de janela marca o estado com o indicador em `--color-window-*` e com o texto em `--color-label`, porque `--color-window-rest` mede menos de 3:1 sobre o fundo claro. O esfriando tem hachura além da cor (Seção 11.1).
 - O texto sobre vidro usa só `--color-label`. O texto secundário sobre vidro mede 3,20:1 no tema claro e 2,49:1 no escuro, abaixo do mínimo.
 - O texto de erro sobre `--color-fill` mede 4,30:1 no tema claro, abaixo de 4,5:1. A ação destrutiva da folha usa texto `--color-danger` sobre `--color-background-elevated`, com 5,33:1 no tema claro e 6,24:1 no escuro (EN-S1-03).
 

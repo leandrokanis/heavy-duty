@@ -173,7 +173,7 @@ describe('Given globals.css', () => {
         .filter(([name, value]) => normalise(readToken(moreContrast, name as string)) !== value)
         .map(([name]) => name)
 
-      expect({ count: expected.length, mismatches }).toEqual({ count: 3, mismatches: [] })
+      expect({ count: expected.length, mismatches }).toEqual({ count: 4, mismatches: [] })
     })
 
     it('Then should not keep the provisional values', () => {
@@ -184,8 +184,8 @@ describe('Given globals.css', () => {
       ).toEqual([])
     })
 
-    it('Then should not declare game, window or tier colour tokens', () => {
-      expect(css.match(/--color-(window|game|tier)-/g)).toBeNull()
+    it('Then should not declare game or tier colour tokens', () => {
+      expect(css.match(/--color-(game|tier)-/g)).toBeNull()
     })
   })
   describe('When the shell rules are read', () => {
