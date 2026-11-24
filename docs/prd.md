@@ -4,8 +4,8 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 0.4 |
-| Data | 22/11/2026 |
+| Versão | 0.5 |
+| Data | 23/11/2026 |
 | Status | Rascunho — sujeito a revisão humana |
 | Classificação | Público |
 | Elaboração | Elaborado com apoio de IA (Lean Inception solo, método de Paulo Caroli, traduzido para SAFe) |
@@ -168,6 +168,7 @@ O próximo ciclo trimestral, em meados de dezembro de 2026, é marco do MVP, nã
 | F05 | Descanso do programa | Feature | 3 | E | $ | ♥♥ | Verde | O descanso automático mantém o ritmo sem decisão do atleta | Conta o descanso planejado; um toque pula; ao fim, abre a próxima série ou exercício |
 | F04 | Ajuste por arrasto | Feature | 4 | EE | $$ | ♥♥ | Amarelo | Ajustar sem teclado mantém a meta de um toque | Arrasto altera carga, repetições ou tempo em passos; carga não fica negativa; última série corrigível |
 | F06 | Histórico (via MCP) | Feature | 4 | E | $$ | ♥♥ | Verde | Consultar e corrigir pelo Claude mantém o histórico confiável | Consulta por intervalo; edição e remoção com confirmação |
+| F20 | Histórico no celular | Feature | 4b | E | $$ | ♥♥ | Verde | Ver na academia o que já foi feito, sem abrir o Claude, mantém o app utilizável antes da gamificação | Lista de treinos com exercícios, séries e cargas; remoção com confirmação; sem edição no celular (D50) |
 | F07 | Cálculo da janela por grupo | Feature + EN01 | 5 | EE | $$$ | ♥♥ | Vermelho | Uma janela calibrada com dados reais é crível e puxa o PO de volta | Estado da janela por grupo (descansando, em janela, esfriando) pelo MCP e no treino do dia; reabertura no fim do treino; regra validada pelo PO antes da tela (EN01) |
 | F15a | Indicadores de volume por grupo | Feature | 5 | E | $$ | ♥ | Verde | Medir o O4 sem esforço manual | Volume semanal por grupo pelo MCP, com o músculo secundário contando metade |
 | F10 | Progresso por grupo e esfriamento | Feature | 6a e 6b | E | $$ | ♥♥ | Amarelo | Progresso visível sustenta a motivação (Octalysis 2) | Pontos por série relativos ao plano; nível de 1 a 20 por grupo; esfriamento e queda de nível; memória muscular; nível geral |
@@ -226,13 +227,14 @@ Todas as ondas passam nas regras do Caroli (conferidas com código): até 3 func
 | 2 | F02, F16 | Programa montado pelo Claude |
 | 3 | F03, F05 | Treino registrado pelo celular |
 | 4 | F04, F06 | Registro completo — **fim do MVP** |
+| 4b | F20, com ajustes na F03, na F04 e na F05 | Usabilidade mínima do treino e histórico no celular, antes da gamificação (D49) |
 | 5 | F07, F15a, com a EN01 | Janela calibrada com dados reais; volume por grupo pelo MCP |
 | 6a | F10 (pontos, nível e esfriamento), F18 | Pontos, nível por grupo, esfriamento e recordes |
 | 6b | F10 (memória muscular e nível geral), F12, F15b | Memória muscular, nível geral, treino do dia pelas janelas e meta semanal |
 | 7a | F08, F09, F17 (sem o resumo semanal) | Mapa do corpo e avisos no celular e por e-mail |
 | 7b | F11, F19, F17 (resumo semanal) | Períodos, retrato, sequência de semanas, medalhas e ranking: início do primeiro período de 12 semanas |
 
-A divisão das ondas 6 e 7 em partes, cada uma com deploy próprio, e as features F18 e F19 vêm da D35 e da D36. A divisão veio depois da conferência com as regras do Caroli e não foi reconferida com código. A F18 e a F19 ficam fora do cálculo do WSJF. As telas de administração no Mac entram depois da onda 7 (D37).
+A divisão das ondas 6 e 7 em partes, cada uma com deploy próprio, e as features F18 e F19 vêm da D35 e da D36. A divisão veio depois da conferência com as regras do Caroli e não foi reconferida com código. A F18 e a F19 ficam fora do cálculo do WSJF. As telas de administração no Mac entram depois da onda 7 (D37). A onda 4b vem da D49, depois do uso real do MVP, e não foi conferida com as regras do Caroli; a F20 fica fora do cálculo do WSJF.
 
 ---
 
@@ -356,6 +358,8 @@ Funcionalidade: Administração via MCP
 - **US-F03-05.** Como atleta, quero pular um exercício, para encurtar o treino quando o tempo está curto.
 - **US-F03-06.** Como atleta, quero rever as séries de um exercício já feito, para conferir o que registrei.
 - **US-F03-07.** Como atleta, quero que o exercício por tempo conte sozinho, com contagem regressiva de 3 segundos e sinal sonoro no começo e no fim, para fazer a série sem olhar o relógio.
+- **US-F03-08.** Como atleta, quero ver o tempo total do treino durante todo o treino e no resumo final, para controlar a duração do treino. *(onda 4b)*
+- **US-F03-09.** Como atleta, quero descartar o treino em andamento, para não guardar no histórico um treino que não valeu. *(onda 4b)*
 
 ```gherkin
 # language: pt
@@ -433,10 +437,32 @@ Funcionalidade: Execução do treino
     Quando o atleta toca em "Próximo"
     Então a série é registrada com 15 s
     E o descanso começa
+
+  Cenário: tempo total durante o treino
+    Dado que o atleta começou o treino da letra "A"
+    Quando ele está na tela de série ou na tela de descanso
+    Então o tempo total do treino aparece, contado desde o início do treino
+
+  Cenário: tempo total no resumo
+    Dado que o atleta começou o treino da letra "A" há 52 minutos
+    Quando ele registra a última série do treino
+    Então o resumo do treino mostra a duração de 52 minutos
+
+  Cenário: treino descartado
+    Dado que o atleta registrou 3 séries do treino da letra "A"
+    Quando ele escolhe descartar o treino e confirma
+    Então o treino e as 3 séries não ficam no histórico
+    E o app volta para a lista de letras
+
+  Cenário: descarte cancelado
+    Quando o atleta escolhe descartar o treino e não confirma
+    Então o treino continua de onde parou
 ```
 
 ### F05. Descanso do programa
 - **US-F05-01.** Como atleta, quero que o descanso planejado conte sozinho e que um toque leve à próxima série, para seguir o ritmo do programa.
+- **US-F05-02.** Como atleta, quero ouvir um sinal sonoro nos 3 últimos segundos do descanso, para voltar ao exercício sem olhar a tela. *(onda 4b)*
+- **US-F05-03.** Como atleta, quero acelerar o descanso enquanto pressiono o cronômetro, para encurtar a pausa sem pular o descanso inteiro. *(onda 4b)*
 
 ```gherkin
 # language: pt
@@ -455,6 +481,26 @@ Funcionalidade: Descanso
     Dado que o atleta registrou a última série do Supino
     Quando o descanso termina
     Então o próximo exercício da letra aparece pronto
+
+  Cenário: sinal sonoro no fim do descanso
+    Dado que o descanso de 90 s está contando
+    Quando faltam 3 segundos
+    Então cada um dos 3 últimos segundos tem um sinal sonoro
+
+  Cenário: descanso pulado sem sinal
+    Dado que faltam 10 segundos de descanso
+    Quando o atleta toca em "próxima"
+    Então nenhum sinal sonoro toca
+
+  Cenário: descanso acelerado
+    Dado que o descanso está contando
+    Quando o atleta pressiona e segura o cronômetro do descanso
+    Então o tempo que falta diminui mais rápido que o normal
+
+  Cenário: descanso volta ao ritmo normal
+    Dado que o atleta está segurando o cronômetro do descanso
+    Quando ele solta o cronômetro
+    Então o descanso volta a contar no ritmo normal, a partir do tempo que falta
 ```
 
 ### F04. Ajuste por arrasto
@@ -472,13 +518,13 @@ Funcionalidade: Ajuste por arrasto
 
     Exemplos:
       | campo      | inicial | passos | direção | final   |
-      | carga      | 40 kg   | 1      | baixo   | 42,5 kg |
-      | repetições | 10      | 2      | cima    | 8       |
-      | tempo      | 45 s    | 1      | baixo   | 50 s    |
+      | carga      | 40 kg   | 1      | cima    | 42,5 kg |
+      | repetições | 10      | 2      | baixo   | 8       |
+      | tempo      | 45 s    | 1      | cima    | 50 s    |
 
   Cenário: carga não fica negativa
     Dado que a carga exibida é 0 kg
-    Quando o atleta arrasta para cima
+    Quando o atleta arrasta para baixo
     Então a carga continua 0 kg
 
   Cenário: correção da última série
@@ -507,6 +553,38 @@ Funcionalidade: Histórico
   Cenário: treino inexistente
     Quando o planejador pede para editar um treino que não existe
     Então a edição é recusada com o motivo "treino não encontrado"
+```
+
+### F20. Histórico no celular (onda 4b)
+- **US-F20-01.** Como atleta, quero ver no celular os treinos que já fiz, com exercícios, séries e cargas, para consultar o que fiz sem abrir o Claude.
+- **US-F20-02.** Como atleta, quero apagar um treino no celular, para tirar do histórico um registro que não vale.
+
+No celular, o histórico não tem edição; a edição fica só pelo MCP (D50).
+
+```gherkin
+# language: pt
+Funcionalidade: Histórico no celular
+
+  Cenário: lista de treinos
+    Dado que o atleta fez três treinos na semana passada
+    Quando ele abre o histórico
+    Então os três treinos aparecem, do mais recente para o mais antigo, com a data e a letra
+
+  Cenário: detalhe do treino
+    Quando o atleta abre um treino do histórico
+    Então aparecem os exercícios, as séries, as repetições e as cargas registradas
+
+  Cenário: histórico sem edição
+    Quando o atleta abre um treino do histórico
+    Então nenhum valor do treino pode ser alterado
+
+  Cenário: remoção exige confirmação
+    Quando o atleta pede para apagar um treino
+    Então o treino só é removido depois de uma confirmação explícita
+
+  Cenário: remoção cancelada
+    Quando o atleta pede para apagar um treino e não confirma
+    Então o treino continua no histórico
 ```
 
 ### F15a. Indicadores de volume por grupo (onda 5)
@@ -1143,7 +1221,7 @@ Funcionalidade: Avisos por e-mail
 | D31 | O aviso de janela é um por letra, não um por grupo, para os 11 grupos não virarem ruído (F09) |
 | D32 | Avisos por e-mail entram na onda 7 (F17): aviso de janela por letra, aviso de queda de nível e resumo semanal. Todo aviso vai pelos dois canais, celular e e-mail. O envio é por servidor SMTP próprio no kasparov, para manter a NFR01 (ADR-007) |
 | D33 | O produto se chama Heavy Duty |
-| D34 | A roda do ajuste tem o valor maior acima: arrastar para baixo aumenta e arrastar para cima diminui. Os botões − e + ficam ao lado da roda, e os passos são de 2,5 kg, 1 repetição e 5 s (US-F04-01; decisão do PO no protótipo, plano do MVP, Seção 7) |
+| D34 | A roda do ajuste tem o valor maior acima: arrastar para baixo aumenta e arrastar para cima diminui. Os botões − e + ficam ao lado da roda, e os passos são de 2,5 kg, 1 repetição e 5 s (US-F04-01; decisão do PO no protótipo, plano do MVP, Seção 7). A direção foi substituída pela D51 |
 | D35 | O recorde vira a F18 (onda 6a), e medalhas e ranking pessoal viram a F19 (onda 7b). A meta semanal entra na F15b (onda 6b). A sequência de semanas entra na F11 (onda 7b), porque a proteção dela é por período |
 | D36 | A onda 6 se divide em 6a (pontos, nível e esfriamento da F10; F18) e 6b (memória muscular e nível geral da F10; F12; F15b), e a onda 7 em 7a (F08; F09; F17 sem o resumo semanal) e 7b (F11; F19; resumo semanal da F17). Cada parte tem deploy próprio. O primeiro período começa com o deploy da 7b |
 | D37 | As telas de administração no Mac entram depois da onda 7 (responde à Q10) |
@@ -1158,6 +1236,9 @@ Funcionalidade: Avisos por e-mail
 | D46 | A série de exercício por tempo marca o grupo como treinado, com volume zero; os segundos aparecem à parte (responde à Q07) |
 | D47 | A janela abre 24 h depois do treino, mais 1 h a cada 60 kg de volume ajustado, com teto de 72 h, e fecha 120 h depois do treino. O objetivo corrige o volume (força 130%, hipertrofia 100%, resistência 75%). O músculo secundário também abre a janela, com metade do volume. O treino antes de a janela abrir é neutro, e a janela ignora o sono (ADR-031) |
 | D48 | O treino encerrado antes volta para a lista de letras, sem a tela de treino terminado. A reabertura desse treino aparece nos selos da janela de cada letra, que buscam as janelas de novo quando a fila de envio esvazia (US-F07-03) |
+| D49 | Depois do uso real do MVP, a onda 4b entra antes da onda 5, com o mínimo para o app ser utilizável sem a gamificação: histórico no celular (F20), tempo total e descarte do treino (US-F03-08 e US-F03-09), sinal sonoro e aceleração do descanso (US-F05-02 e US-F05-03), a direção da roda (D51) e as correções de usabilidade abertas como bug |
+| D50 | No celular, o histórico serve para ver e apagar, com confirmação; não há edição. A edição de um treino fica só pelo MCP (US-F06-02). Revisa em parte a D04 e a D15 |
+| D51 | Na roda do ajuste, arrastar para cima aumenta e arrastar para baixo diminui. Os botões − e + e os passos da D34 continuam. Substitui a direção da D34 |
 
 ---
 
@@ -1165,8 +1246,8 @@ Funcionalidade: Avisos por e-mail
 
 | Objetivo | Features | Stories |
 |---|---|---|
-| O5. Um toque por passo | F03, F04, F05 | US-F03-01, US-F03-02, US-F03-03, US-F03-04, US-F03-05, US-F03-06, US-F03-07, US-F04-01, US-F04-02, US-F05-01 |
-| O4. Progressão de carga | F02, F03, F06; depois F15a, F18 e F10 | US-F02-01, US-F02-02, US-F03-02, US-F06-01, US-F15a-01, US-F18-01 |
+| O5. Um toque por passo | F03, F04, F05 | US-F03-01, US-F03-02, US-F03-03, US-F03-04, US-F03-05, US-F03-06, US-F03-07, US-F03-08, US-F03-09, US-F04-01, US-F04-02, US-F05-01, US-F05-02, US-F05-03 |
+| O4. Progressão de carga | F02, F03, F06, F20; depois F15a, F18 e F10 | US-F02-01, US-F02-02, US-F03-02, US-F06-01, US-F20-01, US-F20-02, US-F15a-01, US-F18-01 |
 | O1. Regularidade | F07, F08, F09, F10, F11, F12, F15b, F17, F19 (pós-MVP); o MVP gera os dados para a EN01 | EN01-01, EN01-02, US-F07-01 a US-F07-03, US-F10-01 a US-F10-05, US-F12-01, US-F15b-01, US-F15b-02, US-F08-01, US-F09-01, US-F09-02, US-F11-01 a US-F11-03, US-F17-01 a US-F17-04, US-F19-01, US-F19-02 |
 | NFR01. Dados próprios | F14, F16 | US-F14-01, US-F14-02, US-F16-01 |
 | Administração | F01, F02, F06, F16 | US-F01-01, US-F01-02, US-F02-01, US-F02-02, US-F06-01, US-F06-02, US-F16-01 |
