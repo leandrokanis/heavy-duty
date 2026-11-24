@@ -13,6 +13,7 @@ export function itemIdOf(item: NewPendingItem): string {
   if (item.kind === 'set') return item.body.id
   if (item.kind === 'correction') return `${item.workoutId}:correction:${item.setId}`
   if (item.kind === 'skip') return `${item.workoutId}:skip:${item.body.plannedExerciseId}`
+  if (item.kind === 'discard') return `${item.workoutId}:discard`
   return `${item.workoutId}:finish`
 }
 
@@ -52,6 +53,14 @@ export function createDexieQueueStore(db: LocalDb): QueueStore {
     },
     async remove(id) {
       await db.pendingSets.where('id').equals(id).delete()
+    },
+    async discardWorkout(item) {
+      const id = itemIdOf(item)
+      return db.transaction('rw', db.pendingSets, async () => {
+        await db.pendingSets.filter((row) => row.workoutId === item.workoutId).delete()
+        const seq = await db.pendingSets.add({ ...item, id } as PendingItem)
+        return { ...item, id, seq } as PendingItem
+      })
     },
     async reject(id, reason) {
       await db.transaction('rw', db.pendingSets, db.rejectedSets, async () => {
@@ -95,6 +104,11 @@ export function createMemoryQueueStore(): QueueStore {
     },
     async remove(id) {
       pending = pending.filter((set) => set.id !== id)
+    },
+    async discardWorkout(item) {
+      const added = { ...item, id: itemIdOf(item), seq: nextSeq++ } as PendingItem
+      pending = [...pending.filter((stored) => stored.workoutId !== item.workoutId), added]
+      return added
     },
     async reject(id, reason) {
       const found = pending.find((set) => set.id === id)

@@ -124,6 +124,16 @@ A US-F04-02 acrescenta a folha "Corrigir última série" sobre o mesmo reducer:
 7. `announcementOf` diz "Série corrigida: 42,5 quilos, 10 repetições" e acrescenta a posição ("Série 2 de 3") quando o fechamento passou à série seguinte. `restoreWorkoutFlow` fecha a folha, e a série volta com os valores corrigidos. Cada "Salvar" que fecha a folha mostra também o aviso flutuante "Série corrigida: 42,5 kg · 10 rep" (`formatSetShort`), com `show(message, { announce: false })`: o aviso é só visual, porque a região viva da tela já anuncia a correção (`DESIGN.md`, Seção 17; EN-S1-02).
 8. A folha da sequência (US-F03-06) mostra a série corrigida quando o exercício está feito. A folha não oferece correção de série que não seja a última.
 
+## Descarte do treino em andamento
+
+A US-F03-09 acrescenta o descarte sobre o mesmo reducer (ADR-032):
+
+1. A folha da sequência do treino em andamento mostra "Descartar" abaixo de "Encerrar". O treino concluído não mostra o botão.
+2. O toque despacha `openSheet` com `'confirmDiscard'`. O reducer só abre a folha nas fases `set` e `rest`. A folha `DiscardSheet` (`discard-sheet.tsx`) tem o título "Descartar o treino", o número de séries que saem ("3 séries feitas saem do histórico" ou "Nenhuma série feita") e os botões "Continuar" e "Descartar". "Continuar" e Escape seguem `closeSheet`.
+3. "Descartar" despacha `discard`, que muda a fase para `discarded`, para o descanso e fecha a folha. Fora da folha de descartar, a ação não muda nada.
+4. O efeito da `WorkoutScreen` serializa as gravações: cada estado espera o anterior, então o descarte nunca passa à frente de uma série. Na fase `discarded`, com série registrada, o efeito chama `discardWorkout` da fila, que tira os itens do treino e põe o item `discard`; depois limpa o treino ativo e chama `onFinish`, e o app volta para a lista de letras.
+5. A fila envia o descarte para `DELETE /api/workouts/{workoutId}` (`workout-discard-client.ts`); o 404 conta como sucesso.
+
 ## Fluxo da série com um toque
 
 A US-F03-02 liga o botão "Próximo" da tela de treino, e a US-F05-01 completa o descanso:

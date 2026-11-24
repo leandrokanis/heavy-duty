@@ -1,6 +1,6 @@
 import type { Database } from '../../db/connection.js'
 import { DomainError } from '../../errors/domain-error.js'
-import { deleteWorkout } from './workout.repository.js'
+import { deleteWorkout, findWorkoutRow } from './workout.repository.js'
 import { confirmationCodeOf, isPreviewRequest, staleConfirmation } from './workout-confirmation.js'
 import { findWorkoutSnapshot } from './workout-history.service.js'
 import type { RemoveWorkoutInput, WorkoutRemoval } from './workouts.schemas.js'
@@ -22,5 +22,15 @@ export function removeWorkout(db: Database, input: RemoveWorkoutInput): WorkoutR
     }
     deleteWorkout(db, workoutId)
     return { applied: true, confirmationCode: null, workout: snapshot.workout }
+  })
+}
+
+// The phone confirms on its own sheet, so the route removes at once, with no code (ADR-032).
+export function deleteWorkoutById(db: Database, workoutId: string): void {
+  db.transaction(() => {
+    if (!findWorkoutRow(db, workoutId)) {
+      throw new DomainError('workout_not_found', 'treino não encontrado', 'not_found')
+    }
+    deleteWorkout(db, workoutId)
   })
 }

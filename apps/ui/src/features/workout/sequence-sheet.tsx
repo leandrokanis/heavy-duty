@@ -11,7 +11,7 @@ import type { SequenceItem } from './workout-flow'
 export type SequenceSheetProps = {
   open: boolean
   items: SequenceItem[]
-  // A finished workout lists everything done, with no way to another exercise or to end it.
+  // A finished workout lists everything done, with no way to another exercise, to end or to discard it.
   finished: boolean
   // True while another exercise is left to do; without it the current row has no Pular (FR-002).
   canSkip: boolean
@@ -21,6 +21,7 @@ export type SequenceSheetProps = {
   onPick: (exerciseIndex: number) => void
   onSkip: () => void
   onEnd: () => void
+  onDiscard: () => void
 }
 
 const STATUS_LABEL = {
@@ -88,6 +89,7 @@ export function SequenceSheet({
   onPick,
   onSkip,
   onEnd,
+  onDiscard,
 }: SequenceSheetProps) {
   return (
     <Sheet.Root
@@ -164,6 +166,11 @@ export function SequenceSheet({
         >
           Fechar
         </Button>
+        {finished ? null : (
+          <Button variant="destructive" size="workout" className="col-span-2" onClick={onDiscard}>
+            Descartar
+          </Button>
+        )}
       </Sheet.Actions>
     </Sheet.Root>
   )

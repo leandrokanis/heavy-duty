@@ -20,14 +20,15 @@ export type SetValues = { loadG: number; reps: number | null; seconds: number | 
 // Only the load goes on to the next set; reps and time always come from the program.
 export type CarriedValues = Pick<SetValues, 'loadG'>
 
-export type SheetName = 'none' | 'sequence' | 'confirmEnd' | 'correction'
+export type SheetName = 'none' | 'sequence' | 'confirmEnd' | 'confirmDiscard' | 'correction'
 
 // An exercise the athlete skipped and did not do yet; the instant is the last skip (ADR-023).
 export type SkippedMark = { plannedExerciseId: string; skippedAt: string }
 
 export type WorkoutFlowState = {
   session: WorkoutSession
-  phase: 'set' | 'countdown' | 'timing' | 'rest' | 'finished' | 'ended'
+  // A discarded workout leaves the device and goes to the queue as a removal (ADR-032).
+  phase: 'set' | 'countdown' | 'timing' | 'rest' | 'finished' | 'ended' | 'discarded'
   exerciseIndex: number
   setNumber: number
   // The end of the rest at the normal pace; a release of the hold moves it to the time left.
@@ -77,6 +78,7 @@ export type WorkoutFlowAction =
   | { type: 'closeSheet'; nowMs: number }
   | { type: 'skip'; nowMs: number }
   | { type: 'end'; nowMs: number }
+  | { type: 'discard' }
   | { type: 'adjust'; field: AdjustField; steps: number }
   | { type: 'correctLastSet'; values: SetValues; nowMs: number }
 
@@ -481,6 +483,8 @@ export function workoutFlowReducer(
       return skipExercise(state, action.nowMs)
     case 'end':
       return isTimerOpen(state) ? state : endWorkout(state, action.nowMs)
+    case 'discard':
+      return state.sheet === 'confirmDiscard' ? discardWorkout(state) : state
     case 'adjust':
       return adjustShown(state, action.field, action.steps)
     case 'correctLastSet':
@@ -489,10 +493,24 @@ export function workoutFlowReducer(
 }
 
 // The correction opens over the last recorded set, in the rest or on the finished screen, with no
-// other sheet open; the timer takes no sheet.
+// other sheet open; only a workout in progress is discarded; the timer takes no sheet.
 function canOpenSheet(state: WorkoutFlowState, sheet: Exclude<SheetName, 'none'>): boolean {
   if (isTimerOpen(state)) return false
+  if (sheet === 'confirmDiscard') return state.phase === 'set' || state.phase === 'rest'
   return sheet !== 'correction' || (state.sheet === 'none' && lastSetOf(state) !== null)
+}
+
+// The sets stay in the state only to count them; the screen takes the workout out of the queue.
+function discardWorkout(state: WorkoutFlowState): WorkoutFlowState {
+  return {
+    ...state,
+    phase: 'discarded',
+    restEndsAtMs: null,
+    restHoldStartedAtMs: null,
+    sheet: 'none',
+    lastStep: null,
+    finish: null,
+  }
 }
 
 export type LastSetView = {
@@ -646,7 +664,9 @@ function markSkipped(
 
 // An early end stops the rest. A workout already finished on its last set keeps its reason.
 function endWorkout(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
-  if (state.phase === 'finished' || state.phase === 'ended') return state
+  if (state.phase === 'finished' || state.phase === 'ended' || state.phase === 'discarded') {
+    return state
+  }
   const finish: FinishWorkoutBody | null =
     state.recorded.length === 0
       ? null

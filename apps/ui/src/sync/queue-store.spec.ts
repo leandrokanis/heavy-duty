@@ -108,3 +108,39 @@ describe('Given a set and a correction of it in the Dexie queue store', () => {
     })
   })
 })
+
+describe('Given a set and the finish of workout W and a set of workout V in the Dexie queue store', () => {
+  describe('When the store discards W and a new LocalDb instance opens the database', () => {
+    it('Then load should return the set of V followed by the discard of W', async () => {
+      const databaseName = `queue-store-${crypto.randomUUID()}`
+      const writer = createDexieQueueStore(new LocalDb(databaseName))
+      const otherWorkoutId = '0193a1b2-0000-7000-8000-000000000602'
+      await writer.add({
+        kind: 'set',
+        workoutId: WORKOUT_ID,
+        body: pendingSetBody({ id: 'set-1' }),
+        queuedAt: 1000,
+      })
+      await writer.add({
+        kind: 'set',
+        workoutId: otherWorkoutId,
+        body: pendingSetBody({ id: 'set-v' }),
+        queuedAt: 1000,
+      })
+      await writer.add({
+        kind: 'finish',
+        workoutId: WORKOUT_ID,
+        body: { finishedAt: '2026-11-21T19:20:00.000Z', endReason: 'ended_early' },
+        queuedAt: 1000,
+      })
+
+      await writer.discardWorkout({ kind: 'discard', workoutId: WORKOUT_ID, queuedAt: 2000 })
+
+      const { pending } = await createDexieQueueStore(new LocalDb(databaseName)).load()
+      expect(pending.map(({ kind, id }) => [kind, id])).toEqual([
+        ['set', 'set-v'],
+        ['discard', `${WORKOUT_ID}:discard`],
+      ])
+    })
+  })
+})

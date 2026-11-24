@@ -21,6 +21,8 @@ export type SyncQueue = {
   enqueueCorrection(workoutId: string, setId: string, body: CorrectWorkoutSetBody): Promise<void>
   // The end of the workout goes after its sets; a second call for the same workout does nothing.
   enqueueFinish(workoutId: string, body: FinishWorkoutBody): Promise<void>
+  // Takes every item of the workout out and queues its removal; an item in flight still ends (ADR-032).
+  discardWorkout(workoutId: string): Promise<void>
   flush(): Promise<void>
   dismissRejected(): Promise<void>
   subscribe(listener: () => void): () => void
@@ -80,7 +82,7 @@ export function createSyncQueue({ store, send, now = Date.now }: SyncQueueOption
       const outcome = await send(head)
       if (outcome.status === 'retry') return
       // A newer correction replaced the sent one while it was in flight: it still has to go, and
-      // its id must stay in the queue and in the store (ADR-025).
+      // its id must stay in the queue and in the store (ADR-025). A discard took it out already.
       if (snapshot.pending.find(({ id }) => id === head.id) !== head) continue
       // A refused finish, skip or correction leaves in silence: the athlete cannot fix it and it must not block
       // the queue (ADR-022, ADR-023).
@@ -116,12 +118,31 @@ export function createSyncQueue({ store, send, now = Date.now }: SyncQueueOption
     void flush()
   }
 
+  async function discardWorkout(workoutId: string): Promise<void> {
+    await ready
+    const item: NewPendingItem = { kind: 'discard', workoutId, queuedAt: now() }
+    const added = {
+      ...item,
+      id: itemIdOf(item),
+      seq: (snapshot.pending.at(-1)?.seq ?? 0) + 1,
+    } as PendingItem
+    update(({ pending, rejected }) => ({
+      pending: [...pending.filter((stored) => stored.workoutId !== workoutId), added],
+      rejected,
+    }))
+    await persist(() =>
+      store.discardWorkout({ kind: 'discard', workoutId, queuedAt: item.queuedAt }),
+    )
+    void flush()
+  }
+
   return {
     enqueue: (workoutId, body) => add({ kind: 'set', workoutId, body, queuedAt: now() }),
     enqueueSkip: (workoutId, body) => add({ kind: 'skip', workoutId, body, queuedAt: now() }),
     enqueueCorrection: (workoutId, setId, body) =>
       add({ kind: 'correction', workoutId, setId, body, queuedAt: now() }),
     enqueueFinish: (workoutId, body) => add({ kind: 'finish', workoutId, body, queuedAt: now() }),
+    discardWorkout,
     flush,
     async dismissRejected() {
       update(({ pending }) => ({ pending, rejected: [] }))

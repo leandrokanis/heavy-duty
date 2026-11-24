@@ -1321,7 +1321,10 @@ describe('Given the rest after the 3rd set of supino-reto, which finished the ex
   })
 })
 
-function openSheet(state: WorkoutFlowState, sheet: 'sequence' | 'confirmEnd'): WorkoutFlowState {
+function openSheet(
+  state: WorkoutFlowState,
+  sheet: 'sequence' | 'confirmEnd' | 'confirmDiscard',
+): WorkoutFlowState {
   return workoutFlowReducer(state, { type: 'openSheet', sheet })
 }
 
@@ -2704,6 +2707,44 @@ describe('Given a saved state with the correction sheet open and the last set co
         sheet: 'none',
         loadG: 42500,
       })
+    })
+  })
+})
+
+function discard(state: WorkoutFlowState): WorkoutFlowState {
+  return workoutFlowReducer(state, { type: 'discard' })
+}
+
+describe('Given 4 of 9 sets recorded and the rest of the 5th set counting', () => {
+  const resting = next(FOUR_OF_NINE.state, FOUR_OF_NINE.clock)
+
+  describe('When the discard sheet opens and discard arrives', () => {
+    it('Then the phase should be discarded, with the rest stopped, the sheet closed and no finish', () => {
+      const state = discard(openSheet(resting, 'confirmDiscard'))
+
+      expect({
+        phase: state.phase,
+        sheet: state.sheet,
+        restEndsAtMs: state.restEndsAtMs,
+        finish: state.finish,
+        sets: state.recorded.length,
+      }).toEqual({ phase: 'discarded', sheet: 'none', restEndsAtMs: null, finish: null, sets: 5 })
+    })
+  })
+
+  describe('When discard arrives with no discard sheet open', () => {
+    it('Then the state should not change', () => {
+      expect(discard(openSheet(resting, 'sequence'))).toEqual(openSheet(resting, 'sequence'))
+    })
+  })
+})
+
+describe('Given the workout finished on its last set, with nothing to discard', () => {
+  const finished = next(tricepsSet3(T0), T0)
+
+  describe('When the discard sheet is asked to open', () => {
+    it('Then the sheet should stay closed, since only a workout in progress is discarded', () => {
+      expect(openSheet(finished, 'confirmDiscard').sheet).toBe('none')
     })
   })
 })

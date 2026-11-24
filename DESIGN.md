@@ -65,6 +65,7 @@ Os princípios vêm das personas e das metas do PRD. Em conflito entre uma regra
    - Começar o treino DEVE pedir confirmação numa folha com o resumo da letra: exercícios, séries e duração estimada.
    - Encerrar o treino pelo botão "Encerrar", na folha da sequência do treino (Seção 9.4), DEVE pedir confirmação numa folha com as séries feitas e as que faltam. O treino que termina na última série NÃO DEVE pedir confirmação.
    - Na folha de encerrar, "Continuar" mantém o treino.
+   - Descartar o treino em andamento pelo botão "Descartar", na folha da sequência do treino (Seção 9.4), DEVE pedir confirmação numa folha própria, que diz quantas séries saem. Na folha de descartar, "Continuar" mantém o treino (US-F03-09; decisão do PO no plano da onda 4b).
    - Com qualquer folha aberta, a da sequência do treino ou a de encerrar, o descanso continua contando, mas a próxima série espera a folha fechar. A série seguinte aparece quando a folha fecha, e o toque em "Próximo" espera 0,8 s depois dessa passagem.
 2. **Leitura de relance.** O atleta olha o celular apoiado no banco, entre séries. Carga, repetições e descanso DEVEM ser os maiores elementos da tela de treino.
 3. **Sem teclado no treino.** O fluxo de treino NÃO DEVE abrir teclado. Valores mudam por arrasto ou por toque (PRD, F04; Seção 16.3).
@@ -192,6 +193,7 @@ O HIG não especifica botão de ação central sobre a barra de abas. Se o app a
 - Com a folha da sequência aberta, o descanso continua contando, mas a passagem à série seguinte espera a folha fechar (Seção 3, princípio 1).
 - O exercício atual DEVE ter a ação "Pular" (US-F03-05), com área de toque de 56 px ou mais, e o texto do botão DEVE dizer o nome do exercício no nome acessível. A ação "Pular" NÃO DEVE aparecer quando não resta outro exercício, não pulado, com série por fazer: nesse caso o atleta termina o exercício ou encerra o treino. A ação NÃO DEVE depender de gesto (WCAG 2.5.7).
 - O exercício pulado continua na lista com o texto "Pulado" e PODE ser feito depois. A tela de treino terminado DEVE mostrar a seção "Ficaram de fora" com os exercícios pulados que não foram feitos, e NÃO DEVE mostrar a seção quando nada ficou de fora.
+- O botão "Descartar" DEVE ficar na folha da sequência, abaixo de "Encerrar", com a cor da ação destrutiva, e NÃO DEVE aparecer no treino concluído (US-F03-09, D26).
 - O botão de encerrar o treino DEVE ficar na folha da sequência, não no topo da tela de treino (PRD, D26). O canto superior é o lugar onde se espera o voltar e fica longe do polegar, o que facilita o toque acidental.
 
 ## 10. Tipografia

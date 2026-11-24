@@ -1077,6 +1077,33 @@ Ordem da conferência, antes de ler os treinos:
 2. `to` depois de `from` (`workout_range_inverted`).
 3. Intervalo de até 92 dias (`workout_range_too_long`).
 
+## Remoção do treino
+
+A rota desta seção vem da US-F03-09 e serve também à US-F20-02 (ADR-032). A rota existe só quando a API abriu o banco e exige sessão de acesso em todos os ambientes (ADR-019) e a guarda de origem. A rota não pede o código de confirmação da ADR-026: a confirmação é a folha da tela. O planejador remove pelo `remove_workout` (US-F06-02), com prévia e código. O service fica em `apps/api/src/modules/workouts/workout-removal.service.ts`.
+
+O descarte do treino em andamento não chama a rota direto da tela: o item `discard` entra na fila local de envio depois de a fila tirar os itens do treino (ADR-032). O "Apagar treino" do histórico chama a rota direto, só com conexão.
+
+### DELETE /api/workouts/{workoutId}
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Apagar o treino com as séries e os exercícios pulados |
+| Story | US-F03-09, US-F20-02 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) e `Origin` igual a `APP_ORIGIN` quando o navegador manda o cabeçalho |
+| Caminho | `workoutId`: ID do treino em UUID |
+| Corpo | Nenhum |
+| Efeito colateral | Apaga a linha do treino; as séries e os pulados saem por `ON DELETE CASCADE`. A conferência e a remoção ficam numa transação só |
+| Idempotência | O segundo pedido responde 404. O cliente da fila conta o 404 como sucesso, porque o treino talvez nunca tenha chegado ao servidor |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 204 | Nenhum | Treino apagado |
+| 400 | `{ "code": "invalid_request", "message": "requisição inválida" }` | ID do caminho que não é UUID |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida. O corpo não tem dado de treino |
+| 403 | `{ "code": "forbidden_origin", "message": "origem não permitida" }` | `Origin` diferente de `APP_ORIGIN` |
+| 404 | `{ "code": "workout_not_found", "message": "treino não encontrado" }` | Nenhum treino com o `workoutId` |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
 ## Janelas de atividade
 
 A rota desta seção vem da US-F07-01. Ela existe só quando a API abriu o banco e exige sessão de acesso (US-F14-01). A ferramenta MCP `list_activity_windows` devolve o mesmo objeto (`mcp.md`), pelo mesmo service `listActivityWindows`, em `apps/api/src/modules/windows/window-state.service.ts`. Nenhuma tela usa a rota ainda.

@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/toast'
 import { clearActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
 import { useSyncQueue } from '@/sync/sync-context'
 import { CorrectionSheet } from './correction-sheet'
+import { DiscardSheet } from './discard-sheet'
 import type { AdjustField } from './drag-adjust'
 import { EndSheet } from './end-sheet'
 import { ExerciseBar } from './exercise-bar'
@@ -70,11 +71,12 @@ function valuesKeyOf({ loadG, reps, seconds }: RecordWorkoutSetBody): string {
 }
 
 // Puts each new set in the queue before anything else (the data that matters), then the corrections
-// of sets already queued (ADR-025), then the exercises
-// left out, then the end of the workout, then saves the workout in progress; the rest starts without waiting for the send
-// (FR-001, FR-005, FR-009). An ended workout is cleared from the device and handed to onFinish
-// once its sets and its finish are queued (FR-018). A restored flow starts with its sets already
-// in the ref, so they are not queued twice.
+// of sets already queued (ADR-025), then the exercises left out, then the end of the workout, then
+// saves the workout in progress; the rest starts without waiting for the send (FR-001, FR-005,
+// FR-009). An ended workout is cleared from the device and handed to onFinish once its sets and its
+// finish are queued (FR-018). A discarded one takes its items out of the queue and queues its
+// removal instead (ADR-032). A restored flow starts with its sets already in the ref, so they are
+// not queued twice. Each state waits for the one before, so a discard never runs ahead of a set.
 function usePersistWorkout(
   initial: WorkoutFlowState,
   state: WorkoutFlowState,
@@ -90,8 +92,19 @@ function usePersistWorkout(
   const queued = useRef(new Map(initial.recorded.map((body) => [body.id, valuesKeyOf(body)])))
   const finishQueued = useRef(false)
   const closed = useRef(false)
+  const writes = useRef<Promise<void>>(Promise.resolve())
   useEffect(() => {
     if (state === initial && state.phase !== 'ended') return
+    const { workoutId } = state.session
+    if (state.phase === 'discarded') {
+      closed.current = true
+      writes.current = writes.current.then(async () => {
+        if (state.recorded.length > 0) await queue.discardWorkout(workoutId)
+        await clearActiveWorkout()
+        onFinish()
+      })
+      return
+    }
     const fresh = state.recorded.filter(({ id }) => !queued.current.has(id))
     const corrected = state.recorded.filter(
       (body) => queued.current.has(body.id) && queued.current.get(body.id) !== valuesKeyOf(body),
@@ -99,18 +112,18 @@ function usePersistWorkout(
     for (const body of [...fresh, ...corrected]) queued.current.set(body.id, valuesKeyOf(body))
     const finish = finishQueued.current ? null : state.finish
     if (finish) finishQueued.current = true
-    void (async () => {
-      for (const body of fresh) await queue.enqueue(state.session.workoutId, body)
+    writes.current = writes.current.then(async () => {
+      for (const body of fresh) await queue.enqueue(workoutId, body)
       for (const { id, loadG, reps, seconds } of corrected) {
         const measure = reps === undefined ? { seconds } : { reps }
-        await queue.enqueueCorrection(state.session.workoutId, id, { loadG, ...measure })
+        await queue.enqueueCorrection(workoutId, id, { loadG, ...measure })
       }
       // A workout with no set recorded has no finish, so no skip goes either (FR-016).
       if (finish) {
         for (const { plannedExerciseId, skippedAt } of leftOutOf(state)) {
-          await queue.enqueueSkip(state.session.workoutId, { plannedExerciseId, skippedAt })
+          await queue.enqueueSkip(workoutId, { plannedExerciseId, skippedAt })
         }
-        await queue.enqueueFinish(state.session.workoutId, finish)
+        await queue.enqueueFinish(workoutId, finish)
       }
       setQueuedState(state)
       if (state.phase === 'ended') {
@@ -120,7 +133,7 @@ function usePersistWorkout(
       } else if (!closed.current) {
         await saveActiveWorkout(state, Date.now())
       }
-    })()
+    })
   }, [initial, state, queue, onFinish])
   return {
     stop: () => {
@@ -550,6 +563,7 @@ export function WorkoutScreen({
           dispatch({ type: 'closeSheet', nowMs })
         }}
         onEnd={() => dispatch({ type: 'openSheet', sheet: 'confirmEnd' })}
+        onDiscard={() => dispatch({ type: 'openSheet', sheet: 'confirmDiscard' })}
       />
       <EndSheet
         open={state.sheet === 'confirmEnd'}
@@ -558,6 +572,13 @@ export function WorkoutScreen({
         leftSets={totalSets - state.recorded.length}
         returnFocusRef={topControlRef}
         onConfirm={() => dispatch({ type: 'end', nowMs: Date.now() })}
+        onContinue={() => dispatch({ type: 'closeSheet', nowMs: Date.now() })}
+      />
+      <DiscardSheet
+        open={state.sheet === 'confirmDiscard'}
+        doneSets={state.recorded.length}
+        returnFocusRef={topControlRef}
+        onConfirm={() => dispatch({ type: 'discard' })}
         onContinue={() => dispatch({ type: 'closeSheet', nowMs: Date.now() })}
       />
       {lastSet ? (

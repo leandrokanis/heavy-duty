@@ -4293,6 +4293,81 @@
         }
       }
     },
+    "/api/workouts/{workoutId}": {
+      "delete": {
+        "tags": [
+          "workouts"
+        ],
+        "summary": "Remove a workout with its sets and the exercises left out. The phone confirms before the call, so the route takes no confirmation code",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193a1b2-0000-7000-8000-000000000601"
+            },
+            "required": true,
+            "name": "workoutId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The workout was removed"
+          },
+          "400": {
+            "description": "Id that is not a UUID (invalid_request)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin other than the app origin (forbidden_origin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such workout (workout_not_found)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/windows": {
       "get": {
         "tags": [

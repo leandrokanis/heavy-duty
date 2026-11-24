@@ -37,6 +37,7 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-029](029-integracao-pela-dev-com-merge-fast-forward.md) | Integração pela branch dev com merge fast-forward | Substituída por ADR-030 na parte da produção |
 | [ADR-030](030-main-por-fast-forward-a-partir-da-dev.md) | Main por fast-forward a partir da dev | Aceita |
 | [ADR-031](031-regra-da-janela-de-atividade.md) | Regra da janela de atividade | Aceita |
+| [ADR-032](032-remocao-de-treino-pelo-celular.md) | Remoção de treino pelo celular | Aceita |
 
 ## Regras
 

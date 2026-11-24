@@ -33,6 +33,7 @@ const GROUP_WINDOW_SPEC = /group-window\.feature\.spec\.js$/
 const WINDOW_ON_TODAY_SPEC = /window-on-today\.feature\.spec\.js$/
 const REOPEN_ON_FINISH_SPEC = /reopen-on-finish\.feature\.spec\.js$/
 const WORKOUT_HISTORY_SPEC = /workout-history\.feature\.spec\.js$/
+const DISCARD_WORKOUT_SPEC = /discard-workout\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -81,6 +82,7 @@ export default defineConfig({
         WINDOW_ON_TODAY_SPEC,
         REOPEN_ON_FINISH_SPEC,
         WORKOUT_HISTORY_SPEC,
+        DISCARD_WORKOUT_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -261,6 +263,15 @@ export default defineConfig({
       testMatch: WORKOUT_HISTORY_SPEC,
       fullyParallel: false,
       dependencies: ['reopen-on-finish'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Expects no workout in the database and checks that the discard leaves none, so it runs alone
+    // and one scenario at a time, after the history.
+    {
+      name: 'discard-workout',
+      testMatch: DISCARD_WORKOUT_SPEC,
+      fullyParallel: false,
+      dependencies: ['workout-history'],
       use: { ...devices['Pixel 7'] },
     },
   ],

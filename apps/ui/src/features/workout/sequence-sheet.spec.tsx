@@ -28,13 +28,18 @@ const ALL_DONE: SequenceItem[] = [
   },
 ]
 
-type Handlers = { onPick?: () => void; onSkip?: () => void; onClose?: () => void }
+type Handlers = {
+  onPick?: () => void
+  onSkip?: () => void
+  onClose?: () => void
+  onDiscard?: () => void
+}
 
 function renderSheet(
   items: SequenceItem[],
   finished: boolean,
   canSkip = false,
-  { onPick = vi.fn(), onSkip = vi.fn(), onClose = vi.fn() }: Handlers = {},
+  { onPick = vi.fn(), onSkip = vi.fn(), onClose = vi.fn(), onDiscard = vi.fn() }: Handlers = {},
 ) {
   render(
     <SequenceSheet
@@ -47,13 +52,14 @@ function renderSheet(
       onPick={onPick}
       onSkip={onSkip}
       onEnd={vi.fn()}
+      onDiscard={onDiscard}
     />,
   )
 }
 
 describe('Given the sequence sheet of a finished workout, with every exercise done', () => {
   describe('When the sheet renders', () => {
-    it('Then should have no Encerrar button and no item that leads to an exercise, only the close control', async () => {
+    it('Then should have no Encerrar or Descartar button and no item that leads to an exercise, only the close control', async () => {
       renderSheet(ALL_DONE, true)
 
       const dialog = await screen.findByRole('dialog')
@@ -68,7 +74,7 @@ describe('Given the sequence sheet of a finished workout, with every exercise do
 
 describe('Given the sequence sheet of a workout in progress, with one exercise to do', () => {
   describe('When the sheet renders', () => {
-    it('Then should offer the exercise to do as a button, with Encerrar, and the exercise done as plain text', async () => {
+    it('Then should offer the exercise to do as a button, with Encerrar and Descartar below it, and the exercise done as plain text', async () => {
       renderSheet(
         [
           {
@@ -96,7 +102,7 @@ describe('Given the sequence sheet of a workout in progress, with one exercise t
         within(dialog)
           .getAllByRole('button')
           .map((button) => button.getAttribute('aria-label') ?? button.textContent),
-      ).toEqual(['Tríceps na poliaPor fazer0 de 3', 'Encerrar', 'Fechar'])
+      ).toEqual(['Tríceps na poliaPor fazer0 de 3', 'Encerrar', 'Fechar', 'Descartar'])
     })
   })
 })
@@ -211,7 +217,7 @@ describe('Given a sequence with prancha skipped', () => {
 
 describe('Given a sequence with supino-reto done with 3 recorded sets and prancha current', () => {
   describe('When the sheet renders', () => {
-    it('Then the list "Séries de Supino reto" should read the 3 sets in order, and the buttons stay Pular Prancha, the row of Tríceps na polia, Encerrar and Fechar', async () => {
+    it('Then the list "Séries de Supino reto" should read the 3 sets in order, and the buttons stay Pular Prancha, the row of Tríceps na polia, Encerrar, Fechar and Descartar', async () => {
       renderSheet(WITH_PRANCHA_CURRENT, false, true)
 
       const dialog = await screen.findByRole('dialog')
@@ -229,7 +235,13 @@ describe('Given a sequence with supino-reto done with 3 recorded sets and pranch
           'Série 2: 42,5 kg, 10 repetições',
           'Série 3: 42,5 kg, 10 repetições',
         ],
-        buttons: ['Pular Prancha', 'Tríceps na poliaPor fazer0 de 3', 'Encerrar', 'Fechar'],
+        buttons: [
+          'Pular Prancha',
+          'Tríceps na poliaPor fazer0 de 3',
+          'Encerrar',
+          'Fechar',
+          'Descartar',
+        ],
       })
     })
   })
@@ -486,6 +498,19 @@ describe('Given a sequence with an exercise done, the current one, one to do and
       await close()
 
       await waitFor(() => expect(onClose).toHaveBeenCalled())
+    })
+  })
+})
+
+describe('Given the sequence sheet of a workout in progress', () => {
+  describe('When the athlete taps "Descartar"', () => {
+    it('Then should call onDiscard once', async () => {
+      const onDiscard = vi.fn()
+      renderSheet(WITH_PRANCHA_CURRENT, false, true, { onDiscard })
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Descartar' }))
+
+      expect(onDiscard).toHaveBeenCalledTimes(1)
     })
   })
 })

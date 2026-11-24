@@ -449,7 +449,10 @@ describe('Given set S and the correction of S to 42.500 g in the queue while sen
       await queue.enqueueCorrection(WORKOUT_ID, 'set-s', { loadG: 40000, reps: 10 })
       const queued = queue
         .getSnapshot()
-        .pending.map(({ kind, body }) => [kind, 'loadG' in body && body.loadG])
+        .pending.map(({ kind, body }) => [
+          kind,
+          body !== undefined && 'loadG' in body && body.loadG,
+        ])
       await queue.flush()
       send.mockClear()
       outcome = CONFIRMED
@@ -529,6 +532,93 @@ describe('Given the correction of set S followed by set T in the queue', () => {
       }).toEqual({
         sent: [`${WORKOUT_ID}:correction:set-s`, 'set-t'],
         snapshot: { pending: [], rejected: [] },
+      })
+    })
+  })
+})
+
+describe('Given a set, a correction and the finish of workout W and a set of workout V in the queue while send answers retry', () => {
+  describe('When W is discarded and send starts answering confirmed', () => {
+    it('Then should send the set of V and then the discard of W, and nothing else of W', async () => {
+      const otherWorkoutId = '0193a1b2-0000-7000-8000-000000000602'
+      let outcome: SendOutcome = RETRY
+      const send = vi.fn(async (_item: PendingItem) => outcome)
+      const store = createMemoryQueueStore()
+      const queue = createSyncQueue({ store, send, now: () => NOW_MS })
+      await queue.enqueue(WORKOUT_ID, pendingSetBody({ id: 'set-1' }))
+      await queue.enqueue(otherWorkoutId, pendingSetBody({ id: 'set-v' }))
+      await queue.enqueueCorrection(WORKOUT_ID, 'set-1', { loadG: 42500, reps: 10 })
+      await queue.enqueueFinish(WORKOUT_ID, {
+        finishedAt: '2026-11-21T19:20:00.000Z',
+        endReason: 'ended_early',
+      })
+
+      await queue.discardWorkout(WORKOUT_ID)
+      await queue.flush()
+      const stored = (await store.load()).pending.map(({ id }) => id)
+      send.mockClear()
+      outcome = CONFIRMED
+      await queue.flush()
+
+      expect({
+        stored,
+        sent: send.mock.calls.map(([item]) => item.id),
+        pending: queue.getSnapshot().pending,
+      }).toEqual({
+        stored: ['set-v', `${WORKOUT_ID}:discard`],
+        sent: ['set-v', `${WORKOUT_ID}:discard`],
+        pending: [],
+      })
+    })
+  })
+})
+
+describe('Given set S of workout W in flight, with the send not answered yet', () => {
+  describe('When W is discarded and the send of S then confirms', () => {
+    it('Then the discard of W should be sent after S, and S should not be sent again', async () => {
+      let answerS: (outcome: SendOutcome) => void = () => {}
+      const send = vi.fn((item: PendingItem) =>
+        item.id === 'set-s'
+          ? new Promise<SendOutcome>((resolve) => {
+              answerS = resolve
+            })
+          : Promise.resolve(CONFIRMED),
+      )
+      const queue = createSyncQueue({ store: createMemoryQueueStore(), send, now: () => NOW_MS })
+      await queue.enqueue(WORKOUT_ID, pendingSetBody({ id: 'set-s' }))
+      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1))
+
+      await queue.discardWorkout(WORKOUT_ID)
+      answerS(CONFIRMED)
+      await queue.flush()
+
+      expect({
+        sent: send.mock.calls.map(([item]) => item.id),
+        pending: queue.getSnapshot().pending,
+      }).toEqual({ sent: ['set-s', `${WORKOUT_ID}:discard`], pending: [] })
+    })
+  })
+})
+
+describe('Given the discard of workout W followed by a set of workout V in the queue', () => {
+  describe('When the API refuses the discard with 409 and answers the set with retry', () => {
+    it('Then the discard should leave the queue with no entry in rejected, and the set of V should stay', async () => {
+      const send = vi.fn(
+        async (item: PendingItem): Promise<SendOutcome> =>
+          item.kind === 'discard'
+            ? { status: 'rejected', code: 'conflict', message: 'conflito' }
+            : RETRY,
+      )
+      const queue = createSyncQueue({ store: createMemoryQueueStore(), send, now: () => NOW_MS })
+      await queue.discardWorkout(WORKOUT_ID)
+      await queue.enqueue('0193a1b2-0000-7000-8000-000000000602', pendingSetBody({ id: 'set-v' }))
+
+      await queue.flush()
+
+      const { pending, rejected } = queue.getSnapshot()
+      expect({ pending: pending.map(({ id }) => id), rejected }).toEqual({
+        pending: ['set-v'],
+        rejected: [],
       })
     })
   })

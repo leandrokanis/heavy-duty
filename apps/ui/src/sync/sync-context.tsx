@@ -8,6 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react'
+import { deleteWorkout } from '@/features/workout/workout-discard-client'
 import { postWorkoutFinish } from '@/features/workout/workout-finish-client'
 import { postWorkoutSet } from '@/features/workout/workout-set-client'
 import { patchWorkoutSet } from '@/features/workout/workout-set-correction-client'
@@ -30,12 +31,13 @@ function createDeferredStore(): QueueStore {
     add: async (set) => (await opened).add(set),
     replace: async (item) => (await opened).replace(item),
     remove: async (id) => (await opened).remove(id),
+    discardWorkout: async (item) => (await opened).discardWorkout(item),
     reject: async (id, reason) => (await opened).reject(id, reason),
     clearRejected: async () => (await opened).clearRejected(),
   }
 }
 
-// The queue holds sets, their corrections, the exercises left out and the end of the workout; each kind has its own route.
+// The queue holds sets, their corrections, the exercises left out, the end and the discard of the workout; each kind has its own route.
 export function sendPendingItem(item: PendingItem) {
   switch (item.kind) {
     case 'set':
@@ -46,6 +48,8 @@ export function sendPendingItem(item: PendingItem) {
       return patchWorkoutSet(item.workoutId, item.setId, item.body)
     case 'finish':
       return postWorkoutFinish(item.workoutId, item.body)
+    case 'discard':
+      return deleteWorkout(item.workoutId)
   }
 }
 

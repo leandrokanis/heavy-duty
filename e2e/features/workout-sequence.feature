@@ -53,6 +53,7 @@ Feature: Workout sequence and going to any exercise that is missing
       | Crucifixo        | Atual     | 0 de 3 |
       | Tríceps na polia | Por fazer | 0 de 3 |
     And the sequence sheet should have the button "Encerrar"
+    And the sequence sheet should have the button "Descartar"
 
   Scenario: sequence sheet with the accessibility settings on
     Given the athlete started the day "A" at "2026-11-21T18:30:00.000Z"

@@ -21,6 +21,7 @@ import type { DatabaseHealthProbe } from './modules/system/health.service.js'
 import { createSystemStatusRoutes } from './modules/system/system-status.routes.js'
 import { createWindowsRoutes } from './modules/windows/windows.routes.js'
 import { createTodayRoutes } from './modules/workouts/today.routes.js'
+import { createWorkoutDeleteRoutes } from './modules/workouts/workout-delete.routes.js'
 import { createWorkoutFinishRoutes } from './modules/workouts/workout-finish.routes.js'
 import { createWorkoutHistoryRoutes } from './modules/workouts/workout-history.routes.js'
 import { createWorkoutSetRoutes } from './modules/workouts/workout-set.routes.js'
@@ -81,6 +82,7 @@ export function createApp(options: AppOptions): OpenAPIHono {
     app.route('/', createWorkoutFinishRoutes(options.db))
     app.route('/', createWorkoutSkipRoutes(options.db))
     app.route('/', createWorkoutHistoryRoutes(options.db))
+    app.route('/', createWorkoutDeleteRoutes(options.db))
     app.route('/', createWindowsRoutes({ db: options.db, now }))
     app.openAPIRegistry.registerComponent(
       'securitySchemes',

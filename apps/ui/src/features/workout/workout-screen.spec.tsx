@@ -2889,3 +2889,83 @@ describe('Given the ring of the 90 s rest', () => {
     })
   })
 })
+
+async function confirmDiscard(topControl: string) {
+  const sequence = await openSequence(topControl)
+  fireEvent.click(within(sequence).getByRole('button', { name: 'Descartar' }))
+  await act(async () => {})
+  const confirmation = screen.getByRole('dialog', { name: 'Descartar o treino' })
+  const text = within(confirmation).getByText(/série|Nenhuma/).textContent
+  await act(async () => {
+    fireEvent.click(within(confirmation).getByRole('button', { name: 'Descartar' }))
+  })
+  return text
+}
+
+describe('Given 4 of 9 sets recorded and still in the queue', () => {
+  describe('When the athlete taps Descartar in the sequence sheet and confirms', () => {
+    it('Then the confirmation should say the 4 sets leave, the queue should hold only the discard, the workout in progress should be cleared and onFinish should be called', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const onFinish = vi.fn()
+      const { queue } = renderWorkout(THREE_EXERCISES, onFinish, NEVER_SENT)
+      await tapSets(4)
+
+      const text = await confirmDiscard(TOP_CONTROL_ON_CRUCIFIXO)
+
+      expect({
+        text,
+        pending: queue.getSnapshot().pending.map(({ kind, id }) => [kind, id]),
+        saved: await loadActiveWorkout(Date.now()),
+        finished: onFinish.mock.calls.length,
+      }).toEqual({
+        text: '4 séries feitas saem do histórico',
+        pending: [['discard', `${WORKOUT_ID}:discard`]],
+        saved: null,
+        finished: 1,
+      })
+    })
+  })
+})
+
+describe('Given the discard confirmation open after 4 of 9 sets recorded', () => {
+  describe('When the athlete taps Continuar', () => {
+    it('Then the confirmation should close, the 4 sets should stay queued and the workout should go on', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const onFinish = vi.fn()
+      const { queue } = renderWorkout(THREE_EXERCISES, onFinish, NEVER_SENT)
+      await tapSets(4)
+      const sequence = await openSequence(TOP_CONTROL_ON_CRUCIFIXO)
+      fireEvent.click(within(sequence).getByRole('button', { name: 'Descartar' }))
+      await act(async () => {})
+
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Continuar' }))
+      await act(async () => {})
+
+      expect({
+        dialog: screen.queryByRole('dialog'),
+        kinds: queue.getSnapshot().pending.map(({ kind }) => kind),
+        saved: (await loadActiveWorkout(Date.now()))?.recorded.length,
+        onFinish: onFinish.mock.calls.length,
+      }).toEqual({ dialog: null, kinds: ['set', 'set', 'set', 'set'], saved: 4, onFinish: 0 })
+    })
+  })
+})
+
+describe('Given no set recorded and the discard sheet reached from the sequence', () => {
+  describe('When the athlete discards the workout', () => {
+    it('Then nothing should be queued, the workout in progress should be cleared and onFinish should be called', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const onFinish = vi.fn()
+      const { queue } = renderWorkout(THREE_EXERCISES, onFinish, NEVER_SENT)
+
+      const text = await confirmDiscard('Sequência do treino, letra A, exercício 1 de 3')
+
+      expect({
+        text,
+        pending: queue.getSnapshot().pending,
+        saved: await loadActiveWorkout(Date.now()),
+        onFinish: onFinish.mock.calls.length,
+      }).toEqual({ text: 'Nenhuma série feita', pending: [], saved: null, onFinish: 1 })
+    })
+  })
+})

@@ -50,7 +50,23 @@ export type PendingCorrection = {
   queuedAt: number
 }
 
-export type PendingItem = PendingSet | PendingFinish | PendingSkip | PendingCorrection
+// The removal of a discarded workout, queued after every item of it left the queue; the id is
+// `${workoutId}:discard` and it has no body (ADR-032).
+export type PendingDiscard = {
+  kind: 'discard'
+  seq: number
+  id: string
+  workoutId: string
+  body?: undefined
+  queuedAt: number
+}
+
+export type PendingItem =
+  | PendingSet
+  | PendingFinish
+  | PendingSkip
+  | PendingCorrection
+  | PendingDiscard
 
 // A set the API refused for a domain rule; the server wins, so it is never resent.
 export type RejectedSet = {
@@ -67,6 +83,9 @@ export type NewPendingItem =
   | Pick<PendingFinish, 'kind' | 'workoutId' | 'body' | 'queuedAt'>
   | Pick<PendingSkip, 'kind' | 'workoutId' | 'body' | 'queuedAt'>
   | Pick<PendingCorrection, 'kind' | 'workoutId' | 'setId' | 'body' | 'queuedAt'>
+  | NewPendingDiscard
+
+export type NewPendingDiscard = Pick<PendingDiscard, 'kind' | 'workoutId' | 'queuedAt'>
 
 export type RejectionReason = Pick<RejectedSet, 'code' | 'message' | 'rejectedAt'>
 
@@ -86,6 +105,8 @@ export interface QueueStore {
   // Takes the stored item with the same id out and adds this one at the end of the order.
   replace(item: NewPendingItem): Promise<PendingItem>
   remove(id: string): Promise<void>
+  // Takes every item of the workout out and adds the discard at the end, in one step (ADR-032).
+  discardWorkout(item: NewPendingDiscard): Promise<PendingItem>
   // Takes the set out of the pending list and records it as rejected, in one step.
   reject(id: string, reason: RejectionReason): Promise<void>
   clearRejected(): Promise<void>
