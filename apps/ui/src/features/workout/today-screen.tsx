@@ -6,17 +6,20 @@ import { IconLink } from '@/components/ui/icon-link'
 import { OfflineNotice } from '@/features/auth/offline-notice'
 import { SignInScreen } from '@/features/auth/sign-in-screen'
 import { loadActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
+import { loadLevels } from '@/sync/levels-cache'
 import { useSyncQueue, useSyncSnapshot } from '@/sync/sync-context'
 import { type LoadedToday, loadToday } from '@/sync/today-cache'
 import { loadWindows } from '@/sync/windows-cache'
 import { createClientId } from './client-id'
 import { LetterList } from './letter-list'
+import type { MuscleGroupLevels } from './levels.types'
 import { QueueNotices } from './queue-notices'
 import { StartSheet } from './start-sheet'
 import type { Today, TodayDay } from './today.types'
 import type { ActivityWindows } from './windows.types'
 import {
   createWorkoutFlow,
+  frozenLevelsOf,
   frozenWindowsOf,
   restoreWorkoutFlow,
   type WorkoutFlowState,
@@ -40,16 +43,19 @@ export function TodayScreen() {
   const queue = useSyncQueue()
   const [result, setResult] = useState<LoadedToday | null>(null)
   const [windows, setWindows] = useState<ActivityWindows | null>(null)
+  const [levels, setLevels] = useState<MuscleGroupLevels | null>(null)
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [sheetDay, setSheetDay] = useState<TodayDay | null>(null)
   // 'pending' until the device has answered whether a workout is in progress.
   const [flow, setFlow] = useState<WorkoutFlowState | null | 'pending'>('pending')
 
+  // The windows and the levels come from the history the API holds, so they reload together.
   const reloadWindows = useCallback(() => {
     loadWindows().then((loaded) => {
       setWindows(loaded.status === 'ok' ? loaded.windows : null)
       setNowMs(Date.now())
     })
+    loadLevels().then((loaded) => setLevels(loaded.status === 'ok' ? loaded.levels : null))
   }, [])
 
   // The queue sends again after each answer of the API, as it may be a session that came back.
@@ -123,6 +129,7 @@ export function TodayScreen() {
           <TodayContent
             today={result.today}
             windows={windows}
+            levels={levels}
             nowMs={nowMs}
             onSelect={(day) => {
               if (day.exercises.length > 0) setSheetDay(day)
@@ -138,7 +145,7 @@ export function TodayScreen() {
         onStart={(day) => {
           setSheetDay(null)
           if (result?.status === 'ok' && result.today.program) {
-            const session = startSession(result.today.program.id, day, windows)
+            const session = startSession(result.today.program.id, day, windows, levels)
             const started = createWorkoutFlow(session)
             void saveActiveWorkout(started, Date.now())
             setFlow(started)
@@ -150,11 +157,13 @@ export function TodayScreen() {
 }
 
 // The workout id and start are born on the phone at "Começar"; the API creates the workout with the
-// first set. The windows on screen, from the API or the copy on the device, freeze here (D56).
+// first set. The windows and the levels on screen, from the API or the copy on the device, freeze
+// here (D56, ADR-034).
 function startSession(
   programId: string,
   day: TodayDay,
   windows: ActivityWindows | null,
+  levels: MuscleGroupLevels | null,
 ): WorkoutSession {
   const nowMs = Date.now()
   return {
@@ -163,17 +172,19 @@ function startSession(
     programId,
     day,
     windows: frozenWindowsOf(windows),
+    levels: frozenLevelsOf(levels),
   }
 }
 
 type TodayContentProps = {
   today: Today
   windows: ActivityWindows | null
+  levels: MuscleGroupLevels | null
   nowMs: number
   onSelect: (day: TodayDay) => void
 }
 
-function TodayContent({ today, windows, nowMs, onSelect }: TodayContentProps) {
+function TodayContent({ today, windows, levels, nowMs, onSelect }: TodayContentProps) {
   const emptyState = emptyStateOf(today)
   if (emptyState) {
     return (
@@ -188,6 +199,7 @@ function TodayContent({ today, windows, nowMs, onSelect }: TodayContentProps) {
       suggestedLetter={today.suggestedLetter}
       onSelect={onSelect}
       windows={windows}
+      levels={levels}
       nowMs={nowMs}
     />
   )

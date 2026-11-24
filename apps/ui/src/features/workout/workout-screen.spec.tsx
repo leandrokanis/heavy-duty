@@ -8,9 +8,10 @@ import { SyncProvider, sendPendingItem } from '@/sync/sync-context'
 import { createSyncQueue, type SendItem, type SyncQueue } from '@/sync/sync-queue'
 import { CRUCIFIXO, PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayDay } from './test-today'
 import type { Sound, TonePlayer } from './tone-player'
-import { TICK_MS } from './workout.config'
+import { LEVEL_CELEBRATION_MS, TICK_MS } from './workout.config'
 import {
   createWorkoutFlow,
+  type FrozenLevel,
   type FrozenWindow,
   restoreWorkoutFlow,
   type WorkoutFlowState,
@@ -22,13 +23,18 @@ import type { SendOutcome } from './workout-set.types'
 const WORKOUT_ID = '0193a1b2-0000-7000-8000-000000000601'
 const STARTED_AT = '2026-11-21T18:30:00.000Z'
 
-function flowOf(exercises = [SUPINO_RETO, PRANCHA], windows: FrozenWindow[] = []) {
+function flowOf(
+  exercises = [SUPINO_RETO, PRANCHA],
+  windows: FrozenWindow[] = [],
+  levels: FrozenLevel[] = [],
+) {
   return createWorkoutFlow({
     workoutId: WORKOUT_ID,
     startedAt: STARTED_AT,
     programId: 'program-1',
     day: todayDay('A', 'Superior', exercises),
     windows,
+    levels,
   })
 }
 
@@ -69,6 +75,9 @@ function recordingPlayer(heard: 'timer' | 'game' = 'timer'): {
   return { player: { unlock, play }, cues, unlock }
 }
 
+// GET /api/levels answers 500 unless a test sets levelsAnswer; it never takes a queued response.
+let levelsAnswer: () => Response = () => new Response('{}', { status: 500 })
+
 function stubFetch(...responses: (Response | Error | 'pending')[]) {
   const fetchMock = vi.fn()
   for (const response of responses) {
@@ -78,7 +87,9 @@ function stubFetch(...responses: (Response | Error | 'pending')[]) {
       return response
     })
   }
-  vi.stubGlobal('fetch', fetchMock)
+  vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) =>
+    input === '/api/levels' ? Promise.resolve(levelsAnswer()) : fetchMock(input, init),
+  )
   return fetchMock
 }
 
@@ -115,6 +126,7 @@ function tapNext() {
 }
 
 afterEach(async () => {
+  levelsAnswer = () => new Response('{}', { status: 500 })
   localStorage.clear()
   vi.useRealTimers()
   Reflect.deleteProperty(navigator, 'wakeLock')
@@ -230,7 +242,7 @@ describe('Given the workout screen on set 1 of supino-reto, for a double tap', (
       await act(async () => vi.advanceTimersByTimeAsync(300))
       await act(async () => tapNext())
 
-      expect({ posts: fetchMock.mock.calls.length, rest: restClock() }).toEqual({
+      expect({ posts: sentBodies(fetchMock).length, rest: restClock() }).toEqual({
         posts: 1,
         rest: '1:30',
       })
@@ -378,7 +390,7 @@ describe('Given the rest of set 1 of supino-reto running', () => {
         duringRest,
         resting: screen.queryByRole('timer', { name: 'Descanso' }) !== null,
         sets: valueTextOf('Séries'),
-        posts: fetchMock.mock.calls.length,
+        posts: sentBodies(fetchMock).length,
       }).toEqual({ duringRest: 'enabled', resting: false, sets: '2 de 3', posts: 1 })
     })
   })
@@ -400,7 +412,7 @@ describe('Given the rest of set 1 of supino-reto running, for a double tap', () 
       expect({
         resting: screen.queryByRole('timer', { name: 'Descanso' }) !== null,
         sets: valueTextOf('Séries'),
-        posts: fetchMock.mock.calls.length,
+        posts: sentBodies(fetchMock).length,
       }).toEqual({ resting: false, sets: '2 de 3', posts: 1 })
     })
   })
@@ -3186,6 +3198,154 @@ describe('Given supino-reto planned for 10 reps at 40 kg (US-F10-01)', () => {
         gameSound: localStorage.getItem('heavy-duty:game-sound'),
         timerSound: screen.getByRole('button', { name: 'Som' }).getAttribute('aria-pressed'),
       }).toEqual({ points: '+10', cues: [], gameSound: 'off', timerSound: 'true' })
+    })
+  })
+})
+
+describe('Given the levels frozen at the start of the workout (US-F10-02)', () => {
+  const SUPINO_AT_PLAN = {
+    ...SUPINO_RETO,
+    loadG: 40000,
+    secondaryMuscleGroups: [{ slug: 'triceps', name: 'tríceps' }],
+  }
+  const chestAt = (level: number, points: number): FrozenLevel => ({
+    muscleGroupSlug: 'chest',
+    level,
+    points,
+    bestLevel: level,
+  })
+  const levelOf = (name: string) =>
+    within(screen.getByRole('list', { name: 'Níveis dos grupos' }))
+      .getByRole('progressbar', { name: `Nível de ${name}` })
+      .getAttribute('aria-valuetext')
+
+  describe('When chest is at level 3 and the athlete records supino-reto', () => {
+    it('Then the rest shows the bar of chest with the gain of the set, and triceps with half the set points', async () => {
+      stubFetch(created())
+      renderWorkout(
+        [SUPINO_AT_PLAN],
+        vi.fn(),
+        sendPendingItem,
+        flowOf([SUPINO_AT_PLAN], [], [chestAt(3, 10)]),
+      )
+
+      await act(async () => tapNext())
+
+      const panel = screen.getByRole('list', { name: 'Níveis dos grupos' })
+      expect({
+        chest: levelOf('peito'),
+        triceps: levelOf('tríceps'),
+        gains: within(panel)
+          .getAllByText(/^\+\d+$/)
+          .map((gain) => gain.textContent),
+      }).toEqual({
+        chest: 'Nível 3, 30 de 46 pontos',
+        triceps: 'Nível 1, 5 de 40 pontos',
+        gains: ['+20', '+5'],
+      })
+    })
+  })
+
+  describe('When 5 points are left for chest to leave level 3 and the set yields 20', () => {
+    it('Then chest goes to level 4 with the 15 left over, and the live region tells it', async () => {
+      stubFetch(created())
+      renderWorkout(
+        [SUPINO_AT_PLAN],
+        vi.fn(),
+        sendPendingItem,
+        flowOf([SUPINO_AT_PLAN], [], [chestAt(3, 41)]),
+      )
+
+      await act(async () => tapNext())
+
+      expect({
+        chest: levelOf('peito'),
+        announced: screen.getByRole('status').textContent,
+        fullScreen: document.querySelector('[data-level-celebration]'),
+      }).toEqual({
+        chest: 'Nível 4, 15 de 49 pontos',
+        announced: 'Série 1 de 3 registrada, 10 pontos. Peito subiu para o nível 4',
+        fullScreen: null,
+      })
+    })
+  })
+
+  describe('When chest goes from level 4 to level 5', () => {
+    it('Then the silver seal shows in full screen, hidden from the screen reader and letting taps through, for 1.7 s', async () => {
+      vi.useFakeTimers()
+      stubFetch(created())
+      renderWorkout(
+        [SUPINO_AT_PLAN],
+        vi.fn(),
+        sendPendingItem,
+        flowOf([SUPINO_AT_PLAN], [], [chestAt(4, 40)]),
+      )
+      await act(async () => tapNext())
+      const shown = document.querySelector('[data-level-celebration]')
+      const during = {
+        text: shown?.textContent,
+        hidden: shown?.getAttribute('aria-hidden'),
+        tier: shown?.querySelector('[data-tier]')?.getAttribute('data-tier'),
+        letsTapsThrough: shown?.className.includes('pointer-events-none'),
+      }
+
+      await act(async () => vi.advanceTimersByTime(LEVEL_CELEBRATION_MS))
+
+      expect({ during, after: document.querySelector('[data-level-celebration]') }).toEqual({
+        during: { text: '5peitoNível 5', hidden: 'true', tier: 'silver', letsTapsThrough: true },
+        after: null,
+      })
+    })
+  })
+
+  describe('When chest is at level 20 and the athlete records supino-reto', () => {
+    it('Then chest stays at level 20 with the bar full', async () => {
+      stubFetch(created())
+      renderWorkout(
+        [SUPINO_AT_PLAN],
+        vi.fn(),
+        sendPendingItem,
+        flowOf([SUPINO_AT_PLAN], [], [chestAt(20, 97)]),
+      )
+
+      await act(async () => tapNext())
+
+      expect(levelOf('peito')).toBe('Nível 20, 97 de 97 pontos')
+    })
+  })
+
+  describe('When the queue sends the set and GET /api/levels answers with chest at level 7', () => {
+    it('Then the bar of chest swaps the provisional value for the answer of the API', async () => {
+      const apiLevels = {
+        now: '2026-11-21T18:32:00.000Z',
+        groups: [
+          {
+            muscleGroup: { slug: 'chest', name: 'peito' },
+            level: 7,
+            points: 3,
+            levelCost: 58,
+            bestLevel: 7,
+            tier: 'silver',
+          },
+        ],
+      }
+      let levelsRead = 0
+      levelsAnswer = () => {
+        levelsRead += 1
+        return new Response(JSON.stringify(apiLevels), { status: 200 })
+      }
+      stubFetch(created())
+      renderWorkout(
+        [SUPINO_AT_PLAN],
+        vi.fn(),
+        sendPendingItem,
+        flowOf([SUPINO_AT_PLAN], [], [chestAt(3, 10)]),
+      )
+
+      await act(async () => tapNext())
+
+      await waitFor(() => expect(levelOf('peito')).toBe('Nível 7, 3 de 58 pontos'))
+      expect(levelsRead).toBe(1)
     })
   })
 })

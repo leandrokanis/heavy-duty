@@ -7,10 +7,14 @@ import {
   currentExercise,
   deadlineOf,
   exerciseProgressOf,
+  type FrozenLevel,
   type FrozenWindow,
+  lastSetLevelsOf,
   lastSetOf,
   lastSetPointsOf,
   leftOutOf,
+  levelCelebrationOf,
+  levelUpTextOf,
   restMsLeftOf,
   restoreWorkoutFlow,
   sequenceOf,
@@ -28,6 +32,7 @@ const T0 = Date.UTC(2026, 10, 21, 18, 31, 5)
 function sessionOf(
   exercises = [SUPINO_RETO, PRANCHA],
   windows: FrozenWindow[] = [],
+  levels: FrozenLevel[] = [],
 ): WorkoutSession {
   return {
     workoutId: '0193a1b2-0000-7000-8000-000000000601',
@@ -35,6 +40,7 @@ function sessionOf(
     programId: 'program-1',
     day: todayDay('A', 'Superior', exercises),
     windows,
+    levels,
   }
 }
 
@@ -2857,6 +2863,175 @@ describe('lastSetPointsOf', () => {
 
         expect(announcementOf(state)).toBe('Série 1 de 3 registrada, 20 pontos em dobro')
       })
+    })
+  })
+})
+
+describe('lastSetLevelsOf (US-F10-02)', () => {
+  // Supino reto at plan, 3 sets in the letter: chest gains 10 × 6 ÷ 3 = 20 per set, triceps 5.
+  const SUPINO_AT_PLAN = {
+    ...SUPINO_RETO,
+    loadG: 40000,
+    secondaryMuscleGroups: [{ slug: 'triceps', name: 'tríceps' }],
+  }
+  const chestAt = (level: number, points: number, bestLevel = level): FrozenLevel => ({
+    muscleGroupSlug: 'chest',
+    level,
+    points,
+    bestLevel,
+  })
+  const chestOpen: FrozenWindow = {
+    muscleGroupSlug: 'chest',
+    opensAt: '2026-11-20T18:00:00.000Z',
+    closesAt: '2026-11-25T18:00:00.000Z',
+  }
+
+  describe('Given chest at level 3 with 10 points', () => {
+    describe('When the athlete records supino-reto and the rest starts', () => {
+      it('Then the bar of chest grows by the gain of the set, and triceps gets half the set points', () => {
+        const state = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [], [chestAt(3, 10)])), T0)
+
+        expect(lastSetLevelsOf(state)).toEqual([
+          {
+            slug: 'chest',
+            name: 'peito',
+            before: { level: 3, points: 10, bestLevel: 3 },
+            after: { level: 3, points: 30, bestLevel: 3 },
+            gain: 20,
+            levelsReached: [],
+          },
+          {
+            slug: 'triceps',
+            name: 'tríceps',
+            before: { level: 1, points: 0, bestLevel: 1 },
+            after: { level: 1, points: 5, bestLevel: 1 },
+            gain: 5,
+            levelsReached: [],
+          },
+        ])
+      })
+    })
+  })
+
+  describe('Given 5 points left for chest to leave level 3', () => {
+    describe('When a set yields 20 for chest', () => {
+      it('Then chest goes to level 4 and the bar shows the 15 left over', () => {
+        const state = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [], [chestAt(3, 41)])), T0)
+
+        expect(lastSetLevelsOf(state)[0]).toMatchObject({
+          after: { level: 4, points: 15, bestLevel: 4 },
+          levelsReached: [4],
+        })
+      })
+    })
+  })
+
+  describe('Given chest in its window', () => {
+    describe('When the athlete records supino-reto', () => {
+      it('Then chest gains double and triceps, outside its window, the common half', () => {
+        const state = next(
+          createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [chestOpen], [chestAt(3, 0)])),
+          T0,
+        )
+
+        expect(lastSetLevelsOf(state).map(({ slug, gain }) => [slug, gain])).toEqual([
+          ['chest', 40],
+          ['triceps', 5],
+        ])
+      })
+    })
+  })
+
+  describe('Given chest at level 20', () => {
+    describe('When the athlete records supino-reto', () => {
+      it('Then chest stays at level 20 with the bar full', () => {
+        const state = next(
+          createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [], [chestAt(20, 97)])),
+          T0,
+        )
+
+        expect(lastSetLevelsOf(state)[0]?.after).toEqual({ level: 20, points: 97, bestLevel: 20 })
+      })
+    })
+  })
+
+  describe('Given two sets recorded, the first one already in the levels of the API', () => {
+    describe('When the levels are read on top of the API answer', () => {
+      it('Then only the second set is added to the answer of the API', () => {
+        const first = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [], [chestAt(3, 0)])), T0)
+        const second = next(next(first, T0 + 1000), T0 + 2000)
+        const fromApi = { levels: [chestAt(5, 2)], includedSetCount: 1 }
+
+        expect(lastSetLevelsOf(second, fromApi)[0]).toMatchObject({
+          before: { level: 5, points: 2 },
+          after: { level: 5, points: 22 },
+        })
+      })
+    })
+  })
+
+  describe('Given the last set already in the levels of the API', () => {
+    describe('When the levels are read', () => {
+      it('Then the bar shows the answer of the API with the gain of the set', () => {
+        const state = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [], [chestAt(3, 0)])), T0)
+        const fromApi = { levels: [chestAt(4, 7)], includedSetCount: 1 }
+
+        expect(lastSetLevelsOf(state, fromApi)[0]).toMatchObject({
+          before: { level: 4, points: 7 },
+          after: { level: 4, points: 7 },
+          gain: 20,
+          levelsReached: [],
+        })
+      })
+    })
+  })
+
+  describe('Given no set recorded', () => {
+    it('Then there are no levels to show', () => {
+      expect(lastSetLevelsOf(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN])))).toEqual([])
+    })
+  })
+})
+
+describe('levelUpTextOf and levelCelebrationOf (US-F10-02)', () => {
+  const row = (levelsReached: number[], level: number) => ({
+    slug: 'chest',
+    name: 'peito',
+    before: { level: level - levelsReached.length, points: 0, bestLevel: 1 },
+    after: { level, points: 0, bestLevel: level },
+    gain: 20,
+    levelsReached,
+  })
+
+  describe('Given chest climbing from level 3 to level 4', () => {
+    it('Then the text tells the new level and nothing shows in full screen', () => {
+      expect({
+        text: levelUpTextOf([row([4], 4)]),
+        celebration: levelCelebrationOf([row([4], 4)]),
+      }).toEqual({ text: 'Peito subiu para o nível 4', celebration: null })
+    })
+  })
+
+  describe('Given chest climbing from level 4 to level 5, the first of silver', () => {
+    it('Then the silver seal shows in full screen', () => {
+      expect(levelCelebrationOf([row([5], 5)])).toEqual({
+        slug: 'chest',
+        name: 'peito',
+        level: 5,
+        tier: 'silver',
+      })
+    })
+  })
+
+  describe('Given chest reaching level 20', () => {
+    it('Then level 20 shows in full screen', () => {
+      expect(levelCelebrationOf([row([20], 20)])).toMatchObject({ level: 20, tier: 'violet' })
+    })
+  })
+
+  describe('Given no group climbing', () => {
+    it('Then there is no text', () => {
+      expect(levelUpTextOf([row([], 3)])).toBe('')
     })
   })
 })

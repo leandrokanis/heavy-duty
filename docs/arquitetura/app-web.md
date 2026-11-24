@@ -203,6 +203,16 @@ A US-F10-01 acrescenta os pontos provisórios da série sobre o mesmo reducer (A
 3. A `WorkoutScreen` mostra os pontos subindo do "Próximo" (`PointsFloat`, decorativo) enquanto `lastStep` é `record` ou `timerEnd`, toca o som dos pontos uma vez por série com a chave "Som do jogo" (com o som e a vibração do recorde depois dele, quando a série bate o recorde, US-F18-01) e anuncia os pontos na região viva com a série ("Série 1 de 3 registrada, 20 pontos em dobro").
 4. A busca de novo dos dados do jogo quando a fila esvazia e a troca do provisório pelo valor da API entram com a barra de nível (US-F10-02), o primeiro valor do jogo que fica na tela.
 
+## Nível e barra por grupo
+
+A US-F10-02 acrescenta o nível de cada grupo muscular, provisório durante o treino (ADR-034):
+
+1. O treino do dia lê `GET /api/levels` junto com `GET /api/windows` e guarda a cópia em `programCache`, na linha `levels` (`sync/levels-cache.ts`), com a mesma regra da cópia das janelas: 200 troca a cópia, 401 apaga, rede, tempo esgotado e 5xx usam a cópia. A saída da conta apaga a cópia. Cada selo de janela da letra ganha o selo da faixa e uma barra curta do nível do grupo, com ", nível N" no nome da linha (D61).
+2. No "Começar", `today-screen.tsx` congela os níveis em `WorkoutSession.levels` (`frozenLevelsOf`). Sem nível conhecido, o descanso não mostra barra até a API responder.
+3. `lastSetLevelsOf` recalcula, sobre a base, as séries que a base ainda não tem, com `groupGainOf` e `addGroupGain` do pacote: o grupo principal recebe o ganho da D54 com as séries planejadas do grupo na letra do treino do dia, o secundário (`secondaryMuscleGroups` do treino do dia) a metade dos pontos da série, cada um com o ×2 da própria janela congelada (D55). A base é a dos níveis congelados, ou a resposta da API com o número de séries que ela já tem.
+4. No descanso, `LevelPanel` mostra a barra de cada grupo da última série, com o selo da faixa (`LevelBadge`), o ganho e o valor da barra na `progressbar` "Nível de peito" ("Nível 4, 15 de 49 pontos"). A subida entra na região viva ("Peito subiu para o nível 4"). A entrada numa faixa e o nível 20 mostram `LevelCelebration` em tela cheia por `LEVEL_CELEBRATION_MS` (1,7 s), decorativa e sem pegar o toque. O texto e a tela cheia vêm dos níveis congelados, para a resposta da API não repetir o anúncio.
+5. Quando a fila de envio esvazia, a `WorkoutScreen` busca `GET /api/levels` e troca a base pela resposta, com o número de séries registradas naquele instante. A cópia do aparelho não troca a base, porque pode ser anterior às séries do treino.
+
 As regras de produto e de interface do dia a dia estão em `apps/ui/CLAUDE.md` e em `DESIGN.md`.
 
 ## Histórico no celular

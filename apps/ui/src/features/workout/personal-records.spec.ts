@@ -27,6 +27,7 @@ function startOf(exercises: TodayExercise[]): WorkoutFlowState {
     programId: 'program-1',
     day: todayDay('A', 'Superior', exercises),
     windows: [],
+    levels: [],
   })
 }
 

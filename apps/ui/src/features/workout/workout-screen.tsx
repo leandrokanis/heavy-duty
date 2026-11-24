@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { MotionButton } from '@/components/ui/motion-button'
 import { useToast } from '@/components/ui/toast'
 import { clearActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
-import { useSyncQueue } from '@/sync/sync-context'
+import { loadLevels } from '@/sync/levels-cache'
+import { useSyncQueue, useSyncSnapshot } from '@/sync/sync-context'
 import { CorrectionSheet } from './correction-sheet'
 import { DiscardSheet } from './discard-sheet'
 import type { AdjustField } from './drag-adjust'
@@ -17,6 +18,8 @@ import { formatDurationMinutes, formatSetShort } from './format'
 import { LastSetButton } from './last-set-button'
 import { LeftOutSummary } from './left-out-summary'
 import { LetterBadge } from './letter-badge'
+import { LevelCelebration } from './level-celebration'
+import { LevelPanel } from './level-panel'
 import { type RecordMark as RecordMarkValue, recordSetIdsOf } from './personal-records'
 import { PointsFloat } from './points-float'
 import { QueueNotices } from './queue-notices'
@@ -34,7 +37,7 @@ import { defaultTonePlayer, type TonePlayer } from './tone-player'
 import { useReopenWindows } from './use-reopen-windows'
 import { useScreenWakeLock } from './use-screen-wake-lock'
 import { ValueWheel } from './value-wheel'
-import { TICK_MS } from './workout.config'
+import { LEVEL_CELEBRATION_MS, TICK_MS } from './workout.config'
 import { WorkoutClock } from './workout-clock'
 import {
   announcementOf,
@@ -42,9 +45,15 @@ import {
   currentExercise,
   deadlineOf,
   exerciseProgressOf,
+  frozenLevelsOf,
+  type LevelCelebration as LevelCelebrationValue,
+  type LevelsBase,
+  lastSetLevelsOf,
   lastSetOf,
   lastSetPointsOf,
   leftOutOf,
+  levelCelebrationOf,
+  levelUpTextOf,
   nextPositionOf,
   recordMarkOf,
   restMsLeftOf,
@@ -243,6 +252,54 @@ function useGameSounds(
   }, [shown, isRecord, tonePlayer, gameSoundOn])
 }
 
+// When the queue empties, every set recorded so far is in the API: the levels it answers replace
+// the provisional ones, and only the sets recorded after the answer are replayed on top (ADR-034).
+function useLevelsFromApi(recordedCount: number): LevelsBase | null {
+  const pendingCount = useSyncSnapshot().pending.length
+  const [base, setBase] = useState<LevelsBase | null>(null)
+  const hadPending = useRef(false)
+  const recorded = useRef(recordedCount)
+  recorded.current = recordedCount
+  useEffect(() => {
+    if (pendingCount > 0) {
+      hadPending.current = true
+      return
+    }
+    if (!hadPending.current) return
+    hadPending.current = false
+    const includedSetCount = recorded.current
+    let current = true
+    loadLevels().then((loaded) => {
+      if (current && loaded.status === 'ok' && !('fromCache' in loaded)) {
+        setBase({ levels: frozenLevelsOf(loaded.levels), includedSetCount })
+      }
+    })
+    return () => {
+      current = false
+    }
+  }, [pendingCount])
+  return base
+}
+
+// The full screen of a new tier shows for its time and leaves; a new set brings its own.
+function useCelebration(
+  shown: SetPointsView | null,
+  celebration: LevelCelebrationValue | null,
+): (LevelCelebrationValue & { setId: string }) | null {
+  const [visible, setVisible] = useState<(LevelCelebrationValue & { setId: string }) | null>(null)
+  const setId = shown?.setId ?? null
+  const latest = useRef(celebration)
+  latest.current = celebration
+  useEffect(() => {
+    const reached = latest.current
+    if (setId === null || reached === null) return
+    setVisible({ ...reached, setId })
+    const timer = setTimeout(() => setVisible(null), LEVEL_CELEBRATION_MS)
+    return () => clearTimeout(timer)
+  }, [setId])
+  return visible
+}
+
 // A page that goes to the background may never see the finger leave the ring: the hold ends there.
 function useReleaseInBackground(held: boolean, dispatch: (action: WorkoutFlowAction) => void) {
   useEffect(() => {
@@ -385,6 +442,13 @@ export function WorkoutScreen({
     shownPoints !== null &&
     recordSetIdsOf(state.session.day.exercises, state.recorded).has(shownPoints.setId)
   useGameSounds(shownPoints, isRecord, tonePlayer, gameSoundOn)
+  const levelsFromApi = useLevelsFromApi(state.recorded.length)
+  const levelRows = lastSetLevelsOf(state, levelsFromApi ?? undefined)
+  // The text and the full screen come from the levels frozen at the start, so the answer of the
+  // API never repeats them.
+  const provisionalRows = shownPoints ? lastSetLevelsOf(state) : []
+  const levelUpText = levelUpTextOf(provisionalRows)
+  const celebration = useCelebration(shownPoints, levelCelebrationOf(provisionalRows))
   const nowMs = usePhaseClock(deadlineOf(state), reachDeadline)
   const reading = timerReadingOf(state, nowMs)
   useTimerCues(reading, tonePlayer, soundOn)
@@ -498,6 +562,7 @@ export function WorkoutScreen({
               ) : null}
               {soundSwitch}
             </div>
+            <LevelPanel rows={levelRows} />
           </div>
         </>
       ) : finished ? (
@@ -690,9 +755,18 @@ export function WorkoutScreen({
           onSave={saveCorrection}
         />
       ) : null}
+      {celebration ? (
+        <LevelCelebration
+          key={celebration.setId}
+          slug={celebration.slug}
+          name={celebration.name}
+          level={celebration.level}
+          tier={celebration.tier}
+        />
+      ) : null}
       {/* Mounted from the start: screen readers skip a live region born with its text. */}
       <p role="status" aria-live="polite" className="sr-only">
-        {announcementOf(state)}
+        {[announcementOf(state), levelUpText].filter(Boolean).join('. ')}
       </p>
     </main>
   )

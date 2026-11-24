@@ -23,6 +23,7 @@ describe('Given an active workout and a set of another workout in the queue', ()
           programId: 'program-1',
           day: todayDay('A', 'Superior', [SUPINO_RETO]),
           windows: [],
+          levels: [],
         }),
         NOW_MS,
       )

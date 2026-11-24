@@ -3,6 +3,7 @@
 import { ChevronRight } from 'lucide-react'
 import { MotionButton } from '@/components/ui/motion-button'
 import { LetterBadge } from './letter-badge'
+import type { MuscleGroupLevels } from './levels.types'
 import { muscleGroupsOfDay } from './muscle-groups-of-day'
 import type { TodayDay } from './today.types'
 import { WindowBadgeList } from './window-badge-list'
@@ -14,6 +15,7 @@ export type LetterListProps = {
   suggestedLetter: string | null
   onSelect: (day: TodayDay) => void
   windows: ActivityWindows | null
+  levels?: MuscleGroupLevels | null
   nowMs: number
   timeZone?: string
 }
@@ -26,6 +28,7 @@ export function LetterList({
   suggestedLetter,
   onSelect,
   windows,
+  levels,
   nowMs,
   timeZone,
 }: LetterListProps) {
@@ -55,7 +58,12 @@ export function LetterList({
                 <span className="truncate font-(--font-weight-semibold) text-(length:--font-size-headline)">
                   {day.label}
                 </span>
-                <WindowBadgeList badges={badges} nowMs={nowMs} timeZone={timeZone} />
+                <WindowBadgeList
+                  badges={badges}
+                  levels={levels}
+                  nowMs={nowMs}
+                  timeZone={timeZone}
+                />
               </span>
               {suggested ? (
                 <span className="rounded-(--radius-capsule) bg-(--color-fill) px-(--space-12) py-(--space-4) font-(--font-weight-semibold) text-(length:--font-size-footnote)">

@@ -1,8 +1,13 @@
+import type { CSSProperties } from 'react'
+import { LevelBadge } from './level-badge'
+import type { MuscleGroupLevel, MuscleGroupLevels } from './levels.types'
 import type { WindowBadge } from './window-badges'
 import { formatCoolingFor, formatWindowWhen } from './window-format'
 
 export type WindowBadgeListProps = {
   badges: WindowBadge[]
+  // The level of each group beside its window (D61); absent while the levels are unknown.
+  levels?: MuscleGroupLevels | null
   nowMs: number
   timeZone?: string
 }
@@ -23,6 +28,11 @@ function phraseOf(badge: WindowBadge, nowMs: number, timeZone?: string): string 
   return `${group} · esfriando ${formatCoolingFor(badge.atMs, nowMs)}`
 }
 
+function levelOf(levels: MuscleGroupLevels | null | undefined, slug: string) {
+  const level = levels?.groups.find(({ muscleGroup }) => muscleGroup.slug === slug)
+  return level ? <LevelOfGroup level={level} /> : null
+}
+
 const INDICATOR_COLOR = {
   open: 'var(--color-window-open)',
   resting: 'var(--color-window-rest)',
@@ -31,7 +41,28 @@ const INDICATOR_COLOR = {
 
 // Spans with roles, so it can sit inside the button of a row: the text joins the name of the button.
 // The text stays in the label colour; the state colour is on the indicator only (DESIGN.md, Section 18.1).
-export function WindowBadgeList({ badges, nowMs, timeZone }: WindowBadgeListProps) {
+// The seal and a short bar of the level; the screen reader hears the level from the phrase.
+function LevelOfGroup({ level }: { level: MuscleGroupLevel }) {
+  const fill = `${Math.round((level.points / level.levelCost) * 100)}%`
+  return (
+    <>
+      <span className="sr-only">{`, nível ${level.level}`}</span>
+      <LevelBadge level={level.level} tier={level.tier} size={20} />
+      <span
+        aria-hidden="true"
+        className="block h-[4px] w-[24px] overflow-hidden rounded-(--radius-capsule) bg-(--color-fill)"
+      >
+        <b
+          data-level-bar=""
+          style={{ '--level-fill': fill } as CSSProperties}
+          className="block h-full w-(--level-fill) rounded-(--radius-capsule) bg-linear-to-r from-(--color-game-xp) to-(--color-game-xp-2)"
+        />
+      </span>
+    </>
+  )
+}
+
+export function WindowBadgeList({ badges, levels, nowMs, timeZone }: WindowBadgeListProps) {
   if (badges.length === 0) return null
   return (
     // biome-ignore lint/a11y/useSemanticElements: a ul cannot sit inside the button of the row.
@@ -54,6 +85,7 @@ export function WindowBadgeList({ badges, nowMs, timeZone }: WindowBadgeListProp
             }
           />
           {phraseOf(badge, nowMs, timeZone)}
+          {levelOf(levels, badge.slug)}
         </span>
       ))}
     </span>

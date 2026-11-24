@@ -301,12 +301,13 @@ O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar na pr
 ## 15. Movimento e resposta ao toque
 
 - O estado pressionado DEVE aparecer no `pointerdown`, não na soltura do toque.
-- A transição entre estados DEVERIA durar até 300 ms (Projeto [a confirmar]). As durações são os tokens `--duration-fast` (estado pressionado), `--duration-medium`, `--duration-base`, `--duration-countdown` (número da contagem de 3 s), `--duration-toast` (tempo de exibição do aviso flutuante) e `--duration-points` (subida dos pontos da série), com valores na Seção 18.
+- A transição entre estados DEVERIA durar até 300 ms (Projeto [a confirmar]). As durações são os tokens `--duration-fast` (estado pressionado), `--duration-medium`, `--duration-base`, `--duration-countdown` (número da contagem de 3 s), `--duration-toast` (tempo de exibição do aviso flutuante), `--duration-points` (subida dos pontos da série), `--duration-level-bar` (barra de nível) e `--duration-level-celebration` (tela cheia da faixa), com valores na Seção 18.
 - O movimento DEVE ser reduzido a troca de opacidade, ou retirado, com `prefers-reduced-motion: reduce`.
 - O fim do descanso DEVE ter sinal visual. O Safari do iOS não aceita a Vibration API, então a interface NÃO DEVE depender de vibração.
 - As regras detalhadas de animação, mola e gesto ficam para um documento próprio [a confirmar: quando a onda 3 começar].
 - Som, vibração e animações longas (pontos que sobem, subida de nível em tela cheia, medalha) PODEM ser usados só nos elementos de gamificação, conforme `docs/gamificacao.md`, no cronômetro do exercício por tempo (Seção 15.1) e nos 3 últimos segundos do descanso (Seção 15.2). O som DEVE ter chave para desligar. Uma informação NÃO DEVE depender só de som ou de vibração.
 - Os pontos da série sobem do "Próximo" no registro, em gradiente de `--color-game-xp` a `--color-game-xp-2`, com a marca "×2" quando a série está em janela (US-F10-01). O elemento é decorativo: a região `aria-live="polite"` anuncia os pontos com a série ("Série 1 de 3 registrada, 20 pontos em dobro"). Com `prefers-reduced-motion: reduce`, os pontos só aparecem e somem, sem deslocamento. O som dos pontos, e o som e a vibração do recorde, têm a chave "Som do jogo" (`aria-pressed`) na folha da sequência do treino, separada da chave "Som" do cronômetro (D60).
+- No descanso, a barra de nível de cada grupo do exercício da última série enche com o ganho da série, ao lado do selo da faixa e do ganho ("+20"), em `--duration-level-bar` (US-F10-02). A subida comum aparece na própria barra, com o selo do nível novo, e a região `aria-live="polite"` diz "Peito subiu para o nível 4". A entrada numa faixa (5, 11 e 17) e o nível 20 mostram o selo em tela cheia por `--duration-level-celebration`, sem pedir toque e sem segurar o toque em "Próximo" (`pointer-events: none`). Com `prefers-reduced-motion: reduce`, a barra mostra o fim na hora, o selo não pulsa e a tela cheia só aparece e some.
 - A subida de nível em tela cheia NÃO DEVE pedir toque para fechar: ela some sozinha, para manter um toque por passo (PRD, O5).
 - A tela cheia DEVE ficar para a entrada numa faixa de nível e para o nível 20. A subida de nível comum DEVE aparecer na própria barra, com animação e som curtos, para não cansar com subidas frequentes.
 
@@ -442,6 +443,20 @@ Na coluna "Contraste alto", "igual" mantém o valor do tema. Dois valores entre 
 | `--color-backdrop` | `rgba(8,10,16,.32)` | `rgba(8,10,16,.32)` | igual | Fundo escurecido atrás da folha | Protótipo v1, `.backdrop` |
 | `--color-game-xp` | `#6D3EF0` | `#A78BFA` | igual | Início do gradiente dos pontos (Seção 11.1) | Protótipo v1, `--game-xp` |
 | `--color-game-xp-2` | `#D63AA8` | `#F472B6` | igual | Fim do gradiente dos pontos (Seção 11.1) | Protótipo v1, `--game-xp-2` |
+| `--color-game-gold` | `#E8A800` | `#E8A800` | igual | Início do gradiente de medalha e ranking (Seção 11.1) | Protótipo v1, `--game-gold` |
+| `--color-game-gold-2` | `#FFD34D` | `#FFD34D` | igual | Fim do gradiente de medalha e ranking | Protótipo v1, `--game-gold-2` |
+| `--color-game-flame` | `#F2542D` | `#F2542D` | igual | Início do gradiente da sequência de semanas (Seção 11.1) | Protótipo v1, `--game-flame` |
+| `--color-game-flame-2` | `#FFB020` | `#FFB020` | igual | Fim do gradiente da sequência de semanas | Protótipo v1, `--game-flame-2` |
+| `--color-tier-1` | `#E8AE7A` | `#E8AE7A` | igual | Início do gradiente do selo de bronze, círculo (níveis 1 a 4) | Protótipo v1, `#gg-t1` |
+| `--color-tier-1-2` | `#9C5A27` | `#9C5A27` | igual | Fim do gradiente do selo de bronze | Protótipo v1, `#gg-t1` |
+| `--color-tier-2` | `#E4E8EF` | `#E4E8EF` | igual | Início do gradiente do selo de prata, escudo (níveis 5 a 10) | Protótipo v1, `#gg-t2` |
+| `--color-tier-2-2` | `#8C97AA` | `#8C97AA` | igual | Fim do gradiente do selo de prata | Protótipo v1, `#gg-t2` |
+| `--color-tier-3` | `#FFE07A` | `#FFE07A` | igual | Início do gradiente do selo de ouro, hexágono (níveis 11 a 16) | Protótipo v1, `#gg-t3` |
+| `--color-tier-3-2` | `#D49500` | `#D49500` | igual | Fim do gradiente do selo de ouro | Protótipo v1, `#gg-t3` |
+| `--color-tier-4` | `#6D3EF0` | `#A78BFA` | igual | Início do gradiente do selo violeta, estrela (níveis 17 a 20), igual a `--color-game-xp` | Protótipo v1, `.t4` |
+| `--color-tier-4-2` | `#D63AA8` | `#F472B6` | igual | Fim do gradiente do selo violeta, igual a `--color-game-xp-2` | Protótipo v1, `.t4` |
+| `--color-on-tier` | `#FFFFFF` | `#FFFFFF` | igual | Número sobre o selo de bronze e o violeta | Protótipo v1, `.lv-badge b` |
+| `--color-on-tier-light` | `#2B2410` | `#2B2410` | igual | Número sobre o selo de prata e o de ouro, mais claros | Protótipo v1, `.t2 b`, `.t3 b` |
 
 Regras de uso da cor, além das da Seção 11.1:
 
@@ -517,6 +532,8 @@ Os tamanhos usam `rem` e seguem o Dynamic Type no iPhone (Seção 10.2). O corpo
 | `--duration-countdown` | `900ms` | Número da contagem de 3 s | Protótipo v1, `.cd-num` |
 | `--duration-toast` | `2600ms` | Tempo de exibição do aviso flutuante | Protótipo v1, `toast()` |
 | `--duration-points` | `1200ms` | Subida dos pontos da série a partir do "Próximo" | Protótipo v1, `.float-pts` |
+| `--duration-level-bar` | `800ms` | Enchimento da barra de nível no descanso | Protótipo v1, `.lv-bar i` |
+| `--duration-level-celebration` | `1700ms` | Tela cheia da entrada numa faixa e do nível 20, igual a `LEVEL_CELEBRATION_MS` | Protótipo v1, `levelUp` |
 | `--duration-tick` | `250ms` | Transição linear do traço do anel, igual ao passo do relógio (`TICK_MS`) | Projeto |
 
 ### 18.6. Espaço e alvo de toque
