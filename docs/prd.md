@@ -4,8 +4,8 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 0.5 |
-| Data | 23/11/2026 |
+| Versão | 0.6 |
+| Data | 24/11/2026 |
 | Status | Rascunho — sujeito a revisão humana |
 | Classificação | Público |
 | Elaboração | Elaborado com apoio de IA (Lean Inception solo, método de Paulo Caroli, traduzido para SAFe) |
@@ -126,7 +126,7 @@ Fora do produto por decisão do PO: importar o histórico do app atual (D14).
 6. Termina. As barras dos grupos treinados crescem, e o mapa mostra quando cada um reabre.
 
 - **Resultado:** o treino fica registrado no servidor do PO, o progresso fica visível, e a próxima janela já tem data.
-- **Momento crítico fora da jornada:** voltar depois de semanas parado e encontrar o mapa todo esfriado (Q04).
+- **Momento crítico fora da jornada:** voltar depois de semanas parado e encontrar o mapa todo esfriado (Q04, respondida pela D53).
 
 No MVP, a jornada vai do passo 2 ao 6, sem mapa, janelas nem avisos.
 
@@ -719,7 +719,7 @@ Funcionalidade: Janela de atividade por grupo
 - **US-F10-04 (6b).** Como atleta, quero pontos em dobro enquanto um grupo está abaixo do melhor nível, para recuperar rápido o que perdi.
 - **US-F10-05 (6b).** Como atleta, quero ver o nível geral e o grupo que o limita, para saber qual grupo treinar.
 
-Parâmetros de partida (D41 e D43), recalculáveis com os dados reais (ADR-010): a série que bate o plano vale 10 pontos, até o dobro do plano; os pontos valem em dobro com algum grupo do exercício em janela; o nível *n* custa 40 + 3 × (*n* − 1) pontos; o grupo esfriando perde cerca de 40 pontos por dia. A memória muscular não soma com o ×2 da janela. O rendimento de um treino fora da janela depende da Q15, e o primeiro treino depois de um esfriamento depende da Q04.
+Parâmetros de partida (D41 e D43), recalculáveis com os dados reais (ADR-010): a série que bate o plano vale 10 pontos, até o dobro do plano; os pontos valem em dobro com algum grupo do exercício em janela; o nível *n* custa 40 + 3 × (*n* − 1) pontos; o grupo esfriando perde cerca de 40 pontos por dia. A memória muscular não soma com o ×2 da janela. Fora da janela, a série rende pontos comuns (D52), e o primeiro treino do grupo depois de um esfriamento rende em dobro (D53). O ganho do grupo, o multiplicador, a perda e o recorde seguem as decisões D54 a D62.
 
 ```gherkin
 # language: pt
@@ -1153,18 +1153,16 @@ Funcionalidade: Avisos por e-mail
 | R01 | No iPhone, o aviso só funciona com o app instalado na tela inicial (iOS 16.4 ou posterior) | Assumido | Resolver a Q02 antes da onda 7 |
 | R02 | Queda de internet ou energia em casa interrompe os avisos | Aceito | — |
 | R04 | A gamificação é sobretudo extrínseca e pode perder força entre a quinta e a oitava semana | Aceito | Reforçar o núcleo 3 do Octalysis (feedback das escolhas) |
-| R08 | Ver os níveis caírem depois de semanas parado desanima o retorno | Mitigado | Proteções da D24, sobretudo a memória muscular e o aviso antes da queda |
+| R08 | Ver os níveis caírem depois de semanas parado desanima o retorno | Mitigado | Proteções da D24, sobretudo a memória muscular e o aviso antes da queda, e o primeiro treino depois do esfriamento em dobro (D53) |
 | R09 | E-mail enviado do servidor de casa cai no spam ou é bloqueado: provedores de internet costumam bloquear a porta 25, e IP residencial tem má reputação | Assumido | Validar a entrega antes da onda 7, com SPF, DKIM, DMARC e DNS reverso (ADR-007) |
 
 ### Questões em aberto
 - **Q01:** o primeiro período começa fora do ciclo; os períodos seguintes se realinham ao ciclo trimestral?
-- **Q04:** o primeiro treino depois de um esfriamento rende o progresso cheio ("bem-vindo de volta")?
 - **Q09:** a academia tem sinal de celular e Wi-Fi confiáveis?
 - **Q14:** em que dia e hora sai o resumo semanal, e qual é o endereço de remetente dos e-mails (F17)?
-- **Q15:** quanto rende um treino fora da janela, com o grupo ainda descansando (metade, um terço)?
 - **Q16:** com quantas horas de antecedência saem os avisos de abertura, de fechamento e de queda?
 - **Q17:** quais são as medalhas e o critério de cada uma? A proposta sai na especificação da US-F19-01.
-- **Resolvidas:** Q02 (D44), Q03 (a F13 foi removida), Q05 (MVP sem gamificação, D18), Q06 (D39), Q07 (D46), Q08 (D40), Q10 (D37), Q11 (D41), Q12 (D42) e Q13 (D43).
+- **Resolvidas:** Q02 (D44), Q03 (a F13 foi removida), Q04 (D53), Q05 (MVP sem gamificação, D18), Q06 (D39), Q07 (D46), Q08 (D40), Q10 (D37), Q11 (D41), Q12 (D42), Q13 (D43) e Q15 (D52).
 
 ### Hipóteses e validações pendentes (o PO é o único papel)
 
@@ -1239,6 +1237,17 @@ Funcionalidade: Avisos por e-mail
 | D49 | Depois do uso real do MVP, a onda 4b entra antes da onda 5, com o mínimo para o app ser utilizável sem a gamificação: histórico no celular (F20), tempo total e descarte do treino (US-F03-08 e US-F03-09), sinal sonoro e aceleração do descanso (US-F05-02 e US-F05-03), a direção da roda (D51) e as correções de usabilidade abertas como bug |
 | D50 | No celular, o histórico serve para ver e apagar, com confirmação; não há edição. A edição de um treino fica só pelo MCP (US-F06-02). Revisa em parte a D04 e a D15 |
 | D51 | Na roda do ajuste, arrastar para cima aumenta e arrastar para baixo diminui. Os botões − e + e os passos da D34 continuam. Substitui a direção da D34 |
+| D52 | Fora da janela, a série rende pontos comuns (×1), com o grupo descansando, esfriando ou sem janela. Razão: a D47 já declarou neutro o treino antes de a janela abrir, e a ADR-031 recusou penalizar o treino cedo; o ×2 em janela basta para a diferença. O parâmetro `outsideWindowPercent` começa em 100 e muda com a calibração (responde à Q15) |
+| D53 | O primeiro treino do grupo depois de um esfriamento ("bem-vindo de volta") rende ×2 para o grupo, como em janela. O ×2 não soma com a memória muscular nem com o da janela: o máximo é ×2, como na D41. Razão: a perda de nível estreia na onda 6a, antes da memória muscular, e a volta é o momento mais frágil (R08) (responde à Q04) |
+| D54 | O ganho do grupo vem da razão da série (feito ÷ planejado, até 2): o grupo principal do exercício recebe 10 × razão × 6 ÷ séries planejadas do grupo na letra, e o grupo secundário recebe 10 × razão × 0,5, sem a divisão, os dois vezes o multiplicador do próprio grupo. Um treino completo rende cerca de 60 pontos por grupo, ou 120 em janela, como pede a D28 (fórmula do protótipo v1) |
+| D55 | Os pontos mostrados da série dobram se algum grupo do exercício está em janela (D41). O ganho de cada grupo usa o estado do próprio grupo: o grupo descansando não ganha o ×2 só por dividir o exercício com um grupo em janela |
+| D56 | O ×2 vale pelo instante da série, contra a janela do treino anterior do grupo, com as janelas congeladas no início do treino. A janela que fecha no meio do treino deixa de dobrar, e o celular sem sinal chega ao mesmo resultado que a API |
+| D57 | No exercício com carga planejada 0, a razão entre o feito e o planejado usa as repetições; no exercício por tempo, usa os segundos. Assim o volume planejado nunca é zero |
+| D58 | A perda de quem esfria é contínua, em pontos inteiros por hora, desde o fechamento da janela. A barra do nível 20 fica cheia (97 pontos) e esvazia como as outras; na queda, a barra do nível de baixo começa cheia (D43) |
+| D59 | O recorde segue a F18, e não o protótipo: maior carga para um número de repetições, ou mais repetições com a mesma carga. A primeira série de um exercício não é recorde, só exercício de repetição tem recorde na onda 6a, e a série anterior do mesmo treino conta |
+| D60 | O som do jogo tem chave própria (`heavy-duty:game-sound`), separada do som do cronômetro, na folha da sequência do treino. O bipe do descanso é funcional; o som dos pontos é decorativo |
+| D61 | O treino do dia mostra o selo e a barra de nível de cada grupo ao lado do selo da janela, na linha da letra, como no protótipo v1 |
+| D62 | O resumo do treino com o total de pontos fica fora da onda 6a; os pontos do treino e o ranking chegam na onda 7b (F19) |
 
 ---
 
@@ -1255,6 +1264,6 @@ Funcionalidade: Avisos por e-mail
 ---
 
 ## Próximos passos sugeridos
-1. Responder às Q04, Q14, Q15, Q16, Q17 e Q01 antes das stories que cada uma bloqueia. Cada questão e cada story têm uma issue no GitHub, com as dependências.
+1. Responder às Q14, Q16, Q17 e Q01 antes das stories que cada uma bloqueia. Cada questão e cada story têm uma issue no GitHub, com as dependências.
 2. Testar a entrega de e-mail pelo kasparov antes da onda 7a (R09).
 3. Recalibrar a janela com o histórico real pela simulação da EN01-01 (ADR-031).

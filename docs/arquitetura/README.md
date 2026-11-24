@@ -131,7 +131,7 @@ O ambiente de desenvolvimento sobe com `docker compose up`, a partir do `compose
 2. O atleta toca em "Próximo". O app web gera o ID da série, que também é a chave de idempotência, e grava a série na fila do armazenamento local.
 3. A fila do app web envia a série à API, em ordem. Se não há rede, a série fica na fila e segue quando a conexão volta, sem toque do atleta (US-F03-03, ADR-021).
 4. A API grava a série no banco. Uma segunda requisição com o mesmo ID não cria outra série (US-F03-02).
-5. O app web inicia o descanso com o `restSeconds` do programa (US-F05-01) e, com a gamificação, mostra os pontos calculados pela API (ADR-010).
+5. O app web inicia o descanso com o `restSeconds` do programa (US-F05-01) e, com a gamificação, mostra os pontos calculados no aparelho com as regras de `@heavy-duty/game` e troca pelo valor da API quando a fila de envio esvazia (ADR-010, ADR-034).
 
 ### Administração pelo Claude
 

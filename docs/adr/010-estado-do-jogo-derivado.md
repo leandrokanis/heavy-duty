@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Aceita |
+| Status | Substituída por ADR-034 no lugar das regras de pontos, nível, perda e recorde |
 | Data | 2026-11-21 |
 | Decisor | PO |
 | Requisitos relacionados | F07, F10, F11, D24, D28, D29, Q11, Q13, EN01 |

@@ -148,7 +148,7 @@ A frase de intenção e o mapa final são congelados num retrato, exibido ao lad
 
 ## Tensões e questões em aberto
 
-- **Retorno depois de esfriamento (PRD, Q04).** O PO volta após semanas parado, encontra o mapa todo esfriado, e o primeiro treino rende menos. O jogo castiga o retorno, o momento mais frágil para quem tem dificuldade de recomeçar. Com a perda de nível (D24), esse risco cresce. A memória muscular responde em parte: quem volta recupera os níveis perdidos com pontos em dobro. Falta decidir se o primeiro treino depois de um esfriamento também rende o progresso cheio ("bem-vindo de volta").
+- **Retorno depois de esfriamento (PRD, Q04).** O PO volta após semanas parado, encontra o mapa todo esfriado, e o primeiro treino rende menos. O jogo castiga o retorno, o momento mais frágil para quem tem dificuldade de recomeçar. Com a perda de nível (D24), esse risco cresce. A memória muscular responde em parte: quem volta recupera os níveis perdidos com pontos em dobro. O primeiro treino do grupo depois de um esfriamento também rende o progresso cheio, ×2, sem somar com a memória muscular ("bem-vindo de volta", PRD D53).
 - **Ritmo da perda de nível (PRD, Q13).** O protótipo esvazia cerca de 40 pontos por dia: do 20 ao 1 em 4 a 5 semanas.
 - **Parâmetros dos pontos e do nível (PRD, Q11).** O protótipo usa 10 pontos por série no plano, 60 por grupo num treino completo e o 20 em cerca de 4 semanas. Os números saem dos dados reais.
 - **Sequência de semanas (PRD, Q12).** Uma sequência que zera castiga o retorno, como no esfriamento. A **Proposta** é uma proteção por período; a alternativa é tirar a sequência do desenho.

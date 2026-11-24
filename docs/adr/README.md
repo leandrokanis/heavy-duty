@@ -15,7 +15,7 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-007](007-smtp-proprio.md) | Envio de e-mail por servidor SMTP próprio no kasparov | Aceita |
 | [ADR-008](008-escopo-heavy-duty-nos-pacotes.md) | Escopo @heavy-duty nos pacotes do workspace | Aceita |
 | [ADR-009](009-ui-nextjs-base-ui-animate-ui.md) | UI em Next.js com Base UI e Animate UI | Aceita |
-| [ADR-010](010-estado-do-jogo-derivado.md) | Estado do jogo derivado do histórico de treinos | Aceita |
+| [ADR-010](010-estado-do-jogo-derivado.md) | Estado do jogo derivado do histórico de treinos | Substituída por ADR-034 no lugar das regras de pontos, nível, perda e recorde |
 | [ADR-011](011-ambiente-de-desenvolvimento-docker-compose.md) | Ambiente de desenvolvimento com Docker Compose | Aceita |
 | [ADR-012](012-lint-e-formatacao-com-biome.md) | Lint e formatação com Biome | Aceita |
 | [ADR-013](013-sqlite-com-drizzle-e-better-sqlite3.md) | Acesso ao SQLite com Drizzle ORM e better-sqlite3 | Aceita |
@@ -38,6 +38,8 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-030](030-main-por-fast-forward-a-partir-da-dev.md) | Main por fast-forward a partir da dev | Aceita |
 | [ADR-031](031-regra-da-janela-de-atividade.md) | Regra da janela de atividade | Aceita |
 | [ADR-032](032-remocao-de-treino-pelo-celular.md) | Remoção de treino pelo celular | Aceita |
+| [ADR-033](033-plano-congelado-na-serie.md) | Plano congelado na série | Aceita |
+| [ADR-034](034-regras-do-jogo-em-pacote-compartilhado.md) | Regras do jogo em pacote compartilhado | Aceita |
 
 ## Regras
 

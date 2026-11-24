@@ -5,7 +5,7 @@
 | Nível C4 | 2, contêiner |
 | Pasta | `apps/ui` (`@heavy-duty/ui`) |
 | Onde roda | Processo Node.js no kasparov (servidor do Next.js) e navegador do celular ou do Mac (cliente) |
-| ADRs | ADR-009, ADR-002, ADR-019; substituiu a ADR-003 |
+| ADRs | ADR-009, ADR-002, ADR-019, ADR-034; substituiu a ADR-003 |
 | Ondas | 1 em diante |
 
 ## Responsabilidade
@@ -13,10 +13,10 @@
 - Mostrar o treino do dia, guiar a série com um toque por passo, contar o descanso e o tempo de execução (F03, F04, F05).
 - Funcionar sem sinal no fluxo da academia, com a fila do armazenamento local (NFR06).
 - Instalar como PWA, com manifesto e service worker (NFR05).
-- Mostrar o jogo: janelas, níveis, mapa do corpo, período, medalhas e ranking (ondas 5 a 7). O cálculo é da API (ADR-010); o app web só exibe.
+- Mostrar o jogo: janelas, níveis, mapa do corpo, período, medalhas e ranking (ondas 5 a 7). O cálculo é da API (ADR-010). Pontos, barra de nível e recorde aparecem provisórios durante o treino, calculados no aparelho com as regras do pacote `@heavy-duty/game`, e o valor da API os substitui quando a fila de envio esvazia (ADR-034).
 - Oferecer as telas de administração no Mac, depois do MVP (D22).
 
-O app web não guarda regra de negócio. Validação de domínio, cálculo do jogo e gravação ficam na API.
+O app web não guarda regra de negócio própria. Validação de domínio, cálculo do jogo e gravação ficam na API. A exceção é o provisório do jogo: o app web executa as regras puras do pacote `@heavy-duty/game`, as mesmas da API, com o estado congelado no início do treino, e nada do jogo entra na fila de envio (ADR-034).
 
 ## Tecnologias
 
