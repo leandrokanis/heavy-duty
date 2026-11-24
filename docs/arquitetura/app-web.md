@@ -227,6 +227,14 @@ A US-F10-03 acrescenta o esfriamento, calculado pela API (`GET /api/levels`, com
 2. O ×2 da volta (D53) entra no provisório pela janela congelada: o grupo cuja primeira série do treino veio depois do `closesAt` da janela rende em dobro, e os pontos mostrados da série também dobram. A janela que fecha no meio do treino deixa de dobrar (D56).
 3. A perda não roda no aparelho durante o treino: os níveis congelados no "Começar" já trazem a perda até a leitura, e o treino interrompe o esfriamento.
 
+## Memória muscular
+
+A US-F10-04 acrescenta a memória muscular: o grupo abaixo do melhor nível rende ×2, sem somar com a janela nem com o bem-vindo de volta (D63 a D66):
+
+1. `GET /api/levels` traz `muscleMemory` por grupo; os níveis congelados no "Começar" já trazem `bestLevel`.
+2. `lastSetPointsOf` e `lastSetLevelsOf` saem de um replay só (`lastSetStepsOf`): a partir da base, cada série que ela não tem soma o ganho de cada grupo com os bônus do grupo antes da série, inclusive a memória muscular pelo nível antes da série. Os pontos da série partem dos níveis congelados; a barra parte da resposta da API, quando houver. Quando a base já tem a última série, a barra é a base, e o ganho e a marca vêm do replay dos níveis congelados.
+3. `SetPointsView.bonus` diz o que dobrou a série (`window`, `muscleMemory` ou `welcomeBack`), uma marca só, nessa ordem (D65). `PointsFloat` e `LevelPanel` mostram a marca ↺ ×2 da memória muscular (`DoubleMark`), e a região viva diz "em dobro pela memória muscular".
+
 ## Histórico no celular
 
 A US-F20-01 acrescenta a rota `/historico`, só de leitura (D50):

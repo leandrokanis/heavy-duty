@@ -1,4 +1,4 @@
-import { levelCostOf, startingProgress, tierOf } from '@heavy-duty/game'
+import { hasMuscleMemory, levelCostOf, startingProgress, tierOf } from '@heavy-duty/game'
 import type { Database } from '../../db/connection.js'
 import { groupLevelsOf } from './progress.rules.js'
 import { GAME_PARAMETERS } from './windows.config.js'
@@ -20,7 +20,8 @@ export function listMuscleGroupLevels(db: Database, now: Date): MuscleGroupLevel
   )
   const groups = listMuscleGroups(db).map((muscleGroup) => {
     const state = levels.get(muscleGroup.slug)
-    const { level, points, bestLevel } = state?.progress ?? startingProgress()
+    const progress = state?.progress ?? startingProgress()
+    const { level, points, bestLevel } = progress
     return {
       muscleGroup,
       level,
@@ -33,6 +34,7 @@ export function listMuscleGroupLevels(db: Database, now: Date): MuscleGroupLevel
         state?.nextDropAtMs === null || state === undefined
           ? null
           : new Date(state.nextDropAtMs).toISOString(),
+      muscleMemory: hasMuscleMemory(progress),
     }
   })
   return { now: now.toISOString(), groups }

@@ -2778,13 +2778,13 @@ describe('lastSetPointsOf', () => {
 
   describe('Given the plan of supino-reto is 10 reps at 40 kg and no group in its window', () => {
     describe('When the athlete records 10 reps at 40 kg', () => {
-      it('Then the set yields 10 points, not doubled', () => {
+      it('Then the set yields 10 points, with no bonus', () => {
         const state = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN])), T0)
 
         expect(lastSetPointsOf(state)).toEqual({
           setId: state.recorded[0]?.id,
           points: 10,
-          doubled: false,
+          bonus: null,
         })
       })
     })
@@ -2792,10 +2792,10 @@ describe('lastSetPointsOf', () => {
 
   describe('Given chest in its window, frozen at the start of the workout', () => {
     describe('When the athlete records supino-reto at plan inside the window', () => {
-      it('Then the set yields 20 points, doubled', () => {
+      it('Then the set yields 20 points, doubled by the window', () => {
         const state = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [chestOpen])), T0)
 
-        expect(lastSetPointsOf(state)).toMatchObject({ points: 20, doubled: true })
+        expect(lastSetPointsOf(state)).toMatchObject({ points: 20, bonus: 'window' })
       })
     })
 
@@ -2808,7 +2808,7 @@ describe('lastSetPointsOf', () => {
         expect({
           first: lastSetPointsOf(first)?.points,
           second: lastSetPointsOf(second),
-        }).toMatchObject({ first: 20, second: { points: 10, doubled: false } })
+        }).toMatchObject({ first: 20, second: { points: 10, bonus: null } })
       })
     })
   })
@@ -2819,7 +2819,7 @@ describe('lastSetPointsOf', () => {
         const tricepsOpen = { ...chestOpen, muscleGroupSlug: 'triceps' }
         const state = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [tricepsOpen])), T0)
 
-        expect(lastSetPointsOf(state)).toMatchObject({ points: 10, doubled: false })
+        expect(lastSetPointsOf(state)).toMatchObject({ points: 10, bonus: null })
       })
     })
   })
@@ -2855,7 +2855,7 @@ describe('lastSetPointsOf', () => {
           T0,
         )
 
-        expect(lastSetPointsOf(next(restored, T0))).toMatchObject({ points: 10, doubled: false })
+        expect(lastSetPointsOf(next(restored, T0))).toMatchObject({ points: 10, bonus: null })
       })
     })
   })
@@ -2903,6 +2903,7 @@ describe('lastSetLevelsOf (US-F10-02)', () => {
             after: { level: 3, points: 30, bestLevel: 3 },
             gain: 20,
             levelsReached: [],
+            bonus: null,
           },
           {
             slug: 'triceps',
@@ -2911,6 +2912,7 @@ describe('lastSetLevelsOf (US-F10-02)', () => {
             after: { level: 1, points: 5, bestLevel: 1 },
             gain: 5,
             levelsReached: [],
+            bonus: null,
           },
         ])
       })
@@ -3005,6 +3007,7 @@ describe('levelUpTextOf and levelCelebrationOf (US-F10-02)', () => {
     after: { level, points: 0, bestLevel: level },
     gain: 20,
     levelsReached,
+    bonus: null,
   })
 
   describe('Given chest climbing from level 3 to level 4', () => {
@@ -3053,7 +3056,16 @@ describe('Given chest cooling: its window closed before the workout (US-F10-03, 
     it('Then the set yields double, with the mark of the double', () => {
       const state = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [chestClosed])), T0)
 
-      expect(lastSetPointsOf(state)).toMatchObject({ points: 20, doubled: true })
+      expect(lastSetPointsOf(state)).toMatchObject({ points: 20, bonus: 'welcomeBack' })
+    })
+
+    it('Then the mark is the one of the muscle memory, with chest below its best level (D65)', () => {
+      const state = next(
+        createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [chestClosed], [chestAt3])),
+        T0,
+      )
+
+      expect(lastSetPointsOf(state)).toMatchObject({ points: 20, bonus: 'muscleMemory' })
     })
 
     it('Then chest gains double on its bar', () => {
@@ -3063,6 +3075,105 @@ describe('Given chest cooling: its window closed before the workout (US-F10-03, 
       )
 
       expect(lastSetLevelsOf(state)[0]).toMatchObject({ gain: 40 })
+    })
+  })
+})
+
+describe('Given chest below its best level 12 (US-F10-04)', () => {
+  const SUPINO_AT_PLAN = { ...SUPINO_RETO, loadG: 40000 }
+  const chestAt = (level: number, points: number, bestLevel: number): FrozenLevel => ({
+    muscleGroupSlug: 'chest',
+    level,
+    points,
+    bestLevel,
+  })
+  const chestOpen: FrozenWindow = {
+    muscleGroupSlug: 'chest',
+    opensAt: '2026-11-20T18:00:00.000Z',
+    closesAt: '2026-11-25T18:00:00.000Z',
+  }
+
+  describe('When the athlete records a set that meets the plan, outside the window', () => {
+    it('Then the set yields double, with the mark of the muscle memory', () => {
+      const state = next(
+        createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [], [chestAt(8, 0, 12)])),
+        T0,
+      )
+
+      expect(lastSetPointsOf(state)).toMatchObject({ points: 20, bonus: 'muscleMemory' })
+    })
+
+    it('Then the screen says the double comes from the muscle memory', () => {
+      const state = next(
+        createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [], [chestAt(8, 0, 12)])),
+        T0,
+      )
+
+      expect(announcementOf(state)).toBe(
+        'Série 1 de 3 registrada, 20 pontos em dobro pela memória muscular',
+      )
+    })
+
+    it('Then chest gains double on its bar, with the mark on its row', () => {
+      const state = next(
+        createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [], [chestAt(8, 0, 12)])),
+        T0,
+      )
+
+      expect(lastSetLevelsOf(state)[0]).toMatchObject({ gain: 40, bonus: 'muscleMemory' })
+    })
+  })
+
+  describe('When the athlete records a set that meets the plan inside the window', () => {
+    it('Then the set yields double, not quadruple, with the mark of the window', () => {
+      const state = next(
+        createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [chestOpen], [chestAt(8, 0, 12)])),
+        T0,
+      )
+
+      expect({
+        points: lastSetPointsOf(state),
+        gain: lastSetLevelsOf(state)[0]?.gain,
+      }).toMatchObject({ points: { points: 20, bonus: 'window' }, gain: 40 })
+    })
+  })
+
+  describe('When a set takes chest from level 11 to its best level 12 (D64)', () => {
+    it('Then that set yields double whole, and the next one the common points', () => {
+      const first = next(
+        createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [], [chestAt(11, 60, 12)])),
+        T0,
+      )
+      const second = next(next(first, T0 + 1000), T0 + 2000)
+
+      expect({
+        first: lastSetPointsOf(first)?.points,
+        level: lastSetLevelsOf(first)[0]?.after,
+        second: lastSetPointsOf(second),
+        secondGain: lastSetLevelsOf(second)[0]?.gain,
+      }).toMatchObject({
+        first: 20,
+        level: { level: 12, points: 30, bestLevel: 12 },
+        second: { points: 10, bonus: null },
+        secondGain: 20,
+      })
+    })
+  })
+
+  describe('When the API answer already holds the first set, with chest back at level 12', () => {
+    it('Then the second set is replayed on the answer, with no muscle memory', () => {
+      const first = next(
+        createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [], [chestAt(11, 60, 12)])),
+        T0,
+      )
+      const second = next(next(first, T0 + 1000), T0 + 2000)
+      const fromApi = { levels: [chestAt(12, 30, 12)], includedSetCount: 1 }
+
+      expect(lastSetLevelsOf(second, fromApi)[0]).toMatchObject({
+        after: { level: 12, points: 50 },
+        gain: 20,
+        bonus: null,
+      })
     })
   })
 })

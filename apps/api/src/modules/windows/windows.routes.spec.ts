@@ -196,7 +196,17 @@ describe('Given a database with no workout (US-F10-02)', () => {
         status: response.status,
         now: body.now,
         groups: body.groups.map(
-          ({ muscleGroup, level, points, levelCost, bestLevel, tier, cooling, nextDropAt }) => [
+          ({
+            muscleGroup,
+            level,
+            points,
+            levelCost,
+            bestLevel,
+            tier,
+            cooling,
+            nextDropAt,
+            muscleMemory,
+          }) => [
             muscleGroup.slug,
             level,
             points,
@@ -205,12 +215,13 @@ describe('Given a database with no workout (US-F10-02)', () => {
             tier,
             cooling,
             nextDropAt,
+            muscleMemory,
           ],
         ),
       }).toEqual({
         status: 200,
         now: clock.now().toISOString(),
-        groups: CATALOG_ORDER.map((slug) => [slug, 1, 0, 40, 1, 'bronze', false, null]),
+        groups: CATALOG_ORDER.map((slug) => [slug, 1, 0, 40, 1, 'bronze', false, null, false]),
       })
     })
   })
@@ -233,6 +244,7 @@ describe('Given back trained with 3 sets in a workout with no letter left', () =
         tier: 'bronze',
         cooling: false,
         nextDropAt: null,
+        muscleMemory: false,
       })
     })
   })
@@ -335,6 +347,24 @@ describe('Given no session of access (US-F15b-02)', () => {
         status: 401,
         code: 'unauthenticated',
         weeklyGoal: undefined,
+      })
+    })
+  })
+})
+
+describe('Given back dropped from level 2 to level 1 while cooling (US-F10-04)', () => {
+  describe('When GET /api/levels is called', () => {
+    it('Then back should keep best level 2 and have muscle memory', async () => {
+      const { app, train } = await givenCatalogAndHistory()
+      train('remada', '2026-11-15T00:00:00.000Z')
+
+      const body = (await (await app.request('/api/levels')).json()) as MuscleGroupLevels
+
+      expect(body.groups.find(({ muscleGroup }) => muscleGroup.slug === 'back')).toMatchObject({
+        level: 1,
+        bestLevel: 2,
+        cooling: true,
+        muscleMemory: true,
       })
     })
   })

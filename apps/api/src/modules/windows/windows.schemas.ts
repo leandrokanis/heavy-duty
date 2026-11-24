@@ -175,6 +175,7 @@ export const MuscleGroupLevelSchema = z
     tier: TierSchema,
     cooling: z.boolean().openapi({ example: false }),
     nextDropAt: z.string().nullable().openapi({ example: null }),
+    muscleMemory: z.boolean().openapi({ example: false }),
   })
   .openapi('MuscleGroupLevel')
 

@@ -3,6 +3,7 @@
 import { Progress } from '@base-ui/react/progress'
 import { levelCostOf, tierOf } from '@heavy-duty/game'
 import { type CSSProperties, useEffect, useState } from 'react'
+import { DoubleMark } from './double-mark'
 import { LevelBadge } from './level-badge'
 import type { GroupLevelRow } from './workout-flow'
 
@@ -43,8 +44,13 @@ function LevelRow({ row }: { row: GroupLevelRow }) {
       <span className="flex min-w-0 flex-1 flex-col gap-(--space-4)">
         <span className="flex items-baseline justify-between gap-(--space-8) font-(--font-weight-bold) text-(length:--font-size-callout)">
           <span className="truncate">{name}</span>
-          <span className="bg-linear-to-r from-(--color-game-xp) to-(--color-game-xp-2) bg-clip-text text-transparent tabular-nums">
-            {`+${row.gain}`}
+          <span className="flex items-center gap-(--space-8)">
+            {row.bonus === 'muscleMemory' ? (
+              <DoubleMark muscleMemory aria-label="Recuperação em dobro" />
+            ) : null}
+            <span className="bg-linear-to-r from-(--color-game-xp) to-(--color-game-xp-2) bg-clip-text text-transparent tabular-nums">
+              {`+${row.gain}`}
+            </span>
           </span>
         </span>
         <Progress.Root

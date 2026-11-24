@@ -1,8 +1,9 @@
+import { DoubleMark } from './double-mark'
 import type { SetPointsView } from './workout-flow'
 
 // The points of the set just recorded rise from "Próximo" (US-F10-01). Decorative: the live region
 // of the screen speaks them. A new key per set restarts the rise; reduced motion only fades.
-export function PointsFloat({ points, doubled }: Pick<SetPointsView, 'points' | 'doubled'>) {
+export function PointsFloat({ points, bonus }: Pick<SetPointsView, 'points' | 'bonus'>) {
   return (
     <div
       aria-hidden="true"
@@ -12,16 +13,7 @@ export function PointsFloat({ points, doubled }: Pick<SetPointsView, 'points' | 
       <span className="bg-linear-to-r from-(--color-game-xp) to-(--color-game-xp-2) bg-clip-text font-(--font-weight-heavy) text-(length:--font-size-points) text-transparent leading-none tabular-nums">
         {`+${points}`}
       </span>
-      {doubled ? <DoubleMark /> : null}
+      {bonus === null ? null : <DoubleMark muscleMemory={bonus === 'muscleMemory'} />}
     </div>
-  )
-}
-
-// The ×2 takes the color of the open window, as in DESIGN.md 11.1, with the text in the label color.
-function DoubleMark() {
-  return (
-    <span className="inline-flex h-[22px] min-w-[30px] items-center justify-center rounded-(--radius-capsule) bg-[color-mix(in_srgb,var(--color-window-open)_22%,transparent)] px-(--space-8) font-(--font-weight-heavy) text-(--color-label) text-(length:--font-size-footnote)">
-      ×2
-    </span>
   )
 }

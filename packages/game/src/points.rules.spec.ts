@@ -105,10 +105,25 @@ describe('multiplierPercentOf', () => {
         windowPercent: 300,
         outsideWindowPercent: 100,
         welcomeBackPercent: 200,
+        muscleMemoryPercent: 200,
         maxMultiplierPercent: 200,
       }
 
       expect(multiplierPercentOf({ inWindow: true }, config)).toBe(200)
+    })
+  })
+
+  describe('Given a group below its best level outside the window', () => {
+    it('Then the points double by the muscle memory', () => {
+      expect(multiplierPercentOf({ inWindow: false, muscleMemory: true })).toBe(200)
+    })
+  })
+
+  describe('Given a group below its best level inside the window', () => {
+    it('Then the points double, and do not quadruple', () => {
+      expect(multiplierPercentOf({ inWindow: true, muscleMemory: true, welcomeBack: true })).toBe(
+        200,
+      )
     })
   })
 })

@@ -182,3 +182,36 @@ describe('Given the window of chest closing during the second workout (D56)', ()
     })
   })
 })
+
+describe('groupLevelsOf with muscle memory (US-F10-04)', () => {
+  // Two chest workouts, the second in the window of the first, take chest to level 5; a week of
+  // cooling after the close of the second drops it to level 1, with best level 5.
+  const secondMs = T0 + 50 * HOUR_MS
+  const closesAtMs = secondMs + 2 * 60_000 + 120 * HOUR_MS
+  const backMs = closesAtMs + 168 * HOUR_MS
+  const history = [...benchWorkout('workout-1', T0), ...benchWorkout('workout-2', secondMs)]
+
+  describe('Given chest at level 1 with best level 5 after the cooling', () => {
+    it('Then chest is below its best level', () => {
+      expect(groupLevelsOf(history, GAME_PARAMETERS, backMs).get('chest')?.progress).toEqual({
+        level: 1,
+        points: 0,
+        bestLevel: 5,
+      })
+    })
+  })
+
+  describe('Given a workout 2 hours after the first one back, before the window opens', () => {
+    it('Then each set below the best level yields double, the one that crosses it too, and the next one the common gain', () => {
+      const sets = [
+        ...history,
+        ...benchWorkout('workout-3', backMs),
+        ...benchWorkout('workout-4', backMs + 2 * HOUR_MS),
+      ]
+
+      expect(
+        groupLevelsOf(sets, GAME_PARAMETERS, backMs + 3 * HOUR_MS).get('chest')?.progress,
+      ).toEqual({ level: 5, points: 42, bestLevel: 5 })
+    })
+  })
+})

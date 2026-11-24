@@ -243,7 +243,7 @@ function useGameSounds(
     playedSetId.current = shown.setId
     if (!gameSoundOn) return
     try {
-      tonePlayer.play(shown.doubled ? 'pointsDoubled' : 'points')
+      tonePlayer.play(shown.bonus === null ? 'points' : 'pointsDoubled')
       if (isRecord) tonePlayer.play('record')
     } catch {
       // The points and the record show without the sound.
@@ -657,7 +657,7 @@ export function WorkoutScreen({
             <PointsFloat
               key={shownPoints.setId}
               points={shownPoints.points}
-              doubled={shownPoints.doubled}
+              bonus={shownPoints.bonus}
             />
           ) : null}
           {timerOpen ? (

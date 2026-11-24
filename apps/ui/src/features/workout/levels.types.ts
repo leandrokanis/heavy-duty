@@ -11,6 +11,8 @@ export type MuscleGroupLevel = {
   // Absent from a copy saved on the device before US-F10-03.
   cooling?: boolean
   nextDropAt?: string | null
+  // Absent from a copy saved on the device before US-F10-04.
+  muscleMemory?: boolean
 }
 
 export type MuscleGroupLevels = { now: string; groups: MuscleGroupLevel[] }

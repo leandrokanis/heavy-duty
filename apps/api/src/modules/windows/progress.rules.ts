@@ -3,6 +3,7 @@ import {
   coolingLossOf,
   type GroupProgress,
   groupGainOf,
+  hasMuscleMemory,
   multiplierPercentOf,
   nextDropAtMsOf,
   type SetPlan,
@@ -44,8 +45,9 @@ export type GroupLevelState = {
 }
 
 // Replays the history in time order: each set adds the gain of D54 to each group of its exercise,
-// doubled in the window before (D55) or back from cooling (D53); between the close and the next
-// training or now, the group cools (D58). A workout with no letter counts its sets of the group.
+// doubled in the window before (D55), back from cooling (D53) or below the best level (D63);
+// from the close to the next training or now, the group cools (D58). A workout with no letter
+// counts its sets of the group.
 export function groupLevelsOf(
   sets: ProgressSet[],
   parameters: GameParameters,
@@ -89,12 +91,14 @@ export function groupLevelsOf(
       // A window that closes during the workout stops doubling (D56).
       const welcomeBack =
         window !== undefined && (firstSetMs.get(key) as number) >= window.closesAtMs
+      // Below the best level after the cooling and before the gain, the set doubles whole (D64).
+      const muscleMemory = hasMuscleMemory(progressOf(slug))
       const plannedGroupSets = set.plannedGroupSets?.[slug] ?? recordedGroupSets.get(key) ?? 1
       const gain = groupGainOf(
         set,
         set.plan,
         { role, plannedGroupSets },
-        multiplierPercentOf({ inWindow, welcomeBack }),
+        multiplierPercentOf({ inWindow, welcomeBack, muscleMemory }),
       )
       progress.set(slug, addGroupGain(progressOf(slug), gain).progress)
     }

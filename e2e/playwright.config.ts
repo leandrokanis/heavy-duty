@@ -43,6 +43,7 @@ const GROUP_LEVEL_SPEC = /group-level\.feature\.spec\.js$/
 const COOLING_LEVEL_SPEC = /cooling-level\.feature\.spec\.js$/
 const WINDOWS_USED_SPEC = /windows-used\.feature\.spec\.js$/
 const WEEKLY_GOAL_SPEC = /weekly-goal\.feature\.spec\.js$/
+const MUSCLE_MEMORY_SPEC = /muscle-memory\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -101,6 +102,7 @@ export default defineConfig({
         COOLING_LEVEL_SPEC,
         WINDOWS_USED_SPEC,
         WEEKLY_GOAL_SPEC,
+        MUSCLE_MEMORY_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -370,6 +372,15 @@ export default defineConfig({
       testMatch: WEEKLY_GOAL_SPEC,
       fullyParallel: false,
       dependencies: ['windows-used'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records workouts relative to the real clock so a group falls below its best level, so it
+    // runs alone and one scenario at a time, after the weekly goal.
+    {
+      name: 'muscle-memory',
+      testMatch: MUSCLE_MEMORY_SPEC,
+      fullyParallel: false,
+      dependencies: ['weekly-goal'],
       use: { ...devices['Pixel 7'] },
     },
   ],

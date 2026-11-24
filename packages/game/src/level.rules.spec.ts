@@ -3,6 +3,7 @@ import {
   addGroupGain,
   type GroupProgress,
   groupGainOf,
+  hasMuscleMemory,
   levelCostOf,
   type SetPlan,
   startingProgress,
@@ -141,6 +142,26 @@ describe('addGroupGain', () => {
       it('Then the best level stays', () => {
         expect(addGroupGain({ level: 3, points: 45, bestLevel: 8 }, 10).progress.bestLevel).toBe(8)
       })
+    })
+  })
+})
+
+describe('hasMuscleMemory', () => {
+  describe('Given back with best level 12 at level 8', () => {
+    it('Then back has muscle memory', () => {
+      expect(hasMuscleMemory({ level: 8, points: 0, bestLevel: 12 })).toBe(true)
+    })
+  })
+
+  describe('Given back with best level 12 back at level 12', () => {
+    it('Then back no longer has muscle memory', () => {
+      expect(hasMuscleMemory({ level: 12, points: 0, bestLevel: 12 })).toBe(false)
+    })
+  })
+
+  describe('Given a group never trained', () => {
+    it('Then it has no muscle memory', () => {
+      expect(hasMuscleMemory(startingProgress())).toBe(false)
     })
   })
 })

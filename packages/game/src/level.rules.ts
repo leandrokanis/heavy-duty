@@ -10,6 +10,11 @@ export function startingProgress(
   return { level: config.minLevel, points: 0, bestLevel: config.minLevel }
 }
 
+// Decision D63: below its best level, in any state of the window, the group has muscle memory.
+export function hasMuscleMemory({ level, bestLevel }: GroupProgress): boolean {
+  return level < bestLevel
+}
+
 type CostConfig = Pick<GameConfig, 'levelBaseCost' | 'levelCostStep'>
 
 // Decision D41: level n costs 40 + 3 × (n − 1) points.

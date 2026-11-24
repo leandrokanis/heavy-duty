@@ -86,8 +86,8 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Nível geral | Nível do grupo mais fraco entre os que o programa treina | `overallLevel` | nível do atleta, média |
 | Faixa | Grupo de níveis que define a forma e a cor do selo: círculo de bronze (1 a 4), escudo de prata (5 a 10), hexágono de ouro (11 a 16) e estrela violeta (17 a 20) | `tier` | liga, divisão |
 | Faixa de jogo | Área no topo do treino do dia com o nível geral e a meta semanal; a sequência de semanas e os pontos da semana entram na onda 7b (D78). Diferente da faixa de níveis do selo | `GameStrip` | barra do jogo, painel, placar |
-| Melhor nível | Maior nível que um grupo já teve. Nunca se perde | `bestLevel` | recorde de nível |
-| Memória muscular | Pontos em dobro para um grupo que está abaixo do melhor nível, até alcançá-lo de novo | `muscleMemory` | — |
+| Melhor nível | Maior nível que um grupo já teve. O esfriamento não o reduz; a correção ou a remoção de um treino o recalculam com o histórico (D66) | `bestLevel` | recorde de nível |
+| Memória muscular | Pontos em dobro para um grupo que está abaixo do melhor nível, em qualquer estado da janela, até alcançá-lo de novo, sem somar com a janela nem com o bem-vindo de volta. Vale pelo nível antes da série: a série que alcança o melhor nível rende em dobro inteira (D63, D64). Marca ↺ ×2 | `muscleMemory` | — |
 | Aviso de queda | Aviso antes de um grupo esfriando cair de nível | `levelDropNotice` | — |
 | Recorde | Maior carga de um exercício para um número de repetições | `personalRecord` | PR, marca |
 | Medalha | Conquista por um marco; algumas ficam ocultas até a conquista | `medal` | troféu, badge, conquista |

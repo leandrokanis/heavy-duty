@@ -3,8 +3,10 @@ import {
   GAME_CONFIG,
   type GroupProgress,
   groupGainOf,
+  hasMuscleMemory,
   isInWindowAt,
   multiplierPercentOf,
+  type SetBonuses,
   type SetPlan,
   setPointsOf,
   startingProgress,
@@ -406,12 +408,23 @@ export function announcementOf(state: WorkoutFlowState): string {
 }
 
 function pointsText(state: WorkoutFlowState): string {
-  const { points, doubled } = lastSetPointsOf(state) as SetPointsView
+  const { points, bonus } = lastSetPointsOf(state) as SetPointsView
   const text = `${points} ${points === 1 ? 'ponto' : 'pontos'}`
-  return doubled ? `${text} em dobro` : text
+  if (bonus === 'muscleMemory') return `${text} em dobro pela memória muscular`
+  return bonus === null ? text : `${text} em dobro`
 }
 
-export type SetPointsView = { setId: string; points: number; doubled: boolean }
+// What doubled a set or the gain of a group: one mark, in this order (D65).
+export type SetBonus = 'window' | 'muscleMemory' | 'welcomeBack'
+
+function bonusOf(bonuses: SetBonuses[]): SetBonus | null {
+  if (bonuses.some(({ inWindow }) => inWindow)) return 'window'
+  if (bonuses.some(({ muscleMemory }) => muscleMemory)) return 'muscleMemory'
+  if (bonuses.some(({ welcomeBack }) => welcomeBack)) return 'welcomeBack'
+  return null
+}
+
+export type SetPointsView = { setId: string; points: number; bonus: SetBonus | null }
 
 function plannedOf(state: WorkoutFlowState, set: RecordWorkoutSetBody): TodayExercise {
   return state.session.day.exercises.find(
@@ -431,12 +444,19 @@ function measureOf(set: RecordWorkoutSetBody) {
   return { loadG: set.loadG, reps: set.reps ?? null, seconds: set.seconds ?? null }
 }
 
-// The double of a group at the instant of the set, by its window frozen at the start: inside the
+// The doubles of a group at the instant of the set, by its window frozen at the start: inside the
 // window (D55, D56), or in a workout whose first set of the group came after the window closed,
-// the first workout back (D53). A window that closes during the workout stops doubling.
-function bonusesOf(state: WorkoutFlowState, slug: string, performedAt: string) {
+// the first workout back (D53). A window that closes during the workout stops doubling. Below
+// its best level before the set, the group has muscle memory (D63, D64).
+function bonusesOf(
+  state: WorkoutFlowState,
+  slug: string,
+  performedAt: string,
+  before: GroupProgress,
+): SetBonuses {
+  const muscleMemory = hasMuscleMemory(before)
   const window = state.session.windows.find(({ muscleGroupSlug }) => muscleGroupSlug === slug)
-  if (window === undefined || window.closesAt === null) return { inWindow: false }
+  if (window === undefined || window.closesAt === null) return { inWindow: false, muscleMemory }
   const firstOfGroup = state.recorded.find((set) =>
     groupRolesOf(plannedOf(state, set)).some((group) => group.slug === slug),
   )
@@ -445,44 +465,13 @@ function bonusesOf(state: WorkoutFlowState, slug: string, performedAt: string) {
     welcomeBack:
       firstOfGroup !== undefined &&
       Date.parse(firstOfGroup.performedAt) >= Date.parse(window.closesAt),
-  }
-}
-
-function multiplierOfGroup(state: WorkoutFlowState, slug: string, performedAt: string): number {
-  return multiplierPercentOf(bonusesOf(state, slug, performedAt))
-}
-
-// The provisional points of the last recorded set (ADR-034), against its plan in the workout of
-// the day and the windows frozen at the start. Only the primary groups double it (decision 1 of
-// US-F10-01), inside the window or back from the cooling.
-export function lastSetPointsOf(state: WorkoutFlowState): SetPointsView | null {
-  const set = state.recorded.at(-1)
-  if (set === undefined) return null
-  const planned = plannedOf(state, set)
-  const multiplierPercent = Math.max(
-    multiplierPercentOf({ inWindow: false }),
-    ...planned.muscleGroups.map(({ slug }) => multiplierOfGroup(state, slug, set.performedAt)),
-  )
-  const points = setPointsOf(measureOf(set), planOf(planned), multiplierPercent)
-  return {
-    setId: set.id,
-    points,
-    doubled: multiplierPercent > multiplierPercentOf({ inWindow: false }),
+    muscleMemory,
   }
 }
 
 // The levels the provisional bar starts from: the answer of the API with the sets it already holds,
 // or the levels frozen at the start with none of the sets of this workout.
 export type LevelsBase = { levels: FrozenLevel[]; includedSetCount: number }
-
-export type GroupLevelRow = {
-  slug: string
-  name: string
-  before: GroupProgress
-  after: GroupProgress
-  gain: number
-  levelsReached: number[]
-}
 
 type GroupRole = { slug: string; name: string; role: 'primary' | 'secondary' }
 
@@ -503,53 +492,113 @@ function plannedGroupSetsOf(state: WorkoutFlowState, slug: string): number {
     .reduce((total, { sets }) => total + sets, 0)
 }
 
-// The gain of one group from one set, with the multiplier of the group itself (D55).
-function groupGainOfSet(state: WorkoutFlowState, set: RecordWorkoutSetBody, group: GroupRole) {
-  const planned = plannedOf(state, set)
-  return groupGainOf(
-    measureOf(set),
-    planOf(planned),
-    { role: group.role, plannedGroupSets: plannedGroupSetsOf(state, group.slug) },
-    multiplierOfGroup(state, group.slug, set.performedAt),
-  )
+type GroupStep = GroupRole & {
+  before: GroupProgress
+  after: GroupProgress
+  gain: number
+  levelsReached: number[]
+  bonuses: SetBonuses
 }
 
-// The bar of each group of the last recorded set, before and after it: the base with the sets it
-// does not hold yet replayed on top, the same rules the API runs over the whole history.
-export function lastSetLevelsOf(state: WorkoutFlowState, base?: LevelsBase): GroupLevelRow[] {
-  const last = state.recorded.at(-1)
-  if (last === undefined) return []
-  const baseLevels = base?.levels ?? state.session.levels
-  // With no level known, as on a phone that never read them, the bar waits for the API.
-  if (baseLevels.length === 0) return []
-  const included = base?.includedSetCount ?? 0
+// One replay for the points and the bars: from the base, each set it does not hold adds the gain
+// of each group with the multiplier of the group itself (D55), as it stood before the set, the
+// same rules the API runs over the whole history. The steps of the last set, null if held.
+function lastSetStepsOf(state: WorkoutFlowState, base: LevelsBase): GroupStep[] | null {
   const progress = new Map(
-    baseLevels.map(({ muscleGroupSlug, ...level }) => [muscleGroupSlug, level as GroupProgress]),
+    base.levels.map(({ muscleGroupSlug, ...level }) => [muscleGroupSlug, level as GroupProgress]),
   )
   const progressOf = (slug: string) => progress.get(slug) ?? startingProgress()
-  state.recorded.slice(included, -1).forEach((set) => {
-    for (const group of groupRolesOf(plannedOf(state, set))) {
-      progress.set(
-        group.slug,
-        addGroupGain(progressOf(group.slug), groupGainOfSet(state, set, group)).progress,
+  let steps: GroupStep[] | null = null
+  for (const set of state.recorded.slice(base.includedSetCount)) {
+    const planned = plannedOf(state, set)
+    steps = groupRolesOf(planned).map((group) => {
+      const before = progressOf(group.slug)
+      const bonuses = bonusesOf(state, group.slug, set.performedAt, before)
+      const gain = groupGainOf(
+        measureOf(set),
+        planOf(planned),
+        { role: group.role, plannedGroupSets: plannedGroupSetsOf(state, group.slug) },
+        multiplierPercentOf(bonuses),
       )
+      const added = addGroupGain(before, gain)
+      progress.set(group.slug, added.progress)
+      return {
+        ...group,
+        before,
+        after: added.progress,
+        gain,
+        levelsReached: added.levelsReached,
+        bonuses,
+      }
+    })
+  }
+  return steps
+}
+
+function frozenBaseOf(state: WorkoutFlowState): LevelsBase {
+  return { levels: state.session.levels, includedSetCount: 0 }
+}
+
+// The provisional points of the last recorded set (ADR-034), against its plan in the workout of
+// the day, the windows and the levels frozen at the start. Only the primary groups double it
+// (decision 1 of US-F10-01): in the window, below the best level or back from the cooling.
+export function lastSetPointsOf(state: WorkoutFlowState): SetPointsView | null {
+  const set = state.recorded.at(-1)
+  if (set === undefined) return null
+  const primary = (lastSetStepsOf(state, frozenBaseOf(state)) ?? []).filter(
+    ({ role }) => role === 'primary',
+  )
+  const common = multiplierPercentOf({ inWindow: false })
+  const multiplierPercent = Math.max(
+    common,
+    ...primary.map(({ bonuses }) => multiplierPercentOf(bonuses)),
+  )
+  const points = setPointsOf(measureOf(set), planOf(plannedOf(state, set)), multiplierPercent)
+  return {
+    setId: set.id,
+    points,
+    bonus: multiplierPercent > common ? bonusOf(primary.map(({ bonuses }) => bonuses)) : null,
+  }
+}
+
+export type GroupLevelRow = {
+  slug: string
+  name: string
+  before: GroupProgress
+  after: GroupProgress
+  gain: number
+  levelsReached: number[]
+  bonus: SetBonus | null
+}
+
+function rowOf({
+  slug,
+  name,
+  before,
+  after,
+  gain,
+  levelsReached,
+  bonuses,
+}: GroupStep): GroupLevelRow {
+  return { slug, name, before, after, gain, levelsReached, bonus: bonusOf([bonuses]) }
+}
+
+// The bar of each group of the last recorded set, before and after it. When the base already
+// holds the last set, the bar is the base, with the gain of the provisional replay.
+export function lastSetLevelsOf(state: WorkoutFlowState, base?: LevelsBase): GroupLevelRow[] {
+  if (state.recorded.length === 0) return []
+  const levelsBase = base ?? frozenBaseOf(state)
+  // With no level known, as on a phone that never read them, the bar waits for the API.
+  if (levelsBase.levels.length === 0) return []
+  const steps = lastSetStepsOf(state, levelsBase)
+  if (steps !== null) return steps.map(rowOf)
+  const held = new Map(levelsBase.levels.map((level) => [level.muscleGroupSlug, level]))
+  return (lastSetStepsOf(state, frozenBaseOf(state)) ?? []).map((step) => {
+    const { muscleGroupSlug: _slug, ...progress } = held.get(step.slug) ?? {
+      muscleGroupSlug: step.slug,
+      ...startingProgress(),
     }
-  })
-  const lastIncluded = state.recorded.length <= included
-  return groupRolesOf(plannedOf(state, last)).map((group) => {
-    const before = progressOf(group.slug)
-    const gain = groupGainOfSet(state, last, group)
-    const added = lastIncluded
-      ? { progress: before, levelsReached: [] }
-      : addGroupGain(before, gain)
-    return {
-      slug: group.slug,
-      name: group.name,
-      before,
-      after: added.progress,
-      gain,
-      levelsReached: added.levelsReached,
-    }
+    return rowOf({ ...step, before: progress, after: progress, levelsReached: [] })
   })
 }
 

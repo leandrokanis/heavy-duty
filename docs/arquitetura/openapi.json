@@ -1921,6 +1921,10 @@
               "null"
             ],
             "example": null
+          },
+          "muscleMemory": {
+            "type": "boolean",
+            "example": false
           }
         },
         "required": [
@@ -1931,7 +1935,8 @@
           "bestLevel",
           "tier",
           "cooling",
-          "nextDropAt"
+          "nextDropAt",
+          "muscleMemory"
         ]
       },
       "Tier": {

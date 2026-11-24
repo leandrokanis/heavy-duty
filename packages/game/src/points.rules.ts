@@ -61,19 +61,28 @@ export function setPointsOf(
 
 type MultiplierConfig = Pick<
   GameConfig,
-  'windowPercent' | 'outsideWindowPercent' | 'welcomeBackPercent' | 'maxMultiplierPercent'
+  | 'windowPercent'
+  | 'outsideWindowPercent'
+  | 'welcomeBackPercent'
+  | 'muscleMemoryPercent'
+  | 'maxMultiplierPercent'
 >
 
-// Decisions D41, D52 and D53: the double inside the window and in the first training after the
-// group cooled, the common points otherwise; the bonuses never stack beyond the maximum.
+// What may double the gain of a group in a set.
+export type SetBonuses = { inWindow: boolean; welcomeBack?: boolean; muscleMemory?: boolean }
+
+// Decisions D41, D52, D53 and D63: the double inside the window, in the first training after the
+// group cooled and below the best level, the common points otherwise; the bonuses never stack
+// beyond the maximum.
 export function multiplierPercentOf(
-  bonuses: { inWindow: boolean; welcomeBack?: boolean },
+  bonuses: SetBonuses,
   config: MultiplierConfig = GAME_CONFIG,
 ): number {
   const percents = [
     config.outsideWindowPercent,
     bonuses.inWindow ? config.windowPercent : 0,
     bonuses.welcomeBack ? config.welcomeBackPercent : 0,
+    bonuses.muscleMemory ? config.muscleMemoryPercent : 0,
   ]
   return Math.min(Math.max(...percents), config.maxMultiplierPercent)
 }

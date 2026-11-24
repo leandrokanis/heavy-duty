@@ -3202,6 +3202,41 @@ describe('Given supino-reto planned for 10 reps at 40 kg (US-F10-01)', () => {
   })
 })
 
+describe('Given chest at level 8 with best level 12 (US-F10-04)', () => {
+  const SUPINO_AT_PLAN = { ...SUPINO_RETO, loadG: 40000 }
+  const CHEST_BELOW_BEST: FrozenLevel = {
+    muscleGroupSlug: 'chest',
+    level: 8,
+    points: 0,
+    bestLevel: 12,
+  }
+
+  describe('When the athlete records a set at plan outside the window', () => {
+    it('Then +20 should rise with the mark of the muscle memory, also on the row of chest', async () => {
+      stubFetch(created())
+      renderWorkout(
+        [SUPINO_AT_PLAN],
+        vi.fn(),
+        sendPendingItem,
+        flowOf([SUPINO_AT_PLAN], [], [CHEST_BELOW_BEST]),
+      )
+
+      await act(async () => tapNext())
+
+      const panel = screen.getByRole('list', { name: 'Níveis dos grupos' })
+      expect({
+        float: document.querySelector('[data-points]')?.textContent,
+        row: within(panel).getByLabelText('Recuperação em dobro').textContent,
+        announced: screen.getByRole('status').textContent,
+      }).toEqual({
+        float: '+20↺ ×2',
+        row: '↺ ×2',
+        announced: 'Série 1 de 3 registrada, 20 pontos em dobro pela memória muscular',
+      })
+    })
+  })
+})
+
 describe('Given the levels frozen at the start of the workout (US-F10-02)', () => {
   const SUPINO_AT_PLAN = {
     ...SUPINO_RETO,
