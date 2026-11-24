@@ -45,6 +45,7 @@ const WINDOWS_USED_SPEC = /windows-used\.feature\.spec\.js$/
 const WEEKLY_GOAL_SPEC = /weekly-goal\.feature\.spec\.js$/
 const MUSCLE_MEMORY_SPEC = /muscle-memory\.feature\.spec\.js$/
 const OVERALL_LEVEL_SPEC = /overall-level\.feature\.spec\.js$/
+const WINDOW_SUGGESTION_SPEC = /window-suggestion\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -105,6 +106,7 @@ export default defineConfig({
         WEEKLY_GOAL_SPEC,
         MUSCLE_MEMORY_SPEC,
         OVERALL_LEVEL_SPEC,
+        WINDOW_SUGGESTION_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -392,6 +394,15 @@ export default defineConfig({
       testMatch: OVERALL_LEVEL_SPEC,
       fullyParallel: false,
       dependencies: ['muscle-memory'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records workouts relative to the real clock and reads the suggested letter, so it runs alone
+    // and one scenario at a time, after the overall level.
+    {
+      name: 'window-suggestion',
+      testMatch: WINDOW_SUGGESTION_SPEC,
+      fullyParallel: false,
+      dependencies: ['overall-level'],
       use: { ...devices['Pixel 7'] },
     },
   ],

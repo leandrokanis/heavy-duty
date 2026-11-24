@@ -750,6 +750,65 @@ describe('Given letter A trains chest, whose window closes in 30 s', () => {
   })
 })
 
+function suggestionWindowsBody(chestOpensAtMs: number) {
+  const groupOf = (muscleGroup: { slug: string; name: string }, opensAtMs: number) => ({
+    muscleGroup,
+    state: 'resting',
+    lastTrainedAt: new Date(WINDOWS_NOW_MS - 86_400_000).toISOString(),
+    opensAt: new Date(opensAtMs).toISOString(),
+    closesAt: new Date(opensAtMs + 96 * 3_600_000).toISOString(),
+  })
+  return {
+    now: new Date(WINDOWS_NOW_MS).toISOString(),
+    groups: [
+      groupOf({ slug: 'chest', name: 'peito' }, chestOpensAtMs),
+      groupOf({ slug: 'triceps', name: 'tríceps' }, WINDOWS_NOW_MS - 3_600_000),
+    ],
+  }
+}
+
+function suggestedLetters() {
+  return screen
+    .getAllByRole('button', { name: /Sugerida/ })
+    .map((button) => button.textContent?.charAt(0))
+}
+
+describe("Given A trains chest, which opens in 30 s, B trains triceps in its window, and the sequence at 'A'", () => {
+  const today = todayBody(
+    [todayDay('A', 'Peito', [SUPINO_RETO]), todayDay('B', 'Tríceps', [TRICEPS_POLIA])],
+    'A',
+  )
+
+  describe('When the athlete opens the app', () => {
+    it('Then B should be the suggested letter, by the windows', async () => {
+      vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'], now: WINDOWS_NOW_MS })
+      stubFetch(json(200, today))
+      windowsAnswer = () => json(200, suggestionWindowsBody(WINDOWS_NOW_MS + 30_000))
+
+      renderToday()
+      await screen.findByText(/^Peito · abre/)
+
+      expect(suggestedLetters()).toEqual(['B'])
+    })
+  })
+
+  describe('When the screen stays open until chest opens', () => {
+    it('Then A should become the suggested letter without a new request', async () => {
+      vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'], now: WINDOWS_NOW_MS })
+      stubFetch(json(200, today))
+      windowsAnswer = () => json(200, suggestionWindowsBody(WINDOWS_NOW_MS + 30_000))
+      renderToday()
+      await screen.findByText(/^Peito · abre/)
+
+      await act(async () => {
+        vi.advanceTimersByTime(60_000)
+      })
+
+      expect(suggestedLetters()).toEqual(['A'])
+    })
+  })
+})
+
 describe('Given the phone kept the windows of the last opening with network', () => {
   describe('When the athlete opens the app offline', () => {
     it('Then the badges should come from the stored instants and the current time', async () => {

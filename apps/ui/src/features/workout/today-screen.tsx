@@ -18,6 +18,7 @@ import { overallLevelViewOf } from './overall-level'
 import { QueueNotices } from './queue-notices'
 import { StartSheet } from './start-sheet'
 import type { Today, TodayDay } from './today.types'
+import { suggestedLetterOf } from './window-suggestion'
 import type { ActivityWindows } from './windows.types'
 import {
   createWorkoutFlow,
@@ -204,7 +205,7 @@ function TodayContent({ today, windows, levels, nowMs, onSelect }: TodayContentP
       />
       <LetterList
         days={today.days}
-        suggestedLetter={today.suggestedLetter}
+        suggestedLetter={suggestedLetterOf(today, windows, levels, nowMs)}
         onSelect={onSelect}
         windows={windows}
         levels={levels}

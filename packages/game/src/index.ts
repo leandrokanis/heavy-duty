@@ -21,3 +21,5 @@ export {
   personalRecordsOf,
   recordLoadGFor,
 } from './record.rules.ts'
+export type { SuggestionDay, SuggestionInput, WindowState } from './suggestion.rules.ts'
+export { suggestLetterByWindows, windowStateAt } from './suggestion.rules.ts'

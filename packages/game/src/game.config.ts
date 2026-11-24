@@ -30,6 +30,9 @@ export const GAME_CONFIG = {
   tierStartLevels: { bronze: 1, silver: 5, gold: 11, violet: 17 } satisfies Record<Tier, number>,
   // Decision D43: a cooling group loses about 40 points per day.
   coolingPointsPerDay: 40,
+  // Decision D69: the score of a letter adds the weight of the state of each of its groups. A group
+  // with no window counts as in its window.
+  suggestionWeights: { cooling: 3, open: 2, none: 2, resting: -2 },
 }
 
 export type GameConfig = typeof GAME_CONFIG
