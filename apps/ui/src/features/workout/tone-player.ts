@@ -9,7 +9,17 @@ type Tone = {
 }
 
 // A cue of the timer or a sound of the game (D60), each one under its own switch.
-export type Sound = Cue | 'points' | 'pointsDoubled'
+export type Sound = Cue | 'points' | 'pointsDoubled' | 'record'
+
+// The rising arpeggio of the record in the prototype of the PO, after the points (playFx, 350 ms).
+const RECORD_START_SECONDS = 0.35
+const RECORD_TONES: Tone[] = [523, 659, 784, 1047, 1319, 1568].map((frequencyHz, index) => ({
+  frequencyHz,
+  type: 'square',
+  startSeconds: RECORD_START_SECONDS + index * 0.055,
+  durationSeconds: 0.22,
+  volume: 0.06,
+}))
 
 const POINTS_TONES: Tone[] = [
   { frequencyHz: 988, type: 'triangle', startSeconds: 0, durationSeconds: 0.12, volume: 0.2 },
@@ -20,6 +30,7 @@ const POINTS_TONES: Tone[] = [
 // confirm on the phone.
 const TONES: Record<Sound, Tone[]> = {
   points: POINTS_TONES,
+  record: RECORD_TONES,
   pointsDoubled: [
     ...POINTS_TONES,
     { frequencyHz: 1976, type: 'sine', startSeconds: 0.15, durationSeconds: 0.25, volume: 0.12 },

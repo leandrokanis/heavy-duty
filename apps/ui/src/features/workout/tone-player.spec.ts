@@ -51,6 +51,7 @@ describe('Given a tone player over a fake audio context', () => {
     { cue: 'restWarning', frequencies: [1175] },
     { cue: 'points', frequencies: [988, 1319] },
     { cue: 'pointsDoubled', frequencies: [988, 1319, 1976] },
+    { cue: 'record', frequencies: [523, 659, 784, 1047, 1319, 1568] },
   ] as const)('When play is called with $cue', ({ cue, frequencies }) => {
     it(`Then should start oscillators at ${frequencies.join(', ')} Hz`, () => {
       expect(frequenciesOf(cue)).toEqual(frequencies)
