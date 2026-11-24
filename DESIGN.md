@@ -331,6 +331,9 @@ O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar na pr
 - O fim do descanso DEVE ter sinal visual na área da série (Seção 15) e DEVE ser anunciado na região `aria-live="polite"`, como "Série 2 de 3" ou "Tríceps na polia, série 1 de 3". O sinal NÃO DEVE depender de som nem de vibração.
 - Os 3 últimos segundos do descanso DEVEM ter um sinal sonoro por segundo, distinto dos sinais do cronômetro, e mudar a cor do anel para a cor de atenção (PRD, US-F05-02). A passagem para 0 s não tem sinal sonoro: a série seguinte já tem o sinal visual.
 - O descanso pulado por "Próximo" NÃO DEVE tocar sinal. Leitura do relógio mais de 1 s depois da anterior (volta do segundo plano) também não toca.
+- Enquanto o atleta segura o anel do descanso, o tempo que falta DEVE cair 3 vezes mais rápido (`REST_FAST_FORWARD_FACTOR`, PRD, US-F05-03). Ao soltar, o descanso DEVE voltar ao ritmo normal a partir do tempo que falta. Os sinais dos 3 últimos segundos tocam também no descanso acelerado.
+- O anel do descanso DEVE mostrar o estado pressionado no `pointerdown` (escala de 96 %, sem escala com `prefers-reduced-motion: reduce`). O toque longo NÃO DEVE abrir menu de seleção, lupa nem menu de contexto (`-webkit-touch-callout: none`, sem seleção, `touch-action: none`). O gesto cancelado pelo sistema e a página em segundo plano soltam a pressão.
+- A aceleração é só por ponteiro. Pelo teclado, "Próximo" encurta o descanso, porque pula o resto. O anel continua com os papéis `progressbar` e `timer`, sem papel de botão.
 - O descanso DEVE ter a chave "Som" (`aria-pressed`), na mesma linha do botão da última série, com quebra de linha quando o texto cresce. A preferência é a mesma do cronômetro (Seção 15.1).
 - A tela DEVERIA ficar acesa durante o descanso, com a Screen Wake Lock API onde o navegador aceitar [a confirmar: suporte no PWA do iPhone em 2026].
 - Exercício com descanso de 0 s NÃO DEVE mostrar a tela de descanso.

@@ -162,4 +162,14 @@ A US-F03-07 acrescenta o cronômetro sobre o mesmo reducer:
 6. A chave "Som" fica no `localStorage` do aparelho (`heavy-duty:sound`, `sound-preference.ts`), fora do Dexie e da fila, com o som ligado por padrão. A mesma chave aparece no cronômetro e no descanso (US-F05-02). `localStorage` bloqueado deixa o som ligado e a tela funcionando.
 7. O anel da execução usa o `TimerRing` do descanso, com os nomes "Execução restante" e "Tempo de execução", e `data-tone="warning"` com 3 s ou menos, na cor `--color-warning`. O anel do descanso usa o mesmo tom nos 3 últimos segundos (US-F05-02). A API, o contrato e o MCP não mudam: a série de tempo já leva `seconds`.
 
+## Descanso acelerado
+
+A US-F05-03 acrescenta a pressão no anel do descanso sobre o mesmo reducer:
+
+1. O estado guarda o fim do descanso no ritmo normal (`restEndsAtMs`) e o instante da pressão (`restHoldStartedAtMs`). As ações `holdRest` e `releaseRest` abrem e fecham a pressão. `restMsLeftOf` dá o tempo que falta: `restEndsAtMs − agora` sem pressão e `(restEndsAtMs − início) − REST_FAST_FORWARD_FACTOR × (agora − início)` com pressão, nunca abaixo de 0.
+2. `deadlineOf`, `timerReadingOf` e o fim do descanso usam `restMsLeftOf`. A soltura grava o novo `restEndsAtMs` (agora mais o tempo que falta), então a retomada e a fila não mudam. O pulo, o fim do descanso e o "Encerrar" limpam a pressão.
+3. `restoreWorkoutFlow` solta a pressão aberta no instante em que começou, sem a aceleração: o app fechado não diz quando o dedo saiu.
+4. O fator vale 3 (`workout.config.ts`). Um teste exige `1000 / fator > TICK_MS`, para cada segundo acelerado ter uma leitura do relógio de 250 ms e os sinais da US-F05-02 não falharem.
+5. O `TimerRing` recebe a prop `hold`: captura do ponteiro no `pointerdown`; `pointerup`, `pointercancel` e `lostpointercapture` soltam; o `contextmenu` fica bloqueado. A `WorkoutScreen` solta a pressão quando a página vai para o segundo plano (`visibilitychange`).
+
 As regras de produto e de interface do dia a dia estão em `apps/ui/CLAUDE.md` e em `DESIGN.md`.

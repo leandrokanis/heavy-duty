@@ -9,6 +9,7 @@ import { createSyncQueue, type SendItem, type SyncQueue } from '@/sync/sync-queu
 import { CRUCIFIXO, PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayDay } from './test-today'
 import type { Cue } from './timer-cues'
 import type { TonePlayer } from './tone-player'
+import { TICK_MS } from './workout.config'
 import {
   createWorkoutFlow,
   restoreWorkoutFlow,
@@ -2764,6 +2765,127 @@ describe('Given the Som switch on the 90 s rest of set 1 of supino-reto', () => 
         unlocks: unlock.mock.calls.length,
         pressed: soundSwitch().getAttribute('aria-pressed'),
       }).toEqual({ unlocks: 1, pressed: 'true' })
+    })
+  })
+})
+
+// One render per tick of the phase clock, as on the phone: a held second lasts about 333 ms.
+async function passTicks(ticks: number) {
+  for (let tick = 0; tick < ticks; tick++) {
+    await act(async () => vi.advanceTimersByTimeAsync(TICK_MS))
+  }
+}
+
+function restRing() {
+  return screen.getByRole('timer', { name: 'Descanso' }).parentElement as HTMLElement
+}
+
+function holding() {
+  return screen
+    .queryByRole('timer', { name: 'Descanso' })
+    ?.parentElement?.hasAttribute('data-holding')
+}
+
+describe('Given the 90 s rest of set 1 of supino-reto at 1:20', () => {
+  describe('When the athlete holds the ring for 10 s and releases it for 10 s more', () => {
+    it('Then the rest should fall 3 times faster while held, to 0:50, and at the normal pace after, to 0:40', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch(created())
+      renderWorkout(LETTER_A)
+      await act(async () => tapNext())
+      await passSeconds(10)
+      const before = restClock()
+
+      fireEvent.pointerDown(restRing(), { pointerId: 1 })
+      const pressed = holding()
+      await passSeconds(10)
+      const held = restClock()
+      fireEvent.pointerUp(restRing(), { pointerId: 1 })
+      const releasedHolding = holding()
+      await passSeconds(10)
+
+      expect({ before, pressed, held, releasedHolding, after: restClock() }).toEqual({
+        before: '1:20',
+        pressed: true,
+        held: '0:50',
+        releasedHolding: false,
+        after: '0:40',
+      })
+    })
+  })
+})
+
+describe('Given the 90 s rest of set 1 of supino-reto at 0:10 with the sound on', () => {
+  describe('When the athlete holds the ring until the rest runs out', () => {
+    it('Then the rest cue should play on 3, 2 and 1, with the warning tone, and set 2 should open', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch(created())
+      const { player, cues } = recordingPlayer()
+      renderWorkout(LETTER_A, vi.fn(), sendPendingItem, undefined, player)
+      await act(async () => tapNext())
+      await passSeconds(80)
+
+      fireEvent.pointerDown(restRing(), { pointerId: 1 })
+      await passTicks(10)
+      const at2 = { clock: restClock(), tone: restRingTone() }
+      await passTicks(4)
+
+      expect({
+        at2,
+        cues,
+        sets: valueTextOf('Séries'),
+        resting: screen.queryByRole('timer', { name: 'Descanso' }) !== null,
+      }).toEqual({
+        at2: { clock: '0:03', tone: 'warning' },
+        cues: ['restWarning', 'restWarning', 'restWarning'],
+        sets: '2 de 3',
+        resting: false,
+      })
+    })
+  })
+})
+
+describe('Given the ring of the 90 s rest held at 1:20', () => {
+  describe.each([
+    { name: 'a pointercancel', end: (ring: HTMLElement) => fireEvent.pointerCancel(ring) },
+    {
+      name: 'the page going to the background',
+      end: () => {
+        vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+        fireEvent(document, new Event('visibilitychange'))
+      },
+    },
+  ])('When $name ends the hold and 10 s go by', ({ end }) => {
+    it('Then the rest should count at the normal pace from the release', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch(created())
+      renderWorkout(LETTER_A)
+      await act(async () => tapNext())
+      await passSeconds(10)
+      fireEvent.pointerDown(restRing(), { pointerId: 1 })
+      await passSeconds(1)
+
+      await act(async () => end(restRing()))
+      vi.restoreAllMocks()
+      await passSeconds(10)
+
+      expect({ holding: holding(), clock: restClock() }).toEqual({
+        holding: false,
+        clock: '1:07',
+      })
+    })
+  })
+})
+
+describe('Given the ring of the 90 s rest', () => {
+  describe('When the athlete long-presses it', () => {
+    it('Then the context menu should be blocked', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch(created())
+      renderWorkout(LETTER_A)
+      await act(async () => tapNext())
+
+      expect(fireEvent.contextMenu(restRing())).toBe(false)
     })
   })
 })

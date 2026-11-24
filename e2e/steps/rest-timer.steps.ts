@@ -78,3 +78,17 @@ Then('the rest should offer the switch {string} pressed', async ({ page }, name:
   await expect(page.getByRole('timer', { name: 'Descanso' })).toBeVisible()
   await expect(page.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'true')
 })
+
+// The mouse stands in for the finger: the ring listens to pointer events of any kind.
+When('the athlete presses and holds the timer of the rest', async ({ page }) => {
+  const box = await restRing(page).boundingBox()
+  if (box === null) throw new Error('The ring of the rest is not on screen')
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await expect(restRing(page)).toHaveAttribute('data-holding', '')
+})
+
+When('the athlete releases the timer of the rest', async ({ page }) => {
+  await page.mouse.up()
+  await expect(restRing(page)).not.toHaveAttribute('data-holding')
+})

@@ -18,3 +18,7 @@ export const WHEEL_STEP_PX = 40
 
 // Step of the phase clock: the ring stroke moves linearly over the same time (--duration-tick).
 export const TICK_MS = 250
+
+// How many times faster the rest runs while the athlete holds its ring; an estimate the PO
+// chose, to check on the phone. With TICK_MS, every second of a held rest is still read.
+export const REST_FAST_FORWARD_FACTOR = 3

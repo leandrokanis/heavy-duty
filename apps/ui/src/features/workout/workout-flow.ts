@@ -1,7 +1,7 @@
 import { createClientId } from './client-id'
 import { type AdjustField, adjustValue, MINIMUMS, valueTextOf } from './drag-adjust'
 import type { ExerciseKind, TodayDay, TodayExercise } from './today.types'
-import { COUNTDOWN_MS, DOUBLE_TAP_GUARD_MS } from './workout.config'
+import { COUNTDOWN_MS, DOUBLE_TAP_GUARD_MS, REST_FAST_FORWARD_FACTOR } from './workout.config'
 import type { FinishWorkoutBody } from './workout-finish.types'
 import type { RecordWorkoutSetBody } from './workout-set.types'
 
@@ -27,7 +27,10 @@ export type WorkoutFlowState = {
   phase: 'set' | 'countdown' | 'timing' | 'rest' | 'finished' | 'ended'
   exerciseIndex: number
   setNumber: number
+  // The end of the rest at the normal pace; a release of the hold moves it to the time left.
   restEndsAtMs: number | null
+  // The instant the athlete pressed the ring of the rest, while the finger holds it; else null.
+  restHoldStartedAtMs: number | null
   // The instant the execution of a timed exercise starts (the count ends); null outside the timer.
   executionStartsAtMs: number | null
   lastStepAtMs: number | null
@@ -62,6 +65,8 @@ export type WorkoutFlowState = {
 export type WorkoutFlowAction =
   | { type: 'next'; nowMs: number }
   | { type: 'restEnd'; nowMs: number }
+  | { type: 'holdRest'; nowMs: number }
+  | { type: 'releaseRest'; nowMs: number }
   | { type: 'timerReach'; nowMs: number }
   | { type: 'cancel'; nowMs: number }
   | { type: 'goTo'; exerciseIndex: number; nowMs: number }
@@ -79,6 +84,7 @@ export function createWorkoutFlow(session: WorkoutSession): WorkoutFlowState {
     exerciseIndex: 0,
     setNumber: 1,
     restEndsAtMs: null,
+    restHoldStartedAtMs: null,
     executionStartsAtMs: null,
     lastStepAtMs: null,
     lastStep: null,
@@ -285,9 +291,10 @@ export function timerReadingOf(state: WorkoutFlowState, nowMs: number): TimerRea
     const value = Math.min(shownSeconds, Math.max(0, secondsLeft))
     return { stage: 'execution', value, lastStep, atMs: nowMs }
   }
-  if (state.phase === 'rest' && deadlineMs !== null) {
-    const secondsLeft = Math.ceil((deadlineMs - nowMs) / MS_PER_SECOND)
-    return { stage: 'rest', value: Math.max(0, secondsLeft), lastStep, atMs: nowMs }
+  const restMsLeft = restMsLeftOf(state, nowMs)
+  if (restMsLeft !== null) {
+    const value = Math.ceil(restMsLeft / MS_PER_SECOND)
+    return { stage: 'rest', value, lastStep, atMs: nowMs }
   }
   return { stage: 'off', value: 0, lastStep, atMs: nowMs }
 }
@@ -299,7 +306,20 @@ export function deadlineOf(state: WorkoutFlowState): number | null {
     const shownSeconds = shownValuesOf(state).seconds as number
     return (state.executionStartsAtMs as number) + shownSeconds * MS_PER_SECOND
   }
-  return state.phase === 'rest' ? state.restEndsAtMs : null
+  if (state.phase !== 'rest' || state.restEndsAtMs === null) return null
+  const holdMs = state.restHoldStartedAtMs
+  if (holdMs === null) return state.restEndsAtMs
+  return holdMs + Math.ceil(Math.max(0, state.restEndsAtMs - holdMs) / REST_FAST_FORWARD_FACTOR)
+}
+
+// The time left of the rest, never below 0; while the ring is held it falls
+// REST_FAST_FORWARD_FACTOR times faster than the clock. Null outside the rest.
+export function restMsLeftOf(state: WorkoutFlowState, nowMs: number): number | null {
+  if (state.phase !== 'rest' || state.restEndsAtMs === null) return null
+  const holdMs = state.restHoldStartedAtMs
+  if (holdMs === null || nowMs < holdMs) return Math.max(0, state.restEndsAtMs - nowMs)
+  const leftAtHoldMs = state.restEndsAtMs - holdMs
+  return Math.max(0, leftAtHoldMs - REST_FAST_FORWARD_FACTOR * (nowMs - holdMs))
 }
 
 // Text of the polite live region: the set just recorded, then the set now on screen, if any.
@@ -379,10 +399,12 @@ function isValidValues(values: SetValues | null | undefined): values is SetValue
 
 // Brings a saved state back: a rest that ended with the app closed is over, a timer waits for the
 // screen to settle it, and no tap of the last session guards against the first tap of this one.
+// A hold left open counts as released at its start, the only instant known to have happened.
 // Saved values that are not integers above the minimum are dropped, so the body stays valid.
 export function restoreWorkoutFlow(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
   const saved: WorkoutFlowState = {
     ...state,
+    restHoldStartedAtMs: null,
     skipped: state.skipped ?? [],
     draft: isValidValues(state.draft) ? state.draft : null,
     carriedValues: Object.fromEntries(
@@ -423,6 +445,12 @@ export function workoutFlowReducer(
     case 'restEnd':
       if (state.sheet !== 'none') return state
       return hasRestEnded(state, action.nowMs) ? advance(state, action.nowMs) : state
+    case 'holdRest':
+      return state.phase === 'rest' && state.restHoldStartedAtMs === null
+        ? { ...state, restHoldStartedAtMs: action.nowMs }
+        : state
+    case 'releaseRest':
+      return releaseRest(state, action.nowMs)
     case 'timerReach':
       return reachTimer(state, action.nowMs)
     case 'cancel':
@@ -618,6 +646,7 @@ function endWorkout(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
     ...state,
     phase: 'ended',
     restEndsAtMs: null,
+    restHoldStartedAtMs: null,
     sheet: 'none',
     lastStep: null,
     finish,
@@ -692,7 +721,14 @@ function isGuarded(state: WorkoutFlowState, nowMs: number): boolean {
 }
 
 function hasRestEnded(state: WorkoutFlowState, nowMs: number): boolean {
-  return state.phase === 'rest' && state.restEndsAtMs !== null && nowMs >= state.restEndsAtMs
+  return restMsLeftOf(state, nowMs) === 0
+}
+
+// The rest goes back to the normal pace from the time left at the release.
+function releaseRest(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
+  const msLeft = restMsLeftOf(state, nowMs)
+  if (state.restHoldStartedAtMs === null || msLeft === null) return state
+  return { ...state, restEndsAtMs: nowMs + msLeft, restHoldStartedAtMs: null }
 }
 
 function advance(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
@@ -702,6 +738,7 @@ function advance(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
     ...position,
     phase: 'set',
     restEndsAtMs: null,
+    restHoldStartedAtMs: null,
     nextExerciseIndex: null,
     draft: null,
     lastStepAtMs: nowMs,

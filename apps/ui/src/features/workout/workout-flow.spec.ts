@@ -9,6 +9,7 @@ import {
   exerciseProgressOf,
   lastSetOf,
   leftOutOf,
+  restMsLeftOf,
   restoreWorkoutFlow,
   sequenceOf,
   shownValuesOf,
@@ -48,6 +49,14 @@ function timerReach(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
 
 function cancel(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
   return workoutFlowReducer(state, { type: 'cancel', nowMs })
+}
+
+function holdRest(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
+  return workoutFlowReducer(state, { type: 'holdRest', nowMs })
+}
+
+function releaseRest(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
+  return workoutFlowReducer(state, { type: 'releaseRest', nowMs })
 }
 
 // Supino at 40 kg from the program, 3 x 10 resting 90 s (the fixture of the drag adjust spec).
@@ -470,6 +479,126 @@ describe('Given the 90 s rest of set 1 of supino-reto, recorded at T0', () => {
       const reading = timerReadingOf(resting, T0 + offsetMs)
 
       expect({ stage: reading.stage, value: reading.value }).toEqual({ stage: 'rest', value })
+    })
+  })
+})
+
+describe('Given the 90 s rest of set 1 of supino-reto, held from T0 + 10 s (1:20 left)', () => {
+  const resting = next(createWorkoutFlow(sessionOf(LETTER_A)), T0)
+  const held = holdRest(resting, T0 + 10_000)
+
+  describe.each([
+    { offsetMs: 10_000, msLeft: 80_000, value: 80 },
+    { offsetMs: 20_000, msLeft: 50_000, value: 50 },
+    { offsetMs: 36_000, msLeft: 2_000, value: 2 },
+    { offsetMs: 50_000, msLeft: 0, value: 0 },
+  ])('When the rest is read at T0 + $offsetMs ms', ({ offsetMs, msLeft, value }) => {
+    it(`Then should have ${msLeft} ms left, 3 times faster than the clock, read as ${value} s`, () => {
+      const reading = timerReadingOf(held, T0 + offsetMs)
+
+      expect({ msLeft: restMsLeftOf(held, T0 + offsetMs), value: reading.value }).toEqual({
+        msLeft,
+        value,
+      })
+    })
+  })
+
+  describe('When the deadline is read', () => {
+    it('Then should be the instant the held rest runs out, 26 667 ms after the press', () => {
+      expect(deadlineOf(held)).toBe(T0 + 10_000 + 26_667)
+    })
+  })
+
+  describe('When the athlete releases at T0 + 20 s', () => {
+    const released = releaseRest(held, T0 + 20_000)
+
+    it('Then the rest should count at the normal pace from 0:50, ending at T0 + 70 s', () => {
+      expect({
+        hold: released.restHoldStartedAtMs,
+        restEndsAtMs: released.restEndsAtMs,
+        at30: restMsLeftOf(released, T0 + 30_000),
+        deadline: deadlineOf(released),
+      }).toEqual({ hold: null, restEndsAtMs: T0 + 70_000, at30: 40_000, deadline: T0 + 70_000 })
+    })
+  })
+
+  describe('When the athlete presses again while holding', () => {
+    it('Then the hold should keep its first instant', () => {
+      expect(holdRest(held, T0 + 15_000)).toBe(held)
+    })
+  })
+
+  describe('When the held rest reaches its deadline', () => {
+    it('Then set 2 should open with no hold, guarded from the deadline', () => {
+      const after = restEnd(held, T0 + 36_667)
+
+      expect({
+        phase: after.phase,
+        setNumber: after.setNumber,
+        hold: after.restHoldStartedAtMs,
+        restEndsAtMs: after.restEndsAtMs,
+        guarded: next(after, T0 + 37_000) === after,
+      }).toEqual({ phase: 'set', setNumber: 2, hold: null, restEndsAtMs: null, guarded: true })
+    })
+  })
+
+  describe('When the held rest is read just before its deadline', () => {
+    it('Then the rest should not end yet', () => {
+      expect(restEnd(held, T0 + 36_600)).toBe(held)
+    })
+  })
+
+  describe('When the athlete skips the held rest with Próximo', () => {
+    it('Then set 2 should open with no hold', () => {
+      const after = next(held, T0 + 12_000)
+
+      expect({ phase: after.phase, hold: after.restHoldStartedAtMs }).toEqual({
+        phase: 'set',
+        hold: null,
+      })
+    })
+  })
+
+  describe('When the athlete ends the workout while holding', () => {
+    it('Then the hold should be dropped', () => {
+      expect(
+        workoutFlowReducer(held, { type: 'end', nowMs: T0 + 12_000 }).restHoldStartedAtMs,
+      ).toBeNull()
+    })
+  })
+
+  describe('When the workout is restored at T0 + 30 s with the hold open', () => {
+    it('Then the hold should count as released at its start, with the rest at the normal pace', () => {
+      const restored = restoreWorkoutFlow(held, T0 + 30_000)
+
+      expect({
+        hold: restored.restHoldStartedAtMs,
+        restEndsAtMs: restored.restEndsAtMs,
+        msLeft: restMsLeftOf(restored, T0 + 30_000),
+      }).toEqual({ hold: null, restEndsAtMs: T0 + 90_000, msLeft: 60_000 })
+    })
+  })
+
+  describe('When a state saved before this story, with no hold, is restored in the rest', () => {
+    it('Then the hold should be null', () => {
+      const { restHoldStartedAtMs: _dropped, ...old } = resting
+      const restored = restoreWorkoutFlow(old as WorkoutFlowState, T0 + 30_000)
+
+      expect(restored.restHoldStartedAtMs).toBeNull()
+    })
+  })
+})
+
+describe('Given the workout on set 1 of supino-reto, out of the rest', () => {
+  const onSet = createWorkoutFlow(sessionOf(LETTER_A))
+
+  describe('When the athlete presses and releases the hold', () => {
+    it('Then nothing should change, and no rest time should be read', () => {
+      expect({
+        held: holdRest(onSet, T0) === onSet,
+        released: releaseRest(onSet, T0) === onSet,
+        msLeft: restMsLeftOf(onSet, T0),
+      }).toEqual({ held: true, released: true, msLeft: null })
     })
   })
 })

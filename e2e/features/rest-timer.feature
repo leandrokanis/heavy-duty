@@ -64,6 +64,28 @@ Feature: Rest that counts down on its own and a "Próximo" that skips it
     Then the rest should show "0:03"
     And the ring of the rest should be in the warning tone
 
+  @US-F05-03
+  Scenario: rest sped up
+    Given the athlete started the day "A" at "2026-11-21T18:30:00.000Z"
+    And the athlete taps "Próximo" at "2026-11-21T18:31:05.000Z"
+    And the clock reaches "2026-11-21T18:31:15.000Z"
+    And the rest should show "1:20"
+    When the athlete presses and holds the timer of the rest
+    And the clock reaches "2026-11-21T18:31:25.000Z"
+    Then the rest should show "0:50"
+
+  @US-F05-03
+  Scenario: rest back to the normal pace
+    Given the athlete started the day "A" at "2026-11-21T18:30:00.000Z"
+    And the athlete taps "Próximo" at "2026-11-21T18:31:05.000Z"
+    And the clock reaches "2026-11-21T18:31:15.000Z"
+    And the athlete presses and holds the timer of the rest
+    And the clock reaches "2026-11-21T18:31:25.000Z"
+    And the rest should show "0:50"
+    When the athlete releases the timer of the rest
+    And the clock reaches "2026-11-21T18:31:35.000Z"
+    Then the rest should show "0:40"
+
   @BUG-44
   Scenario: workout screens fit the visible area under the safe-area insets
     Given the device has safe-area insets of 47 px at the top and 34 px at the bottom

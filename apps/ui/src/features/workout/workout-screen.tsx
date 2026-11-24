@@ -40,12 +40,14 @@ import {
   lastSetOf,
   leftOutOf,
   nextPositionOf,
+  restMsLeftOf,
   type SetValues,
   sequenceOf,
   shownValuesOf,
   type TimerReading,
   timerReadingOf,
   upcomingExercise,
+  type WorkoutFlowAction,
   type WorkoutFlowState,
   workoutFlowReducer,
 } from './workout-flow'
@@ -166,6 +168,19 @@ function useTimerCues(reading: TimerReading, tonePlayer: TonePlayer, soundOn: bo
       // The timer does not depend on the sound (FR-013).
     }
   }, [reading, tonePlayer, soundOn])
+}
+
+// A page that goes to the background may never see the finger leave the ring: the hold ends there.
+function useReleaseInBackground(held: boolean, dispatch: (action: WorkoutFlowAction) => void) {
+  useEffect(() => {
+    if (!held) return
+    const release = () => {
+      if (document.visibilityState === 'hidden')
+        dispatch({ type: 'releaseRest', nowMs: Date.now() })
+    }
+    document.addEventListener('visibilitychange', release)
+    return () => document.removeEventListener('visibilitychange', release)
+  }, [held, dispatch])
 }
 
 function CountdownArea({ value }: { value: number }) {
@@ -291,7 +306,9 @@ export function WorkoutScreen({
   const nowMs = usePhaseClock(deadlineOf(state), reachDeadline)
   const reading = timerReadingOf(state, nowMs)
   useTimerCues(reading, tonePlayer, soundOn)
-  const restMsLeft = state.restEndsAtMs === null ? null : Math.max(0, state.restEndsAtMs - nowMs)
+  const restMsLeft = restMsLeftOf(state, nowMs)
+  const restHeld = state.restHoldStartedAtMs !== null
+  useReleaseInBackground(restHeld, dispatch)
   // One switch for the timer and the rest: the preference is the same (heavy-duty:sound).
   const soundSwitch = (
     <Button
@@ -370,6 +387,11 @@ export function WorkoutScreen({
             {restMsLeft !== null ? (
               <TimerRing
                 tone={isLastSeconds(restMsLeft) ? 'warning' : 'default'}
+                hold={{
+                  active: restHeld,
+                  onStart: () => dispatch({ type: 'holdRest', nowMs: Date.now() }),
+                  onRelease: () => dispatch({ type: 'releaseRest', nowMs: Date.now() }),
+                }}
                 msLeft={restMsLeft}
                 totalSeconds={planned.restSeconds}
                 progressLabel="Descanso restante"
