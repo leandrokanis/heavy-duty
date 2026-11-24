@@ -1910,6 +1910,17 @@
           },
           "tier": {
             "$ref": "#/components/schemas/Tier"
+          },
+          "cooling": {
+            "type": "boolean",
+            "example": false
+          },
+          "nextDropAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": null
           }
         },
         "required": [
@@ -1918,7 +1929,9 @@
           "points",
           "levelCost",
           "bestLevel",
-          "tier"
+          "tier",
+          "cooling",
+          "nextDropAt"
         ]
       },
       "Tier": {

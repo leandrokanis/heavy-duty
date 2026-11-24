@@ -61,16 +61,21 @@ export function setPointsOf(
 
 type MultiplierConfig = Pick<
   GameConfig,
-  'windowPercent' | 'outsideWindowPercent' | 'maxMultiplierPercent'
+  'windowPercent' | 'outsideWindowPercent' | 'welcomeBackPercent' | 'maxMultiplierPercent'
 >
 
-// Decisions D41 and D52: the double inside the window, the common points outside it.
+// Decisions D41, D52 and D53: the double inside the window and in the first training after the
+// group cooled, the common points otherwise; the bonuses never stack beyond the maximum.
 export function multiplierPercentOf(
-  bonuses: { inWindow: boolean },
+  bonuses: { inWindow: boolean; welcomeBack?: boolean },
   config: MultiplierConfig = GAME_CONFIG,
 ): number {
-  const percent = bonuses.inWindow ? config.windowPercent : config.outsideWindowPercent
-  return Math.min(percent, config.maxMultiplierPercent)
+  const percents = [
+    config.outsideWindowPercent,
+    bonuses.inWindow ? config.windowPercent : 0,
+    bonuses.welcomeBack ? config.welcomeBackPercent : 0,
+  ]
+  return Math.min(Math.max(...percents), config.maxMultiplierPercent)
 }
 
 export type WindowBounds = { opensAt: string | null; closesAt: string | null }

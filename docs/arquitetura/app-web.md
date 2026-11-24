@@ -215,6 +215,14 @@ A US-F10-02 acrescenta o nível de cada grupo muscular, provisório durante o tr
 
 As regras de produto e de interface do dia a dia estão em `apps/ui/CLAUDE.md` e em `DESIGN.md`.
 
+## Esfriamento e queda de nível
+
+A US-F10-03 acrescenta o esfriamento, calculado pela API (`GET /api/levels`, com `cooling` e `nextDropAt`):
+
+1. No treino do dia, o grupo esfriando mostra o selo de nível sem a cor da faixa, na cor `--color-window-cooling`, e a barra curta em listras, ao lado do selo da janela, que já diz "esfriando".
+2. O ×2 da volta (D53) entra no provisório pela janela congelada: o grupo cuja primeira série do treino veio depois do `closesAt` da janela rende em dobro, e os pontos mostrados da série também dobram. A janela que fecha no meio do treino deixa de dobrar (D56).
+3. A perda não roda no aparelho durante o treino: os níveis congelados no "Começar" já trazem a perda até a leitura, e o treino interrompe o esfriamento.
+
 ## Histórico no celular
 
 A US-F20-01 acrescenta a rota `/historico`, só de leitura (D50):

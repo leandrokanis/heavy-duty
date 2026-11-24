@@ -194,18 +194,22 @@ describe('Given a database with no workout (US-F10-02)', () => {
       expect({
         status: response.status,
         now: body.now,
-        groups: body.groups.map(({ muscleGroup, level, points, levelCost, bestLevel, tier }) => [
-          muscleGroup.slug,
-          level,
-          points,
-          levelCost,
-          bestLevel,
-          tier,
-        ]),
+        groups: body.groups.map(
+          ({ muscleGroup, level, points, levelCost, bestLevel, tier, cooling, nextDropAt }) => [
+            muscleGroup.slug,
+            level,
+            points,
+            levelCost,
+            bestLevel,
+            tier,
+            cooling,
+            nextDropAt,
+          ],
+        ),
       }).toEqual({
         status: 200,
         now: clock.now().toISOString(),
-        groups: CATALOG_ORDER.map((slug) => [slug, 1, 0, 40, 1, 'bronze']),
+        groups: CATALOG_ORDER.map((slug) => [slug, 1, 0, 40, 1, 'bronze', false, null]),
       })
     })
   })
@@ -226,6 +230,8 @@ describe('Given back trained with 3 sets in a workout with no letter left', () =
         levelCost: 43,
         bestLevel: 2,
         tier: 'bronze',
+        cooling: false,
+        nextDropAt: null,
       })
     })
   })
@@ -244,6 +250,24 @@ describe('Given back trained twice, the second time inside the window of the fir
         level: 5,
         points: 2,
         tier: 'silver',
+      })
+    })
+  })
+})
+
+describe('Given back trained once and its window closed 6 hours ago (US-F10-03)', () => {
+  describe('When GET /api/levels is called', () => {
+    it('Then back should be cooling with 10 points less and drop 12 hours after the close', async () => {
+      const { app, train } = await givenCatalogAndHistory()
+      train('remada', '2026-11-16T04:00:00.000Z')
+
+      const body = (await (await app.request('/api/levels')).json()) as MuscleGroupLevels
+
+      expect(body.groups.find(({ muscleGroup }) => muscleGroup.slug === 'back')).toMatchObject({
+        level: 2,
+        points: 10,
+        cooling: true,
+        nextDropAt: '2026-11-21T16:00:00.000Z',
       })
     })
   })

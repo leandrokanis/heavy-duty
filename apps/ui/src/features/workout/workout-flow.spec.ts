@@ -2799,12 +2799,16 @@ describe('lastSetPointsOf', () => {
       })
     })
 
-    describe('When the window closes before the set', () => {
-      it('Then the set yields the common 10 points', () => {
-        const closed = { ...chestOpen, closesAt: '2026-11-21T18:31:05.000Z' }
-        const state = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [closed])), T0)
+    describe('When the window closes between set 1 and set 2 of the workout (D56)', () => {
+      it('Then set 2 yields the common 10 points', () => {
+        const closing = { ...chestOpen, closesAt: '2026-11-21T18:31:06.000Z' }
+        const first = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [closing])), T0)
+        const second = next(next(first, T0 + 1000), T0 + 2000)
 
-        expect(lastSetPointsOf(state)).toMatchObject({ points: 10, doubled: false })
+        expect({
+          first: lastSetPointsOf(first)?.points,
+          second: lastSetPointsOf(second),
+        }).toMatchObject({ first: 20, second: { points: 10, doubled: false } })
       })
     })
   })
@@ -3032,6 +3036,33 @@ describe('levelUpTextOf and levelCelebrationOf (US-F10-02)', () => {
   describe('Given no group climbing', () => {
     it('Then there is no text', () => {
       expect(levelUpTextOf([row([], 3)])).toBe('')
+    })
+  })
+})
+
+describe('Given chest cooling: its window closed before the workout (US-F10-03, D53)', () => {
+  const SUPINO_AT_PLAN = { ...SUPINO_RETO, loadG: 40000 }
+  const chestClosed: FrozenWindow = {
+    muscleGroupSlug: 'chest',
+    opensAt: '2026-11-14T18:00:00.000Z',
+    closesAt: '2026-11-18T18:00:00.000Z',
+  }
+  const chestAt3: FrozenLevel = { muscleGroupSlug: 'chest', level: 3, points: 0, bestLevel: 4 }
+
+  describe('When the athlete records supino-reto at plan, the first set of chest back', () => {
+    it('Then the set yields double, with the mark of the double', () => {
+      const state = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [chestClosed])), T0)
+
+      expect(lastSetPointsOf(state)).toMatchObject({ points: 20, doubled: true })
+    })
+
+    it('Then chest gains double on its bar', () => {
+      const state = next(
+        createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [chestClosed], [chestAt3])),
+        T0,
+      )
+
+      expect(lastSetLevelsOf(state)[0]).toMatchObject({ gain: 40 })
     })
   })
 })

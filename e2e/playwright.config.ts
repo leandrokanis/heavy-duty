@@ -40,6 +40,7 @@ const PERSONAL_RECORDS_SPEC = /personal-records\.feature\.spec\.js$/
 const SET_POINTS_SPEC = /set-points\.feature\.spec\.js$/
 const GROUP_LEVELS_SPEC = /group-levels\.feature\.spec\.js$/
 const GROUP_LEVEL_SPEC = /group-level\.feature\.spec\.js$/
+const COOLING_LEVEL_SPEC = /cooling-level\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -95,6 +96,7 @@ export default defineConfig({
         SET_POINTS_SPEC,
         GROUP_LEVELS_SPEC,
         GROUP_LEVEL_SPEC,
+        COOLING_LEVEL_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -337,6 +339,15 @@ export default defineConfig({
       testMatch: GROUP_LEVEL_SPEC,
       fullyParallel: false,
       dependencies: ['group-levels'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records workouts relative to the real clock so the groups cool, so it runs alone and one
+    // scenario at a time, after the levels on the phone.
+    {
+      name: 'cooling-level',
+      testMatch: COOLING_LEVEL_SPEC,
+      fullyParallel: false,
+      dependencies: ['group-level'],
       use: { ...devices['Pixel 7'] },
     },
   ],

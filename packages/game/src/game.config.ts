@@ -11,6 +11,8 @@ export const GAME_CONFIG = {
   windowPercent: 200,
   // Decision D52: outside the window a set yields the common points.
   outsideWindowPercent: 100,
+  // Decision D53: the first training of a group after it cooled doubles, as in the window.
+  welcomeBackPercent: 200,
   // Decisions D41 and D53: multipliers never stack beyond the double.
   maxMultiplierPercent: 200,
   // Decisions D28 and D54: each group gets about 60 points per complete workout.

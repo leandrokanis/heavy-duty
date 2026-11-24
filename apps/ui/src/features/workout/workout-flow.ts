@@ -431,28 +431,44 @@ function measureOf(set: RecordWorkoutSetBody) {
   return { loadG: set.loadG, reps: set.reps ?? null, seconds: set.seconds ?? null }
 }
 
-function isGroupInWindow(state: WorkoutFlowState, slug: string, performedAt: string): boolean {
-  const performedAtMs = Date.parse(performedAt)
-  return state.session.windows.some(
-    (window) => window.muscleGroupSlug === slug && isInWindowAt(window, performedAtMs),
+// The double of a group at the instant of the set, by its window frozen at the start: inside the
+// window (D55, D56), or in a workout whose first set of the group came after the window closed,
+// the first workout back (D53). A window that closes during the workout stops doubling.
+function bonusesOf(state: WorkoutFlowState, slug: string, performedAt: string) {
+  const window = state.session.windows.find(({ muscleGroupSlug }) => muscleGroupSlug === slug)
+  if (window === undefined || window.closesAt === null) return { inWindow: false }
+  const firstOfGroup = state.recorded.find((set) =>
+    groupRolesOf(plannedOf(state, set)).some((group) => group.slug === slug),
   )
+  return {
+    inWindow: isInWindowAt(window, Date.parse(performedAt)),
+    welcomeBack:
+      firstOfGroup !== undefined &&
+      Date.parse(firstOfGroup.performedAt) >= Date.parse(window.closesAt),
+  }
+}
+
+function multiplierOfGroup(state: WorkoutFlowState, slug: string, performedAt: string): number {
+  return multiplierPercentOf(bonusesOf(state, slug, performedAt))
 }
 
 // The provisional points of the last recorded set (ADR-034), against its plan in the workout of
-// the day and the windows frozen at the start. Only the primary groups double it (decision 1).
+// the day and the windows frozen at the start. Only the primary groups double it (decision 1 of
+// US-F10-01), inside the window or back from the cooling.
 export function lastSetPointsOf(state: WorkoutFlowState): SetPointsView | null {
   const set = state.recorded.at(-1)
   if (set === undefined) return null
   const planned = plannedOf(state, set)
-  const doubled = planned.muscleGroups.some(({ slug }) =>
-    isGroupInWindow(state, slug, set.performedAt),
+  const multiplierPercent = Math.max(
+    multiplierPercentOf({ inWindow: false }),
+    ...planned.muscleGroups.map(({ slug }) => multiplierOfGroup(state, slug, set.performedAt)),
   )
-  const points = setPointsOf(
-    measureOf(set),
-    planOf(planned),
-    multiplierPercentOf({ inWindow: doubled }),
-  )
-  return { setId: set.id, points, doubled }
+  const points = setPointsOf(measureOf(set), planOf(planned), multiplierPercent)
+  return {
+    setId: set.id,
+    points,
+    doubled: multiplierPercent > multiplierPercentOf({ inWindow: false }),
+  }
 }
 
 // The levels the provisional bar starts from: the answer of the API with the sets it already holds,
@@ -494,7 +510,7 @@ function groupGainOfSet(state: WorkoutFlowState, set: RecordWorkoutSetBody, grou
     measureOf(set),
     planOf(planned),
     { role: group.role, plannedGroupSets: plannedGroupSetsOf(state, group.slug) },
-    multiplierPercentOf({ inWindow: isGroupInWindow(state, group.slug, set.performedAt) }),
+    multiplierOfGroup(state, group.slug, set.performedAt),
   )
 }
 
