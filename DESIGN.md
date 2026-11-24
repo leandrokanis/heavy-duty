@@ -186,6 +186,7 @@ O HIG não especifica botão de ação central sobre a barra de abas. Se o app a
 ### 9.4. Navegação no treino
 
 - O topo da tela de treino DEVE ter um controle com a letra e a barra de exercícios. Um toque nele abre a folha da sequência do treino (PRD, US-F03-04).
+- Ao lado do controle do topo, o tempo total do treino DEVE aparecer em `m:ss` (`h:mm:ss` a partir de 1 h), contado do toque em "Começar", com `role="timer"` e o nome acessível "Tempo total". O relógio fica fora do botão, porque o conteúdo de um botão não chega ao leitor de tela. No treino concluído, o relógio para no fim, e o resumo mostra "Tempo total · 52 min". O treino encerrado antes, com série registrada, mostra na lista de letras o aviso "Treino encerrado · 34 min" (US-F03-08, D48).
 - A folha DEVE listar os exercícios da letra com o estado de cada um: feito, com as séries registradas (US-F03-06); atual; pulado; ou por fazer.
 - A lista das séries registradas DEVE aparecer só no exercício feito e DEVE ser só de leitura: o item da série não é um controle e não leva a ação nenhuma. Cada item mostra o número da série, a carga em kg e as repetições ou os segundos registrados. O leitor de tela DEVE ler a série por extenso, como "Série 1: 42,5 kg, 10 repetições" (US-F03-06).
 - Quando a folha passa da altura da tela, a lista de exercícios DEVE rolar dentro da folha, com o título, "Fechar" e "Encerrar" sempre visíveis. A página atrás da folha NÃO DEVE rolar (US-F03-06).

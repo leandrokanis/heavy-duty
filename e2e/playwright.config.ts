@@ -34,6 +34,7 @@ const WINDOW_ON_TODAY_SPEC = /window-on-today\.feature\.spec\.js$/
 const REOPEN_ON_FINISH_SPEC = /reopen-on-finish\.feature\.spec\.js$/
 const WORKOUT_HISTORY_SPEC = /workout-history\.feature\.spec\.js$/
 const DISCARD_WORKOUT_SPEC = /discard-workout\.feature\.spec\.js$/
+const WORKOUT_DURATION_SPEC = /workout-duration\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -83,6 +84,7 @@ export default defineConfig({
         REOPEN_ON_FINISH_SPEC,
         WORKOUT_HISTORY_SPEC,
         DISCARD_WORKOUT_SPEC,
+        WORKOUT_DURATION_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -272,6 +274,14 @@ export default defineConfig({
       testMatch: DISCARD_WORKOUT_SPEC,
       fullyParallel: false,
       dependencies: ['workout-history'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Changes the single active program and checks a fixed clock, so it runs alone, after the discard.
+    {
+      name: 'workout-duration',
+      testMatch: WORKOUT_DURATION_SPEC,
+      fullyParallel: false,
+      dependencies: ['discard-workout'],
       use: { ...devices['Pixel 7'] },
     },
   ],

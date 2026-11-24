@@ -24,3 +24,16 @@ export function formatSetShort(set: { loadG: number; reps?: number; seconds?: nu
   const measure = set.reps === undefined ? `${set.seconds} s` : `${set.reps} rep`
   return `${formatLoadKg(set.loadG)} kg · ${measure}`
 }
+
+const MS_PER_SECOND = 1000
+const SECONDS_PER_HOUR = 3600
+
+// The total time of the workout: "9:05", and "1:02:03" from one hour on.
+export function formatElapsedClock(elapsedMs: number): string {
+  const totalSeconds = Math.max(0, Math.floor(elapsedMs / MS_PER_SECOND))
+  const hours = Math.floor(totalSeconds / SECONDS_PER_HOUR)
+  const minutes = Math.floor((totalSeconds % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE)
+  const seconds = String(totalSeconds % SECONDS_PER_MINUTE).padStart(2, '0')
+  if (hours === 0) return `${minutes}:${seconds}`
+  return `${hours}:${String(minutes).padStart(2, '0')}:${seconds}`
+}

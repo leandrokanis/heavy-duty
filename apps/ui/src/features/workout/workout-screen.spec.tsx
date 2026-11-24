@@ -1600,7 +1600,10 @@ describe.each([
       expect({
         title: screen.getByRole('heading').textContent,
         target: shownOf('Tempo'),
-        timers: screen.queryAllByRole('timer').length,
+        // The total time of the top runs all along; only the count and the execution must be gone.
+        timers: screen
+          .queryAllByRole('timer')
+          .filter((timer) => timer.getAttribute('aria-label') !== 'Tempo total').length,
         pendingSets: pendingSetCount(queue),
         newCues: cues.length - cuesBefore.length,
         topControl: ariaDisabled(TOP_CONTROL_ONLY_PRANCHA),
@@ -2966,6 +2969,101 @@ describe('Given no set recorded and the discard sheet reached from the sequence'
         saved: await loadActiveWorkout(Date.now()),
         onFinish: onFinish.mock.calls.length,
       }).toEqual({ text: 'Nenhuma série feita', pending: [], saved: null, onFinish: 1 })
+    })
+  })
+})
+
+const STARTED_MS = Date.parse(STARTED_AT)
+
+function totalTime() {
+  return screen.getByRole('timer', { name: 'Tempo total' }).textContent
+}
+
+describe('Given a workout started at 18:30:00 with set 1 of supino-reto on screen at 18:31:05', () => {
+  describe('When the athlete records the set and 2 s of the rest pass', () => {
+    it('Then the total time should read "1:05" on the set screen and "1:07" on the rest screen', async () => {
+      vi.useFakeTimers({ now: T0 })
+      renderWorkout(LETTER_A, vi.fn(), NEVER_SENT)
+      const onSet = totalTime()
+
+      await act(async () => tapNext())
+      await act(async () => vi.advanceTimersByTime(1000))
+      await act(async () => vi.advanceTimersByTime(1000))
+
+      expect({
+        onSet,
+        onRest: totalTime(),
+        resting: screen.queryByRole('timer', { name: 'Descanso' }) !== null,
+      }).toEqual({ onSet: '1:05', onRest: '1:07', resting: true })
+    })
+  })
+})
+
+describe('Given a workout started 52 min ago with its last set on screen', () => {
+  describe('When the athlete records it and 10 s pass', () => {
+    it('Then the finished screen should show "Tempo total · 52 min" and the total time should stay at "52:00"', async () => {
+      vi.useFakeTimers({ now: STARTED_MS + 52 * 60_000 })
+      renderWorkout([TRICEPS_ONE_SET], vi.fn(), NEVER_SENT)
+
+      await act(async () => tapNext())
+      await act(async () => vi.advanceTimersByTime(10_000))
+
+      expect({
+        title: screen.getByRole('heading', { level: 1 }).textContent,
+        summary: screen.getByText(/^Tempo total ·/).textContent,
+        clock: totalTime(),
+      }).toEqual({ title: 'Treino concluído', summary: 'Tempo total · 52 min', clock: '52:00' })
+    })
+  })
+})
+
+function renderEndingWithToast(onFinish = vi.fn()) {
+  const queue = createSyncQueue({ store: createMemoryQueueStore(), send: NEVER_SENT })
+  render(
+    <ToastProvider>
+      <SyncProvider queue={queue}>
+        <WorkoutScreen flow={flowOf(THREE_EXERCISES)} onFinish={onFinish} />
+      </SyncProvider>
+    </ToastProvider>,
+  )
+}
+
+async function endFromSequence(topControl: string) {
+  const sequence = await openSequence(topControl)
+  fireEvent.click(within(sequence).getByRole('button', { name: 'Encerrar' }))
+  await act(async () => {})
+  await act(async () => {
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Encerrar' }))
+  })
+}
+
+describe('Given a workout started 34 min ago with one set recorded', () => {
+  describe('When the athlete ends it from the sequence', () => {
+    it('Then the toast should read "Treino encerrado · 34 min" and onFinish should be called', async () => {
+      vi.useFakeTimers({ now: STARTED_MS + 34 * 60_000 })
+      const onFinish = vi.fn()
+      renderEndingWithToast(onFinish)
+      await tapSets(1)
+
+      await endFromSequence('Sequência do treino, letra A, exercício 1 de 3')
+
+      expect({
+        toast: screen.queryByText(/^Treino encerrado/)?.textContent,
+        finished: onFinish.mock.calls.length,
+      }).toEqual({ toast: 'Treino encerrado · 34 min', finished: 1 })
+    })
+  })
+})
+
+describe('Given a workout started 34 min ago with no set recorded', () => {
+  describe('When the athlete ends it from the sequence', () => {
+    it('Then no toast should show, since nothing was recorded', async () => {
+      vi.useFakeTimers({ now: STARTED_MS + 34 * 60_000 })
+      renderEndingWithToast()
+
+      await endFromSequence('Sequência do treino, letra A, exercício 1 de 3')
+
+      expect(screen.queryByText(/^Treino encerrado/)).toBeNull()
     })
   })
 })

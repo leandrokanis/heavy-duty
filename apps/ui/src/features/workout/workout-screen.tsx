@@ -13,7 +13,7 @@ import { DiscardSheet } from './discard-sheet'
 import type { AdjustField } from './drag-adjust'
 import { EndSheet } from './end-sheet'
 import { ExerciseBar } from './exercise-bar'
-import { formatSetShort } from './format'
+import { formatDurationMinutes, formatSetShort } from './format'
 import { LastSetButton } from './last-set-button'
 import { LeftOutSummary } from './left-out-summary'
 import { LetterBadge } from './letter-badge'
@@ -32,6 +32,7 @@ import { useReopenWindows } from './use-reopen-windows'
 import { useScreenWakeLock } from './use-screen-wake-lock'
 import { ValueWheel } from './value-wheel'
 import { TICK_MS } from './workout.config'
+import { WorkoutClock } from './workout-clock'
 import {
   announcementOf,
   canSkipOf,
@@ -66,6 +67,13 @@ function firstSetMsOf(recorded: RecordWorkoutSetBody[]): number {
   return Math.min(...recorded.map(({ performedAt }) => Date.parse(performedAt)))
 }
 
+const MS_PER_SECOND = 1000
+
+// The total time from the tap on "Começar" to the end, in whole seconds.
+function totalSecondsOf(session: WorkoutFlowState['session'], finishedAt: string): number {
+  return Math.round((Date.parse(finishedAt) - Date.parse(session.startedAt)) / MS_PER_SECOND)
+}
+
 function valuesKeyOf({ loadG, reps, seconds }: RecordWorkoutSetBody): string {
   return `${loadG}:${reps ?? ''}:${seconds ?? ''}`
 }
@@ -74,7 +82,7 @@ function valuesKeyOf({ loadG, reps, seconds }: RecordWorkoutSetBody): string {
 // of sets already queued (ADR-025), then the exercises left out, then the end of the workout, then
 // saves the workout in progress; the rest starts without waiting for the send (FR-001, FR-005,
 // FR-009). An ended workout is cleared from the device and handed to onFinish once its sets and its
-// finish are queued (FR-018). A discarded one takes its items out of the queue and queues its
+// finish are queued (FR-018), with a toast of its total time when it recorded a set (D48). A discarded one takes its items out of the queue and queues its
 // removal instead (ADR-032). A restored flow starts with its sets already in the ref, so they are
 // not queued twice. Each state waits for the one before, so a discard never runs ahead of a set.
 function usePersistWorkout(
@@ -83,6 +91,7 @@ function usePersistWorkout(
   onFinish: () => void,
 ): { stop: () => void; allQueued: boolean } {
   const queue = useSyncQueue()
+  const toast = useToast()
   // The state whose items were all queued; a finished workout restored from the device was queued before.
   const [queuedState, setQueuedState] = useState<WorkoutFlowState | null>(
     initial.phase === 'finished' ? initial : null,
@@ -129,12 +138,16 @@ function usePersistWorkout(
       if (state.phase === 'ended') {
         closed.current = true
         await clearActiveWorkout()
+        if (finish) {
+          const seconds = totalSecondsOf(state.session, finish.finishedAt)
+          toast.show(`Treino encerrado · ${formatDurationMinutes(seconds)}`)
+        }
         onFinish()
       } else if (!closed.current) {
         await saveActiveWorkout(state, Date.now())
       }
     })
-  }, [initial, state, queue, onFinish])
+  }, [initial, state, queue, onFinish, toast])
   return {
     stop: () => {
       closed.current = true
@@ -373,26 +386,32 @@ export function WorkoutScreen({
   }
   return (
     <main className="mx-auto flex flex-1 w-full max-w-[640px] flex-col px-(--space-margin-inline)">
-      <MotionButton
-        ref={topControlRef}
-        tapScale={1}
-        aria-label={`Sequência do treino, letra ${day.letter}, exercício ${exerciseNumber} de ${day.exercises.length}`}
-        className="mx-auto flex min-h-(--target-workout) cursor-pointer select-none items-center gap-(--space-12) rounded-(--radius-capsule) pt-(--space-4) pr-(--space-12) pb-(--space-4) pl-(--space-8) transition-colors duration-(--duration-fast) data-disabled:opacity-45 data-pressed:bg-(--color-fill)"
-        disabled={timerOpen}
-        focusableWhenDisabled
-        onClick={() => dispatch({ type: 'openSheet', sheet: 'sequence' })}
-      >
-        <LetterBadge letter={day.letter} size={30} />
-        <Progress.Root
-          aria-label="Exercícios"
-          getAriaValueText={() => `${exerciseNumber} de ${day.exercises.length}`}
-          max={day.exercises.length}
-          value={exerciseNumber}
+      <div className="mx-auto flex items-center gap-(--space-8)">
+        <MotionButton
+          ref={topControlRef}
+          tapScale={1}
+          aria-label={`Sequência do treino, letra ${day.letter}, exercício ${exerciseNumber} de ${day.exercises.length}`}
+          className="flex min-h-(--target-workout) cursor-pointer select-none items-center gap-(--space-12) rounded-(--radius-capsule) pt-(--space-4) pr-(--space-12) pb-(--space-4) pl-(--space-8) transition-colors duration-(--duration-fast) data-disabled:opacity-45 data-pressed:bg-(--color-fill)"
+          disabled={timerOpen}
+          focusableWhenDisabled
+          onClick={() => dispatch({ type: 'openSheet', sheet: 'sequence' })}
         >
-          <ExerciseBar items={sequence} />
-        </Progress.Root>
-        <List aria-hidden="true" size={18} className="shrink-0 text-(--color-label-secondary)" />
-      </MotionButton>
+          <LetterBadge letter={day.letter} size={30} />
+          <Progress.Root
+            aria-label="Exercícios"
+            getAriaValueText={() => `${exerciseNumber} de ${day.exercises.length}`}
+            max={day.exercises.length}
+            value={exerciseNumber}
+          >
+            <ExerciseBar items={sequence} />
+          </Progress.Root>
+          <List aria-hidden="true" size={18} className="shrink-0 text-(--color-label-secondary)" />
+        </MotionButton>
+        <WorkoutClock
+          startedAtMs={Date.parse(state.session.startedAt)}
+          endedAtMs={finished && state.finish ? Date.parse(state.finish.finishedAt) : null}
+        />
+      </div>
       {resting ? (
         <>
           <div className="mt-(--space-32)">{title}</div>
@@ -440,6 +459,11 @@ export function WorkoutScreen({
           <h1 className="m-0 mt-(--space-8) text-center font-(--font-weight-bold) text-(length:--font-size-large-title) leading-(--font-leading-tight) tracking-(--font-tracking-tight)">
             Treino concluído
           </h1>
+          {state.finish ? (
+            <p className="m-0 mt-(--space-4) text-(--color-label-secondary) text-(length:--font-size-body) tabular-nums">
+              {`Tempo total · ${formatDurationMinutes(totalSecondsOf(state.session, state.finish.finishedAt))}`}
+            </p>
+          ) : null}
           {lastSet ? (
             <div className="mt-(--space-16)">
               <LastSetButton

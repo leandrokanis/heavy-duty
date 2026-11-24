@@ -134,6 +134,15 @@ A US-F03-09 acrescenta o descarte sobre o mesmo reducer (ADR-032):
 4. O efeito da `WorkoutScreen` serializa as gravações: cada estado espera o anterior, então o descarte nunca passa à frente de uma série. Na fase `discarded`, com série registrada, o efeito chama `discardWorkout` da fila, que tira os itens do treino e põe o item `discard`; depois limpa o treino ativo e chama `onFinish`, e o app volta para a lista de letras.
 5. A fila envia o descarte para `DELETE /api/workouts/{workoutId}` (`workout-discard-client.ts`); o 404 conta como sucesso.
 
+## Tempo total do treino
+
+A US-F03-08 acrescenta o tempo total:
+
+1. `WorkoutClock` (`workout-clock.tsx`) mostra o tempo desde `session.startedAt`, o instante do toque em "Começar", com `formatElapsedClock` (`m:ss`, `h:mm:ss` a partir de 1 h). O componente tem intervalo próprio de `TICK_MS` e só muda o estado quando o segundo muda, então a `WorkoutScreen` não renderiza a cada segundo.
+2. O relógio fica ao lado do controle do topo, fora do botão, com `role="timer"` e o nome "Tempo total". No treino concluído, recebe `finish.finishedAt` e fica parado.
+3. O treino concluído mostra "Tempo total · N min" (`formatDurationMinutes` de `finishedAt − startedAt`) abaixo do título.
+4. O treino encerrado antes, com `finish`, mostra o aviso "Treino encerrado · N min" pelo `Toast`, depois de enfileirar o fim e antes de voltar à lista de letras (D48). O histórico já mostra a duração do treino (US-F20-01).
+
 ## Fluxo da série com um toque
 
 A US-F03-02 liga o botão "Próximo" da tela de treino, e a US-F05-01 completa o descanso:
