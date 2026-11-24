@@ -28,7 +28,7 @@ Feature: Correct the last recorded set
   Scenario: wheel drag inside the correction sheet
     Given the athlete started the day "A" at "2026-11-21T18:30:00.000Z"
     When the athlete taps "Próximo" at "2026-11-21T18:31:05.000Z"
-    And the athlete drags the wheel "Carga" of the correction 2 steps down with a finger
+    And the athlete drags the wheel "Carga" of the correction 2 steps up with a finger
     Then the correction of the last set should stay in place with the wheel "Carga" at "50"
     When the athlete saves the correction of the last set
     Then the workout should hold the set 1 of "Supino reto" with load 50000 g and 10 reps

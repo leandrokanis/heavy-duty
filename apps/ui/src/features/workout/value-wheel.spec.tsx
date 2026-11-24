@@ -33,31 +33,35 @@ describe('Given a load wheel at 40000 g', () => {
       ]).toEqual([null, 'kg', null])
     })
 
-    it('Then should show 42,5 above and 37,5 below, both hidden from screen readers', () => {
+    it('Then should show 37,5 above and 42,5 below, both hidden from screen readers', () => {
       renderLoad(40_000)
+      const wheel = screen.getByRole('spinbutton', { name: 'Carga' })
+      const smaller = screen.getByText('37,5')
+      const larger = screen.getByText('42,5')
 
       expect([
-        screen.getByText('42,5').getAttribute('aria-hidden'),
-        screen.getByText('37,5').getAttribute('aria-hidden'),
-      ]).toEqual(['true', 'true'])
+        smaller.getAttribute('aria-hidden'),
+        larger.getAttribute('aria-hidden'),
+        wheel.textContent?.indexOf('37,5') ?? -1,
+      ]).toEqual(['true', 'true', 0])
     })
 
     it('Then should have no instruction text, only the label, the values and the unit', () => {
       renderLoad(40_000)
       const wheel = screen.getByRole('spinbutton', { name: 'Carga' })
 
-      expect(wheel.textContent).toBe('42,540kg37,5')
+      expect(wheel.textContent).toBe('37,540kg42,5')
     })
   })
 })
 
 describe('Given a load wheel at 0 g', () => {
   describe('When it is on screen', () => {
-    it('Then should leave the position below empty', () => {
+    it('Then should leave the position above empty', () => {
       renderLoad(0)
       const wheel = screen.getByRole('spinbutton', { name: 'Carga' })
 
-      expect(wheel.textContent).toBe('2,50kg')
+      expect(wheel.textContent).toBe('0kg2,5')
     })
   })
 })
@@ -139,21 +143,21 @@ function StatefulLoad({ start }: { start: number }) {
 
 describe('Given a load wheel with the pointer down at y 100', () => {
   describe('When the pointer moves', () => {
-    it('Then 22 px down should adjust by +1', () => {
-      const onAdjust = renderLoad(40_000)
-
-      fireEvent.pointerDown(wheelOf(), { clientY: 100, pointerId: 1 })
-      fireEvent.pointerMove(wheelOf(), { clientY: 122, pointerId: 1 })
-
-      expect(totalOf(onAdjust)).toBe(1)
-    })
-
-    it('Then 44 px up should adjust by -2 in total', () => {
+    it('Then 22 px up should adjust by +1', () => {
       const onAdjust = renderLoad(40_000)
 
       fireEvent.pointerDown(wheelOf(), { clientY: 100, pointerId: 1 })
       fireEvent.pointerMove(wheelOf(), { clientY: 78, pointerId: 1 })
-      fireEvent.pointerMove(wheelOf(), { clientY: 56, pointerId: 1 })
+
+      expect(totalOf(onAdjust)).toBe(1)
+    })
+
+    it('Then 44 px down should adjust by -2 in total', () => {
+      const onAdjust = renderLoad(40_000)
+
+      fireEvent.pointerDown(wheelOf(), { clientY: 100, pointerId: 1 })
+      fireEvent.pointerMove(wheelOf(), { clientY: 122, pointerId: 1 })
+      fireEvent.pointerMove(wheelOf(), { clientY: 144, pointerId: 1 })
 
       expect(totalOf(onAdjust)).toBe(-2)
     })
@@ -161,14 +165,14 @@ describe('Given a load wheel with the pointer down at y 100', () => {
 })
 
 describe('Given a wheel with a parent that keeps the value, at 1 kg', () => {
-  describe('When the pointer goes 66 px up and, without lifting, 22 px down', () => {
+  describe('When the pointer goes 66 px down and, without lifting, 22 px up', () => {
     it('Then should reach 0 kg and then 2,5 kg, with no steps lost below the minimum', () => {
       render(<StatefulLoad start={1_000} />)
 
       fireEvent.pointerDown(wheelOf(), { clientY: 200, pointerId: 1 })
-      fireEvent.pointerMove(wheelOf(), { clientY: 134, pointerId: 1 })
+      fireEvent.pointerMove(wheelOf(), { clientY: 266, pointerId: 1 })
       const atMinimum = wheelOf().getAttribute('aria-valuetext')
-      fireEvent.pointerMove(wheelOf(), { clientY: 156, pointerId: 1 })
+      fireEvent.pointerMove(wheelOf(), { clientY: 244, pointerId: 1 })
 
       expect([atMinimum, wheelOf().getAttribute('aria-valuetext')]).toEqual([
         '0 quilos',

@@ -26,22 +26,22 @@ Feature: Adjust load, reps and time by dragging before recording the set
 
     Examples:
       | exercise      | wheel        | initial | steps | direction | final  |
-      | "Supino reto" | "Carga"      | "40"    | 1     | down      | "42,5" |
-      | "Supino reto" | "Repetições" | "10"    | 2     | up        | "8"    |
-      | "Prancha"     | "Tempo"      | "45"    | 1     | down      | "50"   |
+      | "Supino reto" | "Carga"      | "40"    | 1     | up        | "42,5" |
+      | "Supino reto" | "Repetições" | "10"    | 2     | down      | "8"    |
+      | "Prancha"     | "Tempo"      | "45"    | 1     | up        | "50"   |
 
   Scenario: load does not go negative
     Given the athlete started the day "A" at "2026-11-21T18:30:00.000Z"
     And the athlete is on the exercise "Prancha"
     And the wheel "Carga" shows "0"
-    When the athlete drags the wheel "Carga" 1 steps up
+    When the athlete drags the wheel "Carga" 1 steps down
     Then the wheel "Carga" shows "0"
     And the button "Diminuir carga" should be disabled
 
   Scenario: set recorded with the adjusted value
     Given the athlete started the day "A" at "2026-11-21T18:30:00.000Z"
-    And the athlete drags the wheel "Carga" 1 steps down
-    And the athlete drags the wheel "Repetições" 2 steps up
+    And the athlete drags the wheel "Carga" 1 steps up
+    And the athlete drags the wheel "Repetições" 2 steps down
     When the athlete taps "Próximo" at "2026-11-21T18:31:05.000Z"
     Then the set of "Supino reto" should be recorded with load 42500 g, 8 reps and set number 1 in the workout of the day "A"
     When the athlete skips the rest with "Próximo" at "2026-11-21T18:31:06.000Z"
@@ -50,7 +50,7 @@ Feature: Adjust load, reps and time by dragging before recording the set
   Scenario: timed exercise with the adjusted time
     Given the athlete started the day "A" at "2026-11-21T18:30:00.000Z"
     And the athlete is on the exercise "Prancha"
-    And the athlete drags the wheel "Tempo" 1 steps down
+    And the athlete drags the wheel "Tempo" 1 steps up
     When the athlete taps "Próximo" on the timer at "2026-11-21T18:31:05.000Z"
     And the clock reaches "2026-11-21T18:31:08.000Z"
     Then the execution clock should show "0:50"

@@ -1918,15 +1918,15 @@ describe('Given the buttons of the wheels on set 1 of supino-reto at 40 kg and 1
 })
 
 describe('Given the workout screen on set 1 of supino-reto at 40 kg', () => {
-  describe('When the athlete drags the load 22 px down and lets go', () => {
+  describe('When the athlete drags the load 22 px up and lets go', () => {
     it('Then should queue no set and stay on set 1 of 3 with 42,5 kg', async () => {
       const fetchMock = stubFetch(created())
       const { queue } = renderWorkout([SUPINO_40, PRANCHA])
       const wheel = screen.getByRole('spinbutton', { name: 'Carga' })
 
       fireEvent.pointerDown(wheel, { clientY: 100, pointerId: 1 })
-      fireEvent.pointerMove(wheel, { clientY: 122, pointerId: 1 })
-      fireEvent.pointerUp(wheel, { clientY: 122, pointerId: 1 })
+      fireEvent.pointerMove(wheel, { clientY: 78, pointerId: 1 })
+      fireEvent.pointerUp(wheel, { clientY: 78, pointerId: 1 })
 
       expect({
         pending: pendingSetCount(queue),

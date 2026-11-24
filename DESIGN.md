@@ -357,8 +357,8 @@ O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar na pr
 
 O critério 2.5.7 das WCAG 2.2 (nível AA) pede uma alternativa de ponteiro único para toda ação feita por arrasto [WCAG22]. O ajuste por arrasto da F04 DEVE ter alternativa por toque.
 
-- **Forma da roda.** Cada valor ajustável (carga, repetições ou tempo) é uma roda: o valor atual em destaque, o valor um passo acima em cima e o valor um passo abaixo embaixo, menores e esmaecidos. Abaixo do mínimo, a posição de baixo fica vazia. A roda NÃO DEVE ter texto de instrução.
-- **Direção.** O valor maior fica acima, então arrastar para baixo aumenta o valor e arrastar para cima diminui. A roda do mouse para cima aumenta.
+- **Forma da roda.** Cada valor ajustável (carga, repetições ou tempo) é uma roda: o valor atual em destaque, o valor um passo abaixo em cima e o valor um passo acima embaixo, menores e esmaecidos. Abaixo do mínimo, a posição de cima fica vazia. A roda NÃO DEVE ter texto de instrução.
+- **Direção.** Arrastar para cima aumenta o valor e arrastar para baixo diminui (PRD, D51). O valor maior fica embaixo, para entrar no centro acompanhando o dedo. A roda do mouse para cima aumenta.
 - **Alternativa por toque.** Os botões "−" e "+" ficam ao lado da roda, com 56 px de altura, e mudam o valor em um passo por toque. O botão "−" fica desativado no mínimo e continua focável. A alternativa não abre teclado e mantém a meta O5.
 - **Teclado.** As setas para cima e para a direita aumentam um passo, e as setas para baixo e para a esquerda diminuem.
 - **Passos e mínimos.** Carga: passo de 2,5 kg, mínimo de 0 kg. Repetições: passo de 1, mínimo de 1. Tempo: passo de 5 s, mínimo de 1 s. O passo soma ao valor exibido, sem arredondar para um múltiplo.

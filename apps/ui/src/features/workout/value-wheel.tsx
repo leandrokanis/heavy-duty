@@ -68,9 +68,10 @@ export function ValueWheel({
   }
   const moveDrag = (event: PointerEvent<HTMLDivElement>) => {
     if (dragAnchorY.current === null) return
-    const steps = stepsFromDrag(event.clientY - dragAnchorY.current, DRAG_STEP_PX)
+    // Up raises the value: the larger value sits below, so the finger pushes it up.
+    const steps = stepsFromDrag(dragAnchorY.current - event.clientY, DRAG_STEP_PX)
     // The anchor walks whole steps, so a drag past the minimum does not pile up steps.
-    dragAnchorY.current += steps * DRAG_STEP_PX
+    dragAnchorY.current -= steps * DRAG_STEP_PX
     setDragOffsetPx(event.clientY - dragAnchorY.current)
     if (steps !== 0) onAdjust(steps)
   }
@@ -108,7 +109,7 @@ export function ValueWheel({
     setDragOffsetPx(0)
     setDragging(false)
   }
-  const belowValue = value - DRAG_STEPS[field]
+  const aboveValue = value - DRAG_STEPS[field]
   return (
     <div
       className={`flex flex-col gap-(--space-4) rounded-(--radius-control) p-(--space-12) ${SURFACE_CLASS[surface]}`}
@@ -158,9 +159,9 @@ export function ValueWheel({
             >
               <span
                 aria-hidden="true"
-                className="font-(--font-weight-semibold) text-(--color-label-secondary) text-(length:--font-size-title-3) leading-none tabular-nums opacity-60"
+                className="min-h-[1.25rem] font-(--font-weight-semibold) text-(--color-label-secondary) text-(length:--font-size-title-3) leading-none tabular-nums opacity-60"
               >
-                {formatFieldValue(field, adjustValue(field, value, 1))}
+                {aboveValue >= MINIMUMS[field] ? formatFieldValue(field, aboveValue) : ''}
               </span>
               <span
                 ref={lineRef}
@@ -176,9 +177,9 @@ export function ValueWheel({
               </span>
               <span
                 aria-hidden="true"
-                className="min-h-[1.25rem] font-(--font-weight-semibold) text-(--color-label-secondary) text-(length:--font-size-title-3) leading-none tabular-nums opacity-60"
+                className="font-(--font-weight-semibold) text-(--color-label-secondary) text-(length:--font-size-title-3) leading-none tabular-nums opacity-60"
               >
-                {belowValue >= MINIMUMS[field] ? formatFieldValue(field, belowValue) : ''}
+                {formatFieldValue(field, adjustValue(field, value, 1))}
               </span>
             </span>
           </span>

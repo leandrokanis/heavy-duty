@@ -10,7 +10,7 @@ const MOVES_PER_STEP = 2
 
 export type DragPointer = 'mouse' | 'touch'
 
-// Down raises the value: the larger value sits above, so the finger pulls it down. The touch drag
+// Up raises the value: the larger value sits below, so the finger pushes it up. The touch drag
 // goes through the CDP, because the sheet tells a finger from a mouse by the event it gets.
 export async function dragWheel(
   wheel: Locator,
