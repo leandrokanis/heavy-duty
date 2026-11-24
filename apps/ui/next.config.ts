@@ -6,6 +6,8 @@ const isDevelopment = process.env.NODE_ENV === 'development'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // The game package ships TypeScript source; only the API image compiles it, see ADR-034.
+  transpilePackages: ['@heavy-duty/game'],
   // The dev proxy of compose.yaml serves the app from 127.0.0.1:${PROXY_PORT}.
   allowedDevOrigins: ['127.0.0.1', 'localhost'],
   // The consent screen must not be framed (clickjacking) nor leak its query, see ADR-020.

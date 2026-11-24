@@ -8,7 +8,9 @@ WORKDIR /app
 FROM base AS build
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY apps/ui/package.json apps/ui/
-RUN pnpm install --frozen-lockfile --filter heavy-duty --filter @heavy-duty/ui
+COPY packages/game/package.json packages/game/
+RUN pnpm install --frozen-lockfile --filter heavy-duty --filter "@heavy-duty/ui..."
+COPY packages/game packages/game
 COPY apps/ui apps/ui
 RUN pnpm --filter @heavy-duty/ui build \
   && pnpm --filter @heavy-duty/ui deploy --prod --legacy /out \

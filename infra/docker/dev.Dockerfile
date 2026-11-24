@@ -15,6 +15,7 @@ WORKDIR /app
 
 # Mount points of the named volumes, owned by node so the volumes start writable.
 RUN mkdir -p /app/node_modules /app/apps/api/node_modules /app/apps/ui/node_modules \
+    /app/packages/game/node_modules \
     /app/apps/ui/.next /app/data /pnpm-store /backup \
   && chown -R node:node /app /pnpm-store /backup
 

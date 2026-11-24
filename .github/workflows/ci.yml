@@ -159,6 +159,11 @@ jobs:
           proxy wget -qO- http://127.0.0.1/manifest.webmanifest > /dev/null
           (proxy wget -qO- http://127.0.0.1/mcp 2>&1 || true) | tee /dev/stderr | grep -q 401
           docker run --rm "$IMAGE_PREFIX-backup:$IMAGE_TAG" restic version
+          # The api and backup images resolve the compiled game package (ADR-034).
+          for name in api backup; do
+            docker run --rm "$IMAGE_PREFIX-$name:$IMAGE_TAG" node --input-type=module \
+              -e "const { GAME_CONFIG } = await import('@heavy-duty/game'); console.log(GAME_CONFIG.maxLevel)"
+          done
 
       - name: Show the logs of a failed smoke test
         if: failure()

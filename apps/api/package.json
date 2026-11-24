@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/server.js",
+    "start": "node --conditions=heavy-duty-dist dist/server.js",
     "test": "vitest run",
     "lint": "biome check .",
     "typecheck": "tsc --noEmit",
@@ -23,6 +23,7 @@
     "openapi:check": "tsx scripts/openapi.ts --check"
   },
   "dependencies": {
+    "@heavy-duty/game": "workspace:*",
     "@hono/node-server": "2.1.11",
     "@hono/swagger-ui": "0.6.2",
     "@hono/zod-openapi": "1.6.3",
