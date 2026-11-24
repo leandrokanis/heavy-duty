@@ -102,3 +102,17 @@ describe('Given an open Sheet', () => {
     })
   })
 })
+
+describe('Given an open Sheet with the role alertdialog', () => {
+  describe('When it is rendered', () => {
+    it('Then should be an alertdialog named by the Sheet.Title', async () => {
+      render(
+        <Sheet.Root open role="alertdialog" onOpenChange={vi.fn()}>
+          <Sheet.Title>Apagar treino</Sheet.Title>
+        </Sheet.Root>,
+      )
+
+      expect(await screen.findByRole('alertdialog', { name: 'Apagar treino' })).toBeInTheDocument()
+    })
+  })
+})

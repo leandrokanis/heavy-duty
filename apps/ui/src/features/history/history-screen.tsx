@@ -1,20 +1,25 @@
 'use client'
 
-import { ChevronLeft, WifiOff } from 'lucide-react'
-import { useSearchParams } from 'next/navigation'
+import { ChevronLeft, Trash2, WifiOff } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { IconLink } from '@/components/ui/icon-link'
+import { useToast } from '@/components/ui/toast'
 import { SignInScreen } from '@/features/auth/sign-in-screen'
+import { loadWorkoutsOnDevice } from '@/sync/workouts-on-device'
+import { DeleteWorkoutSheet } from './delete-workout-sheet'
 import type { HistoryWorkout } from './history.types'
-import { fetchWorkoutHistory, type HistoryRange } from './history-client'
-import { formatHistoryRange } from './history-format'
-import { HistoryList } from './history-list'
+import { deleteHistoryWorkout, fetchWorkoutHistory, type HistoryRange } from './history-client'
+import { formatHistoryRange, formatWorkoutDate } from './history-format'
+import { HistoryList, labelOf } from './history-list'
 import { HISTORY_PATH, WORKOUT_PARAM } from './history-paths'
 import { historyRangeOf } from './history-range'
 import { WorkoutDetail } from './workout-detail'
 
 type HistoryPage = { range: HistoryRange; workouts: HistoryWorkout[] }
+
+type Removal = { status: 'idle' | 'confirming' | 'busy' | 'failed' }
 
 type ScreenState =
   | { status: 'loading' }
@@ -33,12 +38,33 @@ function newestFirst(pages: HistoryPage[]): HistoryWorkout[] {
   return pages.flatMap(({ workouts }) => [...workouts].reverse())
 }
 
+function withoutWorkout(pages: HistoryPage[], workoutId: string): HistoryPage[] {
+  return pages.map((page) => ({
+    ...page,
+    workouts: page.workouts.filter(({ id }) => id !== workoutId),
+  }))
+}
+
+function setCountOf(workout: HistoryWorkout): number {
+  return workout.exercises.reduce((total, { sets }) => total + sets.length, 0)
+}
+
 // The history reads the API only: the phone keeps no copy, so it needs a connection (ADR-021).
 export function HistoryScreen() {
   const selectedId = useSearchParams().get(WORKOUT_PARAM)
+  const router = useRouter()
+  const toast = useToast()
   const [nowMs] = useState(() => Date.now())
   const [state, setState] = useState<ScreenState>({ status: 'loading' })
+  const [removal, setRemoval] = useState<Removal>({ status: 'idle' })
+  // The workouts the phone may still send cannot be deleted here (ADR-032); unknown until read.
+  const [onDevice, setOnDevice] = useState<Set<string> | null>(null)
   const mainRef = useRef<HTMLElement>(null)
+  const deleteButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    loadWorkoutsOnDevice(Date.now()).then(setOnDevice)
+  }, [])
 
   const loadFirstPage = useCallback(() => {
     setState({ status: 'loading' })
@@ -87,6 +113,29 @@ export function HistoryScreen() {
     return <SignInScreen onSignedIn={loadFirstPage} />
   }
 
+  // A direct call, not the queue: the history only shows with a connection (ADR-032).
+  const confirmRemoval = async (workout: HistoryWorkout) => {
+    if (removal.status === 'busy') return
+    setRemoval({ status: 'busy' })
+    const result = await deleteHistoryWorkout(workout.id)
+    if (result.status === 'failed') {
+      setRemoval({ status: 'failed' })
+      return
+    }
+    setRemoval({ status: 'idle' })
+    if (result.status === 'unauthenticated') {
+      setState({ status: 'unauthenticated' })
+      return
+    }
+    setState((current) =>
+      current.status === 'ok'
+        ? { ...current, pages: withoutWorkout(current.pages, workout.id) }
+        : current,
+    )
+    router.replace(HISTORY_PATH)
+    toast.show('Treino apagado')
+  }
+
   if (selected) {
     return (
       <main ref={mainRef} className={PAGE_CLASS}>
@@ -96,6 +145,32 @@ export function HistoryScreen() {
         <div className="mt-(--space-8)">
           <WorkoutDetail workout={selected} nowMs={nowMs} />
         </div>
+        {onDevice !== null && !onDevice.has(selected.id) ? (
+          <>
+            <Button
+              ref={deleteButtonRef}
+              variant="destructive"
+              size="large"
+              icon={Trash2}
+              className="mt-(--space-32) w-full"
+              onClick={() => setRemoval({ status: 'confirming' })}
+            >
+              Apagar treino
+            </Button>
+            <DeleteWorkoutSheet
+              open={removal.status !== 'idle'}
+              title={`${labelOf(selected)} · ${formatWorkoutDate(selected.startedAt, nowMs)}`}
+              setCount={setCountOf(selected)}
+              busy={removal.status === 'busy'}
+              failed={removal.status === 'failed'}
+              returnFocusRef={deleteButtonRef}
+              onConfirm={() => void confirmRemoval(selected)}
+              onCancel={() => {
+                if (removal.status !== 'busy') setRemoval({ status: 'idle' })
+              }}
+            />
+          </>
+        ) : null}
       </main>
     )
   }

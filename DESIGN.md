@@ -123,6 +123,7 @@ O espaçamento DEVE usar a escala de tokens da Seção 18, com base de 4 px (Pro
 - As telas de administração (exercícios, programas e histórico) DEVERIAM seguir a estrutura de janela do macOS 27: barra lateral para as seções, barra de ferramentas para as ações da tela atual e área de conteúdo.
 - A barra lateral é navegação. Ela segue as regras de navegação da Seção 9.1: troca de seção, nunca ação.
 - Ações destrutivas na administração, como remover um treino, DEVEM pedir confirmação explícita (PRD, US-F06-02).
+- No celular, "Apagar treino" fica no detalhe do histórico e DEVE pedir confirmação numa folha com papel `alertdialog`, com a letra, a data e as séries que saem (PRD, US-F20-02). O treino que ainda está no aparelho (em andamento ou com item na fila de envio) NÃO DEVE oferecer "Apagar treino"; a saída do treino em andamento é "Descartar".
 - Os alvos de toque da Seção 7 valem também em tela larga, porque a PWA pode ser usada por toque num tablet (Projeto).
 
 ## 6. Agrupamento de conteúdo

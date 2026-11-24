@@ -7,10 +7,12 @@ type SheetRootProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   finalFocus?: RefObject<HTMLElement | null>
+  // alertdialog for a confirmation that removes data.
+  role?: 'dialog' | 'alertdialog'
   children: ReactNode
 }
 
-function SheetRoot({ open, onOpenChange, finalFocus, children }: SheetRootProps) {
+function SheetRoot({ open, onOpenChange, finalFocus, role, children }: SheetRootProps) {
   return (
     <Drawer.Root open={open} onOpenChange={(next) => onOpenChange(next)}>
       <Drawer.Portal>
@@ -21,6 +23,8 @@ function SheetRoot({ open, onOpenChange, finalFocus, children }: SheetRootProps)
         <Drawer.Viewport className="fixed inset-x-0 bottom-0 flex justify-center">
           <Drawer.Popup
             finalFocus={finalFocus}
+            // An undefined role would erase the dialog role of the Drawer, so it goes only when set.
+            {...(role ? { role } : {})}
             className="sheet-popup glass-sheet mr-[calc(var(--space-8)+env(safe-area-inset-right))] mb-[calc(var(--space-8)+env(safe-area-inset-bottom))] ml-[calc(var(--space-8)+env(safe-area-inset-left))] flex max-h-[88dvh] max-w-[640px] flex-1 flex-col rounded-(--radius-sheet) px-(--space-20) pt-(--space-8) pb-(--space-24)"
           >
             <div

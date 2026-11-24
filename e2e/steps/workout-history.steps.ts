@@ -102,7 +102,9 @@ Then(
 Then('the detail should offer no control that changes the workout', async ({ page }) => {
   const main = page.getByRole('main')
   await expect(main.getByRole('list', { name: /^Séries de / })).not.toHaveCount(0)
-  await expect(main.getByRole('button')).toHaveCount(0)
+  // "Apagar treino" removes the whole workout (US-F20-02); no control changes a value (D50).
+  await expect(main.getByRole('button')).toHaveCount(1)
+  await expect(main.getByRole('button', { name: 'Apagar treino' })).toBeVisible()
   await expect(main.getByRole('textbox')).toHaveCount(0)
   await expect(main.getByRole('spinbutton')).toHaveCount(0)
   await expect(main.getByRole('link')).toHaveCount(1)

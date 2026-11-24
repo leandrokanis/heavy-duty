@@ -204,3 +204,9 @@ A US-F20-01 acrescenta a rota `/historico`, só de leitura (D50):
 3. O detalhe fica na mesma página, em `/historico?treino=<id>`, com os treinos já carregados: a volta à lista não busca de novo. O ID fora das páginas carregadas mostra a lista. Ao abrir e fechar o detalhe, o foco vai para o título.
 4. A lista das séries usa o `RecordedSetItem` da feature `workout`, o mesmo da folha da sequência. A data e a hora usam o fuso do aparelho; a duração sai de `finishedAt − startedAt`.
 5. O celular não guarda cópia do histórico, e o service worker não guarda resposta de `/api/*` (ADR-021). Sem conexão, o `AuthGate` ou a `/~offline` mostram "Sem conexão", com "Voltar ao treino do dia"; a falha depois da entrada mostra "Sem conexão" dentro da tela, com o voltar.
+
+A US-F20-02 acrescenta a remoção no detalhe (D50, ADR-032):
+
+1. O detalhe tem o botão "Apagar treino" (variante destrutiva, ícone `Trash2`) abaixo do conteúdo. O botão não aparece para os treinos que ainda estão no aparelho: o treino ativo e os que têm item na fila de envio (`loadWorkoutsOnDevice`, `src/sync/workouts-on-device.ts`), porque a fila recriaria o treino. A saída do treino ativo é descartar (US-F03-09).
+2. O botão abre a `DeleteWorkoutSheet` (`delete-workout-sheet.tsx`), uma `Sheet` com papel `alertdialog`, o título "Apagar treino", a letra e a data, o número de séries que saem e os botões "Cancelar" e "Apagar".
+3. "Apagar" chama `deleteHistoryWorkout` (`history-client.ts`), direto, sem a fila: `DELETE /api/workouts/{workoutId}`. Durante a chamada, "Apagar" fica desabilitado. Com 200, 204 ou 404, a tela tira o treino das páginas, troca o endereço para `/historico` e mostra o aviso "Treino apagado". Com 401, mostra a tela de entrada. Com falha de rede ou outro status, a folha continua aberta com "Sem conexão. Tente de novo.".

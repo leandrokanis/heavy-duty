@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { HistoryWorkout } from './history.types'
-import { fetchWorkoutHistory } from './history-client'
+import { deleteHistoryWorkout, fetchWorkoutHistory } from './history-client'
 
 const WORKOUT: HistoryWorkout = {
   id: '0193a1b2-0000-7000-8000-000000000601',
@@ -75,6 +75,40 @@ describe('Given the API answers GET /api/workouts', () => {
         '/api/workouts?from=2026-08-23T13%3A00%3A00.000Z&to=2026-11-23T13%3A00%3A00.000Z',
         { credentials: 'same-origin' },
       )
+    })
+  })
+})
+
+const WORKOUT_ID = '0193a1b2-0000-7000-8000-000000000601'
+
+describe('Given a workout of the history to delete', () => {
+  describe('When deleteHistoryWorkout is called', () => {
+    it('Then should send DELETE to the workout with same-origin credentials and no body', async () => {
+      const fetchMock = stubFetch(new Response(null, { status: 204 }))
+
+      await deleteHistoryWorkout(WORKOUT_ID)
+
+      expect(fetchMock).toHaveBeenCalledWith(`/api/workouts/${WORKOUT_ID}`, {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        signal: expect.any(AbortSignal),
+      })
+    })
+  })
+
+  describe.each([
+    { answer: 'status 204', response: new Response(null, { status: 204 }), status: 'deleted' },
+    { answer: 'status 200', response: json(200), status: 'deleted' },
+    { answer: 'status 404', response: json(404), status: 'deleted' },
+    { answer: 'status 401', response: json(401), status: 'unauthenticated' },
+    { answer: 'status 403', response: json(403), status: 'failed' },
+    { answer: 'status 500', response: json(500), status: 'failed' },
+    { answer: 'a network failure', response: new TypeError('Failed to fetch'), status: 'failed' },
+  ])('When the API answers with $answer', ({ response, status }) => {
+    it(`Then the result should be ${status}`, async () => {
+      stubFetch(response)
+
+      expect(await deleteHistoryWorkout(WORKOUT_ID)).toEqual({ status })
     })
   })
 })

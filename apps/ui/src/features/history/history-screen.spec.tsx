@@ -1,10 +1,17 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useSearchParams } from 'next/navigation'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ToastProvider } from '@/components/ui/toast'
+import { loadWorkoutsOnDevice } from '@/sync/workouts-on-device'
 import { HistoryScreen } from './history-screen'
 import { historyExercise, historyWorkout } from './test-history'
 
-vi.mock('next/navigation', () => ({ useSearchParams: vi.fn() }))
+const router = vi.hoisted(() => ({ replace: vi.fn() }))
+
+vi.mock('next/navigation', () => ({ useSearchParams: vi.fn(), useRouter: () => router }))
+vi.mock('@/sync/workouts-on-device', () => ({
+  loadWorkoutsOnDevice: vi.fn(async () => new Set<string>()),
+}))
 vi.mock('@simplewebauthn/browser', () => ({
   browserSupportsWebAuthn: () => true,
   startAuthentication: vi.fn(),
@@ -261,6 +268,122 @@ describe('Given the history screen', () => {
       render(<HistoryScreen />)
 
       expect(await screen.findByRole('list', { name: 'Treinos' })).toBeVisible()
+    })
+  })
+})
+
+function renderWithToast() {
+  render(
+    <ToastProvider>
+      <HistoryScreen />
+    </ToastProvider>,
+  )
+}
+
+async function askToDelete() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Apagar treino' }))
+  return screen.findByRole('alertdialog', { name: 'Apagar treino' })
+}
+
+describe('Given the detail of a recorded workout', () => {
+  beforeEach(() => {
+    stubParams('treino=w2')
+    router.replace.mockClear()
+  })
+
+  describe('When the athlete taps Apagar treino', () => {
+    it('Then a confirmation should open with the workout and its sets, and nothing should be removed yet', async () => {
+      const fetchMock = stubFetch(page(OLDER, NEWER))
+      render(<HistoryScreen />)
+
+      const dialog = await askToDelete()
+
+      expect({
+        sets: within(dialog).getByText(/sai do histórico|saem do histórico/).textContent,
+        calls: fetchMock.mock.calls.length,
+      }).toEqual({ sets: '1 série sai do histórico', calls: 1 })
+    })
+  })
+
+  describe('When the athlete cancels the confirmation', () => {
+    it('Then the workout should stay on screen and no DELETE should be sent', async () => {
+      const fetchMock = stubFetch(page(OLDER, NEWER))
+      render(<HistoryScreen />)
+      const dialog = await askToDelete()
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }))
+
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+      expect({
+        title: screen.getByRole('heading', { level: 1 }).textContent,
+        calls: fetchMock.mock.calls.length,
+      }).toEqual({ title: 'Peito', calls: 1 })
+    })
+  })
+
+  describe('When the athlete confirms and the API answers 204', () => {
+    it('Then should send DELETE, go back to the list without the workout and show "Treino apagado"', async () => {
+      const fetchMock = stubFetch(page(OLDER, NEWER), new Response(null, { status: 204 }))
+      renderWithToast()
+      const dialog = await askToDelete()
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Apagar' }))
+
+      const list = await screen.findByRole('list', { name: 'Treinos' })
+      expect({
+        request: [fetchMock.mock.calls[1]?.[0], fetchMock.mock.calls[1]?.[1]?.method],
+        replaced: router.replace.mock.calls,
+        links: linkNames(list),
+        toast: screen.getByText('Treino apagado').textContent,
+      }).toEqual({
+        request: ['/api/workouts/w2', 'DELETE'],
+        replaced: [['/historico']],
+        links: ['BC'],
+        toast: 'Treino apagado',
+      })
+    })
+  })
+
+  describe('When the athlete confirms and the network fails', () => {
+    it('Then the confirmation should stay open with "Sem conexão. Tente de novo." and the workout should stay', async () => {
+      stubFetch(page(OLDER, NEWER), new TypeError('Failed to fetch'))
+      render(<HistoryScreen />)
+      const dialog = await askToDelete()
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Apagar' }))
+
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+        'Sem conexão. Tente de novo.',
+      )
+      expect(router.replace).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('When the athlete confirms and the API answers 401', () => {
+    it('Then should show the Entrar button of the sign-in screen', async () => {
+      stubFetch(page(OLDER, NEWER), json(401))
+      render(<HistoryScreen />)
+      const dialog = await askToDelete()
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Apagar' }))
+
+      expect(await screen.findByRole('button', { name: 'Entrar' })).toBeInTheDocument()
+    })
+  })
+})
+
+describe('Given the detail of the workout still on the device', () => {
+  describe('When it opens', () => {
+    it('Then should not offer Apagar treino, since the queue would bring it back', async () => {
+      stubParams('treino=w2')
+      vi.mocked(loadWorkoutsOnDevice).mockResolvedValueOnce(new Set(['w2']))
+      stubFetch(page(OLDER, NEWER))
+      render(<HistoryScreen />)
+
+      await screen.findByRole('list', { name: 'Séries de Supino reto' })
+      await waitFor(() => expect(loadWorkoutsOnDevice).toHaveBeenCalled())
+
+      expect(screen.queryByRole('button', { name: 'Apagar treino' })).toBeNull()
     })
   })
 })

@@ -45,6 +45,7 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Descanso acelerado | Descanso que corre 3 vezes mais rápido enquanto o atleta segura o anel do cronômetro. Ao soltar, o descanso volta ao ritmo normal a partir do tempo que falta | `holdRest`, `releaseRest` (ações), `restHoldStartedAtMs` (estado) | adiantar, avanço rápido |
 | Ajuste por arrasto | Mudança de carga, repetições ou tempo por arrasto, em passos fixos, sem teclado | `dragAdjust` | slider |
 | Histórico | Conjunto dos treinos registrados | `history` | log |
+| Apagar treino | Ação do atleta que tira do histórico um treino terminado, pelo detalhe do histórico no celular e com confirmação. Chama a API direto, só com conexão. Diferente de "remover", que é a ação do planejador pelo MCP (`remove_workout`, com prévia e código de confirmação) (ADR-032) | `deleteHistoryWorkout`, `DeleteWorkoutSheet` | remover (no celular), excluir |
 | Fila de envio | Séries registradas no celular que aguardam a confirmação da API, guardadas no aparelho e enviadas em ordem de registro. A série que a API recusa por regra de domínio sai da fila e vira aviso | `pendingSets` | buffer, cache |
 | Volume | Soma de carga × repetições por grupo muscular num intervalo. O exercício por tempo soma segundos à parte, fora do volume (D46) | `volume` | — |
 
