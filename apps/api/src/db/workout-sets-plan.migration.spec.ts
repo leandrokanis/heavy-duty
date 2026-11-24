@@ -1,25 +1,13 @@
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
+import { rmSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
+import { migrateBefore } from '../test/migrations.js'
 import { type Database, openDatabase } from './connection.js'
 import { runMigrations } from './migrate.js'
 
-const MIGRATIONS_FOLDER = fileURLToPath(new URL('./migrations', import.meta.url))
 const PLAN_MIGRATION_INDEX = 10
 
-// A copy of the migrations that stops right before the frozen plan, so old sets can be stored.
 function migrateBeforePlan(db: Database): string {
-  const folder = mkdtempSync(join(tmpdir(), 'heavy-duty-migrations-'))
-  cpSync(MIGRATIONS_FOLDER, folder, { recursive: true })
-  const journalPath = join(folder, 'meta', '_journal.json')
-  const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as { entries: { idx: number }[] }
-  journal.entries = journal.entries.filter(({ idx }) => idx < PLAN_MIGRATION_INDEX)
-  writeFileSync(journalPath, JSON.stringify(journal))
-  migrate(db, { migrationsFolder: folder })
-  return folder
+  return migrateBefore(db, PLAN_MIGRATION_INDEX)
 }
 
 function givenOldSets(db: Database): void {

@@ -29,6 +29,20 @@ function volumesOf(done: SetMeasure, plan: SetPlan | null): Volumes | null {
   }
 }
 
+// The done ÷ planned ratio as a fraction of integers, capped at maxPlanPercent: the ratio is
+// cappedVolume ÷ (plannedVolume × 100). A set with no plan counts as meeting it.
+export function planRatioOf(
+  done: SetMeasure,
+  plan: SetPlan | null,
+  config: Pick<GameConfig, 'maxPlanPercent'> = GAME_CONFIG,
+): { cappedVolume: number; plannedVolume: number } {
+  const volumes = volumesOf(done, plan) ?? { doneVolume: 1, plannedVolume: 1 }
+  return {
+    cappedVolume: Math.min(volumes.doneVolume * 100, volumes.plannedVolume * config.maxPlanPercent),
+    plannedVolume: volumes.plannedVolume,
+  }
+}
+
 type PointsConfig = Pick<GameConfig, 'setPointsAtPlan' | 'maxPlanPercent'>
 
 // Decision D41: the points at plan times the done ÷ planned ratio, up to the double, times the
@@ -39,14 +53,9 @@ export function setPointsOf(
   multiplierPercent: number,
   config: PointsConfig = GAME_CONFIG,
 ): number {
-  const volumes = volumesOf(done, plan) ?? { doneVolume: 1, plannedVolume: 1 }
-  const cappedVolume = Math.min(
-    volumes.doneVolume * 100,
-    volumes.plannedVolume * config.maxPlanPercent,
-  )
+  const { cappedVolume, plannedVolume } = planRatioOf(done, plan, config)
   return Math.round(
-    (config.setPointsAtPlan * cappedVolume * multiplierPercent) /
-      (volumes.plannedVolume * 100 * 100),
+    (config.setPointsAtPlan * cappedVolume * multiplierPercent) / (plannedVolume * 100 * 100),
   )
 }
 

@@ -3,6 +3,7 @@ import { DomainError } from '../../errors/domain-error.js'
 import type { ExerciseKind } from '../catalog/catalog.schemas.js'
 import { findProgramDayRow, findProgramRow } from '../programs/program.repository.js'
 import {
+  countPlannedGroupSets,
   existsWorkoutSet,
   findPlannedExerciseTarget,
   findWorkoutRow,
@@ -76,6 +77,7 @@ export function recordWorkoutSet(
       plannedLoadG: planned.loadG,
       targetReps: planned.targetReps,
       targetSeconds: planned.targetSeconds,
+      plannedGroupSets: countPlannedGroupSets(db, programDayId, input.exerciseId),
     })
     return { set, created: true }
   })

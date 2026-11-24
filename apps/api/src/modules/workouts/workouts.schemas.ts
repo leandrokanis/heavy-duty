@@ -40,6 +40,12 @@ export const TodayExerciseSchema = z
       description:
         'Personal records of the exercise over the whole history, by exercise; empty for a timed exercise',
     }),
+    secondaryMuscleGroups: z.array(
+      z.object({
+        slug: z.string().openapi({ example: 'triceps' }),
+        name: z.string().openapi({ example: 'tríceps' }),
+      }),
+    ),
   })
   .openapi('TodayExercise')
 

@@ -10,6 +10,7 @@ import {
   findLastWorkoutLetter,
   listPrimaryGroupsByExercise,
   listRepsSetsByExercise,
+  listSecondaryGroupsByExercise,
 } from './today.repository.js'
 import { estimateDurationSeconds, suggestLetter } from './today.rules.js'
 import type { LoadSource, Today, TodayDay, TodayExercise } from './workouts.schemas.js'
@@ -30,14 +31,10 @@ export function getToday(db: Database): Today {
       lastLoads.set(planned.exercise.id, findLastLoadG(db, planned.exercise.id))
     }
   }
-  const groupsByExercise = listPrimaryGroupsByExercise(
-    db,
-    plannedRows.map((planned) => planned.exercise.id),
-  )
-  const repsSets = listRepsSetsByExercise(
-    db,
-    plannedRows.map((planned) => planned.exercise.id),
-  )
+  const exerciseIds = plannedRows.map((planned) => planned.exercise.id)
+  const groupsByExercise = listPrimaryGroupsByExercise(db, exerciseIds)
+  const secondaryGroupsByExercise = listSecondaryGroupsByExercise(db, exerciseIds)
+  const repsSets = listRepsSetsByExercise(db, exerciseIds)
   const days = dayRows.map((day): TodayDay => {
     const exercises = plannedRows
       .filter((planned) => planned.programDayId === day.id)
@@ -56,6 +53,7 @@ export function getToday(db: Database): Today {
           loadSource,
           muscleGroups: groupsByExercise.get(planned.exercise.id) ?? [],
           records: personalRecordsOf(repsSets.get(planned.exercise.id) ?? []),
+          secondaryMuscleGroups: secondaryGroupsByExercise.get(planned.exercise.id) ?? [],
         }
       })
     return {

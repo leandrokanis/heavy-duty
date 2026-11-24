@@ -8,6 +8,7 @@ import {
   workouts,
 } from '../../db/schema.js'
 import type { ExerciseKind } from '../catalog/catalog.schemas.js'
+import { listPrimaryGroupsByExercise } from './today.repository.js'
 import type { Workout, WorkoutEndReason, WorkoutSet, WorkoutSkip } from './workouts.schemas.js'
 
 export type NewWorkout = {
@@ -104,6 +105,33 @@ export function existsWorkoutSet(
 // The plan of the moment of the record (ADR-033); the correction never changes it.
 export type SetPlan = Pick<PlannedExerciseTarget, 'targetReps' | 'targetSeconds'> & {
   plannedLoadG: number
+  plannedGroupSets: Record<string, number>
+}
+
+// The planned sets of each primary group of the exercise in the letter, by group slug (D54).
+export function countPlannedGroupSets(
+  db: Database,
+  programDayId: string,
+  exerciseId: string,
+): Record<string, number> {
+  const planned = db
+    .select({ exerciseId: plannedExercises.exerciseId, sets: plannedExercises.sets })
+    .from(plannedExercises)
+    .where(eq(plannedExercises.programDayId, programDayId))
+    .all()
+  const groupsOf = listPrimaryGroupsByExercise(db, [
+    exerciseId,
+    ...planned.map((row) => row.exerciseId),
+  ])
+  const slugsOf = (id: string) => (groupsOf.get(id) ?? []).map(({ slug }) => slug)
+  return Object.fromEntries(
+    slugsOf(exerciseId).map((slug) => [
+      slug,
+      planned
+        .filter((row) => slugsOf(row.exerciseId).includes(slug))
+        .reduce((total, row) => total + row.sets, 0),
+    ]),
+  )
 }
 
 export function insertWorkoutSet(db: Database, set: WorkoutSet, plan: SetPlan): void {

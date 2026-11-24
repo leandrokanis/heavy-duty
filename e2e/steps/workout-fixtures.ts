@@ -32,6 +32,26 @@ function withDatabase<T>(action: (db: DatabaseSync) => T): T {
   }
 }
 
+// The planned sets of each primary group of the exercise in the letter, as the set route stores
+// them (addendum to ADR-033), in JSON.
+function plannedGroupSetsOf(db: DatabaseSync, programDayId: string, exerciseId: string): string {
+  const rows = db
+    .prepare(
+      `SELECT mg.slug AS slug, (
+         SELECT coalesce(sum(pe.sets), 0) FROM planned_exercises pe
+         WHERE pe.program_day_id = ? AND EXISTS (
+           SELECT 1 FROM exercise_muscles em2 JOIN muscles m2 ON m2.id = em2.muscle_id
+           WHERE em2.exercise_id = pe.exercise_id AND em2.role = 'primary'
+             AND m2.muscle_group_id = mg.id)) AS sets
+       FROM muscle_groups mg
+       WHERE mg.id IN (
+         SELECT m.muscle_group_id FROM exercise_muscles em JOIN muscles m ON m.id = em.muscle_id
+         WHERE em.exercise_id = ? AND em.role = 'primary')`,
+    )
+    .all(programDayId, exerciseId) as { slug: string; sets: number }[]
+  return JSON.stringify(Object.fromEntries(rows.map(({ slug, sets }) => [slug, sets])))
+}
+
 export function recordWorkout(
   programId: string,
   letter: string,
@@ -67,8 +87,8 @@ export function recordWorkout(
         db.prepare(
           `INSERT INTO workout_sets
              (id, workout_id, exercise_id, planned_exercise_id, set_number, load_g, reps, seconds,
-              performed_at, planned_load_g, target_reps, target_seconds)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              performed_at, planned_load_g, target_reps, target_seconds, planned_group_sets)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           randomUUID(),
           workoutId,
@@ -82,6 +102,7 @@ export function recordWorkout(
           planned?.loadG ?? null,
           planned?.targetReps ?? null,
           planned?.targetSeconds ?? null,
+          day ? plannedGroupSetsOf(db, day.id, exercise.id) : null,
         )
       })
       db.exec('COMMIT')

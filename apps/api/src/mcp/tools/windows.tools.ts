@@ -1,11 +1,13 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { listMuscleGroupLevels } from '../../modules/windows/progress.service.js'
 import { getMuscleGroupVolume } from '../../modules/windows/volume.service.js'
 import { simulateActivityWindows } from '../../modules/windows/window-simulation.service.js'
 import { listActivityWindows } from '../../modules/windows/window-state.service.js'
 import {
   ActivityWindowSimulationSchema,
   ActivityWindowsSchema,
+  MuscleGroupLevelsSchema,
   MuscleGroupVolumeQuerySchema,
   MuscleGroupVolumeSchema,
   SimulateActivityWindowsQuerySchema,
@@ -48,5 +50,17 @@ export function registerWindowTools(server: McpServer, { db, now }: ToolDeps): v
       annotations: { readOnlyHint: true },
     },
     () => runTool(() => listActivityWindows(db, now())),
+  )
+
+  server.registerTool(
+    'list_muscle_group_levels',
+    {
+      description:
+        'Get the level of each muscle group now, to see the form of each group. Takes no parameter and only reads. Returns now (the clock of the API, a UTC instant in ISO 8601) and the 11 muscle groups in catalog order, each with muscleGroup (slug, name), level (1 to 20), points (the integer points on the bar of the level), levelCost (the points the level costs: 40 + 3 × (level − 1); at level 20 the bar stays full with points equal to levelCost), bestLevel (the highest level the group ever had) and tier (bronze for levels 1 to 4, silver 5 to 10, gold 11 to 16, violet 17 to 20). The levels are recalculated from the whole history at each call: each set fills the bar of each muscle group of its exercise. A primary group gets 10 × ratio × 6 ÷ the planned sets of the group in the letter, about 60 points per complete workout; a secondary group gets 10 × ratio × 0.5. The ratio is done ÷ planned volume of the set, capped at 2, against the plan frozen in the set when it was recorded (load × reps; reps alone when the planned load is 0; seconds for a timed exercise). The gain doubles while the group is in the activity window of its training before the workout (see list_activity_windows). A group never trained is at level 1 with 0 points. The same object that GET /api/levels returns.',
+      inputSchema: z.object({}),
+      outputSchema: MuscleGroupLevelsSchema,
+      annotations: { readOnlyHint: true },
+    },
+    () => runTool(() => listMuscleGroupLevels(db, now())),
   )
 }
