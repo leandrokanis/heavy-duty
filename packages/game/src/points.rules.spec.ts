@@ -101,7 +101,12 @@ describe('multiplierPercentOf', () => {
 
   describe('Given a window percent above the maximum multiplier', () => {
     it('Then the multiplier stops at the maximum', () => {
-      const config = { windowPercent: 300, outsideWindowPercent: 100, maxMultiplierPercent: 200 }
+      const config = {
+        windowPercent: 300,
+        outsideWindowPercent: 100,
+        welcomeBackPercent: 200,
+        maxMultiplierPercent: 200,
+      }
 
       expect(multiplierPercentOf({ inWindow: true }, config)).toBe(200)
     })

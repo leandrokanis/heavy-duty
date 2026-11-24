@@ -8,6 +8,9 @@ export type MuscleGroupLevel = {
   levelCost: number
   bestLevel: number
   tier: Tier
+  // Absent from a copy saved on the device before US-F10-03.
+  cooling?: boolean
+  nextDropAt?: string | null
 }
 
 export type MuscleGroupLevels = { now: string; groups: MuscleGroupLevel[] }

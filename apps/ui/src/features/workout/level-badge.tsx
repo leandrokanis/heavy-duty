@@ -31,16 +31,21 @@ export type LevelBadgeProps = {
   tier: Tier
   // Side in px; the number scales with it.
   size: number
+  // A cooling group loses the colour of its tier and takes the colour of the cooling (US-F10-03).
+  cold?: boolean
 }
 
 // Decorative: the text beside it says the level to the screen reader.
-export function LevelBadge({ level, tier, size }: LevelBadgeProps) {
+const COLD: [string, string] = ['var(--color-window-cooling)', 'var(--color-window-cooling)']
+
+export function LevelBadge({ level, tier, size, cold = false }: LevelBadgeProps) {
   const gradientId = useId()
-  const [from, to] = GRADIENT[tier]
+  const [from, to] = cold ? COLD : GRADIENT[tier]
   return (
     <span
       aria-hidden="true"
       data-tier={tier}
+      data-cold={cold ? '' : undefined}
       className="relative inline-grid shrink-0 place-items-center"
       style={{ width: size, height: size }}
     >
@@ -54,7 +59,9 @@ export function LevelBadge({ level, tier, size }: LevelBadgeProps) {
         <path d={SHAPE[tier]} fill={`url(#${gradientId})`} />
       </svg>
       <b
-        className={`relative font-(--font-weight-heavy) leading-none tabular-nums ${NUMBER_COLOR[tier]}`}
+        className={`relative font-(--font-weight-heavy) leading-none tabular-nums ${
+          cold ? 'text-(--color-on-tier)' : NUMBER_COLOR[tier]
+        }`}
         style={{ fontSize: Math.round(size * 0.38) }}
       >
         {level}

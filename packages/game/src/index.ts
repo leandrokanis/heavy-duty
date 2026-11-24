@@ -1,3 +1,4 @@
+export { coolingLossOf, nextDropAtMsOf, subtractCoolingLoss } from './cooling.rules.ts'
 export type { GameConfig, Tier } from './game.config.ts'
 export { GAME_CONFIG } from './game.config.ts'
 export type { GainResult, GainRole, GroupProgress } from './level.rules.ts'

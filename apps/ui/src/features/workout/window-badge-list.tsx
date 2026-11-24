@@ -41,20 +41,32 @@ const INDICATOR_COLOR = {
 
 // Spans with roles, so it can sit inside the button of a row: the text joins the name of the button.
 // The text stays in the label colour; the state colour is on the indicator only (DESIGN.md, Section 18.1).
-// The seal and a short bar of the level; the screen reader hears the level from the phrase.
+// The stripes of a bar that drains while the group cools, as on the indicator of the window.
+const DRAIN =
+  'repeating-linear-gradient(45deg, var(--color-window-cooling) 0 2px, color-mix(in srgb, var(--color-window-cooling) 45%, transparent) 2px 4px)'
+
+// The seal and a short bar of the level; the screen reader hears the level from the phrase. A
+// cooling group shows its seal without the colour of the tier and its bar in stripes (US-F10-03).
 function LevelOfGroup({ level }: { level: MuscleGroupLevel }) {
   const fill = `${Math.round((level.points / level.levelCost) * 100)}%`
+  const cooling = level.cooling === true
   return (
     <>
       <span className="sr-only">{`, nível ${level.level}`}</span>
-      <LevelBadge level={level.level} tier={level.tier} size={20} />
+      <LevelBadge level={level.level} tier={level.tier} size={20} cold={cooling} />
       <span
         aria-hidden="true"
         className="block h-[4px] w-[24px] overflow-hidden rounded-(--radius-capsule) bg-(--color-fill)"
       >
         <b
           data-level-bar=""
-          style={{ '--level-fill': fill } as CSSProperties}
+          data-cooling={cooling ? '' : undefined}
+          style={
+            {
+              '--level-fill': fill,
+              ...(cooling ? { background: DRAIN } : {}),
+            } as CSSProperties
+          }
           className="block h-full w-(--level-fill) rounded-(--radius-capsule) bg-linear-to-r from-(--color-game-xp) to-(--color-game-xp-2)"
         />
       </span>

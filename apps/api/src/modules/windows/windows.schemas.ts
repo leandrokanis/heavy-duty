@@ -173,6 +173,8 @@ export const MuscleGroupLevelSchema = z
     levelCost: z.number().int().openapi({ example: 49 }),
     bestLevel: z.number().int().openapi({ example: 4 }),
     tier: TierSchema,
+    cooling: z.boolean().openapi({ example: false }),
+    nextDropAt: z.string().nullable().openapi({ example: null }),
   })
   .openapi('MuscleGroupLevel')
 

@@ -1177,9 +1177,9 @@ O exemplo mostra um grupo só; a resposta traz os 11.
 | 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
 | 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
 
-`now` é o relógio da API, em ISO 8601, em UTC. `groups` traz os 11 grupos do catálogo, na ordem do catálogo. Cada grupo tem `muscleGroup` (`slug` e `name`), `level` (1 a 20), `points` (pontos inteiros na barra do nível), `levelCost` (o custo do nível, 40 + 3 × (`level` − 1)), `bestLevel` (o maior nível que o grupo já teve) e `tier` (`bronze`, `silver`, `gold` ou `violet`). No nível 20, a barra fica cheia: `points` é igual a `levelCost`. O grupo nunca treinado fica no nível 1, com 0 pontos.
+`now` é o relógio da API, em ISO 8601, em UTC. `groups` traz os 11 grupos do catálogo, na ordem do catálogo. Cada grupo tem `muscleGroup` (`slug` e `name`), `level` (1 a 20), `points` (pontos inteiros na barra do nível), `levelCost` (o custo do nível, 40 + 3 × (`level` − 1)), `bestLevel` (o maior nível que o grupo já teve, que nunca se perde), `tier` (`bronze`, `silver`, `gold` ou `violet`), `cooling` (o grupo está esfriando: a janela do último treino fechou sem treino depois) e `nextDropAt` (o instante, em ISO 8601 e UTC, em que o grupo esfriando cai um nível; `null` sem esfriamento ou no nível 1, US-F10-03). No nível 20, a barra fica cheia: `points` é igual a `levelCost`. O grupo nunca treinado fica no nível 1, com 0 pontos.
 
-A API recalcula os níveis de todo o histórico a cada leitura (ADR-010), com as regras do pacote `@heavy-duty/game` (ADR-034), pelo service `listMuscleGroupLevels`, em `apps/api/src/modules/windows/progress.service.ts`. Cada série enche a barra de cada grupo do exercício, em ordem de tempo, com o ganho do grupo da D54: o grupo principal recebe 10 × razão × 6 ÷ séries planejadas do grupo na letra, e o secundário, 10 × razão × 0,5. A razão é o feito ÷ o planejado da série, até 2, contra o plano congelado na série (ADR-033). O ganho dobra quando o instante da série cai na janela do treino anterior do grupo (D55, D56). A ferramenta MCP `list_muscle_group_levels` devolve o mesmo objeto (`mcp.md`).
+A API recalcula os níveis de todo o histórico a cada leitura (ADR-010), com as regras do pacote `@heavy-duty/game` (ADR-034), pelo service `listMuscleGroupLevels`, em `apps/api/src/modules/windows/progress.service.ts`. Cada série enche a barra de cada grupo do exercício, em ordem de tempo, com o ganho do grupo da D54: o grupo principal recebe 10 × razão × 6 ÷ séries planejadas do grupo na letra, e o secundário, 10 × razão × 0,5. A razão é o feito ÷ o planejado da série, até 2, contra o plano congelado na série (ADR-033). O ganho dobra quando o instante da série cai na janela do treino anterior do grupo (D55, D56) e no primeiro treino do grupo depois de a janela fechar ("bem-vindo de volta", D53), sem somar: o máximo é ×2. Do `closesAt` da janela até o treino seguinte do grupo, ou até agora, o grupo esfria e perde `floor(tempo × 40 ÷ 24 h)` pontos; quando a barra chega a zero, o grupo cai um nível e a barra do nível de baixo começa cheia; o nível 1 não cai (D43, D58). A ferramenta MCP `list_muscle_group_levels` devolve o mesmo objeto (`mcp.md`).
 
 Exemplo, com as costas treinadas uma vez, com as 3 séries planejadas no plano:
 
@@ -1193,7 +1193,9 @@ Exemplo, com as costas treinadas uma vez, com as 3 séries planejadas no plano:
       "points": 20,
       "levelCost": 43,
       "bestLevel": 2,
-      "tier": "bronze"
+      "tier": "bronze",
+      "cooling": false,
+      "nextDropAt": null
     }
   ]
 }

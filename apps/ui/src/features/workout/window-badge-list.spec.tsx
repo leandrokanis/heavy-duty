@@ -111,3 +111,43 @@ describe('Given chest open at level 6 of silver, with 26 of 55 points (D61)', ()
     })
   })
 })
+
+describe('Given quadriceps cooling at level 6 (US-F10-03)', () => {
+  describe('When its badge is rendered with the levels', () => {
+    it('Then the seal loses the colour of its tier and the bar shows the stripes of the cooling', () => {
+      render(
+        <button type="button">
+          <WindowBadgeList
+            badges={[badge('cooling', '2026-11-22T12:00:00.000Z', 'quadríceps')]}
+            levels={{
+              now: '2026-11-23T12:00:00.000Z',
+              groups: [
+                {
+                  muscleGroup: { slug: 'quadríceps', name: 'quadríceps' },
+                  level: 6,
+                  points: 15,
+                  levelCost: 55,
+                  bestLevel: 7,
+                  tier: 'silver',
+                  cooling: true,
+                  nextDropAt: '2026-11-23T21:00:00.000Z',
+                },
+              ],
+            }}
+            nowMs={NOW_MS}
+            timeZone={SAO_PAULO}
+          />
+        </button>,
+      )
+      const item = screen.getByRole('listitem')
+
+      expect({
+        named:
+          screen.queryByRole('button', { name: 'Quadríceps · esfriando há 1 dia, nível 6' }) !==
+          null,
+        cold: item.querySelector('[data-tier]')?.hasAttribute('data-cold'),
+        bar: item.querySelector('[data-level-bar]')?.hasAttribute('data-cooling'),
+      }).toEqual({ named: true, cold: true, bar: true })
+    })
+  })
+})

@@ -80,7 +80,7 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Volume ajustado | Volume vezes o fator do objetivo do programa (força 130%, hipertrofia 100%, resistência 75%). Entra só no cálculo da janela (ADR-031) | `adjustedVolume` | intensidade |
 | Pontos | O que cada série rende, relativo ao plano: a série que bate o planejado vale 10; em dobro dentro da janela | `points` | XP, moedas |
 | Ganho do grupo | Parte da série que enche a barra de progresso de cada grupo do exercício, com o multiplicador do próprio grupo. O grupo principal recebe 10 × razão × 6 ÷ séries planejadas do grupo na letra, cerca de 60 por treino completo; o secundário recebe 10 × razão × 0,5 (D54) | `groupGain` | XP do grupo, pontos do grupo |
-| Bem-vindo de volta | Pontos em dobro no primeiro treino de um grupo depois do esfriamento, sem somar com a janela nem com a memória muscular: o máximo é ×2 (D53) | `relation: 'late'` | bônus de retorno |
+| Bem-vindo de volta | Pontos em dobro no primeiro treino de um grupo depois do esfriamento, sem somar com a janela nem com a memória muscular: o máximo é ×2 (D53). Vale para o treino cuja primeira série do grupo veio depois do fechamento da janela | `welcomeBack` | bônus de retorno |
 | Nível | Degrau de 1 a 20 de cada grupo muscular, que mede a forma atual: sobe quando a barra de progresso enche e cai aos poucos quando o grupo esfria | `level` | rank |
 | Nível geral | Nível do grupo mais fraco entre os que o programa treina | `overallLevel` | nível do atleta, média |
 | Faixa | Grupo de níveis que define a forma e a cor do selo: círculo de bronze (1 a 4), escudo de prata (5 a 10), hexágono de ouro (11 a 16) e estrela violeta (17 a 20) | `tier` | liga, divisão |
