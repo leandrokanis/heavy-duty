@@ -136,6 +136,7 @@ describe("Given an older inactive program and the active hypertrophy program wit
           loadSource: 'program',
           muscleGroups: [{ slug: 'chest', name: 'peito' }],
           records: [],
+          secondaryMuscleGroups: [],
         },
       })
     })
@@ -165,6 +166,30 @@ describe('Given an exercise with two primary muscles in chest, one in back and a
         { slug: 'chest', name: 'peito' },
         { slug: 'back', name: 'costas' },
       ])
+    })
+  })
+})
+
+describe('Given Pullover with primary muscles in chest and back and secondary muscles in triceps and chest (US-F10-02)', () => {
+  describe('When the athlete requests the workout of the day', () => {
+    it('Then the exercise should list triceps as its only secondary group, as chest is already primary', async () => {
+      const { app, db } = createProgramTestApp()
+      addMuscle(db, { name: 'grande dorsal', muscleGroupSlug: 'back' })
+      addMuscle(db, { name: 'peitoral menor', muscleGroupSlug: 'chest' })
+      addMuscle(db, { name: 'tríceps braquial', muscleGroupSlug: 'triceps' })
+      addExercise(db, {
+        name: 'Pullover',
+        kind: 'reps',
+        primaryMuscleSlugs: ['grande-dorsal', 'peitoral-maior'],
+        secondaryMuscleSlugs: ['triceps-braquial', 'peitoral-menor'],
+      })
+      const programId = await createProgram(app, 'Programa 1')
+      await addDay(app, programId, 'A')
+      await addPlanned(app, programId, 'A', { ...SUPINO_RETO, exerciseSlug: 'pullover' })
+
+      const pullover = exerciseIn(await getToday(app), 'A', 'pullover')
+
+      expect(pullover?.secondaryMuscleGroups).toEqual([{ slug: 'triceps', name: 'tríceps' }])
     })
   })
 })
@@ -318,6 +343,7 @@ describe("Given letter 'A' with prancha 3 x 45 s at 0 g and no workout", () => {
         loadSource: 'program',
         muscleGroups: [{ slug: 'abs', name: 'abdômen' }],
         records: [],
+        secondaryMuscleGroups: [],
       })
     })
   })

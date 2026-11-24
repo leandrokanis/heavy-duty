@@ -143,6 +143,7 @@ describe("Given the active program with letter 'A' and no workout", () => {
             plannedLoadG: 40000,
             targetReps: 10,
             targetSeconds: null,
+            plannedGroupSets: { chest: 3 },
           },
         ],
       })
@@ -713,6 +714,42 @@ describe('Given the active program with supino-reto planned for 10 reps at 40000
         targetReps: 10,
         targetSeconds: null,
       })
+    })
+  })
+})
+
+function readStoredGroupPlan(fixture: Fixture, setId: string) {
+  return fixture.db
+    .select({ plannedGroupSets: workoutSets.plannedGroupSets })
+    .from(workoutSets)
+    .where(eq(workoutSets.id, setId))
+    .get()?.plannedGroupSets
+}
+
+describe('Given letter A with supino-reto 3 sets (chest) and prancha 3 sets (abs), addendum to ADR-033', () => {
+  describe('When the app sends set 1 of supino-reto', () => {
+    it('Then the set should store 3 planned sets of chest in the letter', async () => {
+      const fixture = await givenProgramWithLetterA()
+
+      await postSet(fixture, supinoSetBody(fixture))
+
+      expect(readStoredGroupPlan(fixture, SET_ID)).toEqual({ chest: 3 })
+    })
+  })
+
+  describe('When the planner adds 2 sets to supino-reto after set 1', () => {
+    it('Then set 1 should keep the 3 planned sets of chest it was recorded with', async () => {
+      const fixture = await givenProgramWithLetterA()
+      await postSet(fixture, supinoSetBody(fixture))
+
+      await sendJson(
+        fixture.app,
+        'PATCH',
+        `/api/programs/${fixture.programId}/days/A/exercises/supino-reto`,
+        { sets: 5 },
+      )
+
+      expect(readStoredGroupPlan(fixture, SET_ID)).toEqual({ chest: 3 })
     })
   })
 })

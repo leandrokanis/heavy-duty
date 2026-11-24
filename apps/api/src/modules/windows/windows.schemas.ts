@@ -159,3 +159,28 @@ export const ActivityWindowsSchema = z
   .openapi('ActivityWindows')
 
 export type ActivityWindows = z.infer<typeof ActivityWindowsSchema>
+
+export const TierSchema = z.enum(['bronze', 'silver', 'gold', 'violet']).openapi('Tier')
+
+export const MuscleGroupLevelSchema = z
+  .object({
+    muscleGroup: z.object({
+      slug: z.string().openapi({ example: 'chest' }),
+      name: z.string().openapi({ example: 'peito' }),
+    }),
+    level: z.number().int().openapi({ example: 4 }),
+    points: z.number().int().openapi({ example: 5 }),
+    levelCost: z.number().int().openapi({ example: 49 }),
+    bestLevel: z.number().int().openapi({ example: 4 }),
+    tier: TierSchema,
+  })
+  .openapi('MuscleGroupLevel')
+
+export const MuscleGroupLevelsSchema = z
+  .object({
+    now: z.string().openapi({ example: '2026-11-21T12:00:00.000Z' }),
+    groups: z.array(MuscleGroupLevelSchema),
+  })
+  .openapi('MuscleGroupLevels')
+
+export type MuscleGroupLevels = z.infer<typeof MuscleGroupLevelsSchema>

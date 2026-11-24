@@ -9,6 +9,7 @@ import {
   workoutSkips,
   workouts,
 } from '../db/schema.js'
+import { countPlannedGroupSets } from '../modules/workouts/workout.repository.js'
 
 export type RecordWorkoutInput = {
   programId: string
@@ -81,6 +82,7 @@ export function recordWorkout(db: Database, input: RecordWorkoutInput, now: Date
           plannedLoadG: planned?.loadG ?? null,
           targetReps: planned?.targetReps ?? null,
           targetSeconds: planned?.targetSeconds ?? null,
+          plannedGroupSets: day ? countPlannedGroupSets(db, day.id, exercise.id) : null,
           setNumber: set.setNumber ?? index + 1,
           loadG: set.loadG,
           reps: set.reps ?? null,

@@ -4,10 +4,11 @@ import { exerciseMuscles, muscleGroups, muscles, workoutSets, workouts } from '.
 
 export type ExerciseMuscleGroup = { slug: string; name: string }
 
-// Primary muscles only, one entry per group, in catalog order.
-export function listPrimaryGroupsByExercise(
+// One entry per group, in catalog order, for the muscles of one role.
+function listGroupsByExercise(
   db: Database,
   exerciseIds: readonly string[],
+  role: 'primary' | 'secondary',
 ): Map<string, ExerciseMuscleGroup[]> {
   const rows = db
     .selectDistinct({
@@ -19,10 +20,7 @@ export function listPrimaryGroupsByExercise(
     .innerJoin(muscles, eq(exerciseMuscles.muscleId, muscles.id))
     .innerJoin(muscleGroups, eq(muscles.muscleGroupId, muscleGroups.id))
     .where(
-      and(
-        eq(exerciseMuscles.role, 'primary'),
-        inArray(exerciseMuscles.exerciseId, [...exerciseIds]),
-      ),
+      and(eq(exerciseMuscles.role, role), inArray(exerciseMuscles.exerciseId, [...exerciseIds])),
     )
     .orderBy(asc(muscleGroups.position))
     .all()
@@ -31,6 +29,29 @@ export function listPrimaryGroupsByExercise(
     groupsByExercise.set(exerciseId, [...(groupsByExercise.get(exerciseId) ?? []), { slug, name }])
   }
   return groupsByExercise
+}
+
+// Primary muscles only, one entry per group, in catalog order.
+export function listPrimaryGroupsByExercise(
+  db: Database,
+  exerciseIds: readonly string[],
+): Map<string, ExerciseMuscleGroup[]> {
+  return listGroupsByExercise(db, exerciseIds, 'primary')
+}
+
+// The groups of the secondary muscles that no primary muscle covers, as the volume counts them.
+export function listSecondaryGroupsByExercise(
+  db: Database,
+  exerciseIds: readonly string[],
+): Map<string, ExerciseMuscleGroup[]> {
+  const primary = listPrimaryGroupsByExercise(db, exerciseIds)
+  const secondary = listGroupsByExercise(db, exerciseIds, 'secondary')
+  return new Map(
+    [...secondary].map(([exerciseId, groups]) => {
+      const primarySlugs = new Set((primary.get(exerciseId) ?? []).map(({ slug }) => slug))
+      return [exerciseId, groups.filter(({ slug }) => !primarySlugs.has(slug))]
+    }),
+  )
 }
 
 export function findLastLoadG(db: Database, exerciseId: string): number | undefined {

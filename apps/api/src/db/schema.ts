@@ -233,6 +233,9 @@ export const workoutSets = sqliteTable(
     plannedLoadG: integer('planned_load_g'),
     targetReps: integer('target_reps'),
     targetSeconds: integer('target_seconds'),
+    // JSON object: the planned sets of each primary group of the exercise in the letter, at the
+    // record (addendum to ADR-033); null when the workout has no letter left.
+    plannedGroupSets: text('planned_group_sets', { mode: 'json' }).$type<Record<string, number>>(),
   },
   (table) => [
     check('workout_sets_set_number_check', sql`${table.setNumber} >= 1`),

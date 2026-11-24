@@ -5,7 +5,7 @@ import { createProgramTestApp } from '../../test/programs.js'
 import { recordWorkout } from '../../test/workouts.js'
 import { addExercise } from '../catalog/exercise.service.js'
 import { addMuscle } from '../catalog/muscle.service.js'
-import type { ActivityWindows } from './windows.schemas.js'
+import type { ActivityWindows, MuscleGroupLevels } from './windows.schemas.js'
 
 const CATALOG_ORDER = [
   'chest',
@@ -178,6 +178,72 @@ describe('Given no session of access', () => {
         status: 401,
         code: 'unauthenticated',
         hasGroups: false,
+      })
+    })
+  })
+})
+
+describe('Given a database with no workout (US-F10-02)', () => {
+  describe('When GET /api/levels is called', () => {
+    it('Then should respond 200 with the 11 groups in catalog order at level 1, bronze, with an empty bar', async () => {
+      const { app, clock } = createProgramTestApp()
+
+      const response = await app.request('/api/levels')
+      const body = (await response.json()) as MuscleGroupLevels
+
+      expect({
+        status: response.status,
+        now: body.now,
+        groups: body.groups.map(({ muscleGroup, level, points, levelCost, bestLevel, tier }) => [
+          muscleGroup.slug,
+          level,
+          points,
+          levelCost,
+          bestLevel,
+          tier,
+        ]),
+      }).toEqual({
+        status: 200,
+        now: clock.now().toISOString(),
+        groups: CATALOG_ORDER.map((slug) => [slug, 1, 0, 40, 1, 'bronze']),
+      })
+    })
+  })
+})
+
+describe('Given back trained with 3 sets in a workout with no letter left', () => {
+  describe('When GET /api/levels is called', () => {
+    it('Then back should be at level 2 with 20 points on a bar of 43', async () => {
+      const { app, train } = await givenCatalogAndHistory()
+      train('remada', '2026-11-21T09:00:00.000Z')
+
+      const body = (await (await app.request('/api/levels')).json()) as MuscleGroupLevels
+
+      expect(body.groups.find(({ muscleGroup }) => muscleGroup.slug === 'back')).toEqual({
+        muscleGroup: { slug: 'back', name: 'costas' },
+        level: 2,
+        points: 20,
+        levelCost: 43,
+        bestLevel: 2,
+        tier: 'bronze',
+      })
+    })
+  })
+})
+
+describe('Given back trained twice, the second time inside the window of the first', () => {
+  describe('When GET /api/levels is called', () => {
+    it('Then the second workout should count double and take back to level 5, silver', async () => {
+      const { app, train } = await givenCatalogAndHistory()
+      train('remada', '2026-11-18T09:00:00.000Z')
+      train('remada', '2026-11-21T09:00:00.000Z')
+
+      const body = (await (await app.request('/api/levels')).json()) as MuscleGroupLevels
+
+      expect(body.groups.find(({ muscleGroup }) => muscleGroup.slug === 'back')).toMatchObject({
+        level: 5,
+        points: 2,
+        tier: 'silver',
       })
     })
   })

@@ -32,9 +32,18 @@ A série guarda o plano do momento do registro em três colunas novas de `workou
 - **Séries antigas.** A migração preenche as séries já gravadas com o plano atual do exercício do programa. A série sem plano (exercício removido da letra, `planned_exercise_id` nulo) fica com as colunas nulas, e a regra do jogo trata a série sem plano como razão 1.
 - **Migração.** As colunas entram na migração da US-F10-01 (`0010_workout_sets_plan.sql`, nome provisório), com o modelo em `docs/arquitetura/dados.md`.
 
+## Adendo da US-F10-02: séries planejadas do grupo
+
+Decidido pelo PO em 2026-11-24, pelo coordenador da onda 6a; a decisão continua Aceita. O ganho do grupo principal depende das séries planejadas do grupo na letra (D54), e o recálculo pela letra atual faria uma edição do programa mudar os níveis passados, contra o motivo desta ADR.
+
+- **Coluna nova.** `workout_sets.planned_group_sets` guarda, em JSON, as séries planejadas na letra de cada grupo principal do exercício da série, como `{ "chest": 6 }`. A API conta na gravação da série, pela letra do treino, na mesma transação.
+- **Séries antigas.** A migração `0011_workout_sets_group_plan` preenche as séries já gravadas pela letra atual do treino. A série de treino sem letra (`program_day_id` nulo) fica com a coluna nula.
+- **Treino sem letra.** O recálculo conta as séries registradas do grupo, como principal, naquele treino.
+- **O app web.** O provisório conta as séries planejadas do grupo na letra do treino do dia congelada no início do treino, a mesma letra que a API lê no registro.
+
 ## Consequências
 
-- Editar o programa pelo MCP não muda pontos nem níveis passados.
+- Editar o programa pelo MCP não muda pontos nem níveis passados, inclusive o número de séries da letra (adendo da US-F10-02).
 - A regra do jogo recebe da série tudo o que precisa: o feito e o planejado.
 - O preenchimento das séries antigas usa o plano atual, que pode ser diferente do plano do dia do registro. O erro fica só nas séries gravadas antes da migração.
 - A série guarda dados repetidos do programa. O custo de espaço é pequeno com um usuário só.

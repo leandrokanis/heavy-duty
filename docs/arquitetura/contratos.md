@@ -702,13 +702,14 @@ O objeto `Today` tem a forma `{ "program": { "id", "name", "goal" } | null, "sug
 
 O objeto `TodayDay` tem a forma `{ "letter", "label", "estimatedDurationSeconds", "exercises": [TodayExercise] }`, com as letras na ordem do plano e os exercícios na ordem da letra. A letra sem exercício vem com `exercises: []` e `estimatedDurationSeconds: 0`.
 
-O objeto `TodayExercise` tem a forma `{ "plannedExerciseId", "exercise": { "id", "slug", "name", "kind" }, "sets", "targetReps", "targetSeconds", "restSeconds", "plannedLoadG", "loadG", "loadSource", "muscleGroups": [{ "slug", "name" }], "records": [{ "reps", "loadG" }] }`:
+O objeto `TodayExercise` tem a forma `{ "plannedExerciseId", "exercise": { "id", "slug", "name", "kind" }, "sets", "targetReps", "targetSeconds", "restSeconds", "plannedLoadG", "loadG", "loadSource", "muscleGroups": [{ "slug", "name" }], "secondaryMuscleGroups": [{ "slug", "name" }], "records": [{ "reps", "loadG" }] }`:
 
 - `plannedExerciseId` é o `id` do exercício do programa (linha de `planned_exercises`). A tela envia esse valor na gravação da série (US-F03-02).
 - `plannedLoadG` é a carga do programa, em gramas.
 - `loadG` é a carga preenchida, em gramas: a carga da série mais recente do mesmo exercício no histórico, em qualquer programa e em qualquer letra. Sem série do exercício, é a carga do programa.
 - `loadSource` diz de onde veio a carga preenchida: `last_workout` (histórico) ou `program`.
 - `muscleGroups` lista os grupos musculares dos músculos principais do exercício, uma vez cada, na ordem do catálogo. Os músculos secundários ficam de fora. A tela usa a lista para mostrar o estado da janela de cada letra (US-F07-02).
+- `secondaryMuscleGroups` lista os grupos dos músculos secundários que nenhum músculo principal do exercício cobre, uma vez cada, na ordem do catálogo. O app web usa as duas listas para o ganho provisório de cada grupo no descanso (US-F10-02, D54).
 - `records` lista os recordes do exercício (US-F18-01, D59): para cada número de repetições, a maior carga, e para cada carga, o maior número de repetições, ordenados por `reps` e por `loadG`. A lista vem vazia no exercício de tempo e no exercício sem série. A tela compara a série com essa lista mais as séries do treino em andamento.
 - `targetReps` e `targetSeconds` vêm sempre do programa, mesmo que o último treino tenha outro número de repetições.
 - O exercício arquivado no catálogo que continua na letra aparece com o nome do catálogo.
@@ -736,6 +737,7 @@ Exemplo, com o Supino reto a 42,5 kg no último treino e a Prancha sem treino:
           "loadG": 42500,
           "loadSource": "last_workout",
           "muscleGroups": [{ "slug": "chest", "name": "peito" }],
+          "secondaryMuscleGroups": [],
           "records": [{ "reps": 10, "loadG": 42500 }]
         },
         {
@@ -749,6 +751,7 @@ Exemplo, com o Supino reto a 42,5 kg no último treino e a Prancha sem treino:
           "loadG": 0,
           "loadSource": "program",
           "muscleGroups": [{ "slug": "abs", "name": "abdômen" }],
+          "secondaryMuscleGroups": [],
           "records": []
         }
       ]
@@ -1110,7 +1113,7 @@ O descarte do treino em andamento não chama a rota direto da tela: o item `disc
 
 ## Janelas de atividade
 
-A rota desta seção vem da US-F07-01. Ela existe só quando a API abriu o banco e exige sessão de acesso (US-F14-01). A ferramenta MCP `list_activity_windows` devolve o mesmo objeto (`mcp.md`), pelo mesmo service `listActivityWindows`, em `apps/api/src/modules/windows/window-state.service.ts`. Nenhuma tela usa a rota ainda.
+A rota `GET /api/windows` vem da US-F07-01, e a rota `GET /api/levels`, da US-F10-02. Elas existem só quando a API abriu o banco e exigem sessão de acesso (US-F14-01). A ferramenta MCP `list_activity_windows` devolve o mesmo objeto de `GET /api/windows` (`mcp.md`), pelo mesmo service `listActivityWindows`, em `apps/api/src/modules/windows/window-state.service.ts`.
 
 ### GET /api/windows
 
@@ -1157,6 +1160,44 @@ Exemplo, com o peito treinado às 10:00Z e 1.200 kg de volume no objetivo hipert
 ```
 
 O exemplo mostra um grupo só; a resposta traz os 11.
+
+### GET /api/levels
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Mostrar o nível de cada grupo muscular no instante da consulta, com os pontos na barra |
+| Story | US-F10-02 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Nenhum. A rota só lê as séries, os treinos e os programas |
+| Idempotência | Idempotente para o mesmo histórico e o mesmo instante |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `{ "now", "groups" }` | Sempre que o banco responde |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+`now` é o relógio da API, em ISO 8601, em UTC. `groups` traz os 11 grupos do catálogo, na ordem do catálogo. Cada grupo tem `muscleGroup` (`slug` e `name`), `level` (1 a 20), `points` (pontos inteiros na barra do nível), `levelCost` (o custo do nível, 40 + 3 × (`level` − 1)), `bestLevel` (o maior nível que o grupo já teve) e `tier` (`bronze`, `silver`, `gold` ou `violet`). No nível 20, a barra fica cheia: `points` é igual a `levelCost`. O grupo nunca treinado fica no nível 1, com 0 pontos.
+
+A API recalcula os níveis de todo o histórico a cada leitura (ADR-010), com as regras do pacote `@heavy-duty/game` (ADR-034), pelo service `listMuscleGroupLevels`, em `apps/api/src/modules/windows/progress.service.ts`. Cada série enche a barra de cada grupo do exercício, em ordem de tempo, com o ganho do grupo da D54: o grupo principal recebe 10 × razão × 6 ÷ séries planejadas do grupo na letra, e o secundário, 10 × razão × 0,5. A razão é o feito ÷ o planejado da série, até 2, contra o plano congelado na série (ADR-033). O ganho dobra quando o instante da série cai na janela do treino anterior do grupo (D55, D56). A ferramenta MCP `list_muscle_group_levels` devolve o mesmo objeto (`mcp.md`).
+
+Exemplo, com as costas treinadas uma vez, com as 3 séries planejadas no plano:
+
+```json
+{
+  "now": "2026-11-21T12:00:00.000Z",
+  "groups": [
+    {
+      "muscleGroup": { "slug": "back", "name": "costas" },
+      "level": 2,
+      "points": 20,
+      "levelCost": 43,
+      "bestLevel": 2,
+      "tier": "bronze"
+    }
+  ]
+}
+```
 
 ## Situação do app
 

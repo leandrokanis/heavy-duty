@@ -1257,6 +1257,26 @@
               "$ref": "#/components/schemas/PersonalRecord"
             },
             "description": "Personal records of the exercise over the whole history, by exercise; empty for a timed exercise"
+          },
+          "secondaryMuscleGroups": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slug": {
+                  "type": "string",
+                  "example": "triceps"
+                },
+                "name": {
+                  "type": "string",
+                  "example": "tríceps"
+                }
+              },
+              "required": [
+                "slug",
+                "name"
+              ]
+            }
           }
         },
         "required": [
@@ -1270,7 +1290,8 @@
           "loadG",
           "loadSource",
           "muscleGroups",
-          "records"
+          "records",
+          "secondaryMuscleGroups"
         ]
       },
       "LoadSource": {
@@ -1830,6 +1851,83 @@
           "open",
           "cooling",
           "none"
+        ]
+      },
+      "MuscleGroupLevels": {
+        "type": "object",
+        "properties": {
+          "now": {
+            "type": "string",
+            "example": "2026-11-21T12:00:00.000Z"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MuscleGroupLevel"
+            }
+          }
+        },
+        "required": [
+          "now",
+          "groups"
+        ]
+      },
+      "MuscleGroupLevel": {
+        "type": "object",
+        "properties": {
+          "muscleGroup": {
+            "type": "object",
+            "properties": {
+              "slug": {
+                "type": "string",
+                "example": "chest"
+              },
+              "name": {
+                "type": "string",
+                "example": "peito"
+              }
+            },
+            "required": [
+              "slug",
+              "name"
+            ]
+          },
+          "level": {
+            "type": "integer",
+            "example": 4
+          },
+          "points": {
+            "type": "integer",
+            "example": 5
+          },
+          "levelCost": {
+            "type": "integer",
+            "example": 49
+          },
+          "bestLevel": {
+            "type": "integer",
+            "example": 4
+          },
+          "tier": {
+            "$ref": "#/components/schemas/Tier"
+          }
+        },
+        "required": [
+          "muscleGroup",
+          "level",
+          "points",
+          "levelCost",
+          "bestLevel",
+          "tier"
+        ]
+      },
+      "Tier": {
+        "type": "string",
+        "enum": [
+          "bronze",
+          "silver",
+          "gold",
+          "violet"
         ]
       }
     },
@@ -4407,6 +4505,46 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ActivityWindows"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/levels": {
+      "get": {
+        "tags": [
+          "windows"
+        ],
+        "summary": "Get the level of each muscle group now, with the points on its bar",
+        "responses": {
+          "200": {
+            "description": "The 11 muscle groups in catalog order, each with its level (1 to 20), the points on the bar, the cost of the level, the best level and the tier; a group never trained is at level 1 with 0 points",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MuscleGroupLevels"
                 }
               }
             }
