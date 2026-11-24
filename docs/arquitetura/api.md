@@ -71,7 +71,7 @@ O contrato de cada rota é gerado dos schemas em `docs/arquitetura/openapi.json`
 4. A gravação de série é idempotente pelo ID gerado no cliente: o mesmo ID não cria outra série.
 5. O erro de domínio tem `code` em inglês, em `snake_case`, e `message` em português (`docs/convencoes/codigo.md`, Seção 8).
 6. Data e hora são ISO 8601 em UTC; a carga é inteiro em gramas (`loadG`); o tempo é inteiro em segundos. A API não usa número de ponto flutuante para medida.
-7. O cálculo do jogo fica em funções puras do módulo `windows`, com os parâmetros num arquivo de configuração versionado (ADR-010).
+7. O cálculo do jogo fica em funções puras, com os parâmetros num arquivo de configuração versionado (ADR-010). A janela fica no módulo `windows`; pontos, nível, perda e recorde ficam no pacote `@heavy-duty/game`, que o app web também usa, e o módulo `windows` os chama com o histórico (ADR-034).
 8. A falha de um canal de aviso não bloqueia o outro e fica registrada em `notifications`.
 9. O log não leva credencial, token nem o endereço de e-mail do PO. O banco guarda só o SHA-256 do código de autorização, da credencial do MCP e do token de renovação. As cerimônias da chave de acesso descartam a exceção da biblioteca, que cita o desafio, em vez de registrar a exceção no log (FR-028).
 

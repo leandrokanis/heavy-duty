@@ -247,6 +247,7 @@ Regras da gravação (US-F03-02):
 - **Treino nasce com a primeira série.** O celular gera o `id` do treino (UUID v7) e `started_at` no toque em "Começar", e o envio de cada série leva o programa, a letra e o início. A primeira série grava o treino; as seguintes entram no mesmo treino. O mesmo `id` de treino com outro programa, outra letra ou outro início é recusado com 409.
 - **Idempotência pelo `id` da série.** O `id` da série vem do celular (UUID v7) e é a chave primária. O reenvio com o mesmo `id` e os mesmos valores (`workout_id`, `exercise_id`, `set_number`, `load_g`, `reps` e `seconds`) não grava nada e devolve a série gravada; com valores diferentes, é recusado com 409.
 - **Datas do cliente.** `started_at` e `performed_at` vêm do celular, em ISO 8601 em UTC, normalizadas com `toISOString()`. A API não corrige o relógio do celular, porque na US-F03-03 a série pode chegar ao servidor muito depois do toque.
+- **Plano da série (ADR-033).** A série guarda o plano do momento do registro em `planned_load_g`, `target_reps` e `target_seconds`, lidos do exercício do programa pela API na gravação. A correção não muda o plano da série. A migração da US-F10-01 cria as colunas, preenche as séries antigas com o plano atual e deixa nulas as séries sem exercício do programa; o diagrama e a tabela abaixo ganham as colunas nessa migração.
 - **Uma série por treino, exercício e número.** O índice único `workout_sets_workout_exercise_set_unique` em `(workout_id, exercise_id, set_number)` recusa uma segunda série com outro `id` para o mesmo exercício e o mesmo número no treino; o service confere antes e responde 409 `workout_set_duplicated`. O índice usa `exercise_id`, e não `planned_exercise_id`, porque o vínculo com o plano fica nulo quando o plano muda, e o SQLite não compara nulos no índice único. Como `planned_exercises_day_exercise_unique` garante um exercício por letra, o exercício equivale ao exercício do programa dentro do treino de uma letra.
 
 | Tabela | Conteúdo | Regras |
@@ -294,7 +295,7 @@ O desafio da cerimônia (`AuthChallenge`) não é tabela: fica na memória do pr
 
 ## O que não é tabela
 
-Pela ADR-010, estes dados são calculados pela API a cada leitura, a partir de `workout_sets`, `exercise_muscles`, `programs` e dos parâmetros do jogo:
+Pela ADR-010, estes dados são calculados pela API a cada leitura, a partir de `workout_sets`, `exercise_muscles`, `programs` e dos parâmetros do jogo. O plano da série entra na conta como fato guardado na série (ADR-033). As regras puras de pontos, nível, perda e recorde e os parâmetros delas ficam no pacote `@heavy-duty/game` (ADR-034):
 
 | Dado calculado | Termo em `CONTEXT.md` |
 |---|---|
