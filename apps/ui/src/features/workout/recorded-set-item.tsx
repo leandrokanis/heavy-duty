@@ -1,7 +1,14 @@
 import { formatLoadKg } from './format'
+import { RecordBadge } from './record-badge'
 
 export type RecordedSetItemProps = {
-  set: { setNumber: number; loadG: number; reps?: number | null; seconds?: number | null }
+  set: {
+    setNumber: number
+    loadG: number
+    reps?: number | null
+    seconds?: number | null
+    record?: boolean
+  }
 }
 
 function plural(count: number, one: string, many: string): string {
@@ -27,8 +34,9 @@ export function RecordedSetItem({ set }: RecordedSetItemProps) {
           <span className="text-(--color-label)">{amount}</span>
           <span className="text-(--color-label-secondary)">{isTime ? ' s' : ' rep'}</span>
         </span>
+        {set.record ? <RecordBadge /> : null}
       </span>
-      <span className="sr-only">{`Série ${set.setNumber}: ${formatLoadKg(set.loadG)} kg, ${spoken}`}</span>
+      <span className="sr-only">{`Série ${set.setNumber}: ${formatLoadKg(set.loadG)} kg, ${spoken}${set.record ? ', recorde' : ''}`}</span>
     </li>
   )
 }

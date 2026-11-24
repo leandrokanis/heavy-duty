@@ -1,3 +1,4 @@
+import { personalRecordsOf } from '@heavy-duty/game'
 import type { Database } from '../../db/connection.js'
 import {
   findActiveProgramRow,
@@ -8,6 +9,7 @@ import {
   findLastLoadG,
   findLastWorkoutLetter,
   listPrimaryGroupsByExercise,
+  listRepsSetsByExercise,
 } from './today.repository.js'
 import { estimateDurationSeconds, suggestLetter } from './today.rules.js'
 import type { LoadSource, Today, TodayDay, TodayExercise } from './workouts.schemas.js'
@@ -32,6 +34,10 @@ export function getToday(db: Database): Today {
     db,
     plannedRows.map((planned) => planned.exercise.id),
   )
+  const repsSets = listRepsSetsByExercise(
+    db,
+    plannedRows.map((planned) => planned.exercise.id),
+  )
   const days = dayRows.map((day): TodayDay => {
     const exercises = plannedRows
       .filter((planned) => planned.programDayId === day.id)
@@ -49,6 +55,7 @@ export function getToday(db: Database): Today {
           loadG: lastLoadG ?? planned.loadG,
           loadSource,
           muscleGroups: groupsByExercise.get(planned.exercise.id) ?? [],
+          records: personalRecordsOf(repsSets.get(planned.exercise.id) ?? []),
         }
       })
     return {

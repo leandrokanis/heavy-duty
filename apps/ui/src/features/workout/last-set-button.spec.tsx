@@ -52,3 +52,16 @@ describe('Given the last set button of the prototype layout', () => {
     })
   })
 })
+
+describe('Given the last set of supino at 45000 g and 10 reps that beat the record', () => {
+  describe('When the button is on screen', () => {
+    it('Then should be named as a record and show "Recorde"', () => {
+      render(<LastSetButton set={{ loadG: 45000, reps: 10 }} record onOpen={vi.fn()} />)
+      const button = screen.getByRole('button', {
+        name: 'Corrigir última série: 45 quilos, 10 repetições, recorde',
+      })
+
+      expect(button.textContent).toBe('45 kg · 10 repRecorde')
+    })
+  })
+})

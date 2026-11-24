@@ -5,6 +5,8 @@ export type LoadSource = 'program' | 'last_workout'
 
 export type MuscleGroupRef = { slug: string; name: string }
 
+export type PersonalRecord = { reps: number; loadG: number }
+
 export type TodayExercise = {
   plannedExerciseId: string
   exercise: { id: string; slug: string; name: string; kind: ExerciseKind }
@@ -16,6 +18,7 @@ export type TodayExercise = {
   loadG: number
   loadSource: LoadSource
   muscleGroups: MuscleGroupRef[]
+  records: PersonalRecord[]
 }
 
 export type TodayDay = {

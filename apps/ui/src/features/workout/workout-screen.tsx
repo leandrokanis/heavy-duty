@@ -17,7 +17,9 @@ import { formatDurationMinutes, formatSetShort } from './format'
 import { LastSetButton } from './last-set-button'
 import { LeftOutSummary } from './left-out-summary'
 import { LetterBadge } from './letter-badge'
+import type { RecordMark as RecordMarkValue } from './personal-records'
 import { QueueNotices } from './queue-notices'
+import { RecordMark } from './record-mark'
 import { reopenRowsOf } from './reopen-rows'
 import { ReopenSummary } from './reopen-summary'
 import { SequenceSheet } from './sequence-sheet'
@@ -42,6 +44,7 @@ import {
   lastSetOf,
   leftOutOf,
   nextPositionOf,
+  recordMarkOf,
   restMsLeftOf,
   type SetValues,
   sequenceOf,
@@ -229,11 +232,13 @@ function CountdownArea({ value }: { value: number }) {
 function SetArea({
   planned,
   values,
+  recordMark,
   afterPassage,
   onAdjust,
 }: {
   planned: TodayExercise
   values: SetValues
+  recordMark: RecordMarkValue | null
   afterPassage: boolean
   onAdjust: (field: AdjustField, steps: number) => void
 }) {
@@ -246,6 +251,7 @@ function SetArea({
       <ValueWheel
         field="loadG"
         label="Carga"
+        adornment={recordMark ? <RecordMark mark={recordMark} /> : null}
         value={values.loadG}
         onAdjust={(steps) => onAdjust('loadG', steps)}
       />
@@ -436,6 +442,7 @@ export function WorkoutScreen({
                 <LastSetButton
                   ref={lastSetButtonRef}
                   set={lastSet.set}
+                  record={lastSet.record}
                   onOpen={() => dispatch({ type: 'openSheet', sheet: 'correction' })}
                 />
               ) : null}
@@ -469,6 +476,7 @@ export function WorkoutScreen({
               <LastSetButton
                 ref={lastSetButtonRef}
                 set={lastSet.set}
+                record={lastSet.record}
                 onOpen={() => dispatch({ type: 'openSheet', sheet: 'correction' })}
               />
             </div>
@@ -509,6 +517,7 @@ export function WorkoutScreen({
                   key={`${state.exerciseIndex}-${setNumber}`}
                   planned={planned}
                   values={shownValuesOf(state)}
+                  recordMark={recordMarkOf(state)}
                   afterPassage={state.lastStepAtMs !== null}
                   onAdjust={(field, steps) => dispatch({ type: 'adjust', field, steps })}
                 />

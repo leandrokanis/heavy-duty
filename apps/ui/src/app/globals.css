@@ -92,6 +92,8 @@
   --color-window-open: light-dark(#0a8ea0, #2bc4d8);
   --color-window-rest: light-dark(#aeb4c0, #545c6b);
   --color-window-cooling: light-dark(#6576a0, #8e9cc2);
+  --color-game-record: light-dark(#d1246e, #ff5fa2);
+  --color-on-game-record: light-dark(#ffffff, #0a0f22);
   --color-backdrop: rgba(8, 10, 16, 0.32);
 
   --material-glass: blur(22px) saturate(1.7);
@@ -230,6 +232,19 @@ body {
     to {
       opacity: 1;
     }
+  }
+}
+
+/* Section 15: the record mark pops when it lights up; the class applies it only with motion allowed. */
+@keyframes record-pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 

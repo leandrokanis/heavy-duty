@@ -436,6 +436,8 @@ Na coluna "Contraste alto", "igual" mantém o valor do tema. Dois valores entre 
 | `--color-window-open` | `#0A8EA0` | `#2BC4D8` | igual | Indicador da janela aberta no selo do grupo (Seção 11.1) | Protótipo v1, `--win-open` |
 | `--color-window-rest` | `#AEB4C0` | `#545C6B` | `#596173` `#9EA6B6` | Indicador da janela descansando no selo do grupo | Protótipo v1, `--win-rest`; contraste alto do Projeto |
 | `--color-window-cooling` | `#6576A0` | `#8E9CC2` | igual | Indicador do grupo esfriando no selo, sempre com hachura | Protótipo v1, `--win-cool` |
+| `--color-game-record` | `#D1246E` | `#FF5FA2` | igual | Fundo da marca do recorde acesa e do selo "Recorde" (Seção 11.1, US-F18-01) | Protótipo v1, `--game-record` |
+| `--color-on-game-record` | `#FFFFFF` | `#0A0F22` | igual | Texto e ícone sobre `--color-game-record`: 5,0:1 no tema claro e 6,7:1 no escuro | Projeto: o branco do protótipo mede 2,8:1 sobre `#FF5FA2` |
 | `--color-backdrop` | `rgba(8,10,16,.32)` | `rgba(8,10,16,.32)` | igual | Fundo escurecido atrás da folha | Protótipo v1, `.backdrop` |
 
 Regras de uso da cor, além das da Seção 11.1:
