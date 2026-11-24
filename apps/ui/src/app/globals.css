@@ -47,6 +47,7 @@
   --font-size-rest: 3.75rem;
   --font-size-execution: 4rem;
   --font-size-countdown: 7rem;
+  --font-size-points: 2rem;
   --font-weight-regular: 400;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
@@ -65,6 +66,7 @@
   --duration-base: 300ms;
   --duration-countdown: 900ms;
   --duration-toast: 2600ms;
+  --duration-points: 1200ms;
   /* Linear stroke of the timer ring, equal to TICK_MS of the workout clock. */
   --duration-tick: 250ms;
 }
@@ -95,6 +97,8 @@
   --color-game-record: light-dark(#d1246e, #ff5fa2);
   --color-on-game-record: light-dark(#ffffff, #0a0f22);
   --color-backdrop: rgba(8, 10, 16, 0.32);
+  --color-game-xp: light-dark(#6d3ef0, #a78bfa);
+  --color-game-xp-2: light-dark(#d63aa8, #f472b6);
 
   --material-glass: blur(22px) saturate(1.7);
   --material-glass-fill: light-dark(rgba(252, 252, 254, 0.74), rgba(34, 37, 46, 0.72));
@@ -245,6 +249,42 @@ body {
   }
   100% {
     transform: scale(1);
+  }
+}
+
+/* Section 15: the points of the set rise from "Próximo" and fade; opacity only with reduced motion. */
+@keyframes points-float {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0) scale(1.1);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-90px) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes points-float {
+    0% {
+      opacity: 0;
+    }
+    20% {
+      opacity: 1;
+    }
+    70% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
   }
 }
 

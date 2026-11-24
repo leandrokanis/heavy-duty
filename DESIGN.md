@@ -301,11 +301,12 @@ O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar na pr
 ## 15. Movimento e resposta ao toque
 
 - O estado pressionado DEVE aparecer no `pointerdown`, não na soltura do toque.
-- A transição entre estados DEVERIA durar até 300 ms (Projeto [a confirmar]). As durações são os tokens `--duration-fast` (estado pressionado), `--duration-medium`, `--duration-base`, `--duration-countdown` (número da contagem de 3 s) e `--duration-toast` (tempo de exibição do aviso flutuante), com valores na Seção 18.
+- A transição entre estados DEVERIA durar até 300 ms (Projeto [a confirmar]). As durações são os tokens `--duration-fast` (estado pressionado), `--duration-medium`, `--duration-base`, `--duration-countdown` (número da contagem de 3 s), `--duration-toast` (tempo de exibição do aviso flutuante) e `--duration-points` (subida dos pontos da série), com valores na Seção 18.
 - O movimento DEVE ser reduzido a troca de opacidade, ou retirado, com `prefers-reduced-motion: reduce`.
 - O fim do descanso DEVE ter sinal visual. O Safari do iOS não aceita a Vibration API, então a interface NÃO DEVE depender de vibração.
 - As regras detalhadas de animação, mola e gesto ficam para um documento próprio [a confirmar: quando a onda 3 começar].
 - Som, vibração e animações longas (pontos que sobem, subida de nível em tela cheia, medalha) PODEM ser usados só nos elementos de gamificação, conforme `docs/gamificacao.md`, no cronômetro do exercício por tempo (Seção 15.1) e nos 3 últimos segundos do descanso (Seção 15.2). O som DEVE ter chave para desligar. Uma informação NÃO DEVE depender só de som ou de vibração.
+- Os pontos da série sobem do "Próximo" no registro, em gradiente de `--color-game-xp` a `--color-game-xp-2`, com a marca "×2" quando a série está em janela (US-F10-01). O elemento é decorativo: a região `aria-live="polite"` anuncia os pontos com a série ("Série 1 de 3 registrada, 20 pontos em dobro"). Com `prefers-reduced-motion: reduce`, os pontos só aparecem e somem, sem deslocamento. O som dos pontos tem a chave "Som do jogo" (`aria-pressed`) na folha da sequência do treino, separada da chave "Som" do cronômetro (D60).
 - A subida de nível em tela cheia NÃO DEVE pedir toque para fechar: ela some sozinha, para manter um toque por passo (PRD, O5).
 - A tela cheia DEVE ficar para a entrada numa faixa de nível e para o nível 20. A subida de nível comum DEVE aparecer na própria barra, com animação e som curtos, para não cansar com subidas frequentes.
 
@@ -439,6 +440,8 @@ Na coluna "Contraste alto", "igual" mantém o valor do tema. Dois valores entre 
 | `--color-game-record` | `#D1246E` | `#FF5FA2` | igual | Fundo da marca do recorde acesa e do selo "Recorde" (Seção 11.1, US-F18-01) | Protótipo v1, `--game-record` |
 | `--color-on-game-record` | `#FFFFFF` | `#0A0F22` | igual | Texto e ícone sobre `--color-game-record`: 5,0:1 no tema claro e 6,7:1 no escuro | Projeto: o branco do protótipo mede 2,8:1 sobre `#FF5FA2` |
 | `--color-backdrop` | `rgba(8,10,16,.32)` | `rgba(8,10,16,.32)` | igual | Fundo escurecido atrás da folha | Protótipo v1, `.backdrop` |
+| `--color-game-xp` | `#6D3EF0` | `#A78BFA` | igual | Início do gradiente dos pontos (Seção 11.1) | Protótipo v1, `--game-xp` |
+| `--color-game-xp-2` | `#D63AA8` | `#F472B6` | igual | Fim do gradiente dos pontos (Seção 11.1) | Protótipo v1, `--game-xp-2` |
 
 Regras de uso da cor, além das da Seção 11.1:
 
@@ -491,6 +494,7 @@ Os tamanhos usam `rem` e seguem o Dynamic Type no iPhone (Seção 10.2). O corpo
 | `--font-size-rest` | `3.75rem` | Tempo no anel do descanso | Protótipo v1 |
 | `--font-size-execution` | `4rem` | Tempo da execução | Protótipo v1 |
 | `--font-size-countdown` | `7rem` | Contagem de 3 s | Protótipo v1 |
+| `--font-size-points` | `2rem` | Pontos da série que sobem do "Próximo" | Protótipo v1, `.float-pts` |
 | `--font-weight-regular` | `400` | Texto corrido | Protótipo v1 |
 | `--font-weight-semibold` | `600` | Botão, destaque e aviso flutuante | Protótipo v1 |
 | `--font-weight-bold` | `700` | Títulos | Protótipo v1 |
@@ -512,6 +516,7 @@ Os tamanhos usam `rem` e seguem o Dynamic Type no iPhone (Seção 10.2). O corpo
 | `--duration-base` | `300ms` | Entrada e saída da folha e do aviso flutuante, fim do descanso | Seção 15 |
 | `--duration-countdown` | `900ms` | Número da contagem de 3 s | Protótipo v1, `.cd-num` |
 | `--duration-toast` | `2600ms` | Tempo de exibição do aviso flutuante | Protótipo v1, `toast()` |
+| `--duration-points` | `1200ms` | Subida dos pontos da série a partir do "Próximo" | Protótipo v1, `.float-pts` |
 | `--duration-tick` | `250ms` | Transição linear do traço do anel, igual ao passo do relógio (`TICK_MS`) | Projeto |
 
 ### 18.6. Espaço e alvo de toque

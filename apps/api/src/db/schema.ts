@@ -229,6 +229,10 @@ export const workoutSets = sqliteTable(
     seconds: integer('seconds'),
     performedAt: text('performed_at').notNull(),
     correctedAt: text('corrected_at'),
+    // The plan of the moment of the record (ADR-033); all null for a set with no plan.
+    plannedLoadG: integer('planned_load_g'),
+    targetReps: integer('target_reps'),
+    targetSeconds: integer('target_seconds'),
   },
   (table) => [
     check('workout_sets_set_number_check', sql`${table.setNumber} >= 1`),
@@ -238,6 +242,22 @@ export const workoutSets = sqliteTable(
     check(
       'workout_sets_single_measure_check',
       sql`(${table.reps} IS NULL) <> (${table.seconds} IS NULL)`,
+    ),
+    check(
+      'workout_sets_planned_load_g_check',
+      sql`${table.plannedLoadG} IS NULL OR ${table.plannedLoadG} >= 0`,
+    ),
+    check(
+      'workout_sets_target_reps_check',
+      sql`${table.targetReps} IS NULL OR ${table.targetReps} >= 1`,
+    ),
+    check(
+      'workout_sets_target_seconds_check',
+      sql`${table.targetSeconds} IS NULL OR ${table.targetSeconds} >= 1`,
+    ),
+    check(
+      'workout_sets_plan_check',
+      sql`(${table.plannedLoadG} IS NULL AND ${table.targetReps} IS NULL AND ${table.targetSeconds} IS NULL) OR (${table.plannedLoadG} IS NOT NULL AND (${table.targetReps} IS NULL) <> (${table.targetSeconds} IS NULL))`,
     ),
     index('workout_sets_workout_idx').on(table.workoutId),
     index('workout_sets_exercise_idx').on(table.exerciseId),

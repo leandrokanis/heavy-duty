@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { readSoundOn, useSoundPreference, writeSoundOn } from './sound-preference'
+import { GAME_SOUND_KEY, readSoundOn, useSoundPreference, writeSoundOn } from './sound-preference'
 
 afterEach(() => {
   localStorage.clear()
@@ -69,6 +69,22 @@ describe('Given a localStorage that throws', () => {
       blockStorage()
 
       expect(() => writeSoundOn(false)).not.toThrow()
+    })
+  })
+})
+
+describe('Given the game sound turned off (D60)', () => {
+  describe('When both preferences are read', () => {
+    it('Then only the game sound should be off, under its own key', () => {
+      const { result } = renderHook(() => useSoundPreference(GAME_SOUND_KEY))
+
+      act(() => result.current[1](false))
+
+      expect({
+        game: readSoundOn(GAME_SOUND_KEY),
+        timer: readSoundOn(),
+        saved: localStorage.getItem('heavy-duty:game-sound'),
+      }).toEqual({ game: false, timer: true, saved: 'off' })
     })
   })
 })

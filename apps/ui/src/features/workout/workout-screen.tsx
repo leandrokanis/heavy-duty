@@ -18,6 +18,7 @@ import { LastSetButton } from './last-set-button'
 import { LeftOutSummary } from './left-out-summary'
 import { LetterBadge } from './letter-badge'
 import type { RecordMark as RecordMarkValue } from './personal-records'
+import { PointsFloat } from './points-float'
 import { QueueNotices } from './queue-notices'
 import { RecordMark } from './record-mark'
 import { reopenRowsOf } from './reopen-rows'
@@ -25,7 +26,7 @@ import { ReopenSummary } from './reopen-summary'
 import { SequenceSheet } from './sequence-sheet'
 import { SetDots } from './set-dots'
 import { SetPips } from './set-pips'
-import { useSoundPreference } from './sound-preference'
+import { GAME_SOUND_KEY, useSoundPreference } from './sound-preference'
 import { cueBetween } from './timer-cues'
 import { RingSvg, TimerRing } from './timer-ring'
 import type { TodayExercise } from './today.types'
@@ -42,10 +43,12 @@ import {
   deadlineOf,
   exerciseProgressOf,
   lastSetOf,
+  lastSetPointsOf,
   leftOutOf,
   nextPositionOf,
   recordMarkOf,
   restMsLeftOf,
+  type SetPointsView,
   type SetValues,
   sequenceOf,
   shownValuesOf,
@@ -199,6 +202,31 @@ function useTimerCues(reading: TimerReading, tonePlayer: TonePlayer, soundOn: bo
   }, [reading, tonePlayer, soundOn])
 }
 
+// The points of the set just recorded, until the next screen change: the float rises from them.
+function shownPointsOf(state: WorkoutFlowState): SetPointsView | null {
+  if (state.lastStep !== 'record' && state.lastStep !== 'timerEnd') return null
+  return lastSetPointsOf(state)
+}
+
+// One sound per recorded set, under the switch of the game sound (D60).
+function usePointsSound(
+  shown: SetPointsView | null,
+  tonePlayer: TonePlayer,
+  gameSoundOn: boolean,
+): void {
+  const playedSetId = useRef<string | null>(null)
+  useEffect(() => {
+    if (shown === null || playedSetId.current === shown.setId) return
+    playedSetId.current = shown.setId
+    if (!gameSoundOn) return
+    try {
+      tonePlayer.play(shown.doubled ? 'pointsDoubled' : 'points')
+    } catch {
+      // The points show without the sound.
+    }
+  }, [shown, tonePlayer, gameSoundOn])
+}
+
 // A page that goes to the background may never see the finger leave the ring: the hold ends there.
 function useReleaseInBackground(held: boolean, dispatch: (action: WorkoutFlowAction) => void) {
   useEffect(() => {
@@ -335,6 +363,9 @@ export function WorkoutScreen({
     onFinish()
   }
   const [soundOn, setSoundOn] = useSoundPreference()
+  const [gameSoundOn, setGameSoundOn] = useSoundPreference(GAME_SOUND_KEY)
+  const shownPoints = shownPointsOf(state)
+  usePointsSound(shownPoints, tonePlayer, gameSoundOn)
   const nowMs = usePhaseClock(deadlineOf(state), reachDeadline)
   const reading = timerReadingOf(state, nowMs)
   useTimerCues(reading, tonePlayer, soundOn)
@@ -537,21 +568,46 @@ export function WorkoutScreen({
       <div className="mt-auto flex flex-col gap-(--space-12) pb-(--space-32)">
         {finished ? null : <QueueNotices align="center" />}
         {resting && upcoming ? <UpNext upcoming={upcoming} /> : null}
-        {timerOpen ? (
-          <div className="grid grid-cols-[1fr_2fr] gap-(--space-12)">
-            <Button
-              variant="secondary"
-              size="large"
-              onClick={() => dispatch({ type: 'cancel', nowMs: Date.now() })}
-            >
-              Cancelar
+        <div className="relative">
+          {shownPoints ? (
+            <PointsFloat
+              key={shownPoints.setId}
+              points={shownPoints.points}
+              doubled={shownPoints.doubled}
+            />
+          ) : null}
+          {timerOpen ? (
+            <div className="grid grid-cols-[1fr_2fr] gap-(--space-12)">
+              <Button
+                variant="secondary"
+                size="large"
+                onClick={() => dispatch({ type: 'cancel', nowMs: Date.now() })}
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="large"
+                icon={ChevronRight}
+                iconPosition="end"
+                disabled={state.phase === 'countdown'}
+                focusableWhenDisabled
+                onClick={() => {
+                  tonePlayer.unlock()
+                  dispatch({ type: 'next', nowMs: Date.now() })
+                }}
+              >
+                Próximo
+              </Button>
+            </div>
+          ) : finished ? (
+            <Button size="large" onClick={close}>
+              Fechar
             </Button>
+          ) : (
             <Button
               size="large"
               icon={ChevronRight}
               iconPosition="end"
-              disabled={state.phase === 'countdown'}
-              focusableWhenDisabled
               onClick={() => {
                 tonePlayer.unlock()
                 dispatch({ type: 'next', nowMs: Date.now() })
@@ -559,30 +615,20 @@ export function WorkoutScreen({
             >
               Próximo
             </Button>
-          </div>
-        ) : finished ? (
-          <Button size="large" onClick={close}>
-            Fechar
-          </Button>
-        ) : (
-          <Button
-            size="large"
-            icon={ChevronRight}
-            iconPosition="end"
-            onClick={() => {
-              tonePlayer.unlock()
-              dispatch({ type: 'next', nowMs: Date.now() })
-            }}
-          >
-            Próximo
-          </Button>
-        )}
+          )}
+        </div>
       </div>
       <SequenceSheet
         open={state.sheet === 'sequence'}
         items={sequence}
         finished={finished}
         canSkip={canSkipOf(state)}
+        gameSoundOn={gameSoundOn}
+        onGameSoundChange={(next) => {
+          // Turning the sound on is a tap, so the browser lets the audio play from here.
+          if (next) tonePlayer.unlock()
+          setGameSoundOn(next)
+        }}
         returnFocusRef={topControlRef}
         onClose={() => dispatch({ type: 'closeSheet', nowMs: Date.now() })}
         onPick={(exerciseIndex) => {

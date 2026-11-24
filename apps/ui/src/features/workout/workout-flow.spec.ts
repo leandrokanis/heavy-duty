@@ -7,7 +7,9 @@ import {
   currentExercise,
   deadlineOf,
   exerciseProgressOf,
+  type FrozenWindow,
   lastSetOf,
+  lastSetPointsOf,
   leftOutOf,
   restMsLeftOf,
   restoreWorkoutFlow,
@@ -23,12 +25,16 @@ import type { RecordWorkoutSetBody } from './workout-set.types'
 
 const T0 = Date.UTC(2026, 10, 21, 18, 31, 5)
 
-function sessionOf(exercises = [SUPINO_RETO, PRANCHA]): WorkoutSession {
+function sessionOf(
+  exercises = [SUPINO_RETO, PRANCHA],
+  windows: FrozenWindow[] = [],
+): WorkoutSession {
   return {
     workoutId: '0193a1b2-0000-7000-8000-000000000601',
     startedAt: '2026-11-21T18:30:00.000Z',
     programId: 'program-1',
     day: todayDay('A', 'Superior', exercises),
+    windows,
   }
 }
 
@@ -392,12 +398,12 @@ describe('Given each step of the timer of prancha', () => {
     {
       name: 'the execution ends by the clock, with a rest',
       state: timerReach(timing, T0 + 48_000),
-      text: 'Série 1 de 3 registrada',
+      text: 'Série 1 de 3 registrada, 10 pontos',
     },
     {
       name: 'next ends the execution early, with a rest',
       state: next(timing, T0 + 20_000),
-      text: 'Série 1 de 3 registrada',
+      text: 'Série 1 de 3 registrada, 4 pontos',
     },
     {
       name: 'the execution ends by the clock, with a 0 s rest',
@@ -405,12 +411,12 @@ describe('Given each step of the timer of prancha', () => {
         next(createWorkoutFlow(sessionOf([{ ...PRANCHA, restSeconds: 0 }])), T0),
         T0 + 48_000,
       ),
-      text: 'Série 1 de 3 registrada. Série 2 de 3',
+      text: 'Série 1 de 3 registrada, 10 pontos. Série 2 de 3',
     },
     {
       name: 'the execution ends by the clock on the last set of the letter',
       state: timerReach(next(createWorkoutFlow(sessionOf([ONE_SET_PRANCHA])), T0), T0 + 48_000),
-      text: 'Série 1 de 1 registrada. Treino concluído',
+      text: 'Série 1 de 1 registrada, 10 pontos. Treino concluído',
     },
     {
       name: 'the athlete cancels',
@@ -924,7 +930,7 @@ describe.each([
   {
     moment: 'set 1 of supino-reto recorded and the rest started',
     state: () => next(createWorkoutFlow(sessionOf(LETTER_A)), T0),
-    text: 'Série 1 de 3 registrada',
+    text: 'Série 1 de 3 registrada, 11 pontos',
   },
   {
     moment: 'the end of the rest after set 1 of supino-reto',
@@ -947,12 +953,12 @@ describe.each([
   {
     moment: 'set 1 recorded on an exercise with restSeconds 0',
     state: () => next(createWorkoutFlow(sessionOf([NO_REST_SUPINO, TRICEPS_POLIA])), T0),
-    text: 'Série 1 de 3 registrada. Série 2 de 3',
+    text: 'Série 1 de 3 registrada, 11 pontos. Série 2 de 3',
   },
   {
     moment: 'set 3 of triceps-polia recorded, the last of the day',
     state: () => next(tricepsSet3(T0), T0),
-    text: 'Série 3 de 3 registrada. Treino concluído',
+    text: 'Série 3 de 3 registrada, 10 pontos. Treino concluído',
   },
 ])('Given $moment', ({ state, text }) => {
   describe('When the screen asks what to announce', () => {
@@ -1879,7 +1885,8 @@ describe('Given supino-reto 3 of 3, prancha skipped 0 of 3 and set 3 of triceps-
           },
         ],
         progress: 2,
-        announcement: 'Série 3 de 3 registrada. Treino concluído. Ficou de fora: Prancha',
+        announcement:
+          'Série 3 de 3 registrada, 10 pontos. Treino concluído. Ficou de fora: Prancha',
       })
     })
   })
@@ -1910,7 +1917,7 @@ describe('Given prancha skipped first and supino-reto skipped after, with tricep
       }).toEqual({
         leftOut: ['Supino reto', 'Prancha'],
         announcement:
-          'Série 3 de 3 registrada. Treino concluído. Ficaram de fora: Supino reto, Prancha',
+          'Série 3 de 3 registrada, 10 pontos. Treino concluído. Ficaram de fora: Supino reto, Prancha',
         clock: true,
       })
     })
@@ -2745,6 +2752,111 @@ describe('Given the workout finished on its last set, with nothing to discard', 
   describe('When the discard sheet is asked to open', () => {
     it('Then the sheet should stay closed, since only a workout in progress is discarded', () => {
       expect(openSheet(finished, 'confirmDiscard').sheet).toBe('none')
+    })
+  })
+})
+
+describe('lastSetPointsOf', () => {
+  const SUPINO_AT_PLAN = { ...SUPINO_RETO, loadG: 40000 }
+  const chestOpen: FrozenWindow = {
+    muscleGroupSlug: 'chest',
+    opensAt: '2026-11-20T18:00:00.000Z',
+    closesAt: '2026-11-25T18:00:00.000Z',
+  }
+
+  describe('Given no set recorded', () => {
+    it('Then there are no points to show', () => {
+      expect(lastSetPointsOf(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN])))).toBeNull()
+    })
+  })
+
+  describe('Given the plan of supino-reto is 10 reps at 40 kg and no group in its window', () => {
+    describe('When the athlete records 10 reps at 40 kg', () => {
+      it('Then the set yields 10 points, not doubled', () => {
+        const state = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN])), T0)
+
+        expect(lastSetPointsOf(state)).toEqual({
+          setId: state.recorded[0]?.id,
+          points: 10,
+          doubled: false,
+        })
+      })
+    })
+  })
+
+  describe('Given chest in its window, frozen at the start of the workout', () => {
+    describe('When the athlete records supino-reto at plan inside the window', () => {
+      it('Then the set yields 20 points, doubled', () => {
+        const state = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [chestOpen])), T0)
+
+        expect(lastSetPointsOf(state)).toMatchObject({ points: 20, doubled: true })
+      })
+    })
+
+    describe('When the window closes before the set', () => {
+      it('Then the set yields the common 10 points', () => {
+        const closed = { ...chestOpen, closesAt: '2026-11-21T18:31:05.000Z' }
+        const state = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [closed])), T0)
+
+        expect(lastSetPointsOf(state)).toMatchObject({ points: 10, doubled: false })
+      })
+    })
+  })
+
+  describe('Given only triceps in its window', () => {
+    describe('When the athlete records supino-reto, which trains chest', () => {
+      it('Then the set is not doubled', () => {
+        const tricepsOpen = { ...chestOpen, muscleGroupSlug: 'triceps' }
+        const state = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [tricepsOpen])), T0)
+
+        expect(lastSetPointsOf(state)).toMatchObject({ points: 10, doubled: false })
+      })
+    })
+  })
+
+  describe('Given the load of the last workout, 42.5 kg, above the plan of 40 kg', () => {
+    describe('When the athlete records 10 reps', () => {
+      it('Then the points follow the ratio to the plan, rounded', () => {
+        const state = next(createWorkoutFlow(sessionOf([SUPINO_RETO])), T0)
+
+        expect(lastSetPointsOf(state)).toMatchObject({ points: 11 })
+      })
+    })
+  })
+
+  describe('Given prancha planned for 45 s', () => {
+    describe('When the execution ends by the clock', () => {
+      it('Then the set yields 10 points', () => {
+        const counting = next(createWorkoutFlow(sessionOf([PRANCHA])), T0)
+        const state = timerReach(timerReach(counting, T0 + 3000), T0 + 48_000)
+
+        expect(lastSetPointsOf(state)).toMatchObject({ points: 10 })
+      })
+    })
+  })
+
+  describe('Given a workout saved before the frozen windows existed', () => {
+    describe('When it is restored and the athlete records supino-reto at plan', () => {
+      it('Then the set yields the common 10 points', () => {
+        const saved = createWorkoutFlow(sessionOf([SUPINO_AT_PLAN]))
+        const { windows: _windows, ...oldSession } = saved.session
+        const restored = restoreWorkoutFlow(
+          { ...saved, session: oldSession } as WorkoutFlowState,
+          T0,
+        )
+
+        expect(lastSetPointsOf(next(restored, T0))).toMatchObject({ points: 10, doubled: false })
+      })
+    })
+  })
+
+  describe('Given chest in its window', () => {
+    describe('When announcementOf is read after supino-reto is recorded', () => {
+      it('Then it tells the points in double', () => {
+        const state = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [chestOpen])), T0)
+
+        expect(announcementOf(state)).toBe('Série 1 de 3 registrada, 20 pontos em dobro')
+      })
     })
   })
 })

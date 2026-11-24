@@ -7,11 +7,11 @@ import { SYNC_RETRY_INTERVAL_MS } from '@/sync/sync.config'
 import { SyncProvider, sendPendingItem } from '@/sync/sync-context'
 import { createSyncQueue, type SendItem, type SyncQueue } from '@/sync/sync-queue'
 import { CRUCIFIXO, PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayDay } from './test-today'
-import type { Cue } from './timer-cues'
-import type { TonePlayer } from './tone-player'
+import type { Sound, TonePlayer } from './tone-player'
 import { TICK_MS } from './workout.config'
 import {
   createWorkoutFlow,
+  type FrozenWindow,
   restoreWorkoutFlow,
   type WorkoutFlowState,
   workoutFlowReducer,
@@ -22,12 +22,13 @@ import type { SendOutcome } from './workout-set.types'
 const WORKOUT_ID = '0193a1b2-0000-7000-8000-000000000601'
 const STARTED_AT = '2026-11-21T18:30:00.000Z'
 
-function flowOf(exercises = [SUPINO_RETO, PRANCHA]) {
+function flowOf(exercises = [SUPINO_RETO, PRANCHA], windows: FrozenWindow[] = []) {
   return createWorkoutFlow({
     workoutId: WORKOUT_ID,
     startedAt: STARTED_AT,
     programId: 'program-1',
     day: todayDay('A', 'Superior', exercises),
+    windows,
   })
 }
 
@@ -51,11 +52,21 @@ function renderWorkout(
 // Letter 'A' of the spec: supino-reto 3 x 10 at 42,5 kg resting 90 s, then triceps-polia 3 x 12.
 const LETTER_A = [SUPINO_RETO, TRICEPS_POLIA]
 
-// A tone player that records what plays, so the test hears the cues without audio.
-function recordingPlayer(): { player: TonePlayer; cues: Cue[]; unlock: ReturnType<typeof vi.fn> } {
-  const cues: Cue[] = []
+const GAME_SOUNDS: Sound[] = ['points', 'pointsDoubled']
+
+// A tone player that records what plays, so the test hears the cues without audio. It records the
+// cues of the timer, or only the sounds of the game, each under its own switch (D60).
+function recordingPlayer(heard: 'timer' | 'game' = 'timer'): {
+  player: TonePlayer
+  cues: Sound[]
+  unlock: ReturnType<typeof vi.fn>
+} {
+  const cues: Sound[] = []
   const unlock = vi.fn()
-  return { player: { unlock, play: (cue) => cues.push(cue) }, cues, unlock }
+  const play = (sound: Sound) => {
+    if (GAME_SOUNDS.includes(sound) === (heard === 'game')) cues.push(sound)
+  }
+  return { player: { unlock, play }, cues, unlock }
 }
 
 function stubFetch(...responses: (Response | Error | 'pending')[]) {
@@ -192,7 +203,7 @@ describe('Given the API does not answer', () => {
 
 describe('Given the workout screen on set 1 of supino-reto', () => {
   describe('When the athlete taps Próximo', () => {
-    it('Then the polite live region, mounted and empty before, should announce Série 1 de 3 registrada', async () => {
+    it('Then the polite live region, mounted and empty before, should announce Série 1 de 3 registrada with its points', async () => {
       stubFetch(created())
       renderWorkout()
       const region = screen.getByRole('status')
@@ -202,7 +213,7 @@ describe('Given the workout screen on set 1 of supino-reto', () => {
 
       expect({ before, after: screen.getByRole('status').textContent }).toEqual({
         before: { live: 'polite', text: '' },
-        after: 'Série 1 de 3 registrada',
+        after: 'Série 1 de 3 registrada, 11 pontos',
       })
     })
   })
@@ -538,7 +549,7 @@ describe('Given supino-reto with restSeconds 0', () => {
       }).toEqual({
         resting: false,
         sets: '2 de 3',
-        announcement: 'Série 1 de 3 registrada. Série 2 de 3',
+        announcement: 'Série 1 de 3 registrada, 11 pontos. Série 2 de 3',
       })
     })
   })
@@ -593,7 +604,7 @@ describe('Given a letter with triceps-polia of one set', () => {
         title: 'Treino concluído',
         next: null,
         dialog: null,
-        announcement: 'Série 1 de 1 registrada. Treino concluído',
+        announcement: 'Série 1 de 1 registrada, 10 pontos. Treino concluído',
       })
     })
   })
@@ -1548,7 +1559,7 @@ describe('Given the execution of prancha running', () => {
         cues: ['warning', 'warning', 'warning', 'end'],
         set: expect.objectContaining({ setNumber: 1, seconds: 45, loadG: 0 }),
         rest: '1:00',
-        announced: 'Série 1 de 3 registrada',
+        announced: 'Série 1 de 3 registrada, 10 pontos',
       })
     })
   })
@@ -1708,7 +1719,7 @@ describe('Given the letter B with only prancha, 1 set', () => {
         rests: 0,
         title: 'Treino concluído',
         dialogs: 0,
-        announced: 'Série 1 de 1 registrada. Treino concluído',
+        announced: 'Série 1 de 1 registrada, 10 pontos. Treino concluído',
       })
     })
   })
@@ -3064,6 +3075,117 @@ describe('Given a workout started 34 min ago with no set recorded', () => {
       await endFromSequence('Sequência do treino, letra A, exercício 1 de 3')
 
       expect(screen.queryByText(/^Treino encerrado/)).toBeNull()
+    })
+  })
+})
+
+describe('Given supino-reto planned for 10 reps at 40 kg (US-F10-01)', () => {
+  const SUPINO_AT_PLAN = { ...SUPINO_RETO, loadG: 40000 }
+  const CHEST_OPEN: FrozenWindow = {
+    muscleGroupSlug: 'chest',
+    opensAt: '2026-11-20T18:00:00.000Z',
+    closesAt: '2099-11-25T18:00:00.000Z',
+  }
+
+  describe('When the athlete records 10 reps at 40 kg', () => {
+    it('Then +10 should rise from Próximo, out of the accessibility tree, with no ×2 mark', async () => {
+      stubFetch(created())
+      renderWorkout([SUPINO_AT_PLAN])
+
+      await act(async () => tapNext())
+
+      const points = screen.getByText('+10')
+      expect({
+        hidden: points.closest('[aria-hidden="true"]') !== null,
+        aboveNext: points
+          .closest('[data-points]')
+          ?.parentElement?.contains(screen.getByRole('button', { name: 'Próximo' })),
+        double: screen.queryByText('×2'),
+      }).toEqual({ hidden: true, aboveNext: true, double: null })
+    })
+  })
+
+  describe('When chest is in its window and the athlete records a set at plan', () => {
+    it('Then +20 should rise with the ×2 mark', async () => {
+      stubFetch(created())
+      renderWorkout(
+        [SUPINO_AT_PLAN],
+        vi.fn(),
+        sendPendingItem,
+        flowOf([SUPINO_AT_PLAN], [CHEST_OPEN]),
+      )
+
+      await act(async () => tapNext())
+
+      expect({
+        points: screen.getByText('+20').textContent,
+        double: screen.getByText('×2').textContent,
+      }).toEqual({ points: '+20', double: '×2' })
+    })
+  })
+
+  describe('When the rest of the set ends', () => {
+    it('Then the points should leave the screen', async () => {
+      vi.useFakeTimers()
+      stubFetch(created())
+      renderWorkout([SUPINO_AT_PLAN])
+      await act(async () => tapNext())
+
+      await act(async () => vi.advanceTimersByTime(90_000 + TICK_MS))
+
+      expect(screen.queryByText('+10')).toBeNull()
+    })
+  })
+
+  describe('When the athlete records a set with the game sound on', () => {
+    it('Then the points sound should play, apart from the timer sound', async () => {
+      const { player, cues } = recordingPlayer('game')
+      stubFetch(created())
+      renderWorkout([SUPINO_AT_PLAN], vi.fn(), sendPendingItem, undefined, player)
+
+      await act(async () => tapNext())
+
+      expect(cues).toEqual(['points'])
+    })
+  })
+
+  describe('When chest is in its window and the athlete records a set', () => {
+    it('Then the doubled points sound should play', async () => {
+      const { player, cues } = recordingPlayer('game')
+      stubFetch(created())
+      renderWorkout(
+        [SUPINO_AT_PLAN],
+        vi.fn(),
+        sendPendingItem,
+        flowOf([SUPINO_AT_PLAN], [CHEST_OPEN]),
+        player,
+      )
+
+      await act(async () => tapNext())
+
+      expect(cues).toEqual(['pointsDoubled'])
+    })
+  })
+
+  describe('When the athlete turns the game sound off in the sequence and records a set', () => {
+    it('Then the points should show with no sound, and the timer sound should stay on', async () => {
+      const { player, cues } = recordingPlayer('game')
+      stubFetch(created())
+      renderWorkout([SUPINO_AT_PLAN], vi.fn(), sendPendingItem, undefined, player)
+      fireEvent.click(screen.getByRole('button', { name: /^Sequência do treino/ }))
+      const dialog = await screen.findByRole('dialog')
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Som do jogo' }))
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Fechar' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+      await act(async () => tapNext())
+
+      expect({
+        points: screen.getByText('+10').textContent,
+        cues,
+        gameSound: localStorage.getItem('heavy-duty:game-sound'),
+        timerSound: screen.getByRole('button', { name: 'Som' }).getAttribute('aria-pressed'),
+      }).toEqual({ points: '+10', cues: [], gameSound: 'off', timerSound: 'true' })
     })
   })
 })

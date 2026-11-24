@@ -55,13 +55,20 @@ export function recordWorkout(
         if (!exercise) {
           throw new Error(`Exercise "${set.exerciseSlug}" is not registered`)
         }
+        // The set stores the plan of its exercise, as the set route does (ADR-033).
         const planned = db
-          .prepare('SELECT id FROM planned_exercises WHERE program_day_id = ? AND exercise_id = ?')
-          .get(day?.id ?? null, exercise.id) as { id: string } | undefined
+          .prepare(
+            `SELECT id, load_g AS loadG, target_reps AS targetReps, target_seconds AS targetSeconds
+               FROM planned_exercises WHERE program_day_id = ? AND exercise_id = ?`,
+          )
+          .get(day?.id ?? null, exercise.id) as
+          | { id: string; loadG: number; targetReps: number | null; targetSeconds: number | null }
+          | undefined
         db.prepare(
           `INSERT INTO workout_sets
-             (id, workout_id, exercise_id, planned_exercise_id, set_number, load_g, reps, seconds, performed_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (id, workout_id, exercise_id, planned_exercise_id, set_number, load_g, reps, seconds,
+              performed_at, planned_load_g, target_reps, target_seconds)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           randomUUID(),
           workoutId,
@@ -72,6 +79,9 @@ export function recordWorkout(
           set.reps ?? null,
           set.seconds ?? null,
           startedAt,
+          planned?.loadG ?? null,
+          planned?.targetReps ?? null,
+          planned?.targetSeconds ?? null,
         )
       })
       db.exec('COMMIT')

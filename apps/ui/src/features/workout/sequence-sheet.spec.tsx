@@ -33,13 +33,20 @@ type Handlers = {
   onSkip?: () => void
   onClose?: () => void
   onDiscard?: () => void
+  onGameSoundChange?: (gameSoundOn: boolean) => void
 }
 
 function renderSheet(
   items: SequenceItem[],
   finished: boolean,
   canSkip = false,
-  { onPick = vi.fn(), onSkip = vi.fn(), onClose = vi.fn(), onDiscard = vi.fn() }: Handlers = {},
+  {
+    onPick = vi.fn(),
+    onSkip = vi.fn(),
+    onClose = vi.fn(),
+    onDiscard = vi.fn(),
+    onGameSoundChange = vi.fn(),
+  }: Handlers = {},
 ) {
   render(
     <SequenceSheet
@@ -47,6 +54,8 @@ function renderSheet(
       items={items}
       finished={finished}
       canSkip={canSkip}
+      gameSoundOn
+      onGameSoundChange={onGameSoundChange}
       returnFocusRef={{ current: null }}
       onClose={onClose}
       onPick={onPick}
@@ -102,7 +111,13 @@ describe('Given the sequence sheet of a workout in progress, with one exercise t
         within(dialog)
           .getAllByRole('button')
           .map((button) => button.getAttribute('aria-label') ?? button.textContent),
-      ).toEqual(['Tríceps na poliaPor fazer0 de 3', 'Encerrar', 'Fechar', 'Descartar'])
+      ).toEqual([
+        'Tríceps na poliaPor fazer0 de 3',
+        'Som do jogo',
+        'Encerrar',
+        'Fechar',
+        'Descartar',
+      ])
     })
   })
 })
@@ -217,7 +232,7 @@ describe('Given a sequence with prancha skipped', () => {
 
 describe('Given a sequence with supino-reto done with 3 recorded sets and prancha current', () => {
   describe('When the sheet renders', () => {
-    it('Then the list "Séries de Supino reto" should read the 3 sets in order, and the buttons stay Pular Prancha, the row of Tríceps na polia, Encerrar, Fechar and Descartar', async () => {
+    it('Then the list "Séries de Supino reto" should read the 3 sets in order, and the buttons stay Pular Prancha, the row of Tríceps na polia, Som do jogo, Encerrar, Fechar and Descartar', async () => {
       renderSheet(WITH_PRANCHA_CURRENT, false, true)
 
       const dialog = await screen.findByRole('dialog')
@@ -238,6 +253,7 @@ describe('Given a sequence with supino-reto done with 3 recorded sets and pranch
         buttons: [
           'Pular Prancha',
           'Tríceps na poliaPor fazer0 de 3',
+          'Som do jogo',
           'Encerrar',
           'Fechar',
           'Descartar',
@@ -511,6 +527,25 @@ describe('Given the sequence sheet of a workout in progress', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Descartar' }))
 
       expect(onDiscard).toHaveBeenCalledTimes(1)
+    })
+  })
+})
+
+describe('Given the sequence sheet of a workout in progress with the game sound on (D60)', () => {
+  describe('When the athlete taps Som do jogo', () => {
+    it('Then the switch should be pressed and ask to turn the game sound off', async () => {
+      const onGameSoundChange = vi.fn()
+      renderSheet(ALL_DONE, false, false, { onGameSoundChange })
+      const dialog = await screen.findByRole('dialog')
+      const sound = within(dialog).getByRole('button', { name: 'Som do jogo' })
+      const pressed = sound.getAttribute('aria-pressed')
+
+      fireEvent.click(sound)
+
+      expect({ pressed, calls: onGameSoundChange.mock.calls }).toEqual({
+        pressed: 'true',
+        calls: [[false]],
+      })
     })
   })
 })

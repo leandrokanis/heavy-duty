@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { Cue } from './timer-cues'
-import { createTonePlayer } from './tone-player'
+import { createTonePlayer, type Sound } from './tone-player'
 
 type FakeOscillator = {
   type: string
@@ -35,7 +34,7 @@ function fakeContext(state: 'running' | 'suspended' = 'running') {
   return { context, oscillators, resume }
 }
 
-function frequenciesOf(cue: Cue): number[] {
+function frequenciesOf(cue: Sound): number[] {
   const { context, oscillators } = fakeContext()
   const player = createTonePlayer(() => context as unknown as AudioContext)
   player.unlock()
@@ -50,6 +49,8 @@ describe('Given a tone player over a fake audio context', () => {
     { cue: 'warning', frequencies: [880] },
     { cue: 'end', frequencies: [1047, 784, 523] },
     { cue: 'restWarning', frequencies: [1175] },
+    { cue: 'points', frequencies: [988, 1319] },
+    { cue: 'pointsDoubled', frequencies: [988, 1319, 1976] },
   ] as const)('When play is called with $cue', ({ cue, frequencies }) => {
     it(`Then should start oscillators at ${frequencies.join(', ')} Hz`, () => {
       expect(frequenciesOf(cue)).toEqual(frequencies)

@@ -22,6 +22,7 @@ const SAVED = workoutFlowReducer(
     startedAt: '2026-11-21T18:30:00.000Z',
     programId: 'program-1',
     day: todayDay('A', 'Superior', [SUPINO_RETO, TRICEPS_POLIA]),
+    windows: [],
   }),
   { type: 'next', nowMs: T0 },
 )

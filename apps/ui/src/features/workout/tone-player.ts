@@ -8,9 +8,22 @@ type Tone = {
   volume: number
 }
 
+// A cue of the timer or a sound of the game (D60), each one under its own switch.
+export type Sound = Cue | 'points' | 'pointsDoubled'
+
+const POINTS_TONES: Tone[] = [
+  { frequencyHz: 988, type: 'triangle', startSeconds: 0, durationSeconds: 0.12, volume: 0.2 },
+  { frequencyHz: 1319, type: 'triangle', startSeconds: 0.07, durationSeconds: 0.2, volume: 0.2 },
+]
+
 // The tones of the prototype of the PO. The rest has a softer tone of its own, an estimate to
 // confirm on the phone.
-const TONES: Record<Cue, Tone[]> = {
+const TONES: Record<Sound, Tone[]> = {
+  points: POINTS_TONES,
+  pointsDoubled: [
+    ...POINTS_TONES,
+    { frequencyHz: 1976, type: 'sine', startSeconds: 0.15, durationSeconds: 0.25, volume: 0.12 },
+  ],
   count: [{ frequencyHz: 660, type: 'sine', startSeconds: 0, durationSeconds: 0.12, volume: 0.3 }],
   start: [
     { frequencyHz: 1320, type: 'sine', startSeconds: 0, durationSeconds: 0.35, volume: 0.3 },
@@ -32,7 +45,7 @@ const TONES: Record<Cue, Tone[]> = {
 export type TonePlayer = {
   // Called inside a tap: the browser lets the audio play only after a gesture.
   unlock: () => void
-  play: (cue: Cue) => void
+  play: (sound: Sound) => void
 }
 
 // The sound is a help, never a need: every failure of the audio stays here and the timer goes on.
@@ -51,11 +64,11 @@ export function createTonePlayer(createContext: () => AudioContext | null): Tone
       const audio = contextOf()
       if (audio?.state === 'suspended') audio.resume().catch(() => {})
     },
-    play(cue) {
+    play(sound) {
       const audio = contextOf()
       if (audio === null) return
       try {
-        for (const tone of TONES[cue]) playTone(audio, tone)
+        for (const tone of TONES[sound]) playTone(audio, tone)
       } catch {
         // A failed tone is dropped: the screen does not depend on it.
       }
