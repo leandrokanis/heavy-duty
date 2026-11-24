@@ -555,3 +555,148 @@ describe('Given back trained 3 days ago and chest trained now (US-F10-02)', () =
     })
   })
 })
+
+type WeekWindowsRow = {
+  from: string
+  to: string
+  windowsUsed: number
+  windowsMissed: number
+  windowsOpen: number
+  usedPercent: number | null
+}
+
+type WindowsUsedResponse = { now: string; from: string; to: string; weeks: WeekWindowsRow[] }
+
+function callWindowsUsed(app: App, args: Record<string, unknown>) {
+  return rpc(app, 'tools/call', { name: 'get_windows_used', arguments: args })
+}
+
+async function getWindowsUsed(app: App, args: Record<string, unknown>) {
+  const called = await callWindowsUsed(app, args)
+  return called.result?.structuredContent as WindowsUsedResponse
+}
+
+const WEEK_1 = '2025-03-03T03:00:00.000Z'
+const WEEK_2 = '2025-03-10T03:00:00.000Z'
+const WEEK_3 = '2025-03-17T03:00:00.000Z'
+
+describe('Given back trained on Monday and Thursday at 7h in Brasilia, and not in the next week (US-F15b-01)', () => {
+  describe('When get_windows_used is called through /mcp for the two weeks', () => {
+    it('Then the first week should have 1 window used and the second 1 window missed', async () => {
+      const { app, record } = await givenCatalogAndProgram()
+      record(MONDAY_7H, sets('remada', 3, 40000, 10))
+      record(THURSDAY_7H, sets('remada', 3, 40000, 10))
+
+      const used = await getWindowsUsed(app, { from: WEEK_1, to: WEEK_3 })
+
+      expect(used).toEqual({
+        now: '2026-11-21T10:00:00.000Z',
+        from: WEEK_1,
+        to: WEEK_3,
+        weeks: [
+          {
+            from: WEEK_1,
+            to: WEEK_2,
+            windowsUsed: 1,
+            windowsMissed: 0,
+            windowsOpen: 0,
+            usedPercent: 100,
+          },
+          {
+            from: WEEK_2,
+            to: WEEK_3,
+            windowsUsed: 0,
+            windowsMissed: 1,
+            windowsOpen: 0,
+            usedPercent: 0,
+          },
+        ],
+      })
+    })
+  })
+})
+
+describe('Given chest trained on Monday with triceps as a secondary muscle, and not again (US-F15b-01)', () => {
+  describe('When get_windows_used is called for the week', () => {
+    it('Then the week should have the windows of chest and triceps missed', async () => {
+      const { app, record } = await givenCatalogAndProgram()
+      record(MONDAY_7H, sets('supino-com-halteres', 3, 40000, 10))
+
+      const used = await getWindowsUsed(app, { from: WEEK_1, to: WEEK_2 })
+
+      expect(used.weeks[0]).toMatchObject({ windowsUsed: 0, windowsMissed: 2, usedPercent: 0 })
+    })
+  })
+})
+
+describe('Given no recorded workout (US-F15b-01)', () => {
+  describe('When get_windows_used is called for the week', () => {
+    it('Then the week should show 0 of 0, with usedPercent null', async () => {
+      const { app } = await givenCatalogAndProgram()
+
+      const used = await getWindowsUsed(app, { from: WEEK_1, to: WEEK_2 })
+
+      expect(used.weeks).toEqual([
+        {
+          from: WEEK_1,
+          to: WEEK_2,
+          windowsUsed: 0,
+          windowsMissed: 0,
+          windowsOpen: 0,
+          usedPercent: null,
+        },
+      ])
+    })
+  })
+
+  describe('When tools/list is called through /mcp', () => {
+    it('Then get_windows_used should be read only', async () => {
+      const { app } = createProgramTestApp()
+
+      const listed = await rpc(app, 'tools/list', {})
+      const tool = listed.result?.tools?.find(({ name }) => name === 'get_windows_used')
+
+      expect(tool?.annotations?.readOnlyHint).toBe(true)
+    })
+  })
+})
+
+describe('Given an invalid interval of weeks (US-F15b-01)', () => {
+  describe.each([
+    {
+      case: 'no to',
+      args: { from: WEEK_1 },
+      code: 'workout_range_required',
+      message: 'informe o início e o fim do intervalo em UTC',
+    },
+    {
+      case: 'to equal to from',
+      args: { from: WEEK_1, to: WEEK_1 },
+      code: 'workout_range_inverted',
+      message: 'o fim do intervalo deve ser depois do início',
+    },
+    {
+      case: '14 weeks',
+      args: { from: WEEK_1, to: '2025-06-09T03:00:00.000Z' },
+      code: 'workout_range_too_long',
+      message: 'o intervalo deve ter no máximo 92 dias',
+    },
+    {
+      case: 'a week and a day',
+      args: { from: WEEK_1, to: '2025-03-11T03:00:00.000Z' },
+      code: 'windows_range_not_whole_weeks',
+      message: 'o intervalo deve ter semanas inteiras, de 7 dias cada',
+    },
+  ])('When get_windows_used is called with $case', ({ args, code, message }) => {
+    it(`Then should return isError with ${code}`, async () => {
+      const { app } = createProgramTestApp()
+
+      const called = await callWindowsUsed(app, args)
+
+      expect({
+        isError: called.result?.isError,
+        text: JSON.parse(called.result?.content?.[0]?.text ?? 'null'),
+      }).toEqual({ isError: true, text: { code, message } })
+    })
+  })
+})

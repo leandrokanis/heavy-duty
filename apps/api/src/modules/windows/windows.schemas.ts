@@ -186,3 +186,32 @@ export const MuscleGroupLevelsSchema = z
   .openapi('MuscleGroupLevels')
 
 export type MuscleGroupLevels = z.infer<typeof MuscleGroupLevelsSchema>
+
+// from and to stay plain strings so the service refuses them with its own code.
+export const WindowsUsedQuerySchema = z.object({
+  from: z.string().optional().openapi({ example: '2026-11-23T03:00:00.000Z' }),
+  to: z.string().optional().openapi({ example: '2026-11-30T03:00:00.000Z' }),
+})
+
+export const WeekWindowsSchema = z
+  .object({
+    from: z.string().openapi({ example: '2026-11-23T03:00:00.000Z' }),
+    to: z.string().openapi({ example: '2026-11-30T03:00:00.000Z' }),
+    windowsUsed: z.number().int().openapi({ example: 7 }),
+    windowsMissed: z.number().int().openapi({ example: 3 }),
+    windowsOpen: z.number().int().openapi({ example: 2 }),
+    usedPercent: z.number().int().nullable().openapi({ example: 70 }),
+  })
+  .openapi('WeekWindows')
+
+export const WindowsUsedSchema = z
+  .object({
+    now: z.string().openapi({ example: '2026-11-27T12:00:00.000Z' }),
+    from: z.string().openapi({ example: '2026-11-23T03:00:00.000Z' }),
+    to: z.string().openapi({ example: '2026-11-30T03:00:00.000Z' }),
+    weeks: z.array(WeekWindowsSchema),
+  })
+  .openapi('WindowsUsed')
+
+export type WindowsUsedQuery = z.infer<typeof WindowsUsedQuerySchema>
+export type WindowsUsed = z.infer<typeof WindowsUsedSchema>

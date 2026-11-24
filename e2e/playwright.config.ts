@@ -41,6 +41,7 @@ const SET_POINTS_SPEC = /set-points\.feature\.spec\.js$/
 const GROUP_LEVELS_SPEC = /group-levels\.feature\.spec\.js$/
 const GROUP_LEVEL_SPEC = /group-level\.feature\.spec\.js$/
 const COOLING_LEVEL_SPEC = /cooling-level\.feature\.spec\.js$/
+const WINDOWS_USED_SPEC = /windows-used\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -97,6 +98,7 @@ export default defineConfig({
         GROUP_LEVELS_SPEC,
         GROUP_LEVEL_SPEC,
         COOLING_LEVEL_SPEC,
+        WINDOWS_USED_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -348,6 +350,15 @@ export default defineConfig({
       testMatch: COOLING_LEVEL_SPEC,
       fullyParallel: false,
       dependencies: ['group-level'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records workouts in fixed weeks of 2025 and counts the windows used through the MCP, so it
+    // runs alone and one scenario at a time, after the cooling of the levels.
+    {
+      name: 'windows-used',
+      testMatch: WINDOWS_USED_SPEC,
+      fullyParallel: false,
+      dependencies: ['cooling-level'],
       use: { ...devices['Pixel 7'] },
     },
   ],

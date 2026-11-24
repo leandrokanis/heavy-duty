@@ -11,7 +11,10 @@ import {
   MuscleGroupVolumeQuerySchema,
   MuscleGroupVolumeSchema,
   SimulateActivityWindowsQuerySchema,
+  WindowsUsedQuerySchema,
+  WindowsUsedSchema,
 } from '../../modules/windows/windows.schemas.js'
+import { getWindowsUsed } from '../../modules/windows/windows-used.service.js'
 import type { ToolDeps } from './index.js'
 import { runTool } from './tool-result.js'
 
@@ -62,5 +65,17 @@ export function registerWindowTools(server: McpServer, { db, now }: ToolDeps): v
       annotations: { readOnlyHint: true },
     },
     () => runTool(() => listMuscleGroupLevels(db, now())),
+  )
+
+  server.registerTool(
+    'get_windows_used',
+    {
+      description:
+        'Count the activity windows used in each week, to measure the regularity of the training (the target is 70% of the windows used). Read only. from and to are UTC instants in ISO 8601 with a Z, required, half open; the interval must be whole weeks of 7 × 24 h counted from from, at most 13 weeks (92 days). The API does no time zone conversion: midnight in America/Sao_Paulo is 03:00Z, so the week from Monday 2026-11-23 is from 2026-11-23T03:00:00.000Z to 2026-11-30T03:00:00.000Z. An invalid interval is refused with workout_range_required, workout_range_inverted, workout_range_too_long or windows_range_not_whole_weeks. Every window of the 11 muscle groups over the whole history counts, with the window parameters in use (see simulate_activity_windows), including the groups trained only as a secondary muscle. A window counts in the week of its outcome: used, in the week of the next training of the group that fell in it; missed, in the week when it closed with no training; open, in the week that holds now. A window replaced by a training before it opened, or still to open, counts in none. Returns now (the clock of the API), from, to and weeks in time order, each with from, to, windowsUsed, windowsMissed, windowsOpen and usedPercent (windowsUsed ÷ (windowsUsed + windowsMissed), rounded to a whole number, null when both are 0; the open windows stay out of the rate).',
+      inputSchema: WindowsUsedQuerySchema,
+      outputSchema: WindowsUsedSchema,
+      annotations: { readOnlyHint: true },
+    },
+    (input) => runTool(() => getWindowsUsed(db, input, now())),
   )
 }
