@@ -702,13 +702,14 @@ O objeto `Today` tem a forma `{ "program": { "id", "name", "goal" } | null, "sug
 
 O objeto `TodayDay` tem a forma `{ "letter", "label", "estimatedDurationSeconds", "exercises": [TodayExercise] }`, com as letras na ordem do plano e os exercícios na ordem da letra. A letra sem exercício vem com `exercises: []` e `estimatedDurationSeconds: 0`.
 
-O objeto `TodayExercise` tem a forma `{ "plannedExerciseId", "exercise": { "id", "slug", "name", "kind" }, "sets", "targetReps", "targetSeconds", "restSeconds", "plannedLoadG", "loadG", "loadSource", "muscleGroups": [{ "slug", "name" }] }`:
+O objeto `TodayExercise` tem a forma `{ "plannedExerciseId", "exercise": { "id", "slug", "name", "kind" }, "sets", "targetReps", "targetSeconds", "restSeconds", "plannedLoadG", "loadG", "loadSource", "muscleGroups": [{ "slug", "name" }], "records": [{ "reps", "loadG" }] }`:
 
 - `plannedExerciseId` é o `id` do exercício do programa (linha de `planned_exercises`). A tela envia esse valor na gravação da série (US-F03-02).
 - `plannedLoadG` é a carga do programa, em gramas.
 - `loadG` é a carga preenchida, em gramas: a carga da série mais recente do mesmo exercício no histórico, em qualquer programa e em qualquer letra. Sem série do exercício, é a carga do programa.
 - `loadSource` diz de onde veio a carga preenchida: `last_workout` (histórico) ou `program`.
 - `muscleGroups` lista os grupos musculares dos músculos principais do exercício, uma vez cada, na ordem do catálogo. Os músculos secundários ficam de fora. A tela usa a lista para mostrar o estado da janela de cada letra (US-F07-02).
+- `records` lista os recordes do exercício (US-F18-01, D59): para cada número de repetições, a maior carga, e para cada carga, o maior número de repetições, ordenados por `reps` e por `loadG`. A lista vem vazia no exercício de tempo e no exercício sem série. A tela compara a série com essa lista mais as séries do treino em andamento.
 - `targetReps` e `targetSeconds` vêm sempre do programa, mesmo que o último treino tenha outro número de repetições.
 - O exercício arquivado no catálogo que continua na letra aparece com o nome do catálogo.
 
@@ -734,7 +735,8 @@ Exemplo, com o Supino reto a 42,5 kg no último treino e a Prancha sem treino:
           "plannedLoadG": 40000,
           "loadG": 42500,
           "loadSource": "last_workout",
-          "muscleGroups": [{ "slug": "chest", "name": "peito" }]
+          "muscleGroups": [{ "slug": "chest", "name": "peito" }],
+          "records": [{ "reps": 10, "loadG": 42500 }]
         },
         {
           "plannedExerciseId": "0193a1b2-0000-7000-8000-000000000402",
@@ -746,7 +748,8 @@ Exemplo, com o Supino reto a 42,5 kg no último treino e a Prancha sem treino:
           "plannedLoadG": 0,
           "loadG": 0,
           "loadSource": "program",
-          "muscleGroups": [{ "slug": "abs", "name": "abdômen" }]
+          "muscleGroups": [{ "slug": "abs", "name": "abdômen" }],
+          "records": []
         }
       ]
     }
@@ -759,6 +762,7 @@ Regras do cálculo:
 - **Série mais recente.** A série mais recente é a de `performed_at` mais recente. No empate, vale o maior `set_number` e, depois, o maior `id`. Treino encerrado e treino em andamento contam. A busca é pelo exercício (`exercise_id`), então o vínculo nulo com o exercício do programa não muda a carga.
 - **Letra sugerida.** A letra sugerida é a letra seguinte, na ordem do plano, à letra do treino mais recente do programa ativo (`started_at` mais recente; no empate, o maior `id`). Depois da última letra, a sugestão volta à primeira. Sem treino do programa ativo, ou com a letra do último treino fora do programa, a sugerida é a primeira letra. A sugestão pula letras sem exercício e fica `null` quando nenhuma letra tem exercício. Treino de outro programa não muda a sugestão.
 - **Duração estimada.** A duração estimada é a soma, em cada exercício da letra, de `sets × (execução + restSeconds)`, em segundos inteiros. A execução é `targetSeconds` no exercício de tempo e `targetReps × 3` no exercício de repetição [estimativa: 3 s por repetição, em `SECONDS_PER_REP` de `apps/api/src/modules/workouts/today.config.ts`]. Exemplo: Supino reto 3 × 10 com 90 s de descanso e Prancha 3 × 45 s com 60 s somam `3 × (30 + 90) + 3 × (45 + 60) = 675`.
+- **Recordes.** Os recordes vêm de todas as séries de repetição do exercício (`exercise_id`), em qualquer programa, letra e treino, encerrado ou em andamento. A série de tempo fica fora. O recorde é derivado das séries e não fica em tabela (ADR-010): corrigir ou apagar uma série muda a lista na próxima leitura.
 
 ## Séries do treino
 

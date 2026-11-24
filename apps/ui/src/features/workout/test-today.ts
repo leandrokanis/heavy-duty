@@ -15,6 +15,7 @@ export const SUPINO_RETO: TodayExercise = {
   loadG: 42500,
   loadSource: 'last_workout',
   muscleGroups: [CHEST],
+  records: [],
 }
 
 export const PRANCHA: TodayExercise = {
@@ -28,6 +29,7 @@ export const PRANCHA: TodayExercise = {
   loadG: 0,
   loadSource: 'program',
   muscleGroups: [ABS],
+  records: [],
 }
 
 export const TRICEPS_POLIA: TodayExercise = {
@@ -46,6 +48,7 @@ export const TRICEPS_POLIA: TodayExercise = {
   loadG: 20000,
   loadSource: 'program',
   muscleGroups: [TRICEPS],
+  records: [],
 }
 
 export const CRUCIFIXO: TodayExercise = {
@@ -59,6 +62,7 @@ export const CRUCIFIXO: TodayExercise = {
   loadG: 14000,
   loadSource: 'program',
   muscleGroups: [CHEST],
+  records: [],
 }
 
 export function todayDay(

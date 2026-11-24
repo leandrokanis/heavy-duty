@@ -184,8 +184,13 @@ describe('Given globals.css', () => {
       ).toEqual([])
     })
 
-    it('Then should not declare game or tier colour tokens', () => {
-      expect(css.match(/--color-(game|tier)-/g)).toBeNull()
+    it('Then should declare only the game and tier colour tokens that the document defines', () => {
+      const documented = new Set(designTokens.map((row) => row.name))
+      const undocumented = (css.match(/--color-(game|tier)-[a-z0-9-]+/g) ?? []).filter(
+        (name) => !documented.has(name),
+      )
+
+      expect(undocumented).toEqual([])
     })
   })
   describe('When the shell rules are read', () => {

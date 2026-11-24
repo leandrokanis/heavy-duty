@@ -3,6 +3,7 @@ import {
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
+  type ReactNode,
   useEffect,
   useId,
   useRef,
@@ -33,6 +34,8 @@ const UNITS: Record<AdjustField, string> = { loadG: 'kg', reps: 'rep', seconds: 
 export type ValueWheelProps = {
   field: AdjustField
   label: string
+  // Beside the label, outside the name of the wheel, like the record mark of the load.
+  adornment?: ReactNode
   value: number
   // Steps with sign: positive raises the value.
   onAdjust: (steps: number) => void
@@ -48,6 +51,7 @@ const SURFACE_CLASS = {
 export function ValueWheel({
   field,
   label,
+  adornment,
   value,
   onAdjust,
   surface = 'grouped',
@@ -114,12 +118,15 @@ export function ValueWheel({
     <div
       className={`flex flex-col gap-(--space-4) rounded-(--radius-control) p-(--space-12) ${SURFACE_CLASS[surface]}`}
     >
-      <span
-        id={labelId}
-        className="text-center font-(--font-weight-semibold) text-(--color-label-secondary) text-(length:--font-size-footnote)"
-      >
-        {label}
-      </span>
+      <div className="flex items-center justify-center gap-(--space-8)">
+        <span
+          id={labelId}
+          className="text-center font-(--font-weight-semibold) text-(--color-label-secondary) text-(length:--font-size-footnote)"
+        >
+          {label}
+        </span>
+        {adornment}
+      </div>
       <div className="flex items-center gap-(--space-8)">
         <IconButton
           aria-label={`Diminuir ${label.toLowerCase()}`}

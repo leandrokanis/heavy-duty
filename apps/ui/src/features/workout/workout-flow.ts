@@ -1,5 +1,6 @@
 import { createClientId } from './client-id'
 import { type AdjustField, adjustValue, MINIMUMS, valueTextOf } from './drag-adjust'
+import { type RecordMark, recordMarkFor, recordSetIdsOf } from './personal-records'
 import type { ExerciseKind, TodayDay, TodayExercise } from './today.types'
 import { COUNTDOWN_MS, DOUBLE_TAP_GUARD_MS, REST_FAST_FORWARD_FACTOR } from './workout.config'
 import type { FinishWorkoutBody } from './workout-finish.types'
@@ -138,8 +139,12 @@ export function nextPositionOf(state: WorkoutFlowState): Position | null {
   }
 }
 
-// A set as the athlete recorded it: the sent values, not the planned ones (FR-002).
-export type RecordedSetView = Pick<RecordWorkoutSetBody, 'setNumber' | 'loadG' | 'reps' | 'seconds'>
+// A set as the athlete recorded it: the sent values, not the planned ones (FR-002); record is
+// present only on a set that beat a personal record.
+export type RecordedSetView = Pick<
+  RecordWorkoutSetBody,
+  'setNumber' | 'loadG' | 'reps' | 'seconds'
+> & { record?: true }
 
 export type SequenceItem = {
   exerciseIndex: number
@@ -171,14 +176,16 @@ export function sequenceOf(state: WorkoutFlowState): SequenceItem[] {
 }
 
 function recordedSetsOf(state: WorkoutFlowState, planned: TodayExercise): RecordedSetView[] {
+  const records = recordSetIdsOf(state.session.day.exercises, state.recorded)
   return state.recorded
     .filter((body) => body.plannedExerciseId === planned.plannedExerciseId)
     .sort((a, b) => a.setNumber - b.setNumber)
-    .map(({ setNumber, loadG, reps, seconds }) => ({
+    .map(({ id, setNumber, loadG, reps, seconds }) => ({
       setNumber,
       loadG,
       ...(reps === undefined ? {} : { reps }),
       ...(seconds === undefined ? {} : { seconds }),
+      ...(records.has(id) ? { record: true as const } : {}),
     }))
 }
 
@@ -518,6 +525,8 @@ export type LastSetView = {
   exerciseName: string
   kind: ExerciseKind
   setsTotal: number
+  // Derived from the sets, so a correction of the last set redoes it.
+  record: boolean
 }
 
 // The set the correction would change: the last recorded one, while the athlete is in the rest or
@@ -534,7 +543,14 @@ export function lastSetOf(state: WorkoutFlowState): LastSetView | null {
     exerciseName: planned.exercise.name,
     kind: planned.exercise.kind,
     setsTotal: planned.sets,
+    record: recordSetIdsOf(state.session.day.exercises, state.recorded).has(set.id),
   }
+}
+
+// The record mark beside the load of the set on screen; null outside the set screen.
+export function recordMarkOf(state: WorkoutFlowState): RecordMark | null {
+  if (state.phase !== 'set') return null
+  return recordMarkFor(currentExercise(state), state.recorded, shownValuesOf(state))
 }
 
 // "Salvar" of the correction sheet. Valid new values replace the load and the measure of the last

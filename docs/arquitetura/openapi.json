@@ -1250,6 +1250,13 @@
                 "name"
               ]
             }
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonalRecord"
+            },
+            "description": "Personal records of the exercise over the whole history, by exercise; empty for a timed exercise"
           }
         },
         "required": [
@@ -1262,7 +1269,8 @@
           "plannedLoadG",
           "loadG",
           "loadSource",
-          "muscleGroups"
+          "muscleGroups",
+          "records"
         ]
       },
       "LoadSource": {
@@ -1271,6 +1279,24 @@
           "program",
           "last_workout"
         ]
+      },
+      "PersonalRecord": {
+        "type": "object",
+        "properties": {
+          "reps": {
+            "type": "integer",
+            "example": 10
+          },
+          "loadG": {
+            "type": "integer",
+            "example": 42500
+          }
+        },
+        "required": [
+          "reps",
+          "loadG"
+        ],
+        "description": "A personal record of the exercise: the top load for a reps count, or the most reps for a load"
       },
       "WorkoutSet": {
         "type": "object",

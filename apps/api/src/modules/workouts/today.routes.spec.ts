@@ -135,6 +135,7 @@ describe("Given an older inactive program and the active hypertrophy program wit
           loadG: 40000,
           loadSource: 'program',
           muscleGroups: [{ slug: 'chest', name: 'peito' }],
+          records: [],
         },
       })
     })
@@ -316,6 +317,7 @@ describe("Given letter 'A' with prancha 3 x 45 s at 0 g and no workout", () => {
         loadG: 0,
         loadSource: 'program',
         muscleGroups: [{ slug: 'abs', name: 'abdômen' }],
+        records: [],
       })
     })
   })
@@ -522,6 +524,76 @@ describe('Given a program and a fixture workout with two sets', () => {
       await app.request('/api/today')
 
       expect(countRows()).toEqual(before)
+    })
+  })
+})
+
+describe('Given supino-reto in two past workouts of different programs and prancha in the history', () => {
+  describe('When the athlete requests the workout of the day', () => {
+    it('Then supino-reto should bring the top load of each reps count and the most reps of each load', async () => {
+      const testApp = createProgramTestApp()
+      const otherProgramId = await givenProgramWithLetters(testApp, 'Programa antigo', ['B'])
+      const { app, db, clock, programId } = await givenSupinoInLetterA(testApp)
+      recordWorkout(
+        db,
+        {
+          programId: otherProgramId,
+          letter: 'B',
+          startedAt: '2026-11-18T18:30:00.000Z',
+          sets: [
+            { exerciseSlug: 'supino-reto', loadG: 40000, reps: 10 },
+            { exerciseSlug: 'supino-reto', loadG: 40000, reps: 12 },
+          ],
+        },
+        clock.now(),
+      )
+      recordWorkout(
+        db,
+        {
+          programId,
+          letter: 'A',
+          startedAt: STARTED_AT,
+          sets: [
+            { exerciseSlug: 'supino-reto', loadG: 42500, reps: 10 },
+            { exerciseSlug: 'supino-reto', loadG: 35000, reps: 10 },
+            { exerciseSlug: 'prancha', loadG: 0, seconds: 45 },
+          ],
+        },
+        clock.now(),
+      )
+
+      const supino = exerciseIn(await getToday(app), 'A', 'supino-reto')
+
+      expect(supino?.records).toEqual([
+        { reps: 10, loadG: 35000 },
+        { reps: 10, loadG: 42500 },
+        { reps: 12, loadG: 40000 },
+      ])
+    })
+  })
+
+  describe('When prancha, a timed exercise, is in the letter', () => {
+    it('Then prancha should bring no record', async () => {
+      const { app, db, clock, programId } = await givenSupinoInLetterA()
+      await addPlanned(app, programId, 'A', {
+        exerciseSlug: 'prancha',
+        sets: 3,
+        targetSeconds: 45,
+        loadG: 0,
+        restSeconds: 60,
+      })
+      recordWorkout(
+        db,
+        {
+          programId,
+          letter: 'A',
+          startedAt: STARTED_AT,
+          sets: [{ exerciseSlug: 'prancha', loadG: 5000, seconds: 45 }],
+        },
+        clock.now(),
+      )
+
+      expect(exerciseIn(await getToday(app), 'A', 'prancha')?.records).toEqual([])
     })
   })
 })

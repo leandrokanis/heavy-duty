@@ -44,3 +44,13 @@ describe('Given a recorded set', () => {
     })
   })
 })
+
+describe('Given a recorded set that beat a personal record', () => {
+  describe('When it is shown', () => {
+    it('Then should read the set as a record', () => {
+      const item = renderInList({ setNumber: 2, loadG: 45_000, reps: 10, record: true })
+
+      expect(item.textContent).toContain('Série 2: 45 kg, 10 repetições, recorde')
+    })
+  })
+})

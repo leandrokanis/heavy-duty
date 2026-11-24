@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNotNull } from 'drizzle-orm'
 import type { Database } from '../../db/connection.js'
 import { exerciseMuscles, muscleGroups, muscles, workoutSets, workouts } from '../../db/schema.js'
 
@@ -53,4 +53,29 @@ export function findLastWorkoutLetter(db: Database, programId: string): string |
       .limit(1)
       .get()?.letter ?? null
   )
+}
+
+export type ExerciseRepsSet = { exerciseId: string; loadG: number; reps: number }
+
+// The sets with reps of the exercises, in any workout, program and letter: the input of the
+// personal records (D59). Timed sets stay out.
+export function listRepsSetsByExercise(
+  db: Database,
+  exerciseIds: readonly string[],
+): Map<string, ExerciseRepsSet[]> {
+  const rows = db
+    .select({
+      exerciseId: workoutSets.exerciseId,
+      loadG: workoutSets.loadG,
+      reps: workoutSets.reps,
+    })
+    .from(workoutSets)
+    .where(and(inArray(workoutSets.exerciseId, [...exerciseIds]), isNotNull(workoutSets.reps)))
+    .all()
+  const setsByExercise = new Map<string, ExerciseRepsSet[]>()
+  for (const row of rows) {
+    const set = { ...row, reps: row.reps as number }
+    setsByExercise.set(row.exerciseId, [...(setsByExercise.get(row.exerciseId) ?? []), set])
+  }
+  return setsByExercise
 }

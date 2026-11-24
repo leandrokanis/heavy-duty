@@ -4,6 +4,16 @@ import { GoalSchema } from '../programs/programs.schemas.js'
 
 export const LoadSourceSchema = z.enum(['program', 'last_workout']).openapi('LoadSource')
 
+export const PersonalRecordSchema = z
+  .object({
+    reps: z.number().int().openapi({ example: 10 }),
+    loadG: z.number().int().openapi({ example: 42500 }),
+  })
+  .openapi('PersonalRecord', {
+    description:
+      'A personal record of the exercise: the top load for a reps count, or the most reps for a load',
+  })
+
 export const TodayExerciseSchema = z
   .object({
     plannedExerciseId: z.string().openapi({ example: '0193a1b2-0000-7000-8000-000000000401' }),
@@ -26,6 +36,10 @@ export const TodayExerciseSchema = z
         name: z.string().openapi({ example: 'peito' }),
       }),
     ),
+    records: z.array(PersonalRecordSchema).openapi({
+      description:
+        'Personal records of the exercise over the whole history, by exercise; empty for a timed exercise',
+    }),
   })
   .openapi('TodayExercise')
 
