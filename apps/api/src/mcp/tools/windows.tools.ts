@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { listMuscleGroupLevels } from '../../modules/windows/progress.service.js'
 import { getMuscleGroupVolume } from '../../modules/windows/volume.service.js'
+import { setWeeklyGoal } from '../../modules/windows/weekly-goal.service.js'
 import { simulateActivityWindows } from '../../modules/windows/window-simulation.service.js'
 import { listActivityWindows } from '../../modules/windows/window-state.service.js'
 import {
@@ -11,6 +12,8 @@ import {
   MuscleGroupVolumeQuerySchema,
   MuscleGroupVolumeSchema,
   SimulateActivityWindowsQuerySchema,
+  WeeklyGoalInputSchema,
+  WeeklyGoalSchema,
   WindowsUsedQuerySchema,
   WindowsUsedSchema,
 } from '../../modules/windows/windows.schemas.js'
@@ -71,11 +74,23 @@ export function registerWindowTools(server: McpServer, { db, now }: ToolDeps): v
     'get_windows_used',
     {
       description:
-        'Count the activity windows used in each week, to measure the regularity of the training (the target is 70% of the windows used). Read only. from and to are UTC instants in ISO 8601 with a Z, required, half open; the interval must be whole weeks of 7 × 24 h counted from from, at most 13 weeks (92 days). The API does no time zone conversion: midnight in America/Sao_Paulo is 03:00Z, so the week from Monday 2026-11-23 is from 2026-11-23T03:00:00.000Z to 2026-11-30T03:00:00.000Z. An invalid interval is refused with workout_range_required, workout_range_inverted, workout_range_too_long or windows_range_not_whole_weeks. Every window of the 11 muscle groups over the whole history counts, with the window parameters in use (see simulate_activity_windows), including the groups trained only as a secondary muscle. A window counts in the week of its outcome: used, in the week of the next training of the group that fell in it; missed, in the week when it closed with no training; open, in the week that holds now. A window replaced by a training before it opened, or still to open, counts in none. Returns now (the clock of the API), from, to and weeks in time order, each with from, to, windowsUsed, windowsMissed, windowsOpen and usedPercent (windowsUsed ÷ (windowsUsed + windowsMissed), rounded to a whole number, null when both are 0; the open windows stay out of the rate).',
+        'Count the activity windows used in each week, to measure the regularity of the training (the target is 70% of the windows used). Read only. from and to are UTC instants in ISO 8601 with a Z, required, half open; the interval must be whole weeks of 7 × 24 h counted from from, at most 13 weeks (92 days). The API does no time zone conversion: midnight in America/Sao_Paulo is 03:00Z, so the week from Monday 2026-11-23 is from 2026-11-23T03:00:00.000Z to 2026-11-30T03:00:00.000Z. An invalid interval is refused with workout_range_required, workout_range_inverted, workout_range_too_long or windows_range_not_whole_weeks. Every window of the 11 muscle groups over the whole history counts, with the window parameters in use (see simulate_activity_windows), including the groups trained only as a secondary muscle. A window counts in the week of its outcome: used, in the week of the next training of the group that fell in it; missed, in the week when it closed with no training; open, in the week that holds now. A window replaced by a training before it opened, or still to open, counts in none. Returns now (the clock of the API), from, to and weeks in time order, each with from, to, weeklyGoal (the goal of windows of the week: the last one set with set_weekly_goal before the end of the week, null with none), windowsUsed, windowsMissed, windowsOpen and usedPercent (windowsUsed ÷ (windowsUsed + windowsMissed), rounded to a whole number, null when both are 0; the open windows stay out of the rate).',
       inputSchema: WindowsUsedQuerySchema,
       outputSchema: WindowsUsedSchema,
       annotations: { readOnlyHint: true },
     },
     (input) => runTool(() => getWindowsUsed(db, input, now())),
+  )
+
+  server.registerTool(
+    'set_weekly_goal',
+    {
+      description:
+        'Set the weekly goal of activity windows to use, which the athlete sees on the workout of the day as used/goal windows. Applies at once, with no preview, and keeps the goals set before: the goal of a week is the last one set before the end of the week, so a new goal also changes the current week and the weeks after it, never a past week. weeklyGoal is an integer from 1 to 77 (11 muscle groups × 7 days); any other value is refused with weekly_goal_invalid and nothing is saved. With no goal set, the workout of the day shows no goal, so set one when the athlete asks for a goal; see get_windows_used for the windows used in each week. Returns weeklyGoal and definedAt (the clock of the API, a UTC instant in ISO 8601).',
+      inputSchema: WeeklyGoalInputSchema,
+      outputSchema: WeeklyGoalSchema,
+      annotations: { readOnlyHint: false, destructiveHint: false },
+    },
+    (input) => runTool(() => setWeeklyGoal(db, input, now())),
   )
 }

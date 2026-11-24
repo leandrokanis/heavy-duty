@@ -42,6 +42,7 @@ const GROUP_LEVELS_SPEC = /group-levels\.feature\.spec\.js$/
 const GROUP_LEVEL_SPEC = /group-level\.feature\.spec\.js$/
 const COOLING_LEVEL_SPEC = /cooling-level\.feature\.spec\.js$/
 const WINDOWS_USED_SPEC = /windows-used\.feature\.spec\.js$/
+const WEEKLY_GOAL_SPEC = /weekly-goal\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -99,6 +100,7 @@ export default defineConfig({
         GROUP_LEVEL_SPEC,
         COOLING_LEVEL_SPEC,
         WINDOWS_USED_SPEC,
+        WEEKLY_GOAL_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -359,6 +361,15 @@ export default defineConfig({
       testMatch: WINDOWS_USED_SPEC,
       fullyParallel: false,
       dependencies: ['cooling-level'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Sets the weekly goal, which stays in the database, and reads the week of the real clock, so
+    // it runs alone and one scenario at a time, after the windows used.
+    {
+      name: 'weekly-goal',
+      testMatch: WEEKLY_GOAL_SPEC,
+      fullyParallel: false,
+      dependencies: ['windows-used'],
       use: { ...devices['Pixel 7'] },
     },
   ],

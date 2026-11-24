@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { addExercise } from '../../modules/catalog/exercise.service.js'
 import { addMuscle } from '../../modules/catalog/muscle.service.js'
+import { setWeeklyGoal as setWeeklyGoalAt } from '../../modules/windows/weekly-goal.service.js'
 import { createProgramTestApp, type ProgramTestApp } from '../../test/programs.js'
 import { type RecordWorkoutInput, recordWorkout } from '../../test/workouts.js'
 
@@ -28,7 +29,11 @@ type JsonRpcResponse = {
     structuredContent?: unknown
     isError?: boolean
     content?: { type: string; text: string }[]
-    tools?: { name: string; description?: string; annotations?: { readOnlyHint?: boolean } }[]
+    tools?: {
+      name: string
+      description?: string
+      annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean }
+    }[]
   }
 }
 
@@ -559,6 +564,7 @@ describe('Given back trained 3 days ago and chest trained now (US-F10-02)', () =
 type WeekWindowsRow = {
   from: string
   to: string
+  weeklyGoal: number | null
   windowsUsed: number
   windowsMissed: number
   windowsOpen: number
@@ -597,6 +603,7 @@ describe('Given back trained on Monday and Thursday at 7h in Brasilia, and not i
           {
             from: WEEK_1,
             to: WEEK_2,
+            weeklyGoal: null,
             windowsUsed: 1,
             windowsMissed: 0,
             windowsOpen: 0,
@@ -605,6 +612,7 @@ describe('Given back trained on Monday and Thursday at 7h in Brasilia, and not i
           {
             from: WEEK_2,
             to: WEEK_3,
+            weeklyGoal: null,
             windowsUsed: 0,
             windowsMissed: 1,
             windowsOpen: 0,
@@ -640,6 +648,7 @@ describe('Given no recorded workout (US-F15b-01)', () => {
         {
           from: WEEK_1,
           to: WEEK_2,
+          weeklyGoal: null,
           windowsUsed: 0,
           windowsMissed: 0,
           windowsOpen: 0,
@@ -697,6 +706,95 @@ describe('Given an invalid interval of weeks (US-F15b-01)', () => {
         isError: called.result?.isError,
         text: JSON.parse(called.result?.content?.[0]?.text ?? 'null'),
       }).toEqual({ isError: true, text: { code, message } })
+    })
+  })
+})
+
+function setWeeklyGoal(app: App, args: Record<string, unknown>) {
+  return rpc(app, 'tools/call', { name: 'set_weekly_goal', arguments: args })
+}
+
+// The clock of the test app starts on Saturday 2026-11-21 at 10:00Z.
+const WEEK_OF_16 = '2026-11-16T03:00:00.000Z'
+const WEEK_OF_23 = '2026-11-23T03:00:00.000Z'
+
+describe('Given no weekly goal (US-F15b-02)', () => {
+  describe('When set_weekly_goal is called with 6 through /mcp', () => {
+    it('Then should return the goal with the clock of the API as definedAt', async () => {
+      const { app } = createProgramTestApp()
+
+      const called = await setWeeklyGoal(app, { weeklyGoal: 6 })
+
+      expect(called.result?.structuredContent).toEqual({
+        weeklyGoal: 6,
+        definedAt: '2026-11-21T10:00:00.000Z',
+      })
+    })
+
+    it('Then get_windows_used should show the goal 6 in the week', async () => {
+      const { app } = createProgramTestApp()
+      await setWeeklyGoal(app, { weeklyGoal: 6 })
+
+      const used = await getWindowsUsed(app, { from: WEEK_OF_16, to: WEEK_OF_23 })
+
+      expect(used.weeks[0]?.weeklyGoal).toBe(6)
+    })
+  })
+
+  describe('When tools/list is called through /mcp', () => {
+    it('Then set_weekly_goal should be neither read only nor destructive', async () => {
+      const { app } = createProgramTestApp()
+
+      const listed = await rpc(app, 'tools/list', {})
+      const tool = listed.result?.tools?.find(({ name }) => name === 'set_weekly_goal')
+
+      expect([tool?.annotations?.readOnlyHint, tool?.annotations?.destructiveHint]).toEqual([
+        false,
+        false,
+      ])
+    })
+  })
+})
+
+describe('Given the goal 6 defined last week and 8 defined this week (US-F15b-02)', () => {
+  describe('When get_windows_used is called for the week before both, last week and this week', () => {
+    it('Then the weeks should show no goal, 6 and 8', async () => {
+      const { app, db } = createProgramTestApp()
+      setWeeklyGoalAt(db, { weeklyGoal: 6 }, new Date('2026-11-12T12:00:00.000Z'))
+      await setWeeklyGoal(app, { weeklyGoal: 8 })
+
+      const used = await getWindowsUsed(app, { from: '2026-11-02T03:00:00.000Z', to: WEEK_OF_23 })
+
+      expect(used.weeks.map(({ weeklyGoal }) => weeklyGoal)).toEqual([null, 6, 8])
+    })
+  })
+})
+
+describe('Given an invalid weekly goal (US-F15b-02)', () => {
+  describe.each([
+    { case: '0', args: { weeklyGoal: 0 } },
+    { case: '78', args: { weeklyGoal: 78 } },
+    { case: '6.5', args: { weeklyGoal: 6.5 } },
+    { case: 'no goal', args: {} },
+  ])('When set_weekly_goal is called with $case', ({ args }) => {
+    it('Then should return isError with weekly_goal_invalid and keep no goal', async () => {
+      const { app } = createProgramTestApp()
+
+      const called = await setWeeklyGoal(app, args)
+      const used = await getWindowsUsed(app, { from: WEEK_OF_16, to: WEEK_OF_23 })
+
+      expect({
+        isError: called.result?.isError,
+        text: JSON.parse(called.result?.content?.[0]?.text ?? 'null'),
+        weeklyGoal: used.weeks[0]?.weeklyGoal,
+      }).toEqual({
+        isError: true,
+        text: {
+          code: 'weekly_goal_invalid',
+          message: 'a meta semanal deve ser um número inteiro de 1 a 77',
+        },
+        weeklyGoal: null,
+      })
     })
   })
 })

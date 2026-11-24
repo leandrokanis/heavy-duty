@@ -81,6 +81,19 @@ export const backupRuns = sqliteTable(
   ],
 )
 
+export const weeklyGoals = sqliteTable(
+  'weekly_goals',
+  {
+    id: text('id').primaryKey(),
+    windows: integer('windows').notNull(),
+    definedAt: text('defined_at').notNull(),
+  },
+  (table) => [
+    check('weekly_goals_windows_check', sql`${table.windows} BETWEEN 1 AND 77`),
+    index('weekly_goals_defined_at_idx').on(table.definedAt),
+  ],
+)
+
 export const authCredentials = sqliteTable(
   'auth_credentials',
   {

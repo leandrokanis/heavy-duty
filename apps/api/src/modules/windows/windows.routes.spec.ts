@@ -5,6 +5,7 @@ import { createProgramTestApp } from '../../test/programs.js'
 import { recordWorkout } from '../../test/workouts.js'
 import { addExercise } from '../catalog/exercise.service.js'
 import { addMuscle } from '../catalog/muscle.service.js'
+import { setWeeklyGoal } from './weekly-goal.service.js'
 import type { ActivityWindows, MuscleGroupLevels } from './windows.schemas.js'
 
 const CATALOG_ORDER = [
@@ -268,6 +269,72 @@ describe('Given back trained once and its window closed 6 hours ago (US-F10-03)'
         points: 10,
         cooling: true,
         nextDropAt: '2026-11-21T16:00:00.000Z',
+      })
+    })
+  })
+})
+
+// The clock of the test app starts on Saturday 2026-11-21 at 10:00Z, in the week of Monday the 16th.
+const WEEK_OF_16 = '2026-11-16T03:00:00.000Z'
+
+describe('Given back trained on Monday and Thursday of the week and the goal 6 (US-F15b-02)', () => {
+  describe('When GET /api/windows/week is called with the start of the week', () => {
+    it('Then should respond 200 with the goal 6, 1 window used and the window of Thursday open', async () => {
+      const { app, db, clock, train } = await givenCatalogAndHistory()
+      train('remada', '2026-11-16T10:00:00.000Z')
+      train('remada', '2026-11-19T10:00:00.000Z')
+      setWeeklyGoal(db, { weeklyGoal: 6 }, clock.now())
+
+      const response = await app.request(`/api/windows/week?from=${WEEK_OF_16}`)
+
+      expect({ status: response.status, body: await response.json() }).toEqual({
+        status: 200,
+        body: {
+          now: '2026-11-21T10:00:00.000Z',
+          from: WEEK_OF_16,
+          to: '2026-11-23T03:00:00.000Z',
+          weeklyGoal: 6,
+          windowsUsed: 1,
+          windowsMissed: 0,
+          windowsOpen: 1,
+          usedPercent: 100,
+        },
+      })
+    })
+  })
+})
+
+describe('Given no start of the week (US-F15b-02)', () => {
+  describe.each([
+    { case: 'no from', query: '' },
+    { case: 'a date with no time', query: '?from=2026-11-16' },
+  ])('When GET /api/windows/week is called with $case', ({ query }) => {
+    it('Then should respond 400 week_start_required', async () => {
+      const { app } = createProgramTestApp()
+
+      const response = await app.request(`/api/windows/week${query}`)
+
+      expect({ status: response.status, body: await response.json() }).toEqual({
+        status: 400,
+        body: { code: 'week_start_required', message: 'informe o início da semana em UTC' },
+      })
+    })
+  })
+})
+
+describe('Given no session of access (US-F15b-02)', () => {
+  describe('When GET /api/windows/week is called', () => {
+    it('Then should respond 401 unauthenticated with no count', async () => {
+      const db = createTestDatabase()
+      const app = createApp({ nodeEnv: 'test', databaseHealth: () => true, db })
+
+      const response = await app.request(`/api/windows/week?from=${WEEK_OF_16}`)
+      const body = (await response.json()) as Record<string, unknown>
+
+      expect({ status: response.status, code: body.code, weeklyGoal: body.weeklyGoal }).toEqual({
+        status: 401,
+        code: 'unauthenticated',
+        weeklyGoal: undefined,
       })
     })
   })

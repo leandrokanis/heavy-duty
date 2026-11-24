@@ -197,6 +197,7 @@ export const WeekWindowsSchema = z
   .object({
     from: z.string().openapi({ example: '2026-11-23T03:00:00.000Z' }),
     to: z.string().openapi({ example: '2026-11-30T03:00:00.000Z' }),
+    weeklyGoal: z.number().int().nullable().openapi({ example: 6 }),
     windowsUsed: z.number().int().openapi({ example: 7 }),
     windowsMissed: z.number().int().openapi({ example: 3 }),
     windowsOpen: z.number().int().openapi({ example: 2 }),
@@ -215,3 +216,30 @@ export const WindowsUsedSchema = z
 
 export type WindowsUsedQuery = z.infer<typeof WindowsUsedQuerySchema>
 export type WindowsUsed = z.infer<typeof WindowsUsedSchema>
+
+// weeklyGoal stays a plain optional number so the service refuses it with weekly_goal_invalid.
+export const WeeklyGoalInputSchema = z.object({
+  weeklyGoal: z.number().optional().openapi({ example: 6 }),
+})
+
+export const WeeklyGoalSchema = z
+  .object({
+    weeklyGoal: z.number().int().openapi({ example: 6 }),
+    definedAt: z.string().openapi({ example: '2026-11-24T12:00:00.000Z' }),
+  })
+  .openapi('WeeklyGoal')
+
+export type WeeklyGoalInput = z.infer<typeof WeeklyGoalInputSchema>
+export type WeeklyGoal = z.infer<typeof WeeklyGoalSchema>
+
+// from stays a plain string so the service refuses it with week_start_required.
+export const WeekWindowsQuerySchema = z.object({
+  from: z.string().optional().openapi({ example: '2026-11-23T03:00:00.000Z' }),
+})
+
+export const CurrentWeekWindowsSchema = WeekWindowsSchema.extend({
+  now: z.string().openapi({ example: '2026-11-27T12:00:00.000Z' }),
+}).openapi('CurrentWeekWindows')
+
+export type WeekWindowsQuery = z.infer<typeof WeekWindowsQuerySchema>
+export type CurrentWeekWindows = z.infer<typeof CurrentWeekWindowsSchema>

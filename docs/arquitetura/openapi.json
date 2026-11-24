@@ -1942,6 +1942,73 @@
           "gold",
           "violet"
         ]
+      },
+      "CurrentWeekWindows": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WeekWindows"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "now": {
+                "type": "string",
+                "example": "2026-11-27T12:00:00.000Z"
+              }
+            },
+            "required": [
+              "now"
+            ]
+          }
+        ]
+      },
+      "WeekWindows": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "example": "2026-11-23T03:00:00.000Z"
+          },
+          "to": {
+            "type": "string",
+            "example": "2026-11-30T03:00:00.000Z"
+          },
+          "weeklyGoal": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 6
+          },
+          "windowsUsed": {
+            "type": "integer",
+            "example": 7
+          },
+          "windowsMissed": {
+            "type": "integer",
+            "example": 3
+          },
+          "windowsOpen": {
+            "type": "integer",
+            "example": 2
+          },
+          "usedPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 70
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "weeklyGoal",
+          "windowsUsed",
+          "windowsMissed",
+          "windowsOpen",
+          "usedPercent"
+        ]
       }
     },
     "parameters": {}
@@ -4558,6 +4625,67 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MuscleGroupLevels"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/windows/week": {
+      "get": {
+        "tags": [
+          "windows"
+        ],
+        "summary": "Get the weekly goal and the activity windows used, missed and open in the week of 7 days that starts at from",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "2026-11-23T03:00:00.000Z"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The week from from to from plus 7 days, with the weekly goal (null with none), the windows used, missed and open and the rate of windows used (null with 0 of 0)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentWeekWindows"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or malformed from (week_start_required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }

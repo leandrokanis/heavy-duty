@@ -1113,7 +1113,7 @@ O descarte do treino em andamento não chama a rota direto da tela: o item `disc
 
 ## Janelas de atividade
 
-A rota `GET /api/windows` vem da US-F07-01, e a rota `GET /api/levels`, da US-F10-02. Elas existem só quando a API abriu o banco e exigem sessão de acesso (US-F14-01). A ferramenta MCP `list_activity_windows` devolve o mesmo objeto de `GET /api/windows` (`mcp.md`), pelo mesmo service `listActivityWindows`, em `apps/api/src/modules/windows/window-state.service.ts`.
+A rota `GET /api/windows` vem da US-F07-01, a rota `GET /api/levels`, da US-F10-02, e a rota `GET /api/windows/week`, da US-F15b-02. Elas existem só quando a API abriu o banco e exigem sessão de acesso (US-F14-01). A ferramenta MCP `list_activity_windows` devolve o mesmo objeto de `GET /api/windows` (`mcp.md`), pelo mesmo service `listActivityWindows`, em `apps/api/src/modules/windows/window-state.service.ts`.
 
 ### GET /api/windows
 
@@ -1198,6 +1198,44 @@ Exemplo, com as costas treinadas uma vez, com as 3 séries planejadas no plano:
       "nextDropAt": null
     }
   ]
+}
+```
+
+### GET /api/windows/week
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Mostrar a meta semanal e as janelas aproveitadas, perdidas e abertas de uma semana, para a faixa de jogo do treino do dia |
+| Story | US-F15b-02 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Nenhum. A rota só lê as séries, os treinos, os programas e a tabela `weekly_goals` |
+| Idempotência | Idempotente para o mesmo histórico, a mesma meta e o mesmo instante |
+
+| Parâmetro | Onde | Regra |
+|---|---|---|
+| `from` | Query | Obrigatório. Início da semana, instante UTC em ISO 8601 com `Z`. O celular manda a segunda-feira 00:00 do fuso do aparelho (D74) |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `{ "now", "from", "to", "weeklyGoal", "windowsUsed", "windowsMissed", "windowsOpen", "usedPercent" }` | `from` válido |
+| 400 | `{ "code": "week_start_required", "message": "informe o início da semana em UTC" }` | `from` ausente ou fora do formato |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+A semana vai de `from`, incluso, a `to` = `from` + 7 × 24 h, exclusivo; a API não converte fuso. A contagem é a da ferramenta `get_windows_used` (US-F15b-01), pelo service `getWeekWindows`, em `apps/api/src/modules/windows/windows-used.service.ts`: cada janela dos 11 grupos conta na semana do desfecho, a aproveitada no treino seguinte do grupo, a perdida no fechamento e a aberta no `now` (D72, D73). `usedPercent` é `windowsUsed` ÷ (`windowsUsed` + `windowsMissed`), arredondado, e fica `null` em 0 de 0. `weeklyGoal` é a meta da linha mais recente de `weekly_goals` definida antes de `to`, e fica `null` sem meta (D75, D76). O planejador define a meta com a ferramenta `set_weekly_goal` (`mcp.md`).
+
+Exemplo, com a meta 6 e as costas treinadas na segunda e na quinta:
+
+```json
+{
+  "now": "2026-11-21T10:00:00.000Z",
+  "from": "2026-11-16T03:00:00.000Z",
+  "to": "2026-11-23T03:00:00.000Z",
+  "weeklyGoal": 6,
+  "windowsUsed": 1,
+  "windowsMissed": 0,
+  "windowsOpen": 1,
+  "usedPercent": 100
 }
 ```
 

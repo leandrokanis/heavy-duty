@@ -118,6 +118,11 @@ erDiagram
     text ends_on
     text intention
   }
+  WEEKLY_GOALS {
+    integer windows "1 a 77"
+    text defined_at
+    text id PK
+  }
   PERIOD_SNAPSHOTS {
     text id PK
     text period_id FK
@@ -267,6 +272,7 @@ Regras da gravação (US-F03-02):
 | `periods` | Períodos de 12 semanas, com a frase de intenção | Um período aberto por vez |
 | `period_snapshots` | Retrato congelado de cada grupo no fim do período | Gravado uma vez e nunca alterado, mesmo se a fórmula do jogo mudar (ADR-010) |
 | `medal_awards` | Medalhas conquistadas | `medal_code` único: a medalha se conquista uma vez. A definição das medalhas fica no código do módulo `windows` |
+| `weekly_goals` | Metas semanais de janelas (US-F15b-02), uma linha por definição | Só inclusão: a ferramenta `set_weekly_goal` grava uma linha com o relógio da API em `defined_at` (ISO 8601, UTC) e nenhuma linha muda nem sai. `windows` é inteiro com `CHECK` de 1 a 77 (11 grupos × 7 dias). A meta de uma semana é a da linha mais recente com `defined_at` anterior ao fim da semana (D75); sem linha, a semana não tem meta (D76). Índice `weekly_goals_defined_at_idx`. Migração `0012_weekly_goals` |
 
 ### Avisos (F09 e F17, onda 7)
 
@@ -307,10 +313,11 @@ Pela ADR-010, estes dados são calculados pela API a cada leitura, a partir de `
 | Volume e volume ajustado por grupo | Volume, Volume ajustado |
 | Pontos, progresso, nível, melhor nível e faixa | Pontos, Progresso, Nível, Melhor nível, Faixa |
 | Perda de nível e memória muscular | Esfriar, Memória muscular |
-| Nível geral e grupo que limita | Nível geral |
 | Recorde por exercício | Recorde |
-| Ranking dos treinos, sequência de semanas e meta semanal | Ranking pessoal, Sequência de semanas, Meta semanal |
-| Sugestão do treino do dia | — (proposta da Q06) |
+| Ranking dos treinos e sequência de semanas | Ranking pessoal, Sequência de semanas |
+| Janelas aproveitadas, perdidas e abertas de cada semana (a meta semanal fica em `weekly_goals`) | Janela aproveitada |
+
+O nível geral, o grupo que limita e a sugestão da letra pelas janelas também não são tabela, mas o celular é quem os calcula, com as regras do pacote `@heavy-duty/game`, a partir das cópias de `GET /api/today`, das janelas e dos níveis (ADR-034, adendo da onda 6b). A API dá só a letra da rotação da US-F03-01, em `GET /api/today`.
 
 ## Pendências do modelo
 
