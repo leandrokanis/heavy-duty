@@ -243,6 +243,15 @@ A US-F10-05 acrescenta o nível geral, calculado no aparelho como valor final (A
 2. `GameStrip` mostra no topo do treino do dia o `OverallLevelButton`. Com o grupo em janela, esfriando ou sem janela, o toque abre a `StartSheet` da letra (D25). Com o grupo descansando, o toque mostra "<Grupo> abre <quando>" numa linha `role="status"`, sem folha.
 3. Sem níveis conhecidos, a faixa não aparece. Sem sinal, o cálculo usa as cópias do aparelho; a API não devolve o nível geral.
 
+## Meta semanal na faixa de jogo
+
+A US-F15b-02 acrescenta à faixa de jogo o item da meta semanal (D74 a D78):
+
+1. `weekStartOf` (`features/workout/week.ts`) dá a segunda-feira 00:00 do fuso do aparelho. `loadWeekWindows` (`sync/weekly-windows-cache.ts`) lê `GET /api/windows/week?from=<segunda em UTC>` junto com as janelas e os níveis, ao abrir o treino do dia e quando a fila de envio esvazia.
+2. `WeeklyGoalItem` mostra um anel em `--color-window-open` sobre `--color-fill-strong`, "aproveitadas/meta" e a legenda "janelas", com o nome acessível "4 de 6 janelas aproveitadas na semana". O anel fica cheio ao alcançar a meta. O item não é botão.
+3. Sem meta definida (`weeklyGoal` nulo), o item não aparece; sem nível conhecido e sem meta, a faixa não aparece.
+4. Sem sinal, vale a cópia do aparelho só se for da semana atual, sem valor provisório (D77). `countOfThisWeek` também tira da tela a contagem da semana passada quando a tela fica aberta na virada da segunda.
+
 ## Histórico no celular
 
 A US-F20-01 acrescenta a rota `/historico`, só de leitura (D50):

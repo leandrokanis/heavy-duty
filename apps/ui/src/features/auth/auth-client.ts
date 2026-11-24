@@ -6,6 +6,7 @@ import type {
 } from '@simplewebauthn/browser'
 import { clearCachedLevels } from '@/sync/levels-cache'
 import { clearCachedToday } from '@/sync/today-cache'
+import { clearCachedWeekWindows } from '@/sync/weekly-windows-cache'
 import { clearCachedWindows } from '@/sync/windows-cache'
 
 export type SessionState = 'authenticated' | 'unauthenticated' | 'offline'
@@ -74,6 +75,7 @@ export async function signOut(): Promise<void> {
   await clearCachedToday()
   await clearCachedWindows()
   await clearCachedLevels()
+  await clearCachedWeekWindows()
   if (typeof caches === 'undefined') return
   const names = await caches.keys()
   await Promise.all(

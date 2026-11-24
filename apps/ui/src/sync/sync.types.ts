@@ -1,5 +1,6 @@
 import type { MuscleGroupLevels } from '@/features/workout/levels.types'
 import type { Today } from '@/features/workout/today.types'
+import type { WeekWindows } from '@/features/workout/weekly-windows.types'
 import type { ActivityWindows } from '@/features/workout/windows.types'
 import type { FinishWorkoutBody } from '@/features/workout/workout-finish.types'
 import type { WorkoutFlowState } from '@/features/workout/workout-flow'
@@ -98,6 +99,7 @@ export type ProgramCacheRow =
   | { key: 'today'; savedAtMs: number; today: Today }
   | { key: 'windows'; savedAtMs: number; windows: ActivityWindows }
   | { key: 'levels'; savedAtMs: number; levels: MuscleGroupLevels }
+  | { key: 'weekWindows'; savedAtMs: number; week: WeekWindows }
 
 // Where the queue persists; the queue keeps its own in-memory mirror on top of it.
 export interface QueueStore {

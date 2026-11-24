@@ -9,6 +9,7 @@ import { loadActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-stor
 import { loadLevels } from '@/sync/levels-cache'
 import { useSyncQueue, useSyncSnapshot } from '@/sync/sync-context'
 import { type LoadedToday, loadToday } from '@/sync/today-cache'
+import { loadWeekWindows } from '@/sync/weekly-windows-cache'
 import { loadWindows } from '@/sync/windows-cache'
 import { createClientId } from './client-id'
 import { GameStrip } from './game-strip'
@@ -18,6 +19,8 @@ import { overallLevelViewOf } from './overall-level'
 import { QueueNotices } from './queue-notices'
 import { StartSheet } from './start-sheet'
 import type { Today, TodayDay } from './today.types'
+import { countOfThisWeek } from './week'
+import type { WeekWindows } from './weekly-windows.types'
 import { suggestedLetterOf } from './window-suggestion'
 import type { ActivityWindows } from './windows.types'
 import {
@@ -47,18 +50,21 @@ export function TodayScreen() {
   const [result, setResult] = useState<LoadedToday | null>(null)
   const [windows, setWindows] = useState<ActivityWindows | null>(null)
   const [levels, setLevels] = useState<MuscleGroupLevels | null>(null)
+  const [week, setWeek] = useState<WeekWindows | null>(null)
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [sheetDay, setSheetDay] = useState<TodayDay | null>(null)
   // 'pending' until the device has answered whether a workout is in progress.
   const [flow, setFlow] = useState<WorkoutFlowState | null | 'pending'>('pending')
 
-  // The windows and the levels come from the history the API holds, so they reload together.
+  // The windows, the levels and the windows used in the week come from the history the API holds,
+  // so they reload together.
   const reloadWindows = useCallback(() => {
     loadWindows().then((loaded) => {
       setWindows(loaded.status === 'ok' ? loaded.windows : null)
       setNowMs(Date.now())
     })
     loadLevels().then((loaded) => setLevels(loaded.status === 'ok' ? loaded.levels : null))
+    loadWeekWindows().then((loaded) => setWeek(loaded.status === 'ok' ? loaded.week : null))
   }, [])
 
   // The queue sends again after each answer of the API, as it may be a session that came back.
@@ -133,6 +139,7 @@ export function TodayScreen() {
             today={result.today}
             windows={windows}
             levels={levels}
+            week={week}
             nowMs={nowMs}
             onSelect={(day) => {
               if (day.exercises.length > 0) setSheetDay(day)
@@ -183,11 +190,12 @@ type TodayContentProps = {
   today: Today
   windows: ActivityWindows | null
   levels: MuscleGroupLevels | null
+  week: WeekWindows | null
   nowMs: number
   onSelect: (day: TodayDay) => void
 }
 
-function TodayContent({ today, windows, levels, nowMs, onSelect }: TodayContentProps) {
+function TodayContent({ today, windows, levels, week, nowMs, onSelect }: TodayContentProps) {
   const emptyState = emptyStateOf(today)
   if (emptyState) {
     return (
@@ -200,6 +208,7 @@ function TodayContent({ today, windows, levels, nowMs, onSelect }: TodayContentP
     <div className="flex flex-col gap-(--space-16)">
       <GameStrip
         overallLevel={overallLevelViewOf(today, levels, windows, nowMs)}
+        week={countOfThisWeek(week, nowMs)}
         nowMs={nowMs}
         onSelectDay={onSelect}
       />

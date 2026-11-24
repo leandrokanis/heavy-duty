@@ -8,10 +8,12 @@ import { SyncProvider, sendPendingItem } from '@/sync/sync-context'
 import { createSyncQueue, type SendItem, type SyncQueue } from '@/sync/sync-queue'
 import { pendingSetBody } from '@/sync/test-sets'
 import { clearCachedToday, loadToday } from '@/sync/today-cache'
+import { clearCachedWeekWindows } from '@/sync/weekly-windows-cache'
 import { clearCachedWindows } from '@/sync/windows-cache'
 import { NO_PROGRAM, PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayBody, todayDay } from './test-today'
 import type { TodayDay } from './today.types'
 import { TodayScreen } from './today-screen'
+import { weekStartOf } from './week'
 import { createWorkoutFlow, workoutFlowReducer } from './workout-flow'
 
 vi.mock('@simplewebauthn/browser', () => ({
@@ -23,6 +25,8 @@ vi.mock('@simplewebauthn/browser', () => ({
 let windowsAnswer: () => Response = () => json(500)
 // GET /api/levels likewise, with levelsAnswer.
 let levelsAnswer: () => Response = () => json(500)
+// GET /api/windows/week likewise, with weekAnswer.
+let weekAnswer: () => Response = () => json(500)
 
 function stubFetch(...responses: (Response | Error)[]) {
   const fetchMock = vi.fn()
@@ -35,6 +39,7 @@ function stubFetch(...responses: (Response | Error)[]) {
   vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) => {
     if (input === '/api/windows') return Promise.resolve(windowsAnswer())
     if (input === '/api/levels') return Promise.resolve(levelsAnswer())
+    if (String(input).startsWith('/api/windows/week?')) return Promise.resolve(weekAnswer())
     return fetchMock(input, init)
   })
   return fetchMock
@@ -58,11 +63,13 @@ function renderToday(send: SendItem = sendPendingItem, queue?: SyncQueue) {
 afterEach(async () => {
   windowsAnswer = () => json(500)
   levelsAnswer = () => json(500)
+  weekAnswer = () => json(500)
   vi.useRealTimers()
   await clearActiveWorkout()
   await clearCachedToday()
   await clearCachedWindows()
   await clearCachedLevels()
+  await clearCachedWeekWindows()
 })
 
 describe('Given no active program', () => {
@@ -999,6 +1006,66 @@ describe('Given the program trains chest at level 2 and abs at level 3 (US-F10-0
 
   describe('When no level is known on the device', () => {
     it('Then the game strip should not show', async () => {
+      stubFetch(json(200, todayBody()))
+
+      renderToday()
+
+      await screen.findByRole('button', { name: /^A/ })
+      expect(screen.queryByRole('region', { name: 'Faixa de jogo' })).toBeNull()
+    })
+  })
+})
+
+describe('Given the weekly goal of 6 windows and 4 used this week (US-F15b-02)', () => {
+  // The count of the week on screen is the one of the week of the clock, in the time zone of the device.
+  const weekBody = (weeklyGoal: number | null, windowsUsed: number) => ({
+    now: new Date().toISOString(),
+    from: new Date(weekStartOf(Date.now())).toISOString(),
+    to: new Date(weekStartOf(Date.now()) + 7 * 24 * 3_600_000).toISOString(),
+    weeklyGoal,
+    windowsUsed,
+    windowsMissed: 1,
+    windowsOpen: 2,
+    usedPercent: 80,
+  })
+  const goalItem = () => screen.findByRole('img', { name: /janelas aproveitadas na semana$/ })
+
+  describe('When the athlete opens the app', () => {
+    it('Then the game strip should show 4 of 6 windows', async () => {
+      weekAnswer = () => json(200, weekBody(6, 4))
+      stubFetch(json(200, todayBody()))
+
+      renderToday()
+
+      const item = await goalItem()
+      expect({
+        name: item.getAttribute('aria-label'),
+        strip: item.closest('section')?.getAttribute('aria-label'),
+        text: item.textContent,
+      }).toEqual({
+        name: '4 de 6 janelas aproveitadas na semana',
+        strip: 'Faixa de jogo',
+        text: '4/6janelas',
+      })
+    })
+  })
+
+  describe('When the planner set the goal of 8 windows and the athlete opens the app again', () => {
+    it('Then the game strip should show the goal of 8', async () => {
+      weekAnswer = () => json(200, weekBody(8, 4))
+      stubFetch(json(200, todayBody()))
+
+      renderToday()
+
+      expect((await goalItem()).getAttribute('aria-label')).toBe(
+        '4 de 8 janelas aproveitadas na semana',
+      )
+    })
+  })
+
+  describe('When no weekly goal is set and no level is known', () => {
+    it('Then the game strip should not show', async () => {
+      weekAnswer = () => json(200, weekBody(null, 4))
       stubFetch(json(200, todayBody()))
 
       renderToday()
