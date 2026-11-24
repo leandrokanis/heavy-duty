@@ -1,3 +1,4 @@
+import type { MuscleGroupLevels } from '@/features/workout/levels.types'
 import type { Today } from '@/features/workout/today.types'
 import type { ActivityWindows } from '@/features/workout/windows.types'
 import type { FinishWorkoutBody } from '@/features/workout/workout-finish.types'
@@ -96,6 +97,7 @@ export type ActiveWorkoutRow = { key: 'current'; savedAtMs: number; state: Worko
 export type ProgramCacheRow =
   | { key: 'today'; savedAtMs: number; today: Today }
   | { key: 'windows'; savedAtMs: number; windows: ActivityWindows }
+  | { key: 'levels'; savedAtMs: number; levels: MuscleGroupLevels }
 
 // Where the queue persists; the queue keeps its own in-memory mirror on top of it.
 export interface QueueStore {

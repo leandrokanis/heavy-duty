@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { TOAST_EXIT_MS, TOAST_VISIBLE_MS } from '../components/ui/toast'
-import { TICK_MS } from '../features/workout/workout.config'
+import { LEVEL_CELEBRATION_MS, TICK_MS } from '../features/workout/workout.config'
 
 // Body of the first block opened by the given prelude, e.g. '@media (prefers-contrast: more)'.
 function blockAfter(css: string, prelude: string): string {
@@ -292,6 +292,11 @@ describe('Given globals.css', () => {
   describe('When the ring tick duration is read', () => {
     it('Then --duration-tick should match TICK_MS of the workout clock', () => {
       expect(readToken(css, '--duration-tick')).toBe(`${TICK_MS}ms`)
+    })
+  })
+  describe('When the duration of the full screen of a new tier is read', () => {
+    it('Then --duration-level-celebration should match LEVEL_CELEBRATION_MS of the screen', () => {
+      expect(readToken(css, '--duration-level-celebration')).toBe(`${LEVEL_CELEBRATION_MS}ms`)
     })
   })
   describe('When the countdown animation is read', () => {

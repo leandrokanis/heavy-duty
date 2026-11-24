@@ -22,3 +22,7 @@ export const TICK_MS = 250
 // How many times faster the rest runs while the athlete holds its ring; an estimate the PO
 // chose, to check on the phone. With TICK_MS, every second of a held rest is still read.
 export const REST_FAST_FORWARD_FACTOR = 3
+
+// The full screen of a new tier or of the top level, about 1.7 s in docs/gamificacao.md; the
+// animation of the same length is --duration-level-celebration.
+export const LEVEL_CELEBRATION_MS = 1700

@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import type { MuscleGroupLevels } from './levels.types'
 import { WindowBadgeList } from './window-badge-list'
 import type { WindowBadge } from './window-badges'
 
@@ -67,6 +68,46 @@ describe('Given an open, a resting and a cooling badge', () => {
       renderBadges([])
 
       expect(screen.queryByRole('list')).not.toBeInTheDocument()
+    })
+  })
+})
+
+describe('Given chest open at level 6 of silver, with 26 of 55 points (D61)', () => {
+  const levels: MuscleGroupLevels = {
+    now: '2026-11-23T12:00:00.000Z',
+    groups: [
+      {
+        muscleGroup: { slug: 'peito', name: 'peito' },
+        level: 6,
+        points: 26,
+        levelCost: 55,
+        bestLevel: 6,
+        tier: 'silver',
+      },
+    ],
+  }
+
+  describe('When the badge is rendered with the levels', () => {
+    it('Then the phrase should end with the level, beside the silver seal and its bar', () => {
+      render(
+        <button type="button">
+          <WindowBadgeList
+            badges={[badge('open', '2026-11-26T23:00:00.000Z')]}
+            levels={levels}
+            nowMs={NOW_MS}
+            timeZone={SAO_PAULO}
+          />
+        </button>,
+      )
+      const item = screen.getByRole('listitem')
+
+      expect({
+        named: screen.queryByRole('button', { name: 'Peito · fecha qui 20h, nível 6' }) !== null,
+        tier: item.querySelector('[data-tier]')?.getAttribute('data-tier'),
+        bar: item
+          .querySelector<HTMLElement>('[data-level-bar]')
+          ?.style.getPropertyValue('--level-fill'),
+      }).toEqual({ named: true, tier: 'silver', bar: '47%' })
     })
   })
 })

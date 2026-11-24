@@ -29,6 +29,7 @@ function renderWorkout(exercises: TodayExercise[], tonePlayer?: TonePlayer) {
     programId: 'program-1',
     day: todayDay('A', 'Superior', exercises),
     windows: [],
+    levels: [],
   })
   render(
     <SyncProvider queue={queue}>

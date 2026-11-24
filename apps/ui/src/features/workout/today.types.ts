@@ -19,6 +19,8 @@ export type TodayExercise = {
   loadSource: LoadSource
   muscleGroups: MuscleGroupRef[]
   records: PersonalRecord[]
+  // Absent from a copy of the workout of the day saved on the device before US-F10-02.
+  secondaryMuscleGroups?: MuscleGroupRef[]
 }
 
 export type TodayDay = {

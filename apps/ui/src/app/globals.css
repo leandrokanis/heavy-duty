@@ -67,6 +67,8 @@
   --duration-countdown: 900ms;
   --duration-toast: 2600ms;
   --duration-points: 1200ms;
+  --duration-level-bar: 800ms;
+  --duration-level-celebration: 1700ms;
   /* Linear stroke of the timer ring, equal to TICK_MS of the workout clock. */
   --duration-tick: 250ms;
 }
@@ -99,6 +101,20 @@
   --color-backdrop: rgba(8, 10, 16, 0.32);
   --color-game-xp: light-dark(#6d3ef0, #a78bfa);
   --color-game-xp-2: light-dark(#d63aa8, #f472b6);
+  --color-game-gold: #e8a800;
+  --color-game-gold-2: #ffd34d;
+  --color-game-flame: #f2542d;
+  --color-game-flame-2: #ffb020;
+  --color-tier-1: #e8ae7a;
+  --color-tier-1-2: #9c5a27;
+  --color-tier-2: #e4e8ef;
+  --color-tier-2-2: #8c97aa;
+  --color-tier-3: #ffe07a;
+  --color-tier-3-2: #d49500;
+  --color-tier-4: light-dark(#6d3ef0, #a78bfa);
+  --color-tier-4-2: light-dark(#d63aa8, #f472b6);
+  --color-on-tier: #ffffff;
+  --color-on-tier-light: #2b2410;
 
   --material-glass: blur(22px) saturate(1.7);
   --material-glass-fill: light-dark(rgba(252, 252, 254, 0.74), rgba(34, 37, 46, 0.72));
@@ -280,6 +296,60 @@ body {
       opacity: 1;
     }
     70% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+}
+
+/* Section 15: the seal of a new level bumps; it stays still with reduced motion. */
+@keyframes level-bump {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes level-bump {
+    from {
+      transform: none;
+    }
+    to {
+      transform: none;
+    }
+  }
+}
+
+/* Section 15: the full screen of a new tier comes in, holds and leaves; opacity only with reduced motion. */
+@keyframes level-celebration {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  15% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes level-celebration {
+    0%,
+    99% {
       opacity: 1;
     }
     100% {

@@ -2,6 +2,7 @@ import { startAuthentication } from '@simplewebauthn/browser'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { clearActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
+import { clearCachedLevels } from '@/sync/levels-cache'
 import { createMemoryQueueStore } from '@/sync/queue-store'
 import { SyncProvider, sendPendingItem } from '@/sync/sync-context'
 import { createSyncQueue, type SendItem, type SyncQueue } from '@/sync/sync-queue'
@@ -20,6 +21,8 @@ vi.mock('@simplewebauthn/browser', () => ({
 
 // GET /api/windows answers 500 unless a test sets windowsAnswer; it never takes a queued response.
 let windowsAnswer: () => Response = () => json(500)
+// GET /api/levels likewise, with levelsAnswer.
+let levelsAnswer: () => Response = () => json(500)
 
 function stubFetch(...responses: (Response | Error)[]) {
   const fetchMock = vi.fn()
@@ -29,9 +32,11 @@ function stubFetch(...responses: (Response | Error)[]) {
       return response
     })
   }
-  vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) =>
-    input === '/api/windows' ? Promise.resolve(windowsAnswer()) : fetchMock(input, init),
-  )
+  vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) => {
+    if (input === '/api/windows') return Promise.resolve(windowsAnswer())
+    if (input === '/api/levels') return Promise.resolve(levelsAnswer())
+    return fetchMock(input, init)
+  })
   return fetchMock
 }
 
@@ -52,10 +57,12 @@ function renderToday(send: SendItem = sendPendingItem, queue?: SyncQueue) {
 
 afterEach(async () => {
   windowsAnswer = () => json(500)
+  levelsAnswer = () => json(500)
   vi.useRealTimers()
   await clearActiveWorkout()
   await clearCachedToday()
   await clearCachedWindows()
+  await clearCachedLevels()
 })
 
 describe('Given no active program', () => {
@@ -396,6 +403,7 @@ describe('Given an active workout saved resting on supino-reto with 40 s left', 
           programId: 'program-1',
           day: letterA,
           windows: [],
+          levels: [],
         }),
         { type: 'next', nowMs: T0 - 50_000 },
       )
@@ -813,6 +821,35 @@ describe('Given chest in its window when the workout of the day opens (D56)', ()
       expect(screen.getByRole('status').textContent).toBe(
         'Série 1 de 3 registrada, 21 pontos em dobro',
       )
+    })
+  })
+})
+
+describe('Given chest at level 3 with 10 points when the workout of the day opens (US-F10-02)', () => {
+  describe('When the athlete starts letter A and records supino-reto', () => {
+    it('Then the rest should show the bar of chest from the levels frozen at the start', async () => {
+      levelsAnswer = () =>
+        json(200, {
+          now: '2026-11-21T18:00:00.000Z',
+          groups: [
+            {
+              muscleGroup: { slug: 'chest', name: 'peito' },
+              level: 3,
+              points: 10,
+              levelCost: 46,
+              bestLevel: 3,
+              tier: 'bronze',
+            },
+          ],
+        })
+      stubFetch(json(200, todayBody()))
+      await startLetterFromLoadedMock(/^A/)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Próximo' }))
+
+      expect(
+        screen.getByRole('progressbar', { name: 'Nível de peito' }).getAttribute('aria-valuetext'),
+      ).toBe('Nível 3, 31 de 46 pontos')
     })
   })
 })
