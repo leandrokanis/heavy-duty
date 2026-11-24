@@ -455,6 +455,25 @@ describe('Given a state saved during the execution of prancha, begun at T0 + 300
   })
 })
 
+describe('Given the 90 s rest of set 1 of supino-reto, recorded at T0', () => {
+  const resting = next(createWorkoutFlow(sessionOf(LETTER_A)), T0)
+
+  describe.each([
+    { offsetMs: 0, value: 90 },
+    { offsetMs: 86_500, value: 4 },
+    { offsetMs: 87_000, value: 3 },
+    { offsetMs: 89_999, value: 1 },
+    { offsetMs: 90_000, value: 0 },
+    { offsetMs: 95_000, value: 0 },
+  ])('When the rest is read at T0 + $offsetMs ms', ({ offsetMs, value }) => {
+    it(`Then should read ${value} s left of the rest`, () => {
+      const reading = timerReadingOf(resting, T0 + offsetMs)
+
+      expect({ stage: reading.stage, value: reading.value }).toEqual({ stage: 'rest', value })
+    })
+  })
+})
+
 describe('Given the timer of prancha opened at T0, begun at T0 + 3000 ms', () => {
   const counting = next(createWorkoutFlow(sessionOf([PRANCHA])), T0)
   const timing = timerReach(counting, T0 + 3000)
@@ -487,7 +506,7 @@ describe('Given the timer of prancha opened at T0, begun at T0 + 3000 ms', () =>
   })
 
   describe('When the flow is out of the timer', () => {
-    it('Then the reading should be off', () => {
+    it('Then the reading should be off on a set', () => {
       expect(timerReadingOf(createWorkoutFlow(sessionOf([PRANCHA])), T0).stage).toBe('off')
     })
   })

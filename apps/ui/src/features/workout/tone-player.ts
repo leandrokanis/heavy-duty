@@ -8,7 +8,8 @@ type Tone = {
   volume: number
 }
 
-// The tones of the prototype of the PO.
+// The tones of the prototype of the PO. The rest has a softer tone of its own, an estimate to
+// confirm on the phone.
 const TONES: Record<Cue, Tone[]> = {
   count: [{ frequencyHz: 660, type: 'sine', startSeconds: 0, durationSeconds: 0.12, volume: 0.3 }],
   start: [
@@ -22,6 +23,9 @@ const TONES: Record<Cue, Tone[]> = {
     { frequencyHz: 1047, type: 'sine', startSeconds: 0, durationSeconds: 0.2, volume: 0.3 },
     { frequencyHz: 784, type: 'sine', startSeconds: 0.2, durationSeconds: 0.2, volume: 0.3 },
     { frequencyHz: 523, type: 'sine', startSeconds: 0.4, durationSeconds: 0.4, volume: 0.3 },
+  ],
+  restWarning: [
+    { frequencyHz: 1175, type: 'sine', startSeconds: 0, durationSeconds: 0.15, volume: 0.25 },
   ],
 }
 

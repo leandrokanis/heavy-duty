@@ -60,3 +60,21 @@ Then(
     }).toEqual({ rest: 0, next: 0, dialogs: 0, alertDialogs: 0 })
   },
 )
+
+// The ring and the timer share a parent, which holds the tone of the last 3 seconds.
+function restRing(page: Page) {
+  return page.getByRole('timer', { name: 'Descanso' }).locator('xpath=..')
+}
+
+Then('the ring of the rest should be in the warning tone', async ({ page }) => {
+  await expect(restRing(page)).toHaveAttribute('data-tone', 'warning')
+})
+
+Then('the ring of the rest should be in the default tone', async ({ page }) => {
+  await expect(restRing(page)).not.toHaveAttribute('data-tone')
+})
+
+Then('the rest should offer the switch {string} pressed', async ({ page }, name: string) => {
+  await expect(page.getByRole('timer', { name: 'Descanso' })).toBeVisible()
+  await expect(page.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'true')
+})

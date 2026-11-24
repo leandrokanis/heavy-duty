@@ -2638,3 +2638,132 @@ describe('Given the screen Treino concluído of the prototype layout', () => {
     })
   })
 })
+
+function restRingTone() {
+  return screen.getByRole('timer', { name: 'Descanso' }).parentElement?.getAttribute('data-tone')
+}
+
+describe('Given the 90 s rest of set 1 of supino-reto with the sound on', () => {
+  describe('When the rest goes from 4 s left to its end', () => {
+    it('Then the ring should turn to warning at 3 s, the rest cue should play on 3, 2 and 1, and set 2 should open with no other cue', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch(created())
+      const { player, cues } = recordingPlayer()
+      renderWorkout(LETTER_A, vi.fn(), sendPendingItem, undefined, player)
+      await act(async () => tapNext())
+      await passSeconds(86)
+      const at4 = { tone: restRingTone(), clock: restClock() }
+      const cuesBefore = [...cues]
+
+      await passSeconds(1)
+      const at3 = { tone: restRingTone(), clock: restClock() }
+      await passSeconds(3)
+
+      expect({
+        cuesBefore,
+        at4,
+        at3,
+        cues,
+        sets: valueTextOf('Séries'),
+        resting: screen.queryByRole('timer', { name: 'Descanso' }) !== null,
+      }).toEqual({
+        cuesBefore: [],
+        at4: { tone: null, clock: '0:04' },
+        at3: { tone: 'warning', clock: '0:03' },
+        cues: ['restWarning', 'restWarning', 'restWarning'],
+        sets: '2 de 3',
+        resting: false,
+      })
+    })
+  })
+
+  describe('When the athlete skips the rest with 10 s left', () => {
+    it('Then no cue should play', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch(created())
+      const { player, cues } = recordingPlayer()
+      renderWorkout(LETTER_A, vi.fn(), sendPendingItem, undefined, player)
+      await act(async () => tapNext())
+      await passSeconds(80)
+      const clock = restClock()
+
+      await act(async () => tapNext())
+      await passSeconds(12)
+
+      expect({ clock, cues, sets: valueTextOf('Séries') }).toEqual({
+        clock: '0:10',
+        cues: [],
+        sets: '2 de 3',
+      })
+    })
+  })
+})
+
+describe('Given the execution of prancha ending by the clock into its 60 s rest', () => {
+  describe('When the rest runs to its end', () => {
+    it('Then the end cue should play once, then the rest cue on 3, 2 and 1', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch(created())
+      const { player, cues } = recordingPlayer()
+      renderWorkout([PRANCHA, SUPINO_RETO], vi.fn(), sendPendingItem, undefined, player)
+      await act(async () => tapNext())
+      await passSeconds(3 + 44)
+      cues.length = 0
+
+      await passSeconds(1 + 60)
+
+      expect(cues).toEqual(['end', 'restWarning', 'restWarning', 'restWarning'])
+    })
+  })
+})
+
+describe('Given the Som switch on the 90 s rest of set 1 of supino-reto', () => {
+  describe('When the athlete taps Som and lets the rest end', () => {
+    it('Then no cue should play, and the timer of prancha should open with the sound off', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch(created())
+      const { player, cues } = recordingPlayer()
+      renderWorkout(LETTER_A, vi.fn(), sendPendingItem, undefined, player)
+      await act(async () => tapNext())
+      const pressedInRest = soundSwitch().getAttribute('aria-pressed')
+
+      fireEvent.click(soundSwitch())
+      const pressedAfterTap = soundSwitch().getAttribute('aria-pressed')
+      await passSeconds(90)
+
+      cleanup()
+      renderWorkout(ONLY_PRANCHA, vi.fn(), sendPendingItem, undefined, player)
+      await act(async () => tapNext())
+      expect({
+        pressedInRest,
+        pressedAfterTap,
+        cues,
+        pressedOnTimer: soundSwitch().getAttribute('aria-pressed'),
+      }).toEqual({
+        pressedInRest: 'true',
+        pressedAfterTap: 'false',
+        cues: [],
+        pressedOnTimer: 'false',
+      })
+    })
+  })
+
+  describe('When the athlete taps Som twice', () => {
+    it('Then the second tap should unlock the audio and turn the sound back on', async () => {
+      vi.useFakeTimers({ now: T0 })
+      stubFetch(created())
+      const { player, unlock } = recordingPlayer()
+      renderWorkout(LETTER_A, vi.fn(), sendPendingItem, undefined, player)
+      await act(async () => tapNext())
+      unlock.mockClear()
+
+      fireEvent.click(soundSwitch())
+      fireEvent.click(soundSwitch())
+
+      expect({
+        unlocks: unlock.mock.calls.length,
+        pressed: soundSwitch().getAttribute('aria-pressed'),
+      }).toEqual({ unlocks: 1, pressed: 'true' })
+    })
+  })
+})

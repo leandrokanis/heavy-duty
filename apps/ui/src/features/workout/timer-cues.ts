@@ -1,9 +1,19 @@
 import type { TimerReading } from './workout-flow'
 
-export type Cue = 'count' | 'start' | 'warning' | 'end'
+export type Cue = 'count' | 'start' | 'warning' | 'end' | 'restWarning'
 
 const STALE_READING_MS = 1000
 const LAST_WARNING_SECONDS = 3
+
+// A new second among the last ones of the same stage; the entry into the stage never counts.
+function isLastSecond(previous: TimerReading, current: TimerReading): boolean {
+  return (
+    previous.stage === current.stage &&
+    previous.value !== current.value &&
+    current.value >= 1 &&
+    current.value <= LAST_WARNING_SECONDS
+  )
+}
 
 // The cue for the change between two readings, or null. A reading more than a second after the
 // previous one comes from a screen that was off, and a late sound would only confuse.
@@ -14,10 +24,8 @@ export function cueBetween(previous: TimerReading, current: TimerReading): Cue |
   }
   if (current.stage === 'execution') {
     if (previous.stage === 'countdown') return 'start'
-    const isNewSecond = previous.stage === 'execution' && previous.value !== current.value
-    return isNewSecond && current.value >= 1 && current.value <= LAST_WARNING_SECONDS
-      ? 'warning'
-      : null
+    return isLastSecond(previous, current) ? 'warning' : null
   }
-  return previous.stage === 'execution' && current.lastStep === 'timerEnd' ? 'end' : null
+  if (previous.stage === 'execution' && current.lastStep === 'timerEnd') return 'end'
+  return current.stage === 'rest' && isLastSecond(previous, current) ? 'restWarning' : null
 }

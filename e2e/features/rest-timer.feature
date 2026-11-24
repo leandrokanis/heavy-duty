@@ -52,6 +52,18 @@ Feature: Rest that counts down on its own and a "Próximo" that skips it
     Then the set of "Tríceps na polia" should be recorded with load 20000 g, 12 reps and set number 1 in the workout of the day "A"
     And the screen should show the heading "Treino concluído" with no rest and no dialog
 
+  @US-F05-02
+  Scenario: rest ring in the warning tone on the last 3 seconds
+    Given the athlete started the day "A" at "2026-11-21T18:30:00.000Z"
+    And the athlete taps "Próximo" at "2026-11-21T18:31:05.000Z"
+    Then the rest should offer the switch "Som" pressed
+    When the clock reaches "2026-11-21T18:32:31.000Z"
+    Then the rest should show "0:04"
+    And the ring of the rest should be in the default tone
+    When the clock reaches "2026-11-21T18:32:32.000Z"
+    Then the rest should show "0:03"
+    And the ring of the rest should be in the warning tone
+
   @BUG-44
   Scenario: workout screens fit the visible area under the safe-area insets
     Given the device has safe-area insets of 47 px at the top and 34 px at the bottom

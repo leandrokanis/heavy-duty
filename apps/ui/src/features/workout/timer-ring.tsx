@@ -48,7 +48,7 @@ export type TimerRingProps = {
   // The name of the progressbar, and the name of the timer that sits over it.
   progressLabel: string
   timerLabel: string
-  // The warning tone marks the last seconds of an execution (FR-005).
+  // The warning tone marks the last 3 seconds of an execution or a rest.
   tone?: 'default' | 'warning'
   // The rest and the execution use different sizes for the time.
   size?: 'rest' | 'execution'

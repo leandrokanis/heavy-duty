@@ -299,7 +299,7 @@ O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar na pr
 - O movimento DEVE ser reduzido a troca de opacidade, ou retirado, com `prefers-reduced-motion: reduce`.
 - O fim do descanso DEVE ter sinal visual. O Safari do iOS não aceita a Vibration API, então a interface NÃO DEVE depender de vibração.
 - As regras detalhadas de animação, mola e gesto ficam para um documento próprio [a confirmar: quando a onda 3 começar].
-- Som, vibração e animações longas (pontos que sobem, subida de nível em tela cheia, medalha) PODEM ser usados só nos elementos de gamificação, conforme `docs/gamificacao.md`, e no cronômetro do exercício por tempo (Seção 15.1). O som DEVE ter chave para desligar. Uma informação NÃO DEVE depender só de som ou de vibração.
+- Som, vibração e animações longas (pontos que sobem, subida de nível em tela cheia, medalha) PODEM ser usados só nos elementos de gamificação, conforme `docs/gamificacao.md`, no cronômetro do exercício por tempo (Seção 15.1) e nos 3 últimos segundos do descanso (Seção 15.2). O som DEVE ter chave para desligar. Uma informação NÃO DEVE depender só de som ou de vibração.
 - A subida de nível em tela cheia NÃO DEVE pedir toque para fechar: ela some sozinha, para manter um toque por passo (PRD, O5).
 - A tela cheia DEVE ficar para a entrada numa faixa de nível e para o nível 20. A subida de nível comum DEVE aparecer na própria barra, com animação e som curtos, para não cansar com subidas frequentes.
 
@@ -329,6 +329,9 @@ O suporte de navegador a `prefers-reduced-transparency` varia [a confirmar na pr
 - "Próximo" DEVE ficar ativo durante o descanso. O toque pula o resto do descanso e abre a série seguinte sem registrar.
 - Um toque que chega menos de 0,8 s depois de qualquer troca de tela (registro, fim do descanso ou pulo) NÃO DEVE ter efeito.
 - O fim do descanso DEVE ter sinal visual na área da série (Seção 15) e DEVE ser anunciado na região `aria-live="polite"`, como "Série 2 de 3" ou "Tríceps na polia, série 1 de 3". O sinal NÃO DEVE depender de som nem de vibração.
+- Os 3 últimos segundos do descanso DEVEM ter um sinal sonoro por segundo, distinto dos sinais do cronômetro, e mudar a cor do anel para a cor de atenção (PRD, US-F05-02). A passagem para 0 s não tem sinal sonoro: a série seguinte já tem o sinal visual.
+- O descanso pulado por "Próximo" NÃO DEVE tocar sinal. Leitura do relógio mais de 1 s depois da anterior (volta do segundo plano) também não toca.
+- O descanso DEVE ter a chave "Som" (`aria-pressed`), na mesma linha do botão da última série, com quebra de linha quando o texto cresce. A preferência é a mesma do cronômetro (Seção 15.1).
 - A tela DEVERIA ficar acesa durante o descanso, com a Screen Wake Lock API onde o navegador aceitar [a confirmar: suporte no PWA do iPhone em 2026].
 - Exercício com descanso de 0 s NÃO DEVE mostrar a tela de descanso.
 - A última série da letra NÃO DEVE abrir descanso. A tela DEVE mostrar "Treino concluído" e o botão "Fechar", que volta às letras. "Fechar" DEVE ficar ativo com séries na fila, porque as séries já estão salvas na fila e seguem sozinhas para a API (US-F03-03; `docs/arquitetura/app-web.md`, seção "Fluxo da série com um toque").
@@ -540,7 +543,7 @@ Quando o protótipo e uma regra deste documento divergem, a regra vale e a diver
 | 13 | Controle do topo com 44 px | 56 px, com o mesmo visual | Seção 7 |
 | 14 | Descanso sem o nome do exercício | O nome fica, como heading de nível 1, no topo | Seção 15.2 |
 | 15 | "A seguir" só no `aria-label`, com a seta no lugar do texto | Rótulo "A seguir" visível ao lado da seta | Seção 15.2 |
-| 16 | Sem a chave "Som" na tela do celular | Chave "Som" 24 px abaixo do anel | Seção 15.1 |
+| 16 | Sem a chave "Som" na tela do celular | Chave "Som" 24 px abaixo do anel do cronômetro; no descanso, ao lado do botão da última série | Seções 15.1 e 15.2 |
 | 17 | Anel da execução em `--success` | Anel em `--color-label`; os últimos 3 s em `--color-warning` | Seção 11.1 (um papel por cor) |
 | 18 | Sem animação na passagem para a série seguinte | Animação de fim do descanso, só opacidade com movimento reduzido | Seções 15 e 15.2 |
 | 19 | Valores vizinhos da roda com 2,62:1 (claro) e 3,40:1 (escuro) contra o cartão | Ficam como no protótipo, decorativos e fora da árvore de acessibilidade. Registrado para o PO | Seção 16.3 ("menores e esmaecidos"); exceção de texto decorativo da WCAG 1.4.3 |

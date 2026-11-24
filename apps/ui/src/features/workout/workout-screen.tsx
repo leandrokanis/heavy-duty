@@ -240,11 +240,16 @@ function UpNext({ upcoming }: { upcoming: TodayExercise }) {
 
 const WARNING_SECONDS = 3
 
+// The last seconds of the execution or the rest, when the ring takes the warning tone.
+function isLastSeconds(msLeft: number): boolean {
+  return Math.ceil(msLeft / 1000) <= WARNING_SECONDS
+}
+
 function ExecutionArea({ msLeft, totalSeconds }: { msLeft: number; totalSeconds: number }) {
   return (
     <TimerRing
       size="execution"
-      tone={Math.ceil(msLeft / 1000) <= WARNING_SECONDS ? 'warning' : 'default'}
+      tone={isLastSeconds(msLeft) ? 'warning' : 'default'}
       msLeft={msLeft}
       totalSeconds={totalSeconds}
       progressLabel="Execução restante"
@@ -287,6 +292,22 @@ export function WorkoutScreen({
   const reading = timerReadingOf(state, nowMs)
   useTimerCues(reading, tonePlayer, soundOn)
   const restMsLeft = state.restEndsAtMs === null ? null : Math.max(0, state.restEndsAtMs - nowMs)
+  // One switch for the timer and the rest: the preference is the same (heavy-duty:sound).
+  const soundSwitch = (
+    <Button
+      variant="secondary"
+      size="workout"
+      aria-pressed={soundOn}
+      icon={soundOn ? Volume2 : VolumeX}
+      onClick={() => {
+        // Turning the sound on is a tap, so the browser lets the audio play from here.
+        if (!soundOn) tonePlayer.unlock()
+        setSoundOn(!soundOn)
+      }}
+    >
+      Som
+    </Button>
+  )
   const upcoming = upcomingExercise(state)
   useScreenWakeLock(resting || timerOpen)
   const recordedCount = state.recorded.filter(
@@ -348,6 +369,7 @@ export function WorkoutScreen({
           <div className="flex flex-1 flex-col items-center justify-center gap-(--space-16) py-(--space-16)">
             {restMsLeft !== null ? (
               <TimerRing
+                tone={isLastSeconds(restMsLeft) ? 'warning' : 'default'}
                 msLeft={restMsLeft}
                 totalSeconds={planned.restSeconds}
                 progressLabel="Descanso restante"
@@ -355,13 +377,16 @@ export function WorkoutScreen({
               />
             ) : null}
             {dots}
-            {lastSet ? (
-              <LastSetButton
-                ref={lastSetButtonRef}
-                set={lastSet.set}
-                onOpen={() => dispatch({ type: 'openSheet', sheet: 'correction' })}
-              />
-            ) : null}
+            <div className="flex flex-wrap items-center justify-center gap-(--space-12)">
+              {lastSet ? (
+                <LastSetButton
+                  ref={lastSetButtonRef}
+                  set={lastSet.set}
+                  onOpen={() => dispatch({ type: 'openSheet', sheet: 'correction' })}
+                />
+              ) : null}
+              {soundSwitch}
+            </div>
           </div>
         </>
       ) : finished ? (
@@ -437,21 +462,7 @@ export function WorkoutScreen({
                 totalSeconds={shownValuesOf(state).seconds as number}
               />
             ) : null}
-            {timerOpen ? (
-              <Button
-                variant="secondary"
-                size="workout"
-                aria-pressed={soundOn}
-                icon={soundOn ? Volume2 : VolumeX}
-                onClick={() => {
-                  // Turning the sound on is a tap, so the browser lets the audio play from here.
-                  if (!soundOn) tonePlayer.unlock()
-                  setSoundOn(!soundOn)
-                }}
-              >
-                Som
-              </Button>
-            ) : null}
+            {timerOpen ? soundSwitch : null}
           </div>
         </>
       )}

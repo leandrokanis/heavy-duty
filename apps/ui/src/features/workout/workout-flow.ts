@@ -264,9 +264,9 @@ export function upcomingExercise(state: WorkoutFlowState): TodayExercise | null 
 }
 
 // What the ring or the count shows at an instant, with the step and instant that cue the sound.
-// The value is the count number or the seconds left, 0 outside the timer.
+// The value is the count number or the seconds left of the execution or the rest, 0 off a timer.
 export type TimerReading = {
-  stage: 'off' | 'countdown' | 'execution'
+  stage: 'off' | 'countdown' | 'execution' | 'rest'
   value: number
   lastStep: WorkoutFlowState['lastStep']
   atMs: number
@@ -284,6 +284,10 @@ export function timerReadingOf(state: WorkoutFlowState, nowMs: number): TimerRea
     const secondsLeft = Math.ceil((deadlineMs - nowMs) / MS_PER_SECOND)
     const value = Math.min(shownSeconds, Math.max(0, secondsLeft))
     return { stage: 'execution', value, lastStep, atMs: nowMs }
+  }
+  if (state.phase === 'rest' && deadlineMs !== null) {
+    const secondsLeft = Math.ceil((deadlineMs - nowMs) / MS_PER_SECOND)
+    return { stage: 'rest', value: Math.max(0, secondsLeft), lastStep, atMs: nowMs }
   }
   return { stage: 'off', value: 0, lastStep, atMs: nowMs }
 }
