@@ -206,6 +206,12 @@ describe('Given a load wheel with no drag in progress', () => {
 
       expect(wheelOf()).toHaveClass('touch-none')
     })
+
+    it('Then a sheet around the wheel should not take the drag to close itself', () => {
+      renderLoad(40_000)
+
+      expect(wheelOf()).toHaveAttribute('data-base-ui-swipe-ignore')
+    })
   })
 })
 

@@ -145,6 +145,8 @@ export function ValueWheel({
           aria-valuemin={Number(formatFieldValue(field, MINIMUMS[field]))}
           aria-valuetext={valueTextOf(field, value)}
           data-dragging={dragging ? 'true' : undefined}
+          // Inside a sheet, the drag that closes the sheet would ride along with the drag of the value.
+          data-base-ui-swipe-ignore=""
           className="group h-26 min-w-0 flex-1 touch-none select-none overflow-hidden rounded-(--radius-inner)"
         >
           {/* Tint and mask sit on a child so the fade matches the prototype and the focus ring stays whole. */}

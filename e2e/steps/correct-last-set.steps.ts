@@ -1,7 +1,9 @@
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { test, workoutIdOf } from './program-fixtures.js'
+import { settledBox } from './touch-target.js'
 import { readOnlyWorkoutId, readWorkoutSets } from './workout-fixtures.js'
+import { dragWheel } from './workout-helpers.js'
 
 const { Given, When, Then } = createBdd(test)
 
@@ -41,6 +43,53 @@ When(
     await expect(dialog).toHaveCount(0)
   },
 )
+
+function correctionSheet(page: Page) {
+  return page.getByRole('dialog', { name: 'Corrigir última série' })
+}
+
+// How far the sheet moved from its resting place at each move of a drag, in pixels.
+const sheetShifts = new WeakMap<Page, number[]>()
+
+When(
+  'the athlete drags the wheel {string} of the correction {int} steps {word} with a finger',
+  async ({ page }, wheel: string, steps: number, direction: string) => {
+    await lastSetButton(page).click()
+    const dialog = correctionSheet(page)
+    const restingY = (await settledBox(dialog))?.y ?? 0
+    const shifts: number[] = []
+    sheetShifts.set(page, shifts)
+    await dragWheel(
+      dialog.getByRole('spinbutton', { name: wheel }),
+      steps,
+      direction,
+      'touch',
+      async () => {
+        shifts.push(((await dialog.boundingBox())?.y ?? 0) - restingY)
+      },
+    )
+  },
+)
+
+Then(
+  'the correction of the last set should stay in place with the wheel {string} at {string}',
+  async ({ page }, wheel: string, value: string) => {
+    const shifts = sheetShifts.get(page) ?? []
+    expect(Math.max(0, ...shifts.map(Math.abs))).toBe(0)
+    const dialog = correctionSheet(page)
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByRole('spinbutton', { name: wheel })).toHaveAttribute(
+      'aria-valuenow',
+      value.replace(',', '.'),
+    )
+  },
+)
+
+When('the athlete saves the correction of the last set', async ({ page }) => {
+  const dialog = correctionSheet(page)
+  await dialog.getByRole('button', { name: 'Salvar' }).click()
+  await expect(dialog).toHaveCount(0)
+})
 
 Then('the button of the last set should read {string}', async ({ page }, text: string) => {
   await expect(lastSetButton(page)).toHaveText(text)
