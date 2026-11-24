@@ -11,8 +11,10 @@ import { useSyncQueue, useSyncSnapshot } from '@/sync/sync-context'
 import { type LoadedToday, loadToday } from '@/sync/today-cache'
 import { loadWindows } from '@/sync/windows-cache'
 import { createClientId } from './client-id'
+import { GameStrip } from './game-strip'
 import { LetterList } from './letter-list'
 import type { MuscleGroupLevels } from './levels.types'
+import { overallLevelViewOf } from './overall-level'
 import { QueueNotices } from './queue-notices'
 import { StartSheet } from './start-sheet'
 import type { Today, TodayDay } from './today.types'
@@ -194,14 +196,21 @@ function TodayContent({ today, windows, levels, nowMs, onSelect }: TodayContentP
     )
   }
   return (
-    <LetterList
-      days={today.days}
-      suggestedLetter={today.suggestedLetter}
-      onSelect={onSelect}
-      windows={windows}
-      levels={levels}
-      nowMs={nowMs}
-    />
+    <div className="flex flex-col gap-(--space-16)">
+      <GameStrip
+        overallLevel={overallLevelViewOf(today, levels, windows, nowMs)}
+        nowMs={nowMs}
+        onSelectDay={onSelect}
+      />
+      <LetterList
+        days={today.days}
+        suggestedLetter={today.suggestedLetter}
+        onSelect={onSelect}
+        windows={windows}
+        levels={levels}
+        nowMs={nowMs}
+      />
+    </div>
   )
 }
 

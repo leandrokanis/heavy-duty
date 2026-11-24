@@ -552,7 +552,7 @@ describe('Given 1 of 2 sets recorded in letter A and the sequence sheet open', (
         'fetch',
         vi.fn(async (url: string) => {
           calls.push(url)
-          if (url === '/api/windows') return json(500)
+          if (url === '/api/windows' || url === '/api/levels') return json(500)
           if (url !== '/api/today') return json(200)
           const letter = calls.filter((call) => call === '/api/today').length === 1 ? 'A' : 'B'
           return json(
@@ -850,6 +850,102 @@ describe('Given chest at level 3 with 10 points when the workout of the day open
       expect(
         screen.getByRole('progressbar', { name: 'Nível de peito' }).getAttribute('aria-valuetext'),
       ).toBe('Nível 3, 31 de 46 pontos')
+    })
+  })
+})
+
+describe('Given the program trains chest at level 2 and abs at level 3 (US-F10-05)', () => {
+  const levelsBody = {
+    now: '2026-11-23T12:00:00.000Z',
+    groups: [
+      ['chest', 'peito', 2, 43],
+      ['abs', 'abdômen', 3, 46],
+      ['calves', 'panturrilhas', 1, 40],
+    ].map(([slug, name, level, levelCost]) => ({
+      muscleGroup: { slug, name },
+      level,
+      points: 0,
+      levelCost,
+      bestLevel: level,
+      tier: 'bronze',
+    })),
+  }
+  const overallLevel = () => screen.findByRole('button', { name: /^Nível geral/ })
+
+  describe('When the athlete opens the app', () => {
+    it('Then the game strip should show overall level 2, limited by chest, not by calves out of the program', async () => {
+      levelsAnswer = () => json(200, levelsBody)
+      stubFetch(json(200, todayBody()))
+
+      renderToday()
+
+      const button = await overallLevel()
+      expect({
+        name: button.getAttribute('aria-label'),
+        strip: button.closest('section')?.getAttribute('aria-label'),
+        text: button.textContent,
+      }).toEqual({
+        name: 'Nível geral 2 de 20, limitado por peito. Treinar a letra A',
+        strip: 'Faixa de jogo',
+        text: '2nível geralPeito',
+      })
+    })
+  })
+
+  describe('When chest is open and the athlete taps the overall level', () => {
+    it('Then the sheet to start letter A should open', async () => {
+      vi.useFakeTimers({ toFake: ['Date'], now: WINDOWS_NOW_MS })
+      levelsAnswer = () => json(200, levelsBody)
+      windowsAnswer = () => json(200, windowsBody(WINDOWS_NOW_MS + 3_600_000))
+      stubFetch(json(200, todayBody()))
+      renderToday()
+
+      fireEvent.click(await overallLevel())
+
+      expect(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Começar' }),
+      ).toBeTruthy()
+    })
+  })
+
+  describe('When chest is resting and the athlete taps the overall level', () => {
+    it('Then the opening of chest should show in a line, with no sheet', async () => {
+      vi.useFakeTimers({ toFake: ['Date'], now: WINDOWS_NOW_MS })
+      levelsAnswer = () => json(200, levelsBody)
+      windowsAnswer = () =>
+        json(200, {
+          now: new Date(WINDOWS_NOW_MS).toISOString(),
+          groups: [
+            {
+              muscleGroup: { slug: 'chest', name: 'peito' },
+              state: 'resting',
+              lastTrainedAt: new Date(WINDOWS_NOW_MS - 3_600_000).toISOString(),
+              opensAt: new Date(WINDOWS_NOW_MS + 6 * 3_600_000).toISOString(),
+              closesAt: new Date(WINDOWS_NOW_MS + 120 * 3_600_000).toISOString(),
+            },
+          ],
+        })
+      stubFetch(json(200, todayBody()))
+      renderToday()
+      await screen.findByRole('button', { name: /^Nível geral.*, que abre/ })
+
+      fireEvent.click(await overallLevel())
+
+      expect({
+        line: screen.getByText(/^Peito abre /).getAttribute('role'),
+        sheet: screen.queryByRole('dialog'),
+      }).toEqual({ line: 'status', sheet: null })
+    })
+  })
+
+  describe('When no level is known on the device', () => {
+    it('Then the game strip should not show', async () => {
+      stubFetch(json(200, todayBody()))
+
+      renderToday()
+
+      await screen.findByRole('button', { name: /^A/ })
+      expect(screen.queryByRole('region', { name: 'Faixa de jogo' })).toBeNull()
     })
   })
 })

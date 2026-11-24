@@ -44,6 +44,7 @@ const COOLING_LEVEL_SPEC = /cooling-level\.feature\.spec\.js$/
 const WINDOWS_USED_SPEC = /windows-used\.feature\.spec\.js$/
 const WEEKLY_GOAL_SPEC = /weekly-goal\.feature\.spec\.js$/
 const MUSCLE_MEMORY_SPEC = /muscle-memory\.feature\.spec\.js$/
+const OVERALL_LEVEL_SPEC = /overall-level\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -103,6 +104,7 @@ export default defineConfig({
         WINDOWS_USED_SPEC,
         WEEKLY_GOAL_SPEC,
         MUSCLE_MEMORY_SPEC,
+        OVERALL_LEVEL_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -381,6 +383,15 @@ export default defineConfig({
       testMatch: MUSCLE_MEMORY_SPEC,
       fullyParallel: false,
       dependencies: ['weekly-goal'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records workouts relative to the real clock and reads the overall level on the phone, so it
+    // runs alone and one scenario at a time, after the muscle memory.
+    {
+      name: 'overall-level',
+      testMatch: OVERALL_LEVEL_SPEC,
+      fullyParallel: false,
+      dependencies: ['muscle-memory'],
       use: { ...devices['Pixel 7'] },
     },
   ],

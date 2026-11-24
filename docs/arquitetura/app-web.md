@@ -235,6 +235,14 @@ A US-F10-04 acrescenta a memória muscular: o grupo abaixo do melhor nível rend
 2. `lastSetPointsOf` e `lastSetLevelsOf` saem de um replay só (`lastSetStepsOf`): a partir da base, cada série que ela não tem soma o ganho de cada grupo com os bônus do grupo antes da série, inclusive a memória muscular pelo nível antes da série. Os pontos da série partem dos níveis congelados; a barra parte da resposta da API, quando houver. Quando a base já tem a última série, a barra é a base, e o ganho e a marca vêm do replay dos níveis congelados.
 3. `SetPointsView.bonus` diz o que dobrou a série (`window`, `muscleMemory` ou `welcomeBack`), uma marca só, nessa ordem (D65). `PointsFloat` e `LevelPanel` mostram a marca ↺ ×2 da memória muscular (`DoubleMark`), e a região viva diz "em dobro pela memória muscular".
 
+## Nível geral e faixa de jogo
+
+A US-F10-05 acrescenta o nível geral, calculado no aparelho como valor final (ADR-034, adendo da onda 6b; D29, D67, D68, D78):
+
+1. `overallLevelViewOf` (`features/workout/overall-level.ts`) junta a cópia do treino do dia, os níveis e as janelas: `overallLevelOf` do pacote dá o menor nível entre os grupos principais das letras do programa ativo, com o grupo que limita (empate pelo menor saldo na barra, depois pela ordem do catálogo); o estado da janela do grupo sai de `windowBadgesOf`, pelo relógio do aparelho; e `letterForGroupOf` dá a letra com mais séries planejadas do grupo, com empate pela ordem do programa.
+2. `GameStrip` mostra no topo do treino do dia o `OverallLevelButton`. Com o grupo em janela, esfriando ou sem janela, o toque abre a `StartSheet` da letra (D25). Com o grupo descansando, o toque mostra "<Grupo> abre <quando>" numa linha `role="status"`, sem folha.
+3. Sem níveis conhecidos, a faixa não aparece. Sem sinal, o cálculo usa as cópias do aparelho; a API não devolve o nível geral.
+
 ## Histórico no celular
 
 A US-F20-01 acrescenta a rota `/historico`, só de leitura (D50):
