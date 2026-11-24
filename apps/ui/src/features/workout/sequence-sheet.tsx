@@ -5,8 +5,8 @@ import type { RefObject } from 'react'
 import { Button } from '@/components/ui/button'
 import { MotionButton } from '@/components/ui/motion-button'
 import { Sheet } from '@/components/ui/sheet'
-import { formatLoadKg } from './format'
-import type { RecordedSetView, SequenceItem } from './workout-flow'
+import { RecordedSetItem } from './recorded-set-item'
+import type { SequenceItem } from './workout-flow'
 
 export type SequenceSheetProps = {
   open: boolean
@@ -73,35 +73,6 @@ function ItemContent({ item }: { item: SequenceItem }) {
         </span>
       </span>
     </>
-  )
-}
-
-function plural(count: number, one: string, many: string): string {
-  return `${count} ${count === 1 ? one : many}`
-}
-
-// The same set twice: the figures for the eye, the full sentence for the screen reader (FR-010).
-function RecordedSetRow({ set }: { set: RecordedSetView }) {
-  const isTime = typeof set.seconds === 'number'
-  const amount = isTime ? (set.seconds as number) : (set.reps ?? 0)
-  const spoken = isTime
-    ? plural(amount, 'segundo', 'segundos')
-    : plural(amount, 'repetição', 'repetições')
-  return (
-    <li className="rounded-(--radius-capsule) bg-(--color-fill) px-(--space-12) py-(--space-4) font-(--font-weight-semibold) text-(length:--font-size-subheadline) tabular-nums">
-      <span aria-hidden="true" className="flex items-baseline gap-(--space-8)">
-        <span className="text-(--color-label-secondary)">{`Série ${set.setNumber}`}</span>
-        <span>
-          <span className="text-(--color-label)">{formatLoadKg(set.loadG)}</span>
-          <span className="text-(--color-label-secondary)"> kg</span>
-        </span>
-        <span>
-          <span className="text-(--color-label)">{amount}</span>
-          <span className="text-(--color-label-secondary)">{isTime ? ' s' : ' rep'}</span>
-        </span>
-      </span>
-      <span className="sr-only">{`Série ${set.setNumber}: ${formatLoadKg(set.loadG)} kg, ${spoken}`}</span>
-    </li>
   )
 }
 
@@ -172,7 +143,7 @@ export function SequenceSheet({
                 className="m-0 flex list-none flex-wrap gap-(--space-8) p-0 pb-(--space-12) pl-[calc(34px+var(--space-12))]"
               >
                 {item.recordedSets.map((set) => (
-                  <RecordedSetRow key={set.setNumber} set={set} />
+                  <RecordedSetItem key={set.setNumber} set={set} />
                 ))}
               </ul>
             ) : null}

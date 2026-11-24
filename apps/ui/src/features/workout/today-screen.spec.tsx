@@ -75,6 +75,21 @@ describe('Given no active program', () => {
   })
 })
 
+describe('Given the workout of the day', () => {
+  describe('When the athlete looks at the header', () => {
+    it('Then should find the link Histórico to /historico', async () => {
+      stubFetch(json(200, NO_PROGRAM))
+
+      renderToday()
+
+      expect(await screen.findByRole('link', { name: 'Histórico' })).toHaveAttribute(
+        'href',
+        '/historico',
+      )
+    })
+  })
+})
+
 const NO_EXERCISES = 'O programa ativo não tem exercícios. Monte o programa pelo Claude.'
 
 describe('Given an active program without exercises', () => {

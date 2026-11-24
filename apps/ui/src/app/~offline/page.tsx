@@ -1,7 +1,7 @@
 'use client'
 
-import { OfflineNotice } from '@/features/auth/offline-notice'
+import { goHome, OfflineNotice } from '@/features/auth/offline-notice'
 
 export default function OfflinePage() {
-  return <OfflineNotice />
+  return <OfflineNotice onHome={goHome} />
 }

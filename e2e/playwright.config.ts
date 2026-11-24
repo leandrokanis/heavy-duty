@@ -32,6 +32,7 @@ const WINDOW_SIMULATION_SPEC = /window-simulation\.feature\.spec\.js$/
 const GROUP_WINDOW_SPEC = /group-window\.feature\.spec\.js$/
 const WINDOW_ON_TODAY_SPEC = /window-on-today\.feature\.spec\.js$/
 const REOPEN_ON_FINISH_SPEC = /reopen-on-finish\.feature\.spec\.js$/
+const WORKOUT_HISTORY_SPEC = /workout-history\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -79,6 +80,7 @@ export default defineConfig({
         GROUP_WINDOW_SPEC,
         WINDOW_ON_TODAY_SPEC,
         REOPEN_ON_FINISH_SPEC,
+        WORKOUT_HISTORY_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -250,6 +252,15 @@ export default defineConfig({
       testMatch: REOPEN_ON_FINISH_SPEC,
       fullyParallel: false,
       dependencies: ['window-on-today'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records workouts relative to the real clock and reads them on the history screen, so it runs
+    // alone and one scenario at a time, after the reopening on the finished screen.
+    {
+      name: 'workout-history',
+      testMatch: WORKOUT_HISTORY_SPEC,
+      fullyParallel: false,
+      dependencies: ['reopen-on-finish'],
       use: { ...devices['Pixel 7'] },
     },
   ],

@@ -7,6 +7,8 @@ export type WorkoutSetInput = {
   loadG: number
   reps?: number
   seconds?: number
+  // Defaults to the position of the set in the whole workout.
+  setNumber?: number
 }
 
 export type RecordedWorkout = {
@@ -65,7 +67,7 @@ export function recordWorkout(
           workoutId,
           exercise.id,
           planned?.id ?? null,
-          index + 1,
+          set.setNumber ?? index + 1,
           set.loadG,
           set.reps ?? null,
           set.seconds ?? null,
@@ -78,6 +80,20 @@ export function recordWorkout(
       throw error
     }
     return workoutId
+  })
+}
+
+export function finishWorkout(
+  workoutId: string,
+  finishedAt: string,
+  endReason: 'completed' | 'ended_early',
+): void {
+  withDatabase((db) => {
+    db.prepare('UPDATE workouts SET finished_at = ?, end_reason = ? WHERE id = ?').run(
+      finishedAt,
+      endReason,
+      workoutId,
+    )
   })
 }
 

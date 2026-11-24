@@ -1,6 +1,8 @@
 'use client'
 
+import { History } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { IconLink } from '@/components/ui/icon-link'
 import { OfflineNotice } from '@/features/auth/offline-notice'
 import { SignInScreen } from '@/features/auth/sign-in-screen'
 import { loadActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
@@ -108,9 +110,12 @@ export function TodayScreen() {
       aria-busy={result === null || flow === 'pending' ? 'true' : undefined}
       className="mx-auto flex flex-1 w-full max-w-[640px] flex-col px-(--space-margin-inline) pt-(--space-12) pb-(--space-24)"
     >
-      <h1 className="m-0 font-(--font-weight-bold) text-(length:--font-size-large-title) leading-(--font-leading-tight) tracking-(--font-tracking-tight)">
-        Heavy Duty
-      </h1>
+      <header className="flex items-center justify-between gap-(--space-12)">
+        <h1 className="m-0 font-(--font-weight-bold) text-(length:--font-size-large-title) leading-(--font-leading-tight) tracking-(--font-tracking-tight)">
+          Heavy Duty
+        </h1>
+        <IconLink href="/historico" icon={History} aria-label="Histórico" />
+      </header>
       <QueueNotices align="start" className="mt-(--space-16)" />
       <div className="mt-(--space-24)">
         {result?.status === 'ok' ? (

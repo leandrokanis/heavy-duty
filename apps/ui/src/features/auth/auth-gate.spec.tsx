@@ -207,3 +207,36 @@ describe('Given no cached today', () => {
     })
   })
 })
+
+describe('Given the AuthGate on the history', () => {
+  beforeEach(() => {
+    usePathnameMock.mockReturnValue('/historico')
+  })
+
+  describe('When the session check fails for the network', () => {
+    it('Then should offer the way back to the workout of the day', async () => {
+      const assign = vi.fn()
+      vi.stubGlobal('location', { ...window.location, assign })
+      stubFetch(new TypeError('Failed to fetch'))
+
+      renderGate()
+      fireEvent.click(await screen.findByRole('button', { name: 'Voltar ao treino do dia' }))
+
+      expect(assign).toHaveBeenCalledWith('/')
+    })
+  })
+})
+
+describe('Given the AuthGate on the home page without signal and without a cached today', () => {
+  describe('When it shows Sem conexão', () => {
+    it('Then should not offer a way back to the screen already asked', async () => {
+      usePathnameMock.mockReturnValue('/')
+      stubFetch(new TypeError('Failed to fetch'))
+
+      renderGate()
+      await screen.findByRole('heading', { name: 'Sem conexão' })
+
+      expect(screen.queryByRole('button', { name: 'Voltar ao treino do dia' })).toBeNull()
+    })
+  })
+})

@@ -24,6 +24,17 @@ describe('Given the offline page', () => {
       expect(reload).toHaveBeenCalledOnce()
     })
   })
+  describe('When the athlete taps Voltar ao treino do dia', () => {
+    it('Then should open the workout of the day', () => {
+      const assign = vi.fn()
+      vi.stubGlobal('location', { ...window.location, assign })
+      render(<OfflinePage />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Voltar ao treino do dia' }))
+
+      expect(assign).toHaveBeenCalledWith('/')
+    })
+  })
   describe('When the icon is looked up', () => {
     it('Then should keep the WifiOff icon out of the accessibility tree', () => {
       const { container } = render(<OfflinePage />)

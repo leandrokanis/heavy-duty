@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { hasCachedToday } from '@/sync/today-cache'
 import { fetchSession, type SessionState } from './auth-client'
-import { OfflineNotice } from './offline-notice'
+import { goHome, OfflineNotice } from './offline-notice'
 import { SignInScreen } from './sign-in-screen'
 
 // The enrollment link and the offline fallback must open before any passkey exists.
@@ -40,6 +40,8 @@ export function AuthGate({ children }: AuthGateProps) {
   if (session === 'unauthenticated') {
     return <SignInScreen onSignedIn={() => setSession('authenticated')} />
   }
-  if (session === 'offline') return <OfflineNotice onRetry={checkSession} />
+  if (session === 'offline') {
+    return <OfflineNotice onRetry={checkSession} onHome={pathname === '/' ? undefined : goHome} />
+  }
   return <main aria-busy="true" className="flex-1" />
 }

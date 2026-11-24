@@ -172,6 +172,8 @@ O espaçamento DEVE usar a escala de tokens da Seção 18, com base de 4 px (Pro
 
 O MVP tem uma seção na UI, o treino (PRD, ondas 1 a 4). Uma barra de abas com uma aba só NÃO DEVE existir. A barra de abas entra quando a UI tiver 2 seções ou mais, como o mapa do corpo da onda 7 [a confirmar: lista de seções na onda 6].
 
+Exceção da onda 4b (decisão do PO no plano da onda, 2026-11-23): o histórico no celular (PRD, F20) é a segunda seção, mas não abre a barra de abas. A entrada é um botão de ícone no cabeçalho do treino do dia, com o nome acessível "Histórico", que leva à rota `/historico`. O histórico e o detalhe do treino têm o voltar no canto de cima, à esquerda. Motivo: a barra de abas pesa no fluxo da academia, e o histórico é consulta, não passo do treino. A exceção vale até a barra de abas entrar; aí o histórico vira aba, se o PO confirmar (Protótipo v2).
+
 ### 9.3. Botão flutuante sobre a barra de abas
 
 O HIG não especifica botão de ação central sobre a barra de abas. Se o app adotar esse padrão:

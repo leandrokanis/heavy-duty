@@ -7,10 +7,11 @@ O protótipo é a referência visual do app: layout, cor, tipografia, animação
 | Versão | Data | Pasta | Conteúdo |
 |---|---|---|---|
 | v1 | 2026-11-21 | `v1/` | Fluxo da academia (treino do dia, série, descanso, sequência, exercício por tempo, confirmações de início e fim), gamificação (pontos, níveis por grupo muscular, faixas, medalhas, aviso de queda, mapa do corpo com 11 grupos), avisos por e-mail e notas de design ao lado de cada tela |
+| v2 | 2026-11-23 | `v2/` | Histórico no celular (F20, US-F20-01): entrada pelo treino do dia, lista dos treinos feitos e detalhe só de leitura. As outras telas continuam na v1 |
 
 ## Como abrir
 
-Abra `v1/index.html` no navegador. A tela do celular fica no centro, com as notas de design e os controles de simulação ao lado.
+Abra `v1/index.html` ou `v2/index.html` no navegador. A tela do celular fica no centro, com as notas de design e os controles de simulação ao lado. A v2 tem só as telas do histórico no celular; para as outras telas, a v1 continua a referência.
 
 ## Como o protótipo se relaciona com os outros documentos
 
