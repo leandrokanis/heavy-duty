@@ -101,8 +101,15 @@ export function existsWorkoutSet(
   )
 }
 
-export function insertWorkoutSet(db: Database, set: WorkoutSet): void {
-  db.insert(workoutSets).values(set).run()
+// The plan of the moment of the record (ADR-033); the correction never changes it.
+export type SetPlan = Pick<PlannedExerciseTarget, 'targetReps' | 'targetSeconds'> & {
+  plannedLoadG: number
+}
+
+export function insertWorkoutSet(db: Database, set: WorkoutSet, plan: SetPlan): void {
+  db.insert(workoutSets)
+    .values({ ...set, ...plan })
+    .run()
 }
 
 export function findExerciseKind(db: Database, exerciseId: string): ExerciseKind | undefined {
@@ -118,6 +125,9 @@ export type PlannedExerciseTarget = {
   programDayId: string
   exerciseId: string
   kind: ExerciseKind
+  loadG: number
+  targetReps: number | null
+  targetSeconds: number | null
 }
 
 export function findPlannedExerciseTarget(
@@ -130,6 +140,9 @@ export function findPlannedExerciseTarget(
       programDayId: plannedExercises.programDayId,
       exerciseId: plannedExercises.exerciseId,
       kind: exercises.kind,
+      loadG: plannedExercises.loadG,
+      targetReps: plannedExercises.targetReps,
+      targetSeconds: plannedExercises.targetSeconds,
     })
     .from(plannedExercises)
     .innerJoin(exercises, eq(plannedExercises.exerciseId, exercises.id))

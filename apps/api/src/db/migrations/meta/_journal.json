@@ -71,6 +71,13 @@
       "when": 1795304065345,
       "tag": "0009_workout_skips",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1795497625771,
+      "tag": "0010_workout_sets_plan",
+      "breakpoints": true
     }
   ]
 }

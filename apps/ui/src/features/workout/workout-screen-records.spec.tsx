@@ -27,6 +27,7 @@ function renderWorkout(exercises: TodayExercise[]) {
     startedAt: '2026-11-21T18:30:00.000Z',
     programId: 'program-1',
     day: todayDay('A', 'Superior', exercises),
+    windows: [],
   })
   render(
     <SyncProvider queue={queue}>

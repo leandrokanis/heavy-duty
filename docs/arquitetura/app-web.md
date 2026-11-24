@@ -181,7 +181,8 @@ A US-F03-07 acrescenta o cronômetro sobre o mesmo reducer:
 4. `deadlineOf` dá o prazo da fase na tela e `timerReadingOf` dá a leitura (número da contagem ou segundos restantes). `restoreWorkoutFlow` mantém `countdown` e `timing` como foram salvos e não registra série: a tela resolve na conferência imediata do prazo, para a série nascer no reducer e entrar na fila (regra 4 de `apps/ui/CLAUDE.md`).
 5. Os sinais saem de `cueBetween` (`timer-cues.ts`), função pura sobre duas leituras: `count` a cada número da contagem, `start` no início da execução, `warning` em 3, 2 e 1 s e `end` no fim pelo relógio. A US-F05-02 acrescenta a leitura do descanso (`stage: 'rest'`, segundos que faltam) e o sinal `restWarning`, com tom próprio, em 3, 2 e 1 s do descanso; a entrada no descanso, a passagem para 0 s e o pulo não tocam. Leitura mais de 1 s mais nova que a anterior não toca (volta do segundo plano). O `tone-player.ts` toca os sinais pela Web Audio API; `unlock()` roda dentro do toque. Falha do áudio nunca interrompe o cronômetro. A `WorkoutScreen` aceita a prop `tonePlayer` para o teste.
 6. A chave "Som" fica no `localStorage` do aparelho (`heavy-duty:sound`, `sound-preference.ts`), fora do Dexie e da fila, com o som ligado por padrão. A mesma chave aparece no cronômetro e no descanso (US-F05-02). `localStorage` bloqueado deixa o som ligado e a tela funcionando.
-7. O anel da execução usa o `TimerRing` do descanso, com os nomes "Execução restante" e "Tempo de execução", e `data-tone="warning"` com 3 s ou menos, na cor `--color-warning`. O anel do descanso usa o mesmo tom nos 3 últimos segundos (US-F05-02). A API, o contrato e o MCP não mudam: a série de tempo já leva `seconds`.
+7. A chave "Som do jogo" fica no `localStorage` do aparelho (`heavy-duty:game-sound`, `sound-preference.ts`), separada da chave "Som", com o som ligado por padrão (D60). Ela aparece na folha da sequência do treino e liga o som dos pontos da série (US-F10-01).
+8. O anel da execução usa o `TimerRing` do descanso, com os nomes "Execução restante" e "Tempo de execução", e `data-tone="warning"` com 3 s ou menos, na cor `--color-warning`. O anel do descanso usa o mesmo tom nos 3 últimos segundos (US-F05-02). A API, o contrato e o MCP não mudam: a série de tempo já leva `seconds`.
 
 ## Descanso acelerado
 
@@ -192,6 +193,15 @@ A US-F05-03 acrescenta a pressão no anel do descanso sobre o mesmo reducer:
 3. `restoreWorkoutFlow` solta a pressão aberta no instante em que começou, sem a aceleração: o app fechado não diz quando o dedo saiu.
 4. O fator vale 3 (`workout.config.ts`). Um teste exige `1000 / fator > TICK_MS`, para cada segundo acelerado ter uma leitura do relógio de 250 ms e os sinais da US-F05-02 não falharem.
 5. O `TimerRing` recebe a prop `hold`: captura do ponteiro no `pointerdown`; `pointerup`, `pointercancel` e `lostpointercapture` soltam; o `contextmenu` fica bloqueado. A `WorkoutScreen` solta a pressão quando a página vai para o segundo plano (`visibilitychange`).
+
+## Pontos da série
+
+A US-F10-01 acrescenta os pontos provisórios da série sobre o mesmo reducer (ADR-034):
+
+1. No toque em "Começar", `today-screen.tsx` congela as janelas que a tela mostra (da API ou da cópia do aparelho) em `WorkoutSession.windows`, com `opensAt` e `closesAt` de cada grupo muscular (`frozenWindowsOf`). As séries do treino em andamento não abrem janela nova para ele mesmo (D56). O treino salvo antes da US-F10-01 volta sem janelas, e as séries dele rendem pontos comuns.
+2. `lastSetPointsOf` calcula os pontos da última série com `setPointsOf` e `multiplierPercentOf` do pacote `@heavy-duty/game`: o feito contra o plano do exercício do treino do dia (`plannedLoadG`, `targetReps`, `targetSeconds`) e o ×2 quando o instante da série cai na janela congelada de algum grupo principal do exercício. Os pontos não ficam no estado nem na fila.
+3. A `WorkoutScreen` mostra os pontos subindo do "Próximo" (`PointsFloat`, decorativo) enquanto `lastStep` é `record` ou `timerEnd`, toca o som dos pontos uma vez por série com a chave "Som do jogo" e anuncia os pontos na região viva com a série ("Série 1 de 3 registrada, 20 pontos em dobro").
+4. A busca de novo dos dados do jogo quando a fila esvazia e a troca do provisório pelo valor da API entram com a barra de nível (US-F10-02), o primeiro valor do jogo que fica na tela.
 
 As regras de produto e de interface do dia a dia estão em `apps/ui/CLAUDE.md` e em `DESIGN.md`.
 

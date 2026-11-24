@@ -71,13 +71,16 @@ export function recordWorkout(db: Database, input: RecordWorkoutInput, now: Date
       if (!exercise) {
         throw new Error(`Unknown exercise slug in fixture: ${set.exerciseSlug}`)
       }
-      const planned = findPlannedId(tx, day?.id, exercise.id)
+      const planned = findPlanned(tx, day?.id, exercise.id)
       tx.insert(workoutSets)
         .values({
           id: createId(now.getTime()),
           workoutId,
           exerciseId: exercise.id,
-          plannedExerciseId: planned,
+          plannedExerciseId: planned?.id ?? null,
+          plannedLoadG: planned?.loadG ?? null,
+          targetReps: planned?.targetReps ?? null,
+          targetSeconds: planned?.targetSeconds ?? null,
           setNumber: set.setNumber ?? index + 1,
           loadG: set.loadG,
           reps: set.reps ?? null,
@@ -139,16 +142,29 @@ export function readWorkout(db: Database, workoutId: string): RecordedWorkout | 
   return { ...workout, sets }
 }
 
-function findPlannedId(
+type PlannedRow = {
+  id: string
+  loadG: number
+  targetReps: number | null
+  targetSeconds: number | null
+}
+
+// The set stores the plan of its exercise, as the set route does (ADR-033).
+function findPlanned(
   tx: Pick<Database, 'select'>,
   programDayId: string | undefined,
   exerciseId: string,
-): string | null {
+): PlannedRow | undefined {
   if (!programDayId) {
-    return null
+    return undefined
   }
-  const planned = tx
-    .select({ id: plannedExercises.id })
+  return tx
+    .select({
+      id: plannedExercises.id,
+      loadG: plannedExercises.loadG,
+      targetReps: plannedExercises.targetReps,
+      targetSeconds: plannedExercises.targetSeconds,
+    })
     .from(plannedExercises)
     .where(
       and(
@@ -157,5 +173,12 @@ function findPlannedId(
       ),
     )
     .get()
-  return planned?.id ?? null
+}
+
+function findPlannedId(
+  tx: Pick<Database, 'select'>,
+  programDayId: string | undefined,
+  exerciseId: string,
+): string | null {
+  return findPlanned(tx, programDayId, exerciseId)?.id ?? null
 }

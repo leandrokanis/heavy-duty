@@ -1,18 +1,38 @@
+import { isInWindowAt, multiplierPercentOf, setPointsOf } from '@heavy-duty/game'
 import { createClientId } from './client-id'
 import { type AdjustField, adjustValue, MINIMUMS, valueTextOf } from './drag-adjust'
 import { type RecordMark, recordMarkFor, recordSetIdsOf } from './personal-records'
 import type { ExerciseKind, TodayDay, TodayExercise } from './today.types'
+import type { ActivityWindows } from './windows.types'
 import { COUNTDOWN_MS, DOUBLE_TAP_GUARD_MS, REST_FAST_FORWARD_FACTOR } from './workout.config'
 import type { FinishWorkoutBody } from './workout-finish.types'
 import type { RecordWorkoutSetBody } from './workout-set.types'
 
 const MS_PER_SECOND = 1000
 
+// The window of a muscle group as it stood at "Começar": the one of the training before (D56).
+export type FrozenWindow = {
+  muscleGroupSlug: string
+  opensAt: string | null
+  closesAt: string | null
+}
+
+// With no windows known, every set yields the common points until the API recalculates them.
+export function frozenWindowsOf(windows: ActivityWindows | null): FrozenWindow[] {
+  return (windows?.groups ?? []).map(({ muscleGroup, opensAt, closesAt }) => ({
+    muscleGroupSlug: muscleGroup.slug,
+    opensAt,
+    closesAt,
+  }))
+}
+
 export type WorkoutSession = {
   workoutId: string
   startedAt: string
   programId: string
   day: TodayDay
+  // Frozen at the start, so the sets of this workout do not open a window that doubles them.
+  windows: FrozenWindow[]
 }
 
 // The numbers on the set screen; reps or seconds is null for the other kind of exercise.
@@ -352,10 +372,43 @@ export function announcementOf(state: WorkoutFlowState): string {
   const planned = state.session.day.exercises.find(
     ({ plannedExerciseId }) => plannedExerciseId === last.plannedExerciseId,
   ) as TodayExercise
-  const recordedText = `Série ${last.setNumber} de ${planned.sets} registrada`
+  const recordedText = `Série ${last.setNumber} de ${planned.sets} registrada, ${pointsText(state)}`
   if (state.phase === 'finished') return `${recordedText}. Treino concluído${leftOutText(state)}`
   if (state.phase === 'set') return `${recordedText}. ${positionText(state)}`
   return recordedText
+}
+
+function pointsText(state: WorkoutFlowState): string {
+  const { points, doubled } = lastSetPointsOf(state) as SetPointsView
+  const text = `${points} ${points === 1 ? 'ponto' : 'pontos'}`
+  return doubled ? `${text} em dobro` : text
+}
+
+export type SetPointsView = { setId: string; points: number; doubled: boolean }
+
+// The provisional points of the last recorded set (ADR-034), against its plan in the workout of
+// the day and the windows frozen at the start. Only the primary groups double it (decision 1).
+export function lastSetPointsOf(state: WorkoutFlowState): SetPointsView | null {
+  const set = state.recorded.at(-1)
+  if (set === undefined) return null
+  const planned = state.session.day.exercises.find(
+    ({ plannedExerciseId }) => plannedExerciseId === set.plannedExerciseId,
+  ) as TodayExercise
+  const performedAtMs = Date.parse(set.performedAt)
+  const primarySlugs = new Set(planned.muscleGroups.map(({ slug }) => slug))
+  const doubled = state.session.windows.some(
+    (window) => primarySlugs.has(window.muscleGroupSlug) && isInWindowAt(window, performedAtMs),
+  )
+  const points = setPointsOf(
+    { loadG: set.loadG, reps: set.reps ?? null, seconds: set.seconds ?? null },
+    {
+      plannedLoadG: planned.plannedLoadG,
+      targetReps: planned.targetReps,
+      targetSeconds: planned.targetSeconds,
+    },
+    multiplierPercentOf({ inWindow: doubled }),
+  )
+  return { setId: set.id, points, doubled }
 }
 
 // The values of a set as spoken: "42,5 quilos, 10 repetições".
@@ -431,6 +484,7 @@ function isValidValues(values: SetValues | null | undefined): values is SetValue
 export function restoreWorkoutFlow(state: WorkoutFlowState, nowMs: number): WorkoutFlowState {
   const saved: WorkoutFlowState = {
     ...state,
+    session: { ...state.session, windows: state.session.windows ?? [] },
     restHoldStartedAtMs: null,
     skipped: state.skipped ?? [],
     draft: isValidValues(state.draft) ? state.draft : null,

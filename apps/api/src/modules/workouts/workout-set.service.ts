@@ -49,7 +49,8 @@ export function recordWorkoutSet(
     parseLetter(input.workout.letter)
     parseValues(input)
     const programDayId = requireProgramDayId(db, workout)
-    parseExercise(requirePlannedExercise(db, programDayId, input.plannedExerciseId), input)
+    const planned = requirePlannedExercise(db, programDayId, input.plannedExerciseId)
+    parseExercise(planned, input)
     if (!existingWorkout) {
       insertWorkout(db, { id: workoutId, programDayId, ...workout })
     }
@@ -71,7 +72,11 @@ export function recordWorkoutSet(
       seconds: input.seconds ?? null,
       performedAt: toUtcIso(input.performedAt),
     }
-    insertWorkoutSet(db, set)
+    insertWorkoutSet(db, set, {
+      plannedLoadG: planned.loadG,
+      targetReps: planned.targetReps,
+      targetSeconds: planned.targetSeconds,
+    })
     return { set, created: true }
   })
 }

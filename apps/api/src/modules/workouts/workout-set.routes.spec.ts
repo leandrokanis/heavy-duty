@@ -140,6 +140,9 @@ describe("Given the active program with letter 'A' and no workout", () => {
             seconds: null,
             performedAt: PERFORMED_AT,
             correctedAt: null,
+            plannedLoadG: 40000,
+            targetReps: 10,
+            targetSeconds: null,
           },
         ],
       })
@@ -621,6 +624,95 @@ describe('Given workout W with set 1 of supino-reto, after another program becam
       )
 
       expect(response.status).toBe(201)
+    })
+  })
+})
+
+type StoredPlan = {
+  plannedLoadG: number | null
+  targetReps: number | null
+  targetSeconds: number | null
+}
+
+function readStoredPlan(fixture: Fixture, setId: string): StoredPlan | undefined {
+  return fixture.db
+    .select({
+      plannedLoadG: workoutSets.plannedLoadG,
+      targetReps: workoutSets.targetReps,
+      targetSeconds: workoutSets.targetSeconds,
+    })
+    .from(workoutSets)
+    .where(eq(workoutSets.id, setId))
+    .get()
+}
+
+describe('Given the active program with supino-reto planned for 10 reps at 40000 g (ADR-033)', () => {
+  describe('When the app sends set 1 of supino-reto', () => {
+    it('Then the set should store the plan of the moment: 40000 g and 10 reps', async () => {
+      const fixture = await givenProgramWithLetterA()
+
+      await postSet(fixture, supinoSetBody(fixture, { loadG: 42500, reps: 8 }))
+
+      expect(readStoredPlan(fixture, SET_ID)).toEqual({
+        plannedLoadG: 40000,
+        targetReps: 10,
+        targetSeconds: null,
+      })
+    })
+  })
+
+  describe('When the app sends set 1 of prancha', () => {
+    it('Then the set should store 0 g and 45 seconds as its plan', async () => {
+      const fixture = await givenProgramWithLetterA()
+
+      await postSet(
+        fixture,
+        supinoSetBody(fixture, { ...fixture.prancha, loadG: 0, reps: undefined, seconds: 30 }),
+      )
+
+      expect(readStoredPlan(fixture, SET_ID)).toEqual({
+        plannedLoadG: 0,
+        targetReps: null,
+        targetSeconds: 45,
+      })
+    })
+  })
+
+  describe('When the planner changes supino-reto to 12 reps at 45000 g after set 1', () => {
+    it('Then set 1 should keep the plan it was recorded with', async () => {
+      const fixture = await givenProgramWithLetterA()
+      await postSet(fixture, supinoSetBody(fixture))
+
+      await sendJson(
+        fixture.app,
+        'PATCH',
+        `/api/programs/${fixture.programId}/days/A/exercises/supino-reto`,
+        { targetReps: 12, loadG: 45000 },
+      )
+
+      expect(readStoredPlan(fixture, SET_ID)).toEqual({
+        plannedLoadG: 40000,
+        targetReps: 10,
+        targetSeconds: null,
+      })
+    })
+  })
+
+  describe('When the app corrects set 1 to 12 reps at 50000 g', () => {
+    it('Then the set should keep its plan', async () => {
+      const fixture = await givenProgramWithLetterA()
+      await postSet(fixture, supinoSetBody(fixture))
+
+      await sendJson(fixture.app, 'PATCH', `/api/workouts/${WORKOUT_ID}/sets/${SET_ID}`, {
+        loadG: 50000,
+        reps: 12,
+      })
+
+      expect(readStoredPlan(fixture, SET_ID)).toEqual({
+        plannedLoadG: 40000,
+        targetReps: 10,
+        targetSeconds: null,
+      })
     })
   })
 })

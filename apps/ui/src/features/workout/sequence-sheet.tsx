@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, SkipForward } from 'lucide-react'
+import { Check, SkipForward, Volume2, VolumeX } from 'lucide-react'
 import type { RefObject } from 'react'
 import { Button } from '@/components/ui/button'
 import { MotionButton } from '@/components/ui/motion-button'
@@ -15,6 +15,9 @@ export type SequenceSheetProps = {
   finished: boolean
   // True while another exercise is left to do; without it the current row has no Pular (FR-002).
   canSkip: boolean
+  // The switch of the game sound, apart from the sound of the timer (D60); only while it runs.
+  gameSoundOn: boolean
+  onGameSoundChange: (gameSoundOn: boolean) => void
   // Where the focus goes when the sheet closes: the control that opened it.
   returnFocusRef: RefObject<HTMLElement | null>
   onClose: () => void
@@ -84,6 +87,8 @@ export function SequenceSheet({
   items,
   finished,
   canSkip,
+  gameSoundOn,
+  onGameSoundChange,
   returnFocusRef,
   onClose,
   onPick,
@@ -153,6 +158,18 @@ export function SequenceSheet({
         ))}
       </ul>
       <Sheet.Actions>
+        {finished ? null : (
+          <Button
+            variant="secondary"
+            size="workout"
+            className="col-span-2"
+            aria-pressed={gameSoundOn}
+            icon={gameSoundOn ? Volume2 : VolumeX}
+            onClick={() => onGameSoundChange(!gameSoundOn)}
+          >
+            Som do jogo
+          </Button>
+        )}
         {finished ? null : (
           <Button variant="destructive" size="workout" onClick={onEnd}>
             Encerrar

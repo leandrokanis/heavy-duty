@@ -37,6 +37,7 @@ const DISCARD_WORKOUT_SPEC = /discard-workout\.feature\.spec\.js$/
 const WORKOUT_DURATION_SPEC = /workout-duration\.feature\.spec\.js$/
 const DELETE_WORKOUT_SPEC = /delete-workout\.feature\.spec\.js$/
 const PERSONAL_RECORDS_SPEC = /personal-records\.feature\.spec\.js$/
+const SET_POINTS_SPEC = /set-points\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -89,6 +90,7 @@ export default defineConfig({
         WORKOUT_DURATION_SPEC,
         DELETE_WORKOUT_SPEC,
         PERSONAL_RECORDS_SPEC,
+        SET_POINTS_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -304,6 +306,15 @@ export default defineConfig({
       testMatch: PERSONAL_RECORDS_SPEC,
       fullyParallel: false,
       dependencies: ['delete-workout'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Records a workout relative to the real clock to open the window of chest, so it runs alone
+    // and one scenario at a time, after the records.
+    {
+      name: 'set-points',
+      testMatch: SET_POINTS_SPEC,
+      fullyParallel: false,
+      dependencies: ['personal-records'],
       use: { ...devices['Pixel 7'] },
     },
   ],

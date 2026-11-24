@@ -395,6 +395,7 @@ describe('Given an active workout saved resting on supino-reto with 40 s left', 
           startedAt: '2026-11-21T18:30:00.000Z',
           programId: 'program-1',
           day: letterA,
+          windows: [],
         }),
         { type: 'next', nowMs: T0 - 50_000 },
       )
@@ -783,6 +784,35 @@ describe('Given a set of chest still in the queue when the letters open', () => 
       renderToday(send, queue)
 
       expect(await screen.findByText(/^Peito · fecha hoje/)).toBeInTheDocument()
+    })
+  })
+})
+
+describe('Given chest in its window when the workout of the day opens (D56)', () => {
+  describe('When the athlete starts letter A and records supino-reto', () => {
+    it('Then the live region should tell the points of the set in double', async () => {
+      vi.useFakeTimers({ toFake: ['Date'], now: T0 })
+      windowsAnswer = () =>
+        json(200, {
+          now: '2026-11-21T18:00:00.000Z',
+          groups: [
+            {
+              muscleGroup: { slug: 'chest', name: 'peito' },
+              state: 'open',
+              lastTrainedAt: '2026-11-19T18:00:00.000Z',
+              opensAt: '2026-11-20T18:00:00.000Z',
+              closesAt: '2026-11-24T18:00:00.000Z',
+            },
+          ],
+        })
+      stubFetch(json(200, todayBody()))
+      await startLetterFromLoadedMock(/^A/)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Próximo' }))
+
+      expect(screen.getByRole('status').textContent).toBe(
+        'Série 1 de 3 registrada, 21 pontos em dobro',
+      )
     })
   })
 })

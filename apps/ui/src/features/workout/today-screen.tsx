@@ -17,6 +17,7 @@ import type { Today, TodayDay } from './today.types'
 import type { ActivityWindows } from './windows.types'
 import {
   createWorkoutFlow,
+  frozenWindowsOf,
   restoreWorkoutFlow,
   type WorkoutFlowState,
   type WorkoutSession,
@@ -137,7 +138,8 @@ export function TodayScreen() {
         onStart={(day) => {
           setSheetDay(null)
           if (result?.status === 'ok' && result.today.program) {
-            const started = createWorkoutFlow(startSession(result.today.program.id, day))
+            const session = startSession(result.today.program.id, day, windows)
+            const started = createWorkoutFlow(session)
             void saveActiveWorkout(started, Date.now())
             setFlow(started)
           }
@@ -147,14 +149,20 @@ export function TodayScreen() {
   )
 }
 
-// The workout id and start are born on the phone at "Começar"; the API creates the workout with the first set.
-function startSession(programId: string, day: TodayDay): WorkoutSession {
+// The workout id and start are born on the phone at "Começar"; the API creates the workout with the
+// first set. The windows on screen, from the API or the copy on the device, freeze here (D56).
+function startSession(
+  programId: string,
+  day: TodayDay,
+  windows: ActivityWindows | null,
+): WorkoutSession {
   const nowMs = Date.now()
   return {
     workoutId: createClientId(nowMs),
     startedAt: new Date(nowMs).toISOString(),
     programId,
     day,
+    windows: frozenWindowsOf(windows),
   }
 }
 
