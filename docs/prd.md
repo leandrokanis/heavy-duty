@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 0.6 |
+| Versão | 0.7 |
 | Data | 24/11/2026 |
 | Status | Rascunho — sujeito a revisão humana |
 | Classificação | Público |
@@ -719,7 +719,7 @@ Funcionalidade: Janela de atividade por grupo
 - **US-F10-04 (6b).** Como atleta, quero pontos em dobro enquanto um grupo está abaixo do melhor nível, para recuperar rápido o que perdi.
 - **US-F10-05 (6b).** Como atleta, quero ver o nível geral e o grupo que o limita, para saber qual grupo treinar.
 
-Parâmetros de partida (D41 e D43), recalculáveis com os dados reais (ADR-010): a série que bate o plano vale 10 pontos, até o dobro do plano; os pontos valem em dobro com algum grupo do exercício em janela; o nível *n* custa 40 + 3 × (*n* − 1) pontos; o grupo esfriando perde cerca de 40 pontos por dia. A memória muscular não soma com o ×2 da janela. Fora da janela, a série rende pontos comuns (D52), e o primeiro treino do grupo depois de um esfriamento rende em dobro (D53). O ganho do grupo, o multiplicador, a perda e o recorde seguem as decisões D54 a D62.
+Parâmetros de partida (D41 e D43), recalculáveis com os dados reais (ADR-010): a série que bate o plano vale 10 pontos, até o dobro do plano; os pontos valem em dobro com algum grupo do exercício em janela; o nível *n* custa 40 + 3 × (*n* − 1) pontos; o grupo esfriando perde cerca de 40 pontos por dia. A memória muscular não soma com o ×2 da janela. Fora da janela, a série rende pontos comuns (D52), e o primeiro treino do grupo depois de um esfriamento rende em dobro (D53). O ganho do grupo, o multiplicador, a perda e o recorde seguem as decisões D54 a D62. A memória muscular, o melhor nível e o nível geral seguem as decisões D63 a D68.
 
 ```gherkin
 # language: pt
@@ -866,7 +866,7 @@ Funcionalidade: Recordes
 
 - **US-F12-01.** Como atleta, quero que o treino do dia sugira a letra pelas janelas, para não precisar decidir o que treinar.
 
-A regra segue a D39: sai da sugestão a letra cujos grupos estão na maioria descansando; entre as outras, grupos esfriando pesam mais que grupos em janela, e o grupo mais fraco desempata. Sem histórico, vale a sugestão da US-F03-01.
+A regra segue a D39: sai da sugestão a letra cujos grupos estão na maioria descansando; entre as outras, grupos esfriando pesam mais que grupos em janela, e o grupo mais fraco desempata. Sem histórico, vale a sugestão da US-F03-01. A maioria descansando, os pesos e os desempates seguem as decisões D69 a D71, e a regra roda no celular (ADR-034, adendo da onda 6b).
 
 ```gherkin
 # language: pt
@@ -901,7 +901,7 @@ Funcionalidade: Sugestão pelas janelas
 - **US-F15b-01.** Como planejador, quero consultar pelo Claude quantas janelas foram aproveitadas em cada semana, para medir a regularidade (O1, meta de 70%).
 - **US-F15b-02.** Como atleta, quero ver a meta semanal de janelas no treino do dia, para saber quanto falta na semana.
 
-Uma janela é aproveitada quando o grupo é treinado enquanto ela está aberta. O planejador define a meta semanal pelo Claude [a confirmar: na especificação da US-F15b-02].
+Uma janela é aproveitada quando o grupo é treinado enquanto ela está aberta. O planejador define a meta semanal pelo Claude. A semana da janela, os grupos contados, a guarda da meta, a contagem sem sinal e a faixa de jogo seguem as decisões D72 a D78.
 
 ```gherkin
 # language: pt
@@ -1248,6 +1248,22 @@ Funcionalidade: Avisos por e-mail
 | D60 | O som do jogo tem chave própria (`heavy-duty:game-sound`), separada do som do cronômetro, na folha da sequência do treino. O bipe do descanso é funcional; o som dos pontos é decorativo |
 | D61 | O treino do dia mostra o selo e a barra de nível de cada grupo ao lado do selo da janela, na linha da letra, como no protótipo v1 |
 | D62 | O resumo do treino com o total de pontos fica fora da onda 6a; os pontos do treino e o ranking chegam na onda 7b (F19) |
+| D63 | A memória muscular vale enquanto o grupo está abaixo do melhor nível, em qualquer estado da janela, e não só esfriando, como no protótipo v1. Razão: o PRD vale sobre o protótipo (`docs/prototipo/README.md`), o ×2 dura só até o melhor nível, e a D52 já declara neutro o treino cedo |
+| D64 | A série que cruza o melhor nível rende toda em ×2, pelo estado do grupo antes da série. Razão: uma conta só por série, igual no celular e na API; a diferença é de poucos pontos |
+| D65 | A série com mais de um ×2 mostra uma marca só, nesta ordem: janela ×2, memória muscular ↺ ×2, bem-vindo de volta ×2. Razão: os bônus não somam (D41, D53), e uma marca só não sugere o quádruplo |
+| D66 | O melhor nível é derivado do histórico: só o esfriamento não o reduz, e a correção, a remoção de treino e a recalibração o refazem. Razão: segue a ADR-010 e a ADR-034; um máximo guardado errado daria ×2 indevido para sempre |
+| D67 | O nível geral conta os grupos principais das letras do programa ativo, sem os secundários. No empate de nível, limita o grupo com o menor saldo na barra e, depois, o primeiro na ordem do catálogo. Razão: segue o protótipo v1 e a sugestão pelas janelas; lombar e abdômen, treinados como secundários, limitariam o nível geral (risco "nível geral duro demais", `gamificacao.md`) |
+| D68 | O toque no nível geral leva à letra com mais séries planejadas do grupo que limita, com empate pela ordem do programa, e abre a folha "Começar" (D25). O grupo sem janela também leva à letra. Com o grupo descansando, o app mostra numa linha quando a janela abre, sem folha. Razão: o detalhe do grupo só chega com o mapa do corpo (onda 7a), e a folha mantém a confirmação da D25 (completa a D29 e a D39) |
+| D69 | Na sugestão pelas janelas, a letra tem a maioria descansando quando mais da metade dos grupos principais distintos dela está descansando. Os pesos por grupo são: esfriando 3, em janela 2, sem janela 2 e descansando −2. Razão: o PRD fala em "maioria dos grupos"; os pesos vêm do protótipo v1, a única fonte com números, como na D54; o grupo sem janela vale como em janela, porque está recuperado e não perde nível |
+| D70 | O empate na sugestão é resolvido pelo menor nível entre os grupos da letra e, depois, pela rotação da US-F03-01. Razão: mantém a D39, e as letras que empatam pelas janelas seguem a sequência do programa, como antes da onda 6b |
+| D71 | Quando todas as letras têm a maioria dos grupos descansando, todas disputam a sugestão pela mesma pontuação. Razão: a sugestão nunca some, e o treino cedo é neutro (D47) |
+| D72 | A janela conta na semana do desfecho: a aproveitada, na semana do treino que caiu nela; a perdida, na semana do fechamento. A janela trocada (`replaced`) e a aberta (`open`) ficam fora da taxa. Razão: a contagem do atleta sobe no treino da semana, e a taxa segue o resumo da simulação das janelas (`summarizeWindows`), que responde ao cenário "7 de 10" |
+| D73 | Os 11 grupos musculares contam nas janelas aproveitadas, inclusive os treinados só como secundário. Razão: a janela é por grupo (D47), e a simulação já conta os 11; a recalibração da regra da janela pode revisar a contagem |
+| D74 | A semana começa na segunda-feira às 00:00, no fuso do aparelho. A API não tem fuso: conta blocos de 7 × 24 h a partir do início de semana que recebe. Razão: segue a convenção atual da API, com instantes UTC; o fuso no servidor fica para a onda 7b, com a sequência de semanas e o resumo semanal (Q14) |
+| D75 | A meta semanal fica numa tabela só de inclusão (`weekly_goals`), e a meta de uma semana é a última definida até o fim dela. O planejador define a meta pelo Claude com `set_weekly_goal`, que aplica direto, sem prévia, com um inteiro de 1 a 77 (11 grupos × 7 dias). Razão: a sequência de semanas da onda 7b precisa da meta de cada semana, e a meta não altera o histórico, então a confirmação em duas chamadas (ADR-026) não se aplica |
+| D76 | Sem meta definida, o item da meta semanal não aparece na faixa de jogo. Razão: o app não inventa número, e a descrição da ferramenta orienta o planejador a definir a meta |
+| D77 | Sem sinal, o treino do dia mostra as janelas aproveitadas da cópia do aparelho, só se a cópia for da mesma semana, sem valor provisório. A contagem da API substitui a cópia quando a fila de envio esvazia. Razão: o celular não tem o desfecho das janelas, e a D48 já faz o mesmo com os selos |
+| D78 | Na onda 6b, a faixa de jogo do treino do dia mostra só o nível geral e a meta semanal. A sequência de semanas e os pontos da semana entram na onda 7b. Razão: escopo da D36 |
 
 ---
 

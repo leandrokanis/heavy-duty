@@ -75,6 +75,7 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Estado da janela | Situação atual da janela de um grupo muscular, pelo último treino do grupo: descansando (`resting`, antes da abertura), em janela (`open`), esfriando (`cooling`, desde o fechamento) ou sem janela (`none`, grupo nunca treinado) | `WindowState` | fase, status |
 | Relação com a janela anterior | Posição de um treino do grupo em relação à janela do treino anterior do mesmo grupo: `first` (sem treino anterior), `early` (antes de abrir), `in_window` (aberta) ou `late` (depois de fechar) | `WindowRelation` | — |
 | Desfecho da janela | O que aconteceu com a janela de um treino: `used` (o próximo treino caiu nela), `replaced` (o próximo treino veio antes de abrir), `missed` (fechou sem treino), `open` (aberta agora) ou `pending` (abre depois de agora) | `WindowOutcome` | — |
+| Janela aproveitada | Janela de um grupo muscular em que o grupo foi treinado enquanto ela estava aberta (desfecho `used`). Conta na semana do treino que caiu nela; a janela perdida conta na semana do fechamento (D72). A taxa por semana mede o O1 | `windowsUsed` | janela cumprida, janela batida |
 | Esfriar | Estado do grupo muscular quando a janela passa sem treino. Enquanto esfria, o grupo perde nível aos poucos | `cooling` | zerar |
 | Progresso | Barra por grupo muscular que cresce com o treino, mais dentro da janela, e esvazia enquanto o grupo esfria. Cheia, sobe o nível do grupo; vazia, o grupo cai um nível | `progress` | — |
 | Volume ajustado | Volume vezes o fator do objetivo do programa (força 130%, hipertrofia 100%, resistência 75%). Entra só no cálculo da janela (ADR-031) | `adjustedVolume` | intensidade |
@@ -84,6 +85,7 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Nível | Degrau de 1 a 20 de cada grupo muscular, que mede a forma atual: sobe quando a barra de progresso enche e cai aos poucos quando o grupo esfria | `level` | rank |
 | Nível geral | Nível do grupo mais fraco entre os que o programa treina | `overallLevel` | nível do atleta, média |
 | Faixa | Grupo de níveis que define a forma e a cor do selo: círculo de bronze (1 a 4), escudo de prata (5 a 10), hexágono de ouro (11 a 16) e estrela violeta (17 a 20) | `tier` | liga, divisão |
+| Faixa de jogo | Área no topo do treino do dia com o nível geral e a meta semanal; a sequência de semanas e os pontos da semana entram na onda 7b (D78). Diferente da faixa de níveis do selo | `GameStrip` | barra do jogo, painel, placar |
 | Melhor nível | Maior nível que um grupo já teve. Nunca se perde | `bestLevel` | recorde de nível |
 | Memória muscular | Pontos em dobro para um grupo que está abaixo do melhor nível, até alcançá-lo de novo | `muscleMemory` | — |
 | Aviso de queda | Aviso antes de um grupo esfriando cair de nível | `levelDropNotice` | — |
@@ -91,7 +93,7 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Medalha | Conquista por um marco; algumas ficam ocultas até a conquista | `medal` | troféu, badge, conquista |
 | Ranking pessoal | Ordem dos treinos do PO por pontos, só contra o próprio histórico | `personalRanking` | placar, leaderboard |
 | Sequência de semanas | Semanas seguidas com a meta semanal de janelas cumprida | `weekStreak` | streak, ofensiva |
-| Meta semanal | Número de janelas a aproveitar na semana | `weeklyGoal` | — |
+| Meta semanal | Número de janelas a aproveitar na semana, definido pelo planejador pelo Claude. A meta de uma semana é a última definida até o fim dela (D75) | `weeklyGoal`; tabela `weekly_goals`; ferramenta MCP `set_weekly_goal` | — |
 | Período | Ciclo de 12 semanas que termina com um retrato congelado | `Period` | temporada, ciclo |
 | Retrato | Registro congelado do progresso ao fim de um período | `PeriodSnapshot` | relatório |
 | Mapa do corpo | Visualização do estado das janelas por grupo muscular | `BodyMap` | — |

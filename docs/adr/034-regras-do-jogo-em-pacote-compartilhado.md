@@ -32,6 +32,22 @@ As regras puras do jogo (pontos, nível, perda e recorde) e os parâmetros delas
 - **Fila sem jogo.** Nada do jogo entra na fila de envio: a fila continua só com série, fim, pulo, correção e descarte (ADR-021, ADR-022, ADR-023, ADR-025, ADR-032).
 - **Build.** O app web e os testes usam o código-fonte TypeScript do pacote (`transpilePackages` no Next). A imagem de produção da API compila o pacote para JavaScript antes de compilar a API, porque o Node não executa TypeScript dentro de `node_modules`.
 
+## Adendo da onda 6b: sugestão da letra e nível geral
+
+Decidido pelo PO em 2026-11-24, no plano da onda 6b; a decisão continua Aceita. A sugestão pelas janelas (US-F12-01) e o nível geral (US-F10-05) dependem do estado da janela de cada grupo, que muda com o relógio. O treino do dia precisa acompanhar a abertura das janelas sem nova leitura e sem sinal (Q09).
+
+- **Regras no pacote.** O pacote ganha a sugestão da letra pelas janelas (D39, D69 a D71) e o nível geral com o grupo que limita (D29, D67, D68), em funções puras. Os pesos da sugestão ficam em `game.config.ts`.
+- **Valor final no app web.** O app web calcula a sugestão e o nível geral no treino do dia, com as cópias da API (treino do dia, janelas e níveis) e o relógio do aparelho. O resultado é o valor final, não provisório: nenhum valor da API o substitui.
+- **A API não calcula.** A API não devolve a sugestão pelas janelas nem o nível geral. O `suggestedLetter` de `GET /api/today` continua com a rotação da US-F03-01, e a regra do pacote usa essa letra como último desempate (D70) e como sugestão sem histórico.
+- **Sem estado novo.** A sugestão e o nível geral não entram na fila de envio nem no banco.
+
+Consequências do adendo:
+
+- A sugestão e o nível geral acompanham a abertura das janelas pelo relógio do aparelho, inclusive sem sinal.
+- A sugestão do celular e o `suggestedLetter` da API divergem por desenho: a letra da API passa a ser só a rotação.
+- Uma cópia velha dos níveis muda só o desempate da sugestão e o nível geral, até a próxima leitura.
+- A frase "o app web não guarda regra de negócio" ganha uma segunda exceção, em `docs/arquitetura/app-web.md`.
+
 ## Consequências
 
 - Pontos, barra e recorde aparecem na academia sem sinal, com a mesma regra da API.

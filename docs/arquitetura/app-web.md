@@ -14,9 +14,13 @@
 - Funcionar sem sinal no fluxo da academia, com a fila do armazenamento local (NFR06).
 - Instalar como PWA, com manifesto e service worker (NFR05).
 - Mostrar o jogo: janelas, níveis, mapa do corpo, período, medalhas e ranking (ondas 5 a 7). O cálculo é da API (ADR-010). Pontos, barra de nível e recorde aparecem provisórios durante o treino, calculados no aparelho com as regras do pacote `@heavy-duty/game`, e o valor da API os substitui quando a fila de envio esvazia (ADR-034).
+- Calcular no treino do dia a sugestão da letra pelas janelas e o nível geral com o grupo que limita, como valor final, com as regras do pacote `@heavy-duty/game`, as cópias da API e o relógio do aparelho (ADR-034, adendo da onda 6b).
 - Oferecer as telas de administração no Mac, depois do MVP (D22).
 
-O app web não guarda regra de negócio própria. Validação de domínio, cálculo do jogo e gravação ficam na API. A exceção é o provisório do jogo: o app web executa as regras puras do pacote `@heavy-duty/game`, as mesmas da API, com o estado congelado no início do treino, e nada do jogo entra na fila de envio (ADR-034).
+O app web não guarda regra de negócio própria. Validação de domínio, cálculo do jogo e gravação ficam na API. As exceções são duas, as duas com as regras puras do pacote `@heavy-duty/game` e sem nada do jogo na fila de envio (ADR-034):
+
+- O provisório do jogo: o app web executa as mesmas regras da API com o estado congelado no início do treino, e o valor da API o substitui.
+- A sugestão da letra e o nível geral: o app web calcula o valor final com as cópias da API e o relógio do aparelho. A API não calcula esses dois valores (adendo da onda 6b).
 
 ## Tecnologias
 
