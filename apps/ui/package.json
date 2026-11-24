@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",
+    "@heavy-duty/game": "workspace:*",
     "@serwist/next": "9.5.15",
     "@simplewebauthn/browser": "14.0.0",
     "dexie": "4.4.7",

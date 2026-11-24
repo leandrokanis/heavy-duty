@@ -18,7 +18,7 @@ services:
       - sh
       - -c
       - >-
-        pnpm install --frozen-lockfile --filter heavy-duty --filter @heavy-duty/api &&
+        pnpm install --frozen-lockfile --filter heavy-duty --filter "@heavy-duty/api..." &&
         pnpm --filter @heavy-duty/api db:migrate &&
         pnpm --filter @heavy-duty/api db:seed &&
         exec pnpm --filter @heavy-duty/api dev
@@ -32,6 +32,7 @@ services:
       - .:/app
       - api-root-node-modules:/app/node_modules
       - api-node-modules:/app/apps/api/node_modules
+      - api-game-node-modules:/app/packages/game/node_modules
       - pnpm-store:/pnpm-store
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3001/api/health"]
@@ -51,7 +52,7 @@ services:
       - sh
       - -c
       - >-
-        pnpm install --frozen-lockfile --filter heavy-duty --filter @heavy-duty/ui &&
+        pnpm install --frozen-lockfile --filter heavy-duty --filter "@heavy-duty/ui..." &&
         exec pnpm --filter @heavy-duty/ui dev --hostname 0.0.0.0
     environment:
       <<: *node-environment
@@ -60,6 +61,7 @@ services:
       - .:/app
       - web-root-node-modules:/app/node_modules
       - web-node-modules:/app/apps/ui/node_modules
+      - web-game-node-modules:/app/packages/game/node_modules
       - web-next:/app/apps/ui/.next
       - pnpm-store:/pnpm-store
 
@@ -76,7 +78,7 @@ services:
       - sh
       - -c
       - >-
-        pnpm install --frozen-lockfile --filter heavy-duty --filter @heavy-duty/api &&
+        pnpm install --frozen-lockfile --filter heavy-duty --filter "@heavy-duty/api..." &&
         (restic cat config > /dev/null 2>&1 || restic init) &&
         exec pnpm --filter @heavy-duty/api backup:scheduler
     environment:
@@ -91,6 +93,7 @@ services:
       - .:/app
       - backup-root-node-modules:/app/node_modules
       - backup-node-modules:/app/apps/api/node_modules
+      - backup-game-node-modules:/app/packages/game/node_modules
       - pnpm-store:/pnpm-store
       - backup-dev-repo:/backup
 
@@ -108,11 +111,14 @@ services:
 volumes:
   api-root-node-modules:
   api-node-modules:
+  api-game-node-modules:
   backup-root-node-modules:
   backup-node-modules:
+  backup-game-node-modules:
   backup-dev-repo:
   web-root-node-modules:
   web-node-modules:
+  web-game-node-modules:
   web-next:
   pnpm-store:
   caddy-data:

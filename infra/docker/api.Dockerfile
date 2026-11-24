@@ -14,14 +14,19 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
-RUN pnpm install --frozen-lockfile --filter heavy-duty --filter @heavy-duty/api
+COPY packages/game/package.json packages/game/
+RUN pnpm install --frozen-lockfile --filter heavy-duty --filter "@heavy-duty/api..."
+COPY packages/game packages/game
 COPY apps/api apps/api
-RUN pnpm --filter @heavy-duty/api build \
+# The trailing ... builds the game package before the API, see ADR-034.
+RUN pnpm --filter "@heavy-duty/api..." build \
   && pnpm --filter @heavy-duty/api deploy --prod --legacy /out \
   && cp -r apps/api/dist /out/dist
 
 FROM node:24.22.2-bookworm-slim AS api
+# The deployed game package only has dist, which this export condition selects (ADR-034).
 ENV NODE_ENV=production \
+    NODE_OPTIONS=--conditions=heavy-duty-dist \
     PORT=3001 \
     DATABASE_PATH=/app/data/heavy-duty.sqlite
 WORKDIR /app
@@ -38,6 +43,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=restic /usr/bin/restic /usr/local/bin/restic
 ENV NODE_ENV=production \
+    NODE_OPTIONS=--conditions=heavy-duty-dist \
     DATABASE_PATH=/app/data/heavy-duty.sqlite \
     RESTIC_REPOSITORY=/backup/restic
 WORKDIR /app

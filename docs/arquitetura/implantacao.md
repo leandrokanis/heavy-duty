@@ -19,6 +19,8 @@ O push na `dev` e em qualquer outra branch roda as verificações e o build, mas
 | `ghcr.io/leandrokanis/heavy-duty-web` | `infra/docker/web.Dockerfile` | App web (Next.js) |
 | `ghcr.io/leandrokanis/heavy-duty-proxy` | `infra/docker/proxy.Dockerfile` | Caddy com o `infra/caddy/Caddyfile`, o mesmo do desenvolvimento |
 
+As imagens da API e do app web levam o pacote `@heavy-duty/game` (ADR-034). A imagem da API compila o pacote para `dist` antes da API, e `NODE_OPTIONS=--conditions=heavy-duty-dist` faz o Node carregar esse build. O app web compila o código-fonte do pacote no `next build`, pelo `transpilePackages`. O teste de fumaça do CI importa o pacote nas imagens `api` e `backup`.
+
 ## Pilha no Coolify
 
 O recurso do Coolify é do tipo Docker Compose e usa o arquivo `compose.coolify.yaml`. O túnel da Cloudflare liga o hostname público ao serviço `proxy`, que roteia por caminho (`tunel.md`). Nenhum serviço publica porta no host.
