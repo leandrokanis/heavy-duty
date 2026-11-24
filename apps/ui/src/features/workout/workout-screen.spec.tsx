@@ -1889,7 +1889,7 @@ function tapButton(name: string) {
 
 describe('Given the buttons of the wheels on set 1 of supino-reto at 40 kg and 10 reps', () => {
   describe('When the athlete taps Aumentar carga twice and Diminuir repetições once, then Próximo', () => {
-    it('Then should show 45 kg and 9, queue set 1 with 45000 g and 9 reps and, after the rest, show set 2 with 45 kg and 9', async () => {
+    it('Then should show 45 kg and 9, queue set 1 with 45000 g and 9 reps and, after the rest, show set 2 with 45 kg and the 10 of the program', async () => {
       vi.useFakeTimers({ now: T0 })
       const fetchMock = stubFetch(created())
       renderWorkout([SUPINO_40, PRANCHA])
@@ -1911,7 +1911,7 @@ describe('Given the buttons of the wheels on set 1 of supino-reto at 40 kg and 1
         adjusted: ['45', '9'],
         sent: [{ loadG: 45_000, reps: 9 }],
         restWheels: 0,
-        set2: ['45', '9', '2 de 3'],
+        set2: ['45', '10', '2 de 3'],
       })
     })
   })

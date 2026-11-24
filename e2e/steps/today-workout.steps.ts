@@ -89,6 +89,15 @@ Given(
 )
 
 Given(
+  'in the last workout the athlete did {string} at {string} with {int} reps',
+  async ({ request, program }, name: string, load: string, reps: number) => {
+    recordWorkout(programIdOf(program), 'A', [
+      { exerciseSlug: await toExerciseSlug(request, name), loadG: toLoadG(load), reps },
+    ])
+  },
+)
+
+Given(
   'the last workout of this program was of the day {string}',
   async ({ request, program }, letter: string) => {
     recordWorkout(programIdOf(program), letter, [

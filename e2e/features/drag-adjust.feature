@@ -38,6 +38,7 @@ Feature: Adjust load, reps and time by dragging before recording the set
     Then the wheel "Carga" shows "0"
     And the button "Diminuir carga" should be disabled
 
+  @BUG-57
   Scenario: set recorded with the adjusted value
     Given the athlete started the day "A" at "2026-11-21T18:30:00.000Z"
     And the athlete drags the wheel "Carga" 1 steps up
@@ -45,7 +46,7 @@ Feature: Adjust load, reps and time by dragging before recording the set
     When the athlete taps "Próximo" at "2026-11-21T18:31:05.000Z"
     Then the set of "Supino reto" should be recorded with load 42500 g, 8 reps and set number 1 in the workout of the day "A"
     When the athlete skips the rest with "Próximo" at "2026-11-21T18:31:06.000Z"
-    Then the screen should show "Supino reto" with "42,5" kg, "8" rep and set "2 de 3"
+    Then the screen should show "Supino reto" with "42,5" kg, "10" rep and set "2 de 3"
 
   Scenario: timed exercise with the adjusted time
     Given the athlete started the day "A" at "2026-11-21T18:30:00.000Z"

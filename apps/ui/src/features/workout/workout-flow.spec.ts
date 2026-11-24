@@ -2201,8 +2201,8 @@ describe('Given set 1 of supino-reto recorded at 42500 g and 8 reps', () => {
     )
     const onSet2 = restEnd(next(adjusted, T0), T0 + 90_000)
 
-    it('Then set 2 should start from 42500 g and 8 reps', () => {
-      expect(shownValuesOf(onSet2)).toEqual({ loadG: 42_500, reps: 8, seconds: null })
+    it('Then set 2 should start from 42500 g and the 10 reps of the program', () => {
+      expect(shownValuesOf(onSet2)).toEqual({ loadG: 42_500, reps: 10, seconds: null })
     })
 
     it('Then a set 2 adjusted to 45000 g and recorded should hand 45000 g to set 3', () => {
@@ -2230,11 +2230,11 @@ describe('Given supino-reto with set 1 recorded at 42500 g and 8 reps, now on se
     workoutFlowReducer(state, { type: 'goTo', exerciseIndex, nowMs })
 
   describe('When the athlete goes to prancha and back to supino by the sequence', () => {
-    it('Then supino should show 42500 g and 8 reps again', () => {
+    it('Then supino should show 42500 g and the 10 reps of the program again', () => {
       const onPrancha = goToExercise(onSet2, 1, T0 + 100_000)
       const back = goToExercise(onPrancha, 0, T0 + 110_000)
 
-      expect(shownValuesOf(back)).toEqual({ loadG: 42_500, reps: 8, seconds: null })
+      expect(shownValuesOf(back)).toEqual({ loadG: 42_500, reps: 10, seconds: null })
     })
   })
 
@@ -2304,8 +2304,10 @@ describe('Given prancha adjusted to 50 s and 2500 g, running its execution from 
       expect([recorded?.seconds, recorded?.loadG]).toEqual([20, 2_500])
     })
 
-    it('Then set 2 should start from the 50 s shown before the execution', () => {
-      expect(shownValuesOf(restEnd(ended, T0 + 83_000)).seconds).toBe(50)
+    it('Then set 2 should start from the 2500 g shown and the 45 s of the program', () => {
+      const set2 = shownValuesOf(restEnd(ended, T0 + 83_000))
+
+      expect([set2.loadG, set2.seconds]).toEqual([2_500, 45])
     })
   })
 
@@ -2352,6 +2354,23 @@ describe('Given a saved state on set 1 of supino-reto', () => {
 
     it('Then should take an adjust', () => {
       expect(shownValuesOf(adjust(restored, 'loadG', 1)).loadG).toBe(42_500)
+    })
+  })
+
+  describe('When it is restored from a workout that carried the reps to the next set', () => {
+    it('Then set 2 should show the carried load and the 10 reps of the program', () => {
+      const onSet2 = restEnd(next(adjusted, T0), T0 + 90_000)
+      const supinoId = SUPINO_40.plannedExerciseId
+      const saved = {
+        ...onSet2,
+        carriedValues: { [supinoId]: { loadG: 42_500, reps: 8, seconds: null } },
+      }
+
+      expect(shownValuesOf(restoreWorkoutFlow(saved, T0 + 95_000))).toEqual({
+        loadG: 42_500,
+        reps: 10,
+        seconds: null,
+      })
     })
   })
 
@@ -2536,13 +2555,13 @@ describe('Given the correction sheet open in the rest, to be saved with values t
   })
 
   describe('When correctLastSet arrives with 42500 g and 8 reps and the rest ends', () => {
-    it('Then set 2 should show 42500 g and 8 reps', () => {
+    it('Then set 2 should show 42500 g and the 10 reps of the program', () => {
       const open = openCorrection(restAfterSupinoSet1())
 
       const corrected = correct(open, { loadG: 42500, reps: 8, seconds: null })
       const set2 = restEnd(corrected, T0 + 90_000)
 
-      expect(shownValuesOf(set2)).toEqual({ loadG: 42500, reps: 8, seconds: null })
+      expect(shownValuesOf(set2)).toEqual({ loadG: 42500, reps: 10, seconds: null })
     })
   })
 })
@@ -2561,13 +2580,13 @@ function restAfterPranchaEndedAt20Seconds(): WorkoutFlowState {
 
 describe('Given prancha of 3 sets recorded by the clock at 45 s, with the correction sheet open', () => {
   describe('When correctLastSet arrives with 40 s and the rest ends', () => {
-    it('Then set 2 should start at 40 s', () => {
+    it('Then set 2 should start at the 45 s of the program', () => {
       const open = openCorrection(restAfterPranchaByClock())
 
       const corrected = correct(open, { loadG: 0, reps: null, seconds: 40 })
       const set2 = restEnd(corrected, T0 + 3_000 + 45_000 + 60_000)
 
-      expect(shownValuesOf(set2).seconds).toBe(40)
+      expect(shownValuesOf(set2).seconds).toBe(45)
     })
   })
 })
@@ -2601,7 +2620,7 @@ describe('Given the rest after set 1 of supino with the correction sheet open an
   })
 
   describe('When correctLastSet arrives at T0 + 95 000 with 42500 g and 8 reps', () => {
-    it('Then should close the sheet and pass to set 2 with the corrected values, the guard starting at that instant', () => {
+    it('Then should close the sheet and pass to set 2 with the corrected load, the guard starting at that instant', () => {
       const open = openCorrection(restAfterSupinoSet1())
 
       const state = correct(open, { loadG: 42500, reps: 8, seconds: null }, T0 + 95_000)
@@ -2615,7 +2634,7 @@ describe('Given the rest after set 1 of supino with the correction sheet open an
       }).toEqual({
         phase: 'set',
         setNumber: 2,
-        shown: { loadG: 42500, reps: 8, seconds: null },
+        shown: { loadG: 42500, reps: 10, seconds: null },
         lastStepAtMs: T0 + 95_000,
         sheet: 'none',
       })

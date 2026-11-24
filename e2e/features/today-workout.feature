@@ -26,6 +26,11 @@ Feature: Open the workout of the day with the first exercise ready and the value
       | it is the first time with this exercise                      | 40 kg   |
       | in the last workout the athlete did "Supino reto" at "42,5 kg" | 42,5 kg |
 
+    @BUG-57
+    Examples: last workout with other reps than the program
+      | situation                                                                  | load    |
+      | in the last workout the athlete did "Supino reto" at "42,5 kg" with 8 reps | 42,5 kg |
+
   Scenario: start sheet before the workout
     Given an active program with goal "hypertrophy" and the day "A":
       | exercise    | sets | target  | load  | rest |

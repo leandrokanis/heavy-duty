@@ -17,6 +17,9 @@ export type WorkoutSession = {
 // The numbers on the set screen; reps or seconds is null for the other kind of exercise.
 export type SetValues = { loadG: number; reps: number | null; seconds: number | null }
 
+// Only the load goes on to the next set; reps and time always come from the program.
+export type CarriedValues = Pick<SetValues, 'loadG'>
+
 export type SheetName = 'none' | 'sequence' | 'confirmEnd' | 'correction'
 
 // An exercise the athlete skipped and did not do yet; the instant is the last skip (ADR-023).
@@ -59,7 +62,7 @@ export type WorkoutFlowState = {
   // The values the athlete adjusted on the set on screen; null while nothing is adjusted.
   draft: SetValues | null
   // By planned exercise, the values the next set of it starts from, after its last record.
-  carriedValues: Record<string, SetValues>
+  carriedValues: Record<string, CarriedValues>
 }
 
 export type WorkoutFlowAction =
@@ -250,11 +253,13 @@ function filledValuesOf(planned: TodayExercise): SetValues {
   return { loadG: planned.loadG, reps: planned.targetReps, seconds: planned.targetSeconds }
 }
 
-// The values on the set screen: the adjusted ones, else those the last record of the exercise
-// carries, else the filled ones (decision 29).
+// The values on the set screen: the adjusted ones, else the filled ones with the load the last
+// record of the exercise carries (#57).
 export function shownValuesOf(state: WorkoutFlowState): SetValues {
   const planned = currentExercise(state)
-  return state.draft ?? state.carriedValues[planned.plannedExerciseId] ?? filledValuesOf(planned)
+  const filled = filledValuesOf(planned)
+  const carried = state.carriedValues[planned.plannedExerciseId]
+  return state.draft ?? { ...filled, loadG: carried?.loadG ?? filled.loadG }
 }
 
 export function currentExercise(state: WorkoutFlowState): TodayExercise {
@@ -388,6 +393,19 @@ function positionText(state: WorkoutFlowState): string {
   return isNewOnScreen ? `${planned.exercise.name}, série ${numbers}` : `Série ${numbers}`
 }
 
+// A state saved before #57 carried the reps and the time too; only the load stays.
+function carriedLoadsOf(
+  carried: Record<string, CarriedValues> | undefined,
+): Record<string, CarriedValues> {
+  return Object.fromEntries(
+    Object.entries(carried ?? {}).flatMap(([plannedExerciseId, { loadG }]) =>
+      Number.isSafeInteger(loadG) && loadG >= MINIMUMS.loadG
+        ? [[plannedExerciseId, { loadG }]]
+        : [],
+    ),
+  )
+}
+
 function isValidValues(values: SetValues | null | undefined): values is SetValues {
   if (!values) return false
   const fields: AdjustField[] = ['loadG', 'reps', 'seconds']
@@ -407,9 +425,7 @@ export function restoreWorkoutFlow(state: WorkoutFlowState, nowMs: number): Work
     restHoldStartedAtMs: null,
     skipped: state.skipped ?? [],
     draft: isValidValues(state.draft) ? state.draft : null,
-    carriedValues: Object.fromEntries(
-      Object.entries(state.carriedValues ?? {}).filter(([, values]) => isValidValues(values)),
-    ),
+    carriedValues: carriedLoadsOf(state.carriedValues),
   }
   const settled = hasRestEnded(saved, nowMs) ? advance(saved, nowMs) : saved
   return {
@@ -532,19 +548,12 @@ function isSameValues(set: RecordWorkoutSetBody, values: SetValues): boolean {
   )
 }
 
-// The next set of the exercise starts from the corrected load and reps. The corrected time goes
-// along only when the recorded time was the one carried: a timed set ended early records less
-// than the time shown, and that shown time stays (FR-007).
+// The next set of the exercise starts from the corrected load; its reps or time stay the program's.
 function withCorrectedLastSet(state: WorkoutFlowState, values: SetValues): WorkoutFlowState {
   const last = state.recorded.at(-1) as RecordWorkoutSetBody
   const planned = state.session.day.exercises.find(
     ({ plannedExerciseId }) => plannedExerciseId === last.plannedExerciseId,
   ) as TodayExercise
-  const carried = state.carriedValues[planned.plannedExerciseId] ?? filledValuesOf(planned)
-  const measure =
-    planned.exercise.kind === 'reps'
-      ? { reps: values.reps }
-      : { seconds: last.seconds === carried.seconds ? values.seconds : carried.seconds }
   const body: RecordWorkoutSetBody =
     planned.exercise.kind === 'reps'
       ? { ...last, loadG: values.loadG, reps: values.reps as number }
@@ -554,7 +563,7 @@ function withCorrectedLastSet(state: WorkoutFlowState, values: SetValues): Worko
     recorded: [...state.recorded.slice(0, -1), body],
     carriedValues: {
       ...state.carriedValues,
-      [planned.plannedExerciseId]: { ...carried, loadG: values.loadG, ...measure },
+      [planned.plannedExerciseId]: { loadG: values.loadG },
     },
   }
 }
@@ -767,7 +776,10 @@ function recordSet(state: WorkoutFlowState, options: RecordOptions): WorkoutFlow
     skipped: state.skipped.filter((mark) => mark.plannedExerciseId !== planned.plannedExerciseId),
     recorded: [...state.recorded, setBodyOf(state, planned, performedAtMs, options.seconds)],
     draft: null,
-    carriedValues: { ...state.carriedValues, [planned.plannedExerciseId]: shownValuesOf(state) },
+    carriedValues: {
+      ...state.carriedValues,
+      [planned.plannedExerciseId]: { loadG: shownValuesOf(state).loadG },
+    },
   }
   // The last set of the day wins over a 0 s rest: there is no position to advance to.
   if (nextPositionOf(withSet) === null) {
