@@ -17,7 +17,7 @@ import { formatDurationMinutes, formatSetShort } from './format'
 import { LastSetButton } from './last-set-button'
 import { LeftOutSummary } from './left-out-summary'
 import { LetterBadge } from './letter-badge'
-import type { RecordMark as RecordMarkValue } from './personal-records'
+import { type RecordMark as RecordMarkValue, recordSetIdsOf } from './personal-records'
 import { PointsFloat } from './points-float'
 import { QueueNotices } from './queue-notices'
 import { RecordMark } from './record-mark'
@@ -208,9 +208,23 @@ function shownPointsOf(state: WorkoutFlowState): SetPointsView | null {
   return lastSetPointsOf(state)
 }
 
-// One sound per recorded set, under the switch of the game sound (D60).
-function usePointsSound(
+// The vibration of the record in the prototype of the PO; Safari on iOS ignores it, and nothing
+// depends on it (docs/gamificacao.md).
+const RECORD_VIBRATION_MS = [20, 30, 20]
+
+function vibrate(pattern: number[]): void {
+  try {
+    navigator.vibrate?.(pattern)
+  } catch {
+    // The record shows on the screen with no vibration.
+  }
+}
+
+// One sound per recorded set, and the sound and the vibration of a record after it, all under the
+// switch of the game sound (D60).
+function useGameSounds(
   shown: SetPointsView | null,
+  isRecord: boolean,
   tonePlayer: TonePlayer,
   gameSoundOn: boolean,
 ): void {
@@ -221,10 +235,12 @@ function usePointsSound(
     if (!gameSoundOn) return
     try {
       tonePlayer.play(shown.doubled ? 'pointsDoubled' : 'points')
+      if (isRecord) tonePlayer.play('record')
     } catch {
-      // The points show without the sound.
+      // The points and the record show without the sound.
     }
-  }, [shown, tonePlayer, gameSoundOn])
+    if (isRecord) vibrate(RECORD_VIBRATION_MS)
+  }, [shown, isRecord, tonePlayer, gameSoundOn])
 }
 
 // A page that goes to the background may never see the finger leave the ring: the hold ends there.
@@ -365,7 +381,10 @@ export function WorkoutScreen({
   const [soundOn, setSoundOn] = useSoundPreference()
   const [gameSoundOn, setGameSoundOn] = useSoundPreference(GAME_SOUND_KEY)
   const shownPoints = shownPointsOf(state)
-  usePointsSound(shownPoints, tonePlayer, gameSoundOn)
+  const isRecord =
+    shownPoints !== null &&
+    recordSetIdsOf(state.session.day.exercises, state.recorded).has(shownPoints.setId)
+  useGameSounds(shownPoints, isRecord, tonePlayer, gameSoundOn)
   const nowMs = usePhaseClock(deadlineOf(state), reachDeadline)
   const reading = timerReadingOf(state, nowMs)
   useTimerCues(reading, tonePlayer, soundOn)
