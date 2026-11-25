@@ -6,6 +6,8 @@ export type NoticeEmailContent = {
   body: string
   letter: string | null
   groups: readonly string[]
+  // Only on a level drop: the level now and the level after the drop.
+  levels: { now: number; after: number } | null
 }
 
 export type NoticeEmailLinks = {
@@ -42,6 +44,7 @@ export function noticeEmailContentOf(
     ...noticeTextOf(notice, nowMs, timeZone),
     letter: notice.letter,
     groups: notice.groups.map(({ name }) => capitalized(name)),
+    levels: notice.level ?? null,
   }
 }
 
@@ -64,12 +67,14 @@ export function renderNoticeEmail(
   const appUrl = `${links.appOrigin}/`
   const { pageUrl, oneClickUrl } = unsubscribeLinksOf(links)
   const letterLine = content.letter === null ? null : `Letra ${content.letter}`
+  const levelLine = content.levels === null ? null : levelLineOf(content.levels)
 
   const text = [
     content.title,
     '',
     content.groups.join(' · '),
     '',
+    ...(levelLine === null ? [] : [levelLine]),
     ...(letterLine === null ? [] : [letterLine]),
     content.body,
     '',
@@ -84,7 +89,7 @@ export function renderNoticeEmail(
   return {
     subject: content.title,
     text,
-    html: renderHtml(content, letterLine, appUrl, pageUrl),
+    html: renderHtml(content, { letterLine, levelLine }, appUrl, pageUrl),
     // RFC 8058: a one-click POST to this https URL turns the emails off.
     headers: {
       'List-Unsubscribe': `<${oneClickUrl}>`,
@@ -93,9 +98,13 @@ export function renderNoticeEmail(
   }
 }
 
+function levelLineOf(levels: { now: number; after: number }): string {
+  return `Nível ${levels.now} → ${levels.after}`
+}
+
 function renderHtml(
   content: NoticeEmailContent,
-  letterLine: string | null,
+  { letterLine, levelLine }: { letterLine: string | null; levelLine: string | null },
   appUrl: string,
   pageUrl: string,
 ): string {
@@ -106,6 +115,10 @@ function renderHtml(
     )
     .join('')
   const letter = letterLine === null ? '' : `<strong>${escapeHtml(letterLine)}</strong><br>`
+  const level =
+    levelLine === null
+      ? ''
+      : `<p style="margin:0 0 10px;font-size:18px;font-weight:600">${escapeHtml(levelLine)}</p>\n`
 
   return `<!doctype html>
 <html lang="pt-BR">
@@ -115,7 +128,7 @@ function renderHtml(
 <p style="margin:0 0 12px;padding-bottom:12px;border-bottom:1px solid ${COLOR.line};font-size:14px"><strong>Heavy Duty</strong></p>
 <h1 style="margin:0 0 16px;font-size:22px;line-height:1.25">${escapeHtml(content.title)}</h1>
 <p style="margin:0 0 10px">${groups}</p>
-<p style="margin:0 0 16px;padding:12px;border-radius:18px;background:${COLOR.background}">${letter}<span style="color:${COLOR.muted};font-size:14px">${escapeHtml(content.body)}</span></p>
+${level}<p style="margin:0 0 16px;padding:12px;border-radius:18px;background:${COLOR.background}">${letter}<span style="color:${COLOR.muted};font-size:14px">${escapeHtml(content.body)}</span></p>
 <p style="margin:0 0 16px;text-align:center"><a href="${escapeHtml(appUrl)}" style="display:inline-block;padding:14px 24px;border-radius:14px;background:${COLOR.accent};color:#FFFFFF;font-weight:600;text-decoration:none">Abrir o app</a></p>
 <p style="margin:0;padding-top:12px;border-top:1px solid ${COLOR.line};text-align:center;font-size:13px;color:${COLOR.muted}"><a href="${escapeHtml(pageUrl)}" style="color:${COLOR.accent};font-weight:600">Desligar e-mails</a><br>${PHONE_NOTICES_GO_ON}</p>
 </div>

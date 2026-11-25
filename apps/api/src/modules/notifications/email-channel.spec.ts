@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createFakeMailSender } from '../../test/mail-sender.js'
-import { createEmailChannel, LEVEL_DROP_EMAIL_SKIPPED } from './email-channel.js'
+import { createEmailChannel } from './email-channel.js'
 import type { Notice } from './notices.rules.js'
 
 const OPTIONS = { appOrigin: 'https://heavy.example.com', timeZone: 'America/Sao_Paulo' }
@@ -15,9 +15,9 @@ const QUADRICEPS_DROP: Notice = {
   level: { now: 7, after: 6 },
 }
 
-describe('Given the level drop notice of quadriceps', () => {
+describe('Given the level drop notice of quadriceps (US-F17-02)', () => {
   describe('When the email channel delivers it', () => {
-    it('Then should send no email and record it as skipped', async () => {
+    it('Then should send the email of the drop and record it as sent', async () => {
       const mail = createFakeMailSender()
 
       const result = await createEmailChannel(mail, OPTIONS).deliver(
@@ -25,10 +25,21 @@ describe('Given the level drop notice of quadriceps', () => {
         QUADRICEPS_DROP.dueAtMs,
       )
 
-      expect([result, mail.sent.length]).toEqual([
-        { status: 'skipped', error: LEVEL_DROP_EMAIL_SKIPPED },
-        0,
+      expect([result, mail.sent.map(({ subject }) => subject)]).toEqual([
+        { status: 'sent', error: null },
+        ['Quadríceps cai para o nível 6 amanhã às 14h'],
       ])
+    })
+  })
+
+  describe('When the SMTP server cannot deliver the email', () => {
+    it('Then should record it as failed with the safe reason', async () => {
+      const result = await createEmailChannel(createFakeMailSender('ECONNECTION'), OPTIONS).deliver(
+        QUADRICEPS_DROP,
+        QUADRICEPS_DROP.dueAtMs,
+      )
+
+      expect(result).toEqual({ status: 'failed', error: 'ECONNECTION' })
     })
   })
 })

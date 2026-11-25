@@ -30,6 +30,7 @@ describe('Given the opening notice of letter B, whose back, biceps and lower bac
         body: 'Costas, bíceps e lombar entram em janela. Pontos em dobro.',
         letter: 'B',
         groups: ['Costas', 'Bíceps', 'Lombar'],
+        levels: null,
       })
     })
   })
@@ -40,6 +41,7 @@ const CONTENT: NoticeEmailContent = {
   body: 'Costas, bíceps e lombar entram em janela. Pontos em dobro.',
   letter: 'B',
   groups: ['Costas', 'Bíceps', 'Lombar'],
+  levels: null,
 }
 
 describe('Given the email content of the window notice of letter B', () => {
@@ -125,6 +127,67 @@ describe('Given content with HTML characters', () => {
         `<${APP_ORIGIN}/api/email/unsubscribe?token=a%26b>`,
       )
       expect(email.html).toContain('/desligar-emails#token=a%26b')
+    })
+  })
+})
+
+const QUADRICEPS_DROP: Notice = {
+  key: 'level_drop:quadriceps:2026-11-27T17:00:00.000Z',
+  kind: 'level_drop',
+  letter: 'C',
+  groups: [{ slug: 'quadriceps', name: 'quadríceps' }],
+  eventAtMs: Date.parse('2026-11-27T17:00:00.000Z'),
+  dueAtMs: Date.parse('2026-11-26T17:00:00.000Z'),
+  level: { now: 7, after: 6 },
+}
+
+describe('Given quadriceps drops from level 7 to 6 tomorrow at 14h, trained by letter C (US-F17-02)', () => {
+  describe('When the email content is made the day before', () => {
+    it('Then should reuse the text of the push notice and keep the level now and after', () => {
+      expect(noticeEmailContentOf(QUADRICEPS_DROP, QUADRICEPS_DROP.dueAtMs, SAO_PAULO)).toEqual({
+        title: 'Quadríceps cai para o nível 6 amanhã às 14h',
+        body: 'Nível 7 agora. A letra C recupera em dobro.',
+        letter: 'C',
+        groups: ['Quadríceps'],
+        levels: { now: 7, after: 6 },
+      })
+    })
+  })
+
+  describe('When the email is rendered', () => {
+    const email = renderNoticeEmail(
+      noticeEmailContentOf(QUADRICEPS_DROP, QUADRICEPS_DROP.dueAtMs, SAO_PAULO),
+      LINKS,
+    )
+
+    it('Then should show the level now and the level after the drop, with the letter, in the text', () => {
+      expect(email.text).toContain(
+        'Nível 7 → 6\nLetra C\nNível 7 agora. A letra C recupera em dobro.',
+      )
+    })
+
+    it('Then should show the level now and the level after the drop in the HTML', () => {
+      expect(email.html).toContain('>Nível 7 → 6</p>')
+    })
+
+    it('Then should keep the link and the headers to turn the emails off', () => {
+      expect([
+        email.html.includes('Desligar e-mails'),
+        email.headers['List-Unsubscribe-Post'],
+      ]).toEqual([true, 'List-Unsubscribe=One-Click'])
+    })
+  })
+})
+
+describe('Given the window notice of letter B (US-F17-02)', () => {
+  describe('When the email is rendered', () => {
+    it('Then should show no level line', () => {
+      const email = renderNoticeEmail(
+        noticeEmailContentOf(OPENING_OF_B, NOTICE_AT_MS, SAO_PAULO),
+        LINKS,
+      )
+
+      expect(`${email.text}${email.html}`).not.toContain('→')
     })
   })
 })
