@@ -1,6 +1,6 @@
 import { letterForGroupOf, overallLevelOf, type PlannedDay, tierOf } from '@heavy-duty/game'
+import { muscleGroupsOfDay } from '@/shared/muscle-groups-of-day'
 import type { MuscleGroupLevels, Tier } from './levels.types'
-import { muscleGroupsOfDay } from './muscle-groups-of-day'
 import type { MuscleGroupRef, Today, TodayDay } from './today.types'
 import { windowBadgesOf } from './window-badges'
 import type { ActivityWindows } from './windows.types'

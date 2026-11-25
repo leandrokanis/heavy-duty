@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import {
+  CRUCIFIXO,
+  PRANCHA,
+  SUPINO_RETO,
+  TRICEPS_POLIA,
+  todayDay,
+} from '@/features/workout/test-today'
 import { muscleGroupsOfDay } from './muscle-groups-of-day'
-import { CRUCIFIXO, PRANCHA, SUPINO_RETO, TRICEPS_POLIA, todayDay } from './test-today'
 
 describe('Given a letter with supino-reto (chest), triceps-polia (triceps), crucifixo (chest) and prancha (abs)', () => {
   describe('When the groups of the letter are listed', () => {

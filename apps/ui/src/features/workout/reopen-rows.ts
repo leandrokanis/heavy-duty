@@ -1,4 +1,4 @@
-import { muscleGroupsOfDay } from './muscle-groups-of-day'
+import { muscleGroupsOfDay } from '@/shared/muscle-groups-of-day'
 import type { TodayDay } from './today.types'
 import type { ActivityWindows } from './windows.types'
 import type { RecordWorkoutSetBody } from './workout-set.types'

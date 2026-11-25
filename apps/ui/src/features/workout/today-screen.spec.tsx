@@ -110,6 +110,14 @@ describe('Given the workout of the day', () => {
         '/historico',
       )
     })
+
+    it('Then should find the link Mapa to /mapa', async () => {
+      stubFetch(json(200, NO_PROGRAM))
+
+      renderToday()
+
+      expect(await screen.findByRole('link', { name: 'Mapa' })).toHaveAttribute('href', '/mapa')
+    })
   })
 
   describe('When the athlete taps Avisos', () => {

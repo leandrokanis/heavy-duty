@@ -2,9 +2,9 @@
 
 import { ChevronRight } from 'lucide-react'
 import { MotionButton } from '@/components/ui/motion-button'
+import { muscleGroupsOfDay } from '@/shared/muscle-groups-of-day'
 import { LetterBadge } from './letter-badge'
 import type { MuscleGroupLevels } from './levels.types'
-import { muscleGroupsOfDay } from './muscle-groups-of-day'
 import type { TodayDay } from './today.types'
 import { WindowBadgeList } from './window-badge-list'
 import { windowBadgesOf } from './window-badges'

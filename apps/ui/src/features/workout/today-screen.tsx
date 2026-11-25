@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, History } from 'lucide-react'
+import { Bell, History, PersonStanding } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { IconButton } from '@/components/ui/icon-button'
 import { IconLink } from '@/components/ui/icon-link'
@@ -141,6 +141,7 @@ export function TodayScreen() {
         </h1>
         <div className="flex items-center gap-(--space-8)">
           <IconButton icon={Bell} aria-label="Avisos" onClick={() => setNoticesOpen(true)} />
+          <IconLink href="/mapa" icon={PersonStanding} aria-label="Mapa" />
           <IconLink href="/historico" icon={History} aria-label="Histórico" />
         </div>
       </header>

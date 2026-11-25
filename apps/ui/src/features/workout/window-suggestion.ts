@@ -1,6 +1,6 @@
 import { suggestLetterByWindows, type WindowBounds } from '@heavy-duty/game'
+import { muscleGroupsOfDay } from '@/shared/muscle-groups-of-day'
 import type { MuscleGroupLevels } from './levels.types'
-import { muscleGroupsOfDay } from './muscle-groups-of-day'
 import type { Today } from './today.types'
 import type { ActivityWindows } from './windows.types'
 

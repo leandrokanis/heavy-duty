@@ -161,6 +161,18 @@ describe('Given a cached today on the device', () => {
     })
   })
 
+  describe('When the session check fails for the network on the body map', () => {
+    it('Then should show the requested screen, which reads the copies on the device', async () => {
+      usePathnameMock.mockReturnValue('/mapa')
+      await cacheToday()
+      stubFetch(new TypeError('Failed to fetch'))
+
+      renderGate()
+
+      expect(await screen.findByRole('heading', { name: 'Tela pedida' })).toBeInTheDocument()
+    })
+  })
+
   describe('When the session check fails for the network on another path', () => {
     it('Then should show Sem conexão and not the requested screen', async () => {
       usePathnameMock.mockReturnValue('/autorizar')

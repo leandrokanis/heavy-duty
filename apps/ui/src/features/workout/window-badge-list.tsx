@@ -12,7 +12,7 @@ export type WindowBadgeListProps = {
   timeZone?: string
 }
 
-const HATCH =
+export const HATCH =
   'repeating-linear-gradient(45deg, var(--color-window-cooling) 0 2px, color-mix(in srgb, var(--color-window-cooling) 35%, transparent) 2px 5px)'
 
 function capitalized(name: string): string {
@@ -42,7 +42,7 @@ const INDICATOR_COLOR = {
 // Spans with roles, so it can sit inside the button of a row: the text joins the name of the button.
 // The text stays in the label colour; the state colour is on the indicator only (DESIGN.md, Section 18.1).
 // The stripes of a bar that drains while the group cools, as on the indicator of the window.
-const DRAIN =
+export const DRAIN =
   'repeating-linear-gradient(45deg, var(--color-window-cooling) 0 2px, color-mix(in srgb, var(--color-window-cooling) 45%, transparent) 2px 4px)'
 
 // The seal and a short bar of the level; the screen reader hears the level from the phrase. A

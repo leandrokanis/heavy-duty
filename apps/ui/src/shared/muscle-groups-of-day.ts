@@ -1,4 +1,4 @@
-import type { MuscleGroupRef, TodayDay } from './today.types'
+import type { MuscleGroupRef, TodayDay } from '@/features/workout/today.types'
 
 export function muscleGroupsOfDay(day: TodayDay): MuscleGroupRef[] {
   const bySlug = new Map<string, MuscleGroupRef>()

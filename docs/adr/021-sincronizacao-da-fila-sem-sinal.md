@@ -53,6 +53,14 @@ O app guarda cada série numa fila de envio no IndexedDB antes de qualquer envio
 
 Risco registrado: a série e o treino em andamento são duas gravações separadas. Se o app morrer entre elas, a série fica na fila e o treino volta uma série antes; o novo toque gera 409 `workout_set_duplicated`, que vira recusa e aviso. A tela grava a fila primeiro, porque é o dado que importa.
 
+## Adendo da onda 7a: mapa do corpo sem sinal
+
+Decidido pelo PO em 2026-11-25, no plano da onda 7a (US-F08-01, D93, "sem sinal: cópias do aparelho"); a decisão continua Aceita. O mapa do corpo lê só as cópias que o aparelho já guarda (treino do dia, janelas e níveis), então abre sem sinal como `/`.
+
+- **`AuthGate`.** Na falha de rede, `/mapa` abre como `/`, se o aparelho tem a cópia do treino do dia (`hasCachedToday`). Os outros caminhos continuam com "Sem conexão".
+- **Precache.** `/mapa` entra no precache, com a revisão do build, ao lado de `/~offline` e `/`.
+- **Histórico.** Não muda: o celular não guarda cópia do histórico.
+
 ## Consequências
 
 - O atleta registra o treino inteiro sem sinal, e as séries chegam à API sozinhas, na ordem, quando a conexão volta.

@@ -14,10 +14,13 @@ export type AuthGateProps = {
   children: ReactNode
 }
 
-// Without signal the home page still opens when the device holds a copy of the workout of the day,
+// The pages that read only the copies on the device, so they open without signal (ADR-021).
+const OFFLINE_PATHS: ReadonlySet<string> = new Set(['/', '/mapa'])
+
+// Without signal these pages still open when the device holds a copy of the workout of the day,
 // which only exists after a 200 with a session; the API stays the security boundary (FR-013).
 async function resolveOffline(pathname: string): Promise<SessionState> {
-  return pathname === '/' && (await hasCachedToday()) ? 'authenticated' : 'offline'
+  return OFFLINE_PATHS.has(pathname) && (await hasCachedToday()) ? 'authenticated' : 'offline'
 }
 
 export function AuthGate({ children }: AuthGateProps) {
