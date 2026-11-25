@@ -1240,6 +1240,73 @@ Exemplo, com a meta 6 e as costas treinadas na segunda e na quinta:
 }
 ```
 
+## Avisos no celular
+
+As rotas desta seção vêm da US-F09-01 (ADR-035). Elas existem só quando a API abriu o banco e exigem sessão de acesso. O service fica em `apps/api/src/modules/notifications/push-subscription.service.ts`. A chave pública VAPID vem da variável `VAPID_PUBLIC_KEY`, e a chave privada, do arquivo de `VAPID_PRIVATE_KEY_FILE` (`implantacao.md`); sem as duas, a API sobe com os avisos no celular desligados. A chave privada não sai em resposta nem em log.
+
+### GET /api/notifications/push-key
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Dar ao app a chave pública VAPID para a inscrição de push, ou dizer que os avisos no celular não estão configurados |
+| Story | US-F09-01 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Nenhum |
+| Idempotência | Idempotente |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `{ "configured": true, "publicKey": "<VAPID_PUBLIC_KEY>" }` | Com a chave pública e a chave privada configuradas |
+| 200 | `{ "configured": false, "publicKey": null }` | Sem configuração, ou com configuração parcial |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+### PUT /api/notifications/push-subscriptions
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Guardar a inscrição de push do navegador, pelo `endpoint` |
+| Story | US-F09-01 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Inclui a linha em `push_subscriptions` ou, com o mesmo `endpoint`, troca `p256dh`, `auth` e `updated_at` |
+| Idempotência | Idempotente: o app reenvia a inscrição a cada abertura do treino do dia, porque o Safari não garante o evento `pushsubscriptionchange` |
+
+| Campo do corpo | Regra |
+|---|---|
+| `endpoint` | URL `https` do serviço de push, com até 2048 caracteres. A API recusa outro protocolo, porque depois manda o aviso para esse endereço |
+| `keys.p256dh`, `keys.auth` | Base64url, de 1 a 256 caracteres |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 204 | — | Inscrição guardada |
+| 400 | `{ "code": "invalid_request", "message": "requisição inválida" }` | Corpo fora do esquema |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 403 | `{ "code": "forbidden_origin", "message": "origem não permitida" }` | Cabeçalho `Origin` diferente da origem do app |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+Exemplo do corpo:
+
+```json
+{
+  "endpoint": "https://web.push.apple.com/QGuQyavXutnMH...",
+  "keys": { "p256dh": "BNcRdreALRFX...", "auth": "tBHItJI5svbpez7KI4CCXg" }
+}
+```
+
+### DELETE /api/notifications/push-subscriptions
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Apagar a inscrição de push do navegador quando o atleta desliga os avisos no celular |
+| Story | US-F09-01 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Apaga a linha de `push_subscriptions` com o `endpoint` |
+| Idempotência | Idempotente: responde 204 também sem inscrição com o `endpoint` |
+
+O corpo é `{ "endpoint" }`, com a regra do `PUT`. Os status são os do `PUT`.
+
+O envio de push fica atrás da interface `PushSender` (`push-sender.ts`), com o adaptador da biblioteca `web-push`. A mensagem vai em JSON (`title`, `body`, `tag`, `url`), com o TTL do aviso e urgência `normal`. A inscrição que o serviço de push recusa com 404 ou 410 sai da tabela (`sendPushToAll`); outra falha volta como motivo seguro, sem o `endpoint`, porque o endereço dá acesso à inscrição.
+
 ## Situação do app
 
 A rota desta seção vem da US-F14-02. A rota existe só quando a API abriu o banco e exige sessão de acesso (US-F14-01). A ferramenta MCP `get_system_status` devolve o mesmo objeto (`mcp.md`), pelo mesmo service `getSystemStatus`, em `apps/api/src/modules/system/system-status.service.ts`.

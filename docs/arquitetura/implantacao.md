@@ -47,8 +47,8 @@ O recurso do Coolify é do tipo Docker Compose e usa o arquivo `compose.coolify.
 | `BACKUP_DAILY_AT` | Horário local do backup, em `HH:mm` | `03:00` |
 | `NOTICE_TIME_ZONE` | Fuso do horário de silêncio e do texto dos avisos (D81, ADR-036) | `America/Sao_Paulo` |
 | `VAPID_PUBLIC_KEY` | Chave pública VAPID do Web Push (ADR-035). Exemplo: `<VAPID_PUBLIC_KEY>` | — |
-| `VAPID_PRIVATE_KEY_FILE` | Arquivo da chave privada VAPID no host, com dono UID 1000 e permissão `600`. Segredo; o valor nunca vai para variável (ADR-035). Exemplo: `<VAPID_PRIVATE_KEY_FILE>` | — |
-| `VAPID_SUBJECT` | `subject` VAPID: a origem do app, sem e-mail pessoal (ADR-035). Exemplo: `<APP_ORIGIN>` | — |
+| `VAPID_PRIVATE_KEY_FILE` | Arquivo da chave privada VAPID no host, com dono UID 1000 e permissão `600`, montado só leitura em `/run/secrets/vapid-private-key` no contêiner da API. Segredo; o valor nunca vai para variável (ADR-035). Exemplo: `<VAPID_PRIVATE_KEY_FILE>`. O padrão `/dev/null` é lido como chave vazia e deixa o push desligado | `/dev/null` |
+| `VAPID_SUBJECT` | `subject` VAPID: a origem do app, sem e-mail pessoal (ADR-035). Exemplo: `<APP_ORIGIN>`. Vazia, a API usa `APP_ORIGIN` | `APP_ORIGIN` |
 | `SMTP_HOST` | Servidor SMTP: `smtp`, com o serviço da ADR-038, ou o relay do plano B da ADR-007. Exemplo: `<SMTP_HOST>` | — |
 | `SMTP_PORT` | Porta do servidor SMTP. Exemplo: `<SMTP_PORT>` | — |
 | `SMTP_USER` | Usuário do relay; vazio com o serviço `smtp`. Exemplo: `<SMTP_USER>` | — |

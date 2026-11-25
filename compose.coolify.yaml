@@ -11,9 +11,15 @@ services:
       DATABASE_PATH: /app/data/heavy-duty.sqlite
       # Public https origin of the app; the API refuses to start without it (ADR-019).
       APP_ORIGIN: ${APP_ORIGIN:?set APP_ORIGIN to the public https origin of the app}
+      # Optional push notices (ADR-035): without the keys the API starts with the channel off.
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      VAPID_PRIVATE_KEY_FILE: /run/secrets/vapid-private-key
     # Host folder owned by UID 1000, outside the deploy folder, so a redeploy keeps the database.
     volumes:
       - ${HEAVY_DUTY_DATA_DIR:-/srv/heavy-duty/data}:/app/data
+      # /dev/null reads as an empty key, so the channel stays off until the host file is set.
+      - ${VAPID_PRIVATE_KEY_FILE:-/dev/null}:/run/secrets/vapid-private-key:ro
     healthcheck:
       test:
         - CMD

@@ -15,6 +15,7 @@ import { createWebAuthnVerifier, type WebAuthnVerifier } from './modules/auth/we
 import { createExerciseRoutes } from './modules/catalog/exercise.routes.js'
 import { createMuscleRoutes } from './modules/catalog/muscle.routes.js'
 import { createMuscleGroupRoutes } from './modules/catalog/muscle-group.routes.js'
+import { createNotificationsRoutes } from './modules/notifications/notifications.routes.js'
 import { createProgramRoutes } from './modules/programs/program.routes.js'
 import { createHealthRoutes } from './modules/system/health.routes.js'
 import type { DatabaseHealthProbe } from './modules/system/health.service.js'
@@ -41,6 +42,8 @@ export type AppOptions = {
   appOrigin?: string
   now?: () => Date
   webAuthn?: WebAuthnVerifier
+  // Set only when the push channel is configured (ADR-035).
+  pushPublicKey?: string
 }
 
 export const DEFAULT_APP_ORIGIN = 'http://localhost:8080'
@@ -84,6 +87,10 @@ export function createApp(options: AppOptions): OpenAPIHono {
     app.route('/', createWorkoutHistoryRoutes(options.db))
     app.route('/', createWorkoutDeleteRoutes(options.db))
     app.route('/', createWindowsRoutes({ db: options.db, now }))
+    app.route(
+      '/',
+      createNotificationsRoutes({ db: options.db, now, pushPublicKey: options.pushPublicKey }),
+    )
     app.openAPIRegistry.registerComponent(
       'securitySchemes',
       'sessionCookie',

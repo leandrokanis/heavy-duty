@@ -142,9 +142,10 @@ erDiagram
   PUSH_SUBSCRIPTIONS {
     text id PK
     text endpoint UK
-    text key_p256dh
-    text key_auth
+    text p256dh
+    text auth
     text created_at
+    text updated_at
   }
   NOTIFICATIONS {
     text id PK
@@ -279,7 +280,7 @@ Regras da gravação (US-F03-02):
 
 | Tabela | Conteúdo | Regras |
 |---|---|---|
-| `push_subscriptions` | Inscrições de Web Push do navegador | `endpoint` único. Inscrição recusada pelo serviço de push é apagada |
+| `push_subscriptions` | Inscrições de Web Push do navegador (migração `0013_push_subscriptions`, US-F09-01, ADR-035) | `endpoint` único, só `https`, com até 2048 caracteres. `p256dh` e `auth` em base64url, até 256 caracteres. `created_at` e `updated_at` em UTC; o reenvio do mesmo `endpoint` a cada abertura do app troca as chaves e `updated_at`. Desligar os avisos apaga a linha. Inscrição recusada pelo serviço de push com 404 ou 410 é apagada |
 | `notifications` | Registro de cada aviso, por canal | Um aviso de janela por letra (D31), nos dois canais (D32). A falha de um canal não muda o outro. Cada aviso sai no máximo uma vez por canal, por uma chave única (ADR-036). A linha do e-mail guarda em `unsubscribe_token_hash` o SHA-256 do token do link de desligar daquele e-mail; o token em claro só existe no e-mail (D89, ADR-037). As colunas finais saem das US-F09-02 e US-F17-04 |
 
 ### Sistema (F14, onda 1)

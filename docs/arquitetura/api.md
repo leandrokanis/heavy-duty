@@ -27,7 +27,7 @@
 | MCP TypeScript SDK (`@modelcontextprotocol/sdk` 1.32.2) | Servidor MCP com Streamable HTTP em `/mcp`, sem estado | MIT | Aceita, ADR-006 |
 | Drizzle ORM e drizzle-kit | Acesso ao SQLite e migrações | Apache-2.0 (ORM), MIT (drizzle-kit) | Aceita, ADR-013 |
 | better-sqlite3 | Driver do SQLite | MIT | Aceita, ADR-013 |
-| web-push | Envio de Web Push com chaves VAPID, atrás da interface `PushSender` | MPL-2.0, compatível como dependência | Aceita, ADR-035 (onda 7a) |
+| `web-push` 3.6.7 | Envio de Web Push com chaves VAPID, atrás da interface `PushSender` (`modules/notifications/push-sender.ts`) | MPL-2.0, compatível como dependência sem alteração | Aceita, ADR-035 (onda 7a) |
 | Nodemailer | Montagem e envio do e-mail ao servidor SMTP, atrás da interface `MailSender` | MIT-0 [a confirmar no `package.json` instalado] | Aceita, ADR-037 (onda 7a) |
 | pino | Log estruturado | MIT | Adiado: entra na primeira story que precisar de log; o scaffold usa `console.error` só em falha |
 | Vitest | Teste unitário e de integração | MIT | Aceita, `docs/convencoes/testes.md` |
@@ -87,7 +87,7 @@ O contrato de cada rota é gerado dos schemas em `docs/arquitetura/openapi.json`
 | `NOTICE_TIME_ZONE` | Fuso do horário de silêncio e do texto dos avisos e dos e-mails (D81, ADR-036) | `America/Sao_Paulo` | Opcional |
 | `VAPID_PUBLIC_KEY` | Chave pública VAPID, servida por `GET /api/notifications/push-key` (ADR-035) | — | Opcional; sem as três variáveis VAPID, o push fica desligado |
 | `VAPID_PRIVATE_KEY_FILE` | Arquivo com a chave privada VAPID, montado só leitura (ADR-035) | — | Opcional |
-| `VAPID_SUBJECT` | `subject` VAPID: a origem do app, sem e-mail pessoal (ADR-035) | — | Opcional |
+| `VAPID_SUBJECT` | `subject` VAPID: a origem do app, sem e-mail pessoal (ADR-035) | `APP_ORIGIN` | Opcional |
 | `SMTP_HOST`, `SMTP_PORT` | Servidor SMTP: o serviço `smtp` da pilha (ADR-038) ou o relay do plano B (ADR-007) | — | Opcional; sem `SMTP_HOST`, `MAIL_FROM` ou `MAIL_TO`, o e-mail fica desligado |
 | `SMTP_USER`, `SMTP_PASSWORD_FILE` | Usuário e arquivo da senha, só no relay (ADR-037) | — | Opcional |
 | `MAIL_FROM` | Remetente dos e-mails, no domínio do app, com o nome "Heavy Duty" (D88) | — | Opcional |

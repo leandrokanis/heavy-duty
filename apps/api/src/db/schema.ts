@@ -94,6 +94,16 @@ export const weeklyGoals = sqliteTable(
   ],
 )
 
+// One row per browser that turned the notices on; the endpoint identifies it (ADR-035).
+export const pushSubscriptions = sqliteTable('push_subscriptions', {
+  id: text('id').primaryKey(),
+  endpoint: text('endpoint').notNull().unique(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
 export const authCredentials = sqliteTable(
   'auth_credentials',
   {

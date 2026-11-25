@@ -1,6 +1,7 @@
 import { serve } from '@hono/node-server'
 import { createApp } from './app.js'
 import { loadConfig } from './config/env.js'
+import { loadNotificationsConfig } from './config/notifications-env.js'
 import { type Database, openDatabase } from './db/connection.js'
 import { createDatabaseHealthProbe } from './db/health.js'
 import { createWebAuthnVerifier } from './modules/auth/webauthn.js'
@@ -24,6 +25,8 @@ function openDatabaseState(databasePath: string): DatabaseState {
 
 const config = loadConfig(process.env)
 const { db, databaseHealth } = openDatabaseState(config.databasePath)
+const notifications = loadNotificationsConfig(process.env, { appOrigin: config.appOrigin })
+for (const warning of notifications.warnings) console.warn(warning)
 const app = createApp({
   nodeEnv: config.nodeEnv,
   databaseHealth,
@@ -31,11 +34,12 @@ const app = createApp({
   mcpAllowedHosts: config.mcpAllowedHosts,
   appOrigin: config.appOrigin,
   webAuthn: createWebAuthnVerifier({ appOrigin: config.appOrigin, rpId: config.rpId }),
+  pushPublicKey: notifications.push?.publicKey,
 })
 
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
   console.log(
-    `Heavy Duty API listening on port ${info.port} (${config.nodeEnv}, origin ${config.appOrigin})`,
+    `Heavy Duty API listening on port ${info.port} (${config.nodeEnv}, origin ${config.appOrigin}, push notices ${notifications.push ? 'on' : 'off'})`,
   )
 })
 

@@ -1,10 +1,14 @@
 'use client'
 
-import { History } from 'lucide-react'
+import { Bell, History } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { IconButton } from '@/components/ui/icon-button'
 import { IconLink } from '@/components/ui/icon-link'
 import { OfflineNotice } from '@/features/auth/offline-notice'
 import { SignInScreen } from '@/features/auth/sign-in-screen'
+import { NoticesSheet } from '@/features/notices/notices-sheet'
+import { browserPushDevice } from '@/features/notices/push-device'
+import { resyncPushSubscription } from '@/features/notices/use-push-notices'
 import { loadActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
 import { loadLevels } from '@/sync/levels-cache'
 import { useSyncQueue, useSyncSnapshot } from '@/sync/sync-context'
@@ -53,6 +57,7 @@ export function TodayScreen() {
   const [week, setWeek] = useState<WeekWindows | null>(null)
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [sheetDay, setSheetDay] = useState<TodayDay | null>(null)
+  const [noticesOpen, setNoticesOpen] = useState(false)
   // 'pending' until the device has answered whether a workout is in progress.
   const [flow, setFlow] = useState<WorkoutFlowState | null | 'pending'>('pending')
 
@@ -94,6 +99,10 @@ export function TodayScreen() {
   }, [])
 
   useEffect(() => {
+    void resyncPushSubscription(browserPushDevice)
+  }, [])
+
+  useEffect(() => {
     refresh()
     loadActiveWorkout(Date.now()).then((saved) =>
       setFlow(saved ? restoreWorkoutFlow(saved, Date.now()) : null),
@@ -130,7 +139,10 @@ export function TodayScreen() {
         <h1 className="m-0 font-(--font-weight-bold) text-(length:--font-size-large-title) leading-(--font-leading-tight) tracking-(--font-tracking-tight)">
           Heavy Duty
         </h1>
-        <IconLink href="/historico" icon={History} aria-label="Histórico" />
+        <div className="flex items-center gap-(--space-8)">
+          <IconButton icon={Bell} aria-label="Avisos" onClick={() => setNoticesOpen(true)} />
+          <IconLink href="/historico" icon={History} aria-label="Histórico" />
+        </div>
       </header>
       <QueueNotices align="start" className="mt-(--space-16)" />
       <div className="mt-(--space-24)">
@@ -149,6 +161,7 @@ export function TodayScreen() {
           <LetterListSkeleton />
         )}
       </div>
+      <NoticesSheet open={noticesOpen} onClose={() => setNoticesOpen(false)} />
       <StartSheet
         day={sheetDay}
         onClose={() => setSheetDay(null)}

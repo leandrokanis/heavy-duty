@@ -2014,6 +2014,82 @@
           "windowsOpen",
           "usedPercent"
         ]
+      },
+      "PushKey": {
+        "type": "object",
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "description": "Whether the server holds the VAPID keys and can send push notices",
+            "example": true
+          },
+          "publicKey": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The public VAPID key, base64url, to subscribe with; null when not configured",
+            "example": "<VAPID_PUBLIC_KEY>"
+          }
+        },
+        "required": [
+          "configured",
+          "publicKey"
+        ]
+      },
+      "PushSubscriptionBody": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri",
+            "description": "The https endpoint of the push service, which identifies the subscription",
+            "example": "https://web.push.apple.com/QGuQyavXutnMH..."
+          },
+          "keys": {
+            "type": "object",
+            "properties": {
+              "p256dh": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[A-Za-z0-9_-]+=*$",
+                "description": "The public key of the browser, base64url"
+              },
+              "auth": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[A-Za-z0-9_-]+=*$",
+                "description": "The auth secret of the browser, base64url"
+              }
+            },
+            "required": [
+              "p256dh",
+              "auth"
+            ]
+          }
+        },
+        "required": [
+          "endpoint",
+          "keys"
+        ]
+      },
+      "PushSubscriptionEndpointBody": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri",
+            "description": "The https endpoint of the push service, which identifies the subscription",
+            "example": "https://web.push.apple.com/QGuQyavXutnMH..."
+          }
+        },
+        "required": [
+          "endpoint"
+        ]
       }
     },
     "parameters": {}
@@ -4697,6 +4773,170 @@
           },
           "401": {
             "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/push-key": {
+      "get": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Get the public VAPID key to subscribe to push notices, and whether push is configured",
+        "responses": {
+          "200": {
+            "description": "Whether the server can send push notices, with the public key when it can",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushKey"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/push-subscriptions": {
+      "put": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Store the push subscription of this browser by its endpoint. Sending it again refreshes the keys",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushSubscriptionBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "The subscription is stored"
+          },
+          "400": {
+            "description": "Body outside the schema (invalid_request)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin other than the app origin (forbidden_origin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Remove the push subscription of this browser by its endpoint",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushSubscriptionEndpointBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No subscription with this endpoint is left, removed now or before"
+          },
+          "400": {
+            "description": "Body outside the schema (invalid_request)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin other than the app origin (forbidden_origin)",
             "content": {
               "application/json": {
                 "schema": {

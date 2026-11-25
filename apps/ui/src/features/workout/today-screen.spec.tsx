@@ -72,6 +72,15 @@ afterEach(async () => {
   await clearCachedWeekWindows()
 })
 
+// The header holds the button "Avisos", which also starts with A.
+const LETTER_A = /^A(?!visos)/
+
+function letterButtons(): HTMLElement[] {
+  return screen
+    .queryAllByRole('button')
+    .filter((button) => button.getAttribute('aria-label') !== 'Avisos')
+}
+
 describe('Given no active program', () => {
   describe('When the athlete opens the app', () => {
     it('Then should show the Heavy Duty title and the empty state that points to Claude', async () => {
@@ -102,6 +111,18 @@ describe('Given the workout of the day', () => {
       )
     })
   })
+
+  describe('When the athlete taps Avisos', () => {
+    it('Then should open the sheet Avisos with the switch of the notices', async () => {
+      stubFetch(json(200, NO_PROGRAM))
+      renderToday()
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Avisos' }))
+
+      const sheet = await screen.findByRole('dialog', { name: 'Avisos' })
+      expect(within(sheet).getByRole('button', { name: 'Avisos no celular' })).toBeInTheDocument()
+    })
+  })
 })
 
 const NO_EXERCISES = 'O programa ativo não tem exercícios. Monte o programa pelo Claude.'
@@ -125,7 +146,7 @@ describe('Given an active program without exercises', () => {
 
       expect({
         message: (await screen.findByText(NO_EXERCISES)) !== null,
-        buttons: screen.queryAllByRole('button').length,
+        buttons: letterButtons().length,
       }).toEqual({ message: true, buttons: 0 })
     })
   })
@@ -147,8 +168,8 @@ describe("Given the active program with the letters 'A', 'C' and 'B' in plan ord
       stubFetch(json(200, LETTERS_ACB))
 
       renderToday()
-      await screen.findByRole('button', { name: /^A/ })
-      const buttons = screen.getAllByRole('button')
+      await screen.findByRole('button', { name: LETTER_A })
+      const buttons = letterButtons()
 
       expect({
         order: buttons.map((button) => button.textContent),
@@ -167,7 +188,7 @@ describe("Given the active program with the letters 'A', 'C' and 'B' in plan ord
       stubFetch(json(200, LETTERS_ACB))
 
       renderToday()
-      await screen.findByRole('button', { name: /^A/ })
+      await screen.findByRole('button', { name: LETTER_A })
 
       expect(screen.getByRole('main').textContent).toBe('Heavy DutyASuperiorCPernasSugeridaBVazia')
     })
@@ -177,7 +198,7 @@ describe("Given the active program with the letters 'A', 'C' and 'B' in plan ord
 async function openLetters(body = LETTERS_ACB) {
   const fetchMock = stubFetch(json(200, body))
   renderToday()
-  await screen.findByRole('button', { name: /^A/ })
+  await screen.findByRole('button', { name: LETTER_A })
   return fetchMock
 }
 
@@ -186,7 +207,7 @@ describe("Given letter 'A' with supino-reto 3 sets and prancha 3 x 45 s, estimat
     it('Then a sheet should show the letter, each exercise with its sets, the duration and Começar, with no workout screen yet', async () => {
       await openLetters()
 
-      fireEvent.click(screen.getByRole('button', { name: /^A/ }))
+      fireEvent.click(screen.getByRole('button', { name: LETTER_A }))
       const sheet = await screen.findByRole('dialog')
 
       expect({
@@ -222,14 +243,14 @@ describe("Given the sheet of letter 'A' is open", () => {
   describe('When the athlete taps Fechar', () => {
     it('Then the sheet should close, the letters should stay and only GET requests should have gone out', async () => {
       const fetchMock = await openLetters()
-      fireEvent.click(screen.getByRole('button', { name: /^A/ }))
+      fireEvent.click(screen.getByRole('button', { name: LETTER_A }))
       const sheet = await screen.findByRole('dialog')
 
       fireEvent.click(within(sheet).getByRole('button', { name: 'Fechar' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 
       expect({
-        letters: screen.getAllByRole('button').map((button) => button.textContent),
+        letters: letterButtons().map((button) => button.textContent),
         methods: fetchMock.mock.calls.map(([, init]) => init?.method ?? 'GET'),
       }).toEqual({
         letters: ['ASuperior', 'CPernasSugerida', 'BVazia'],
@@ -244,7 +265,7 @@ function shownOf(name: string): string {
   return screen.getByRole('spinbutton', { name }).getAttribute('aria-valuetext') ?? ''
 }
 
-async function startLetter(body = LETTERS_ACB, letter = /^A/) {
+async function startLetter(body = LETTERS_ACB, letter = LETTER_A) {
   await openLetters(body)
   fireEvent.click(screen.getByRole('button', { name: letter }))
   const sheet = await screen.findByRole('dialog')
@@ -282,7 +303,7 @@ describe("Given the workout of the day with letter 'A' of program-1", () => {
       vi.useFakeTimers({ toFake: ['Date'], now: Date.UTC(2026, 10, 21, 18, 30, 0) })
       const fetchMock = stubFetch(json(200, LETTERS_ACB), json(201))
       renderToday()
-      fireEvent.click(await screen.findByRole('button', { name: /^A/ }))
+      fireEvent.click(await screen.findByRole('button', { name: LETTER_A }))
       const sheet = await screen.findByRole('dialog')
       fireEvent.click(within(sheet).getByRole('button', { name: 'Começar' }))
       await screen.findByRole('heading', { level: 1, name: 'Supino reto' })
@@ -345,7 +366,7 @@ describe('Given the workout of the day is being requested', () => {
       renderToday()
       const offline = (await screen.findByRole('heading', { name: 'Sem conexão' })) !== null
       fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }))
-      await screen.findByRole('button', { name: /^A/ })
+      await screen.findByRole('button', { name: LETTER_A })
 
       expect({ offline, requests: fetchMock.mock.calls.length }).toEqual({
         offline: true,
@@ -374,7 +395,7 @@ describe("Given letter 'A' with triceps-polia of one set", () => {
         json(200), // the finish of the workout, queued after its only set
         json(200, todayBody([todayDay('B', 'Inferior', [PRANCHA])], 'B')),
       )
-      await startLetterFromLoadedMock(/^A/)
+      await startLetterFromLoadedMock(LETTER_A)
 
       fireEvent.click(screen.getByRole('button', { name: 'Próximo' }))
       await waitFor(() =>
@@ -438,7 +459,7 @@ describe('Given no connection and a cached today', () => {
       renderToday()
 
       expect({
-        letters: (await screen.findByRole('button', { name: /^A/ })).textContent,
+        letters: (await screen.findByRole('button', { name: LETTER_A })).textContent,
         offline: screen.queryByRole('heading', { name: 'Sem conexão' }),
       }).toEqual({ letters: 'ASuperior', offline: null })
     })
@@ -459,7 +480,7 @@ describe('Given a set that is still in the queue after failed sends', () => {
       stubFetch(json(200, LETTERS_ACB))
 
       renderToday(send, queue)
-      await screen.findByRole('button', { name: /^A/ })
+      await screen.findByRole('button', { name: LETTER_A })
 
       await waitFor(() => expect(send).toHaveBeenCalledTimes(3))
       expect(queue.getSnapshot().pending).toEqual([])
@@ -487,7 +508,7 @@ describe('Given a set rejected by the API and a pending set in the queue', () =>
       stubFetch(json(200, LETTERS_ACB))
 
       renderToday(undefined, queue)
-      await screen.findByRole('button', { name: /^A/ })
+      await screen.findByRole('button', { name: LETTER_A })
 
       expect({
         notice: screen.queryByText('exercício removido') !== null,
@@ -508,7 +529,7 @@ describe('Given a set waiting in the queue and the letters of the day', () => {
       stubFetch(json(200, LETTERS_ACB))
 
       renderToday(undefined, queue)
-      const firstLetter = await screen.findByRole('button', { name: /^A/ })
+      const firstLetter = await screen.findByRole('button', { name: LETTER_A })
       const heading = screen.getByRole('heading', { name: 'Heavy Duty' })
       const status = screen.getByRole('status', { name: '1 série aguardando envio' })
 
@@ -571,7 +592,7 @@ describe('Given 1 of 2 sets recorded in letter A and the sequence sheet open', (
           )
         }),
       )
-      await startLetterFromLoadedMock(/^A/)
+      await startLetterFromLoadedMock(LETTER_A)
       fireEvent.click(screen.getByRole('button', { name: 'Próximo' }))
       fireEvent.click(await screen.findByRole('button', { name: /^Sequência do treino/ }))
       const sequence = await screen.findByRole('dialog')
@@ -595,7 +616,7 @@ describe('Given the letters of the prototype layout', () => {
     it('Then each row should end with a decorative arrow and its name should still begin with the letter', async () => {
       await openLetters()
 
-      const rows = screen.getAllByRole('button')
+      const rows = letterButtons()
 
       expect(
         rows.map((row) => ({
@@ -626,7 +647,7 @@ describe('Given the letters of the prototype layout', () => {
       )
 
       renderToday()
-      const skeleton = screen.getByRole('main').querySelector('[aria-hidden="true"]')
+      const skeleton = screen.getByRole('main').querySelector('div[aria-hidden="true"]')
 
       expect(skeleton?.children).toHaveLength(3)
     })
@@ -644,7 +665,7 @@ describe('Given the letters of the prototype layout', () => {
 })
 
 describe("Given the sheet of letter 'A' in the prototype layout", () => {
-  async function openSheet(body = LETTERS_ACB, letter = /^A/) {
+  async function openSheet(body = LETTERS_ACB, letter = LETTER_A) {
     await openLetters(body)
     fireEvent.click(screen.getByRole('button', { name: letter }))
     return screen.findByRole('dialog')
@@ -677,7 +698,7 @@ describe("Given the sheet of letter 'A' in the prototype layout", () => {
   describe('When the athlete presses Escape', () => {
     it('Then the sheet should close with no POST', async () => {
       const fetchMock = await openLetters()
-      fireEvent.click(screen.getByRole('button', { name: /^A/ }))
+      fireEvent.click(screen.getByRole('button', { name: LETTER_A }))
       await screen.findByRole('dialog')
 
       fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
@@ -750,7 +771,7 @@ describe('Given letter A trains chest, whose window closes in 30 s', () => {
       stubFetch(json(200, todayBody()))
 
       renderToday()
-      await screen.findByRole('button', { name: /^A/ })
+      await screen.findByRole('button', { name: LETTER_A })
 
       expect(screen.queryByText(/Peito/)).not.toBeInTheDocument()
     })
@@ -880,7 +901,7 @@ describe('Given chest in its window when the workout of the day opens (D56)', ()
           ],
         })
       stubFetch(json(200, todayBody()))
-      await startLetterFromLoadedMock(/^A/)
+      await startLetterFromLoadedMock(LETTER_A)
 
       fireEvent.click(screen.getByRole('button', { name: 'Próximo' }))
 
@@ -909,7 +930,7 @@ describe('Given chest at level 3 with 10 points when the workout of the day open
           ],
         })
       stubFetch(json(200, todayBody()))
-      await startLetterFromLoadedMock(/^A/)
+      await startLetterFromLoadedMock(LETTER_A)
 
       fireEvent.click(screen.getByRole('button', { name: 'Próximo' }))
 
@@ -1010,7 +1031,7 @@ describe('Given the program trains chest at level 2 and abs at level 3 (US-F10-0
 
       renderToday()
 
-      await screen.findByRole('button', { name: /^A/ })
+      await screen.findByRole('button', { name: LETTER_A })
       expect(screen.queryByRole('region', { name: 'Faixa de jogo' })).toBeNull()
     })
   })
@@ -1070,7 +1091,7 @@ describe('Given the weekly goal of 6 windows and 4 used this week (US-F15b-02)',
 
       renderToday()
 
-      await screen.findByRole('button', { name: /^A/ })
+      await screen.findByRole('button', { name: LETTER_A })
       expect(screen.queryByRole('region', { name: 'Faixa de jogo' })).toBeNull()
     })
   })
