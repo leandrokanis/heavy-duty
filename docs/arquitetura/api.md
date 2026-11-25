@@ -28,7 +28,7 @@
 | Drizzle ORM e drizzle-kit | Acesso ao SQLite e migrações | Apache-2.0 (ORM), MIT (drizzle-kit) | Aceita, ADR-013 |
 | better-sqlite3 | Driver do SQLite | MIT | Aceita, ADR-013 |
 | `web-push` 3.6.7 | Envio de Web Push com chaves VAPID, atrás da interface `PushSender` (`modules/notifications/push-sender.ts`) | MPL-2.0, compatível como dependência sem alteração | Aceita, ADR-035 (onda 7a) |
-| Nodemailer | Montagem e envio do e-mail ao servidor SMTP, atrás da interface `MailSender` | MIT-0 [a confirmar no `package.json` instalado] | Aceita, ADR-037 (onda 7a) |
+| Nodemailer 10.5.0 | Montagem e envio do e-mail ao servidor SMTP, atrás da interface `MailSender` (`modules/notifications/mail-sender.ts`) | MIT-0, conferida no `package.json` instalado; sem dependências | Aceita, ADR-037 (onda 7a) |
 | pino | Log estruturado | MIT | Adiado: entra na primeira story que precisar de log; o scaffold usa `console.error` só em falha |
 | Vitest | Teste unitário e de integração | MIT | Aceita, `docs/convencoes/testes.md` |
 | `uuid` | Gerador de ID em UUID v7 (`createId()`) | MIT | Aceita, ADR-014 |
@@ -88,8 +88,8 @@ O contrato de cada rota é gerado dos schemas em `docs/arquitetura/openapi.json`
 | `VAPID_PUBLIC_KEY` | Chave pública VAPID, servida por `GET /api/notifications/push-key` (ADR-035) | — | Opcional; sem as três variáveis VAPID, o push fica desligado |
 | `VAPID_PRIVATE_KEY_FILE` | Arquivo com a chave privada VAPID, montado só leitura (ADR-035) | — | Opcional |
 | `VAPID_SUBJECT` | `subject` VAPID: a origem do app, sem e-mail pessoal (ADR-035) | `APP_ORIGIN` | Opcional |
-| `SMTP_HOST`, `SMTP_PORT` | Servidor SMTP: o serviço `smtp` da pilha (ADR-038) ou o relay do plano B (ADR-007) | — | Opcional; sem `SMTP_HOST`, `MAIL_FROM` ou `MAIL_TO`, o e-mail fica desligado |
-| `SMTP_USER`, `SMTP_PASSWORD_FILE` | Usuário e arquivo da senha, só no relay (ADR-037) | — | Opcional |
+| `SMTP_HOST`, `SMTP_PORT` | Servidor SMTP: o serviço `smtp` da pilha (ADR-038) ou o relay do plano B (ADR-007). TLS implícito só na porta 465; nas outras, STARTTLS quando o servidor oferece | — e `25` | Opcional; sem `SMTP_HOST`, `MAIL_FROM` ou `MAIL_TO`, o e-mail fica desligado |
+| `SMTP_USER`, `SMTP_PASSWORD_FILE` | Usuário e arquivo da senha, só no relay (ADR-037). Sem `SMTP_USER`, a API não lê o arquivo | — | Opcional; arquivo ilegível ou vazio com `SMTP_USER` desliga o e-mail, com aviso no log |
 | `MAIL_FROM` | Remetente dos e-mails, no domínio do app, com o nome "Heavy Duty" (D88) | — | Opcional |
 | `MAIL_TO` | Destinatário dos e-mails: o endereço do PO (D88) | — | Opcional |
 

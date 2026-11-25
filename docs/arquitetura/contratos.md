@@ -1315,15 +1315,15 @@ A rota desta seção vem da US-F14-02. A rota existe só quando a API abriu o ba
 
 | Campo | Valor |
 |---|---|
-| Objetivo | Mostrar a situação do backup diário: a execução mais recente, a última bem-sucedida e as execuções recentes |
-| Story | US-F14-02 |
+| Objetivo | Mostrar a situação do backup diário (a execução mais recente, a última bem-sucedida e as execuções recentes) e o envio dos avisos por canal |
+| Story | US-F14-02; envio dos avisos na US-F17-01 |
 | Autenticação | Sessão de acesso (cookie `hd_session`) |
-| Efeito colateral | Nenhum. A rota só lê a tabela `backup_runs` |
+| Efeito colateral | Nenhum. A rota só lê as tabelas `backup_runs` e `notifications` |
 | Idempotência | Idempotente |
 
 | Status | Corpo | Quando |
 |---|---|---|
-| 200 | `{ "backup": { "latestRun", "lastSuccessfulRun", "recentRuns" } }` | Sempre que o banco responde |
+| 200 | `{ "backup": { "latestRun", "lastSuccessfulRun", "recentRuns" }, "notices": { "channels" } }` | Sempre que o banco responde |
 | 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
 | 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
 
@@ -1333,6 +1333,14 @@ Cada execução de backup tem `id`, `startedAt`, `finishedAt`, `status` (`succee
 - `lastSuccessfulRun` é a execução bem-sucedida mais recente, mesmo quando ela já saiu de `recentRuns`. A data mostra quantos dias o app ficou sem backup.
 - `recentRuns` traz até 7 execuções, da mais nova para a mais antiga.
 
-Sem nenhuma execução registrada, a resposta é `{ "backup": { "latestRun": null, "lastSuccessfulRun": null, "recentRuns": [] } }`.
+Sem nenhuma execução registrada, `backup` é `{ "latestRun": null, "lastSuccessfulRun": null, "recentRuns": [] }`.
 
 O motivo da falha começa pela etapa em inglês (`snapshot failed` ou `offsite copy failed`) e traz a última linha da saída de erro da ferramenta de cópia. O texto não tem caractere de controle, troca a senha do repositório e a credencial em URL (`://usuário:senha@`) por `***` e tem no máximo 500 caracteres (`docs/arquitetura/backup.md`). Exemplo: `offsite copy failed: Fatal: wrong password or no key found`.
+
+`notices.channels` traz um item por canal dos avisos de janela e de queda, nesta ordem: `push` e `email` (US-F17-01, ADR-036, ADR-037).
+
+- `configured` diz se o servidor tem a configuração do canal: as variáveis VAPID no push (ADR-035) e `SMTP_HOST`, `MAIL_FROM` e `MAIL_TO` no e-mail (ADR-037). Com `false`, nada sai pelo canal.
+- `lastSentAt` é o fim do envio mais recente com sucesso, em ISO 8601 e UTC, e fica `null` antes do primeiro envio.
+- `recentFailures` traz até 5 falhas, da mais nova para a mais antiga, cada uma com `failedAt`, `kind` (`window_open`, `window_close` ou `level_drop`), `letter` e `error`. O motivo é seguro: no e-mail, o código do erro do Nodemailer e, quando há, o código de resposta SMTP, como `ECONNECTION` ou `EENVELOPE (SMTP 550)`, sem endereço, senha nem texto do servidor.
+
+A falha de um canal não impede o outro: o e-mail que falha fica em `recentFailures`, e o aviso no celular sai mesmo assim (cenário "falha no envio" da F17).

@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import type { Database } from '../../db/connection.js'
 import { notifications } from '../../db/schema.js'
 
@@ -24,4 +24,36 @@ export function finishNotification(db: Database, id: string, result: Notificatio
 
 export function listNotifications(db: Database): NotificationRow[] {
   return db.select().from(notifications).orderBy(notifications.id).all()
+}
+
+export type NoticeChannelName = NotificationRow['channel']
+
+export function findLastSentAt(db: Database, channel: NoticeChannelName): string | null {
+  const row = db
+    .select({ finishedAt: notifications.finishedAt })
+    .from(notifications)
+    .where(and(eq(notifications.channel, channel), eq(notifications.status, 'sent')))
+    .orderBy(desc(notifications.finishedAt))
+    .limit(1)
+    .get()
+  return row?.finishedAt ?? null
+}
+
+export function listRecentFailures(
+  db: Database,
+  channel: NoticeChannelName,
+  limit: number,
+): Pick<NotificationRow, 'kind' | 'letter' | 'error' | 'finishedAt'>[] {
+  return db
+    .select({
+      kind: notifications.kind,
+      letter: notifications.letter,
+      error: notifications.error,
+      finishedAt: notifications.finishedAt,
+    })
+    .from(notifications)
+    .where(and(eq(notifications.channel, channel), eq(notifications.status, 'failed')))
+    .orderBy(desc(notifications.finishedAt))
+    .limit(limit)
+    .all()
 }

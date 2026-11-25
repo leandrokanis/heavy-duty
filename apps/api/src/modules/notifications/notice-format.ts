@@ -11,7 +11,7 @@ function listOf(names: readonly string[]): string {
   return `${names.slice(0, -1).join(', ')} e ${names.at(-1)}`
 }
 
-function capitalized(text: string): string {
+export function capitalized(text: string): string {
   return text.charAt(0).toLocaleUpperCase('pt-BR') + text.slice(1)
 }
 
@@ -19,7 +19,12 @@ function whenOf(notice: Notice, nowMs: number, timeZone: string): string {
   return `${dayWordOf(notice.eventAtMs, nowMs, timeZone)} às ${clockOf(notice.eventAtMs, timeZone)}`
 }
 
-function textOf(notice: Notice, nowMs: number, timeZone: string): { title: string; body: string } {
+// The same text goes by push and by email (US-F17-01).
+export function noticeTextOf(
+  notice: Notice,
+  nowMs: number,
+  timeZone: string,
+): { title: string; body: string } {
   const names = notice.groups.map(({ name }) => name)
   const groups = capitalized(listOf(names))
   const plural = names.length > 1
@@ -53,7 +58,7 @@ function tagOf(notice: Notice): string {
 
 export function pushMessageOf(notice: Notice, nowMs: number, timeZone: string): PushMessage {
   return {
-    ...textOf(notice, nowMs, timeZone),
+    ...noticeTextOf(notice, nowMs, timeZone),
     tag: tagOf(notice),
     url: APP_PATH,
     ttlSeconds: Math.max(MIN_TTL_SECONDS, Math.ceil((notice.eventAtMs - nowMs) / 1000)),

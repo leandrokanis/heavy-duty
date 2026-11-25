@@ -16,7 +16,7 @@ const MAX_ERROR_LENGTH = 500
 
 export type ChannelResult = { status: 'sent' | 'failed' | 'skipped'; error: string | null }
 
-// A channel delivers one notice; the email channel joins the push one in US-F17-01.
+// A channel delivers one notice; the scheduler goes through push and email in turn.
 export type NoticeChannel = {
   name: 'push' | 'email'
   deliver: (notice: Notice, nowMs: number) => Promise<ChannelResult>

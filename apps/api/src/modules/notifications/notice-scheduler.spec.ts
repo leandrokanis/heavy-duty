@@ -2,12 +2,14 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Database } from '../../db/connection.js'
 import { runSeed } from '../../db/seed.js'
 import { createTestDatabase } from '../../test/database.js'
+import { createFakeMailSender, type FakeMailSender } from '../../test/mail-sender.js'
 import { createTestClock, type TestClock } from '../../test/programs.js'
 import { createFakePushSender } from '../../test/push-sender.js'
 import { recordWorkout } from '../../test/workouts.js'
 import { addExercise } from '../catalog/exercise.service.js'
 import { addMuscle } from '../catalog/muscle.service.js'
 import { addPlannedExercise, addProgramDay, createProgram } from '../programs/program.service.js'
+import { createEmailChannel } from './email-channel.js'
 import {
   createPushChannel,
   type NoticeChannel,
@@ -237,3 +239,100 @@ function recordWorkoutAgain(db: Database, clock: TestClock) {
     clock.now(),
   )
 }
+
+const APP_ORIGIN = 'https://heavy.example.com'
+
+function emailChannel(sender: FakeMailSender) {
+  return createEmailChannel(sender, { appOrigin: APP_ORIGIN, timeZone: SAO_PAULO })
+}
+
+function givenPhoneSubscribed(db: Database, clock: TestClock): void {
+  savePushSubscription(db, { endpoint: PHONE, keys: { p256dh: 'BKey', auth: 'Auth' } }, clock.now())
+}
+
+describe('Given letter B closes tomorrow at 10h with the phone and the email on (US-F17-01)', () => {
+  describe('When the tick runs at 21h of the evening before', () => {
+    it('Then should send one push notice and one email of letter B, with the same title', async () => {
+      const { db, clock } = givenLetterBTrained()
+      givenPhoneSubscribed(db, clock)
+      const push = createFakePushSender()
+      const mail = createFakeMailSender()
+      clock.advance(CLOSE_NOTICE_AT.getTime() - clock.now().getTime())
+
+      await runNoticeTick(
+        tickDeps(db, clock, [createPushChannel(db, push, SAO_PAULO), emailChannel(mail)]),
+      )
+
+      expect({
+        push: push.sent.map(({ message }) => message.title),
+        email: mail.sent.map(({ subject }) => subject),
+      }).toEqual({
+        push: ['Letra B fecha amanhã às 10h'],
+        email: ['Letra B fecha amanhã às 10h'],
+      })
+    })
+
+    it('Then should record the notice once per channel, both as sent', async () => {
+      const { db, clock } = givenLetterBTrained()
+      givenPhoneSubscribed(db, clock)
+      clock.advance(CLOSE_NOTICE_AT.getTime() - clock.now().getTime())
+
+      await runNoticeTick(
+        tickDeps(db, clock, [
+          createPushChannel(db, createFakePushSender(), SAO_PAULO),
+          emailChannel(createFakeMailSender()),
+        ]),
+      )
+
+      const rows = rowsOf(db)
+        .map(({ kind, channel, letter, status }) => [channel, kind, letter, status])
+        .sort()
+      expect(rows).toEqual([
+        ['email', 'window_close', 'B', 'sent'],
+        ['push', 'window_close', 'B', 'sent'],
+      ])
+    })
+
+    it('Then the email should list the groups of the letter and carry the link to turn the emails off', async () => {
+      const { db, clock } = givenLetterBTrained()
+      const mail = createFakeMailSender()
+      clock.advance(CLOSE_NOTICE_AT.getTime() - clock.now().getTime())
+
+      await runNoticeTick(tickDeps(db, clock, [emailChannel(mail)]))
+
+      const email = mail.sent[0]
+      expect([
+        email?.text.includes('Costas · Bíceps'),
+        email?.headers['List-Unsubscribe-Post'],
+        email?.html.includes(`${APP_ORIGIN}/desligar-emails#token=`),
+      ]).toEqual([true, 'List-Unsubscribe=One-Click', true])
+    })
+  })
+
+  describe('When the SMTP server cannot deliver the email', () => {
+    it('Then should still send the push notice and record the email as failed with the reason', async () => {
+      const { db, clock } = givenLetterBTrained()
+      givenPhoneSubscribed(db, clock)
+      const push = createFakePushSender()
+      clock.advance(CLOSE_NOTICE_AT.getTime() - clock.now().getTime())
+
+      await runNoticeTick(
+        tickDeps(db, clock, [
+          emailChannel(createFakeMailSender('ECONNECTION')),
+          createPushChannel(db, push, SAO_PAULO),
+        ]),
+      )
+
+      const rows = rowsOf(db)
+        .map(({ channel, status, error }) => [channel, status, error])
+        .sort()
+      expect({ pushSent: push.sent.length, rows }).toEqual({
+        pushSent: 1,
+        rows: [
+          ['email', 'failed', 'ECONNECTION'],
+          ['push', 'sent', null],
+        ],
+      })
+    })
+  })
+})

@@ -50,9 +50,9 @@ O recurso do Coolify é do tipo Docker Compose e usa o arquivo `compose.coolify.
 | `VAPID_PRIVATE_KEY_FILE` | Arquivo da chave privada VAPID no host, com dono UID 1000 e permissão `600`, montado só leitura em `/run/secrets/vapid-private-key` no contêiner da API. Segredo; o valor nunca vai para variável (ADR-035). Exemplo: `<VAPID_PRIVATE_KEY_FILE>`. O padrão `/dev/null` é lido como chave vazia e deixa o push desligado | `/dev/null` |
 | `VAPID_SUBJECT` | `subject` VAPID: a origem do app, sem e-mail pessoal (ADR-035). Exemplo: `<APP_ORIGIN>`. Vazia, a API usa `APP_ORIGIN` | `APP_ORIGIN` |
 | `SMTP_HOST` | Servidor SMTP: `smtp`, com o serviço da ADR-038, ou o relay do plano B da ADR-007. Exemplo: `<SMTP_HOST>` | — |
-| `SMTP_PORT` | Porta do servidor SMTP. Exemplo: `<SMTP_PORT>` | — |
+| `SMTP_PORT` | Porta do servidor SMTP. TLS implícito só na 465; nas outras, STARTTLS quando o servidor oferece. Exemplo: `<SMTP_PORT>` | `25` |
 | `SMTP_USER` | Usuário do relay; vazio com o serviço `smtp`. Exemplo: `<SMTP_USER>` | — |
-| `SMTP_PASSWORD_FILE` | Arquivo da senha do relay no host, com dono UID 1000 e permissão `600`; vazio com o serviço `smtp`. Segredo (ADR-037). Exemplo: `<SMTP_PASSWORD_FILE>` | — |
+| `SMTP_PASSWORD_FILE` | Arquivo da senha do relay no host, com dono UID 1000 e permissão `600`, montado só leitura em `/run/secrets/smtp-password` no contêiner da API; vazio com o serviço `smtp`. A API só lê o arquivo com `SMTP_USER`. Segredo (ADR-037). Exemplo: `<SMTP_PASSWORD_FILE>` | `/dev/null` |
 | `MAIL_FROM` | Remetente dos e-mails, no domínio do app, com o nome "Heavy Duty" (D88). Exemplo: `<MAIL_FROM>` | — |
 | `MAIL_TO` | Destinatário dos e-mails, o endereço do PO (D88). Exemplo: `<MAIL_TO>` | — |
 

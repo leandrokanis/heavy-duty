@@ -47,6 +47,9 @@ importers:
       hono:
         specifier: 4.13.19
         version: 4.13.19
+      nodemailer:
+        specifier: 10.5.0
+        version: 10.5.0
       uuid:
         specifier: 14.0.3
         version: 14.0.3
@@ -2300,6 +2303,10 @@ packages:
     resolution: {integrity: sha512-PfvofsGQ+MiOQIPkX9fU8ELUWmy5zL74CdQaph/ismKszfFkfwXaw0cGiwbwym2hT9k5+mdyl8O5WQ1MD8EHmA==}
     engines: {node: '>=18'}
 
+  nodemailer@10.5.0:
+    resolution: {integrity: sha512-L/w/HH5MqpzMDuZD7fQdt/+KqymuvrpaApaIjAH2XA3ILePwlcvXCVVvP75xVrXCEt2ggK2marrrHHFB5Qu0kA==}
+    engines: {node: '>=20.0.0'}
+
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
     engines: {node: '>=0.10.0'}
@@ -4538,6 +4545,8 @@ snapshots:
   node-addon-api@8.9.2: {}
 
   node-releases@2.0.65: {}
+
+  nodemailer@10.5.0: {}
 
   object-assign@4.1.1: {}
 

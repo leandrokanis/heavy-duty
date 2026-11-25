@@ -1005,10 +1005,14 @@
         "properties": {
           "backup": {
             "$ref": "#/components/schemas/BackupStatus"
+          },
+          "notices": {
+            "$ref": "#/components/schemas/NoticesStatus"
           }
         },
         "required": [
-          "backup"
+          "backup",
+          "notices"
         ]
       },
       "BackupStatus": {
@@ -1084,6 +1088,94 @@
         "enum": [
           "succeeded",
           "failed"
+        ]
+      },
+      "NoticesStatus": {
+        "type": "object",
+        "properties": {
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NoticeChannelStatus"
+            }
+          }
+        },
+        "required": [
+          "channels"
+        ]
+      },
+      "NoticeChannelStatus": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "push",
+              "email"
+            ],
+            "example": "email"
+          },
+          "configured": {
+            "type": "boolean",
+            "example": true
+          },
+          "lastSentAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-11-22T00:00:01.000Z"
+          },
+          "recentFailures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NoticeFailure"
+            }
+          }
+        },
+        "required": [
+          "channel",
+          "configured",
+          "lastSentAt",
+          "recentFailures"
+        ]
+      },
+      "NoticeFailure": {
+        "type": "object",
+        "properties": {
+          "failedAt": {
+            "type": "string",
+            "example": "2026-11-23T00:00:01.000Z"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "window_open",
+              "window_close",
+              "level_drop"
+            ],
+            "example": "window_close"
+          },
+          "letter": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "B"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "ECONNECTION"
+          }
+        },
+        "required": [
+          "failedAt",
+          "kind",
+          "letter",
+          "error"
         ]
       },
       "Today": {
@@ -3995,10 +4087,10 @@
         "tags": [
           "system"
         ],
-        "summary": "Report the backup status: latest run, last successful run and recent runs",
+        "summary": "Report the backup status and the delivery of the notices by channel: configured, last send and recent failures",
         "responses": {
           "200": {
-            "description": "The backup status, with null runs when no backup ran yet",
+            "description": "The backup status, with null runs when no backup ran yet, and the push and email channels of the notices",
             "content": {
               "application/json": {
                 "schema": {

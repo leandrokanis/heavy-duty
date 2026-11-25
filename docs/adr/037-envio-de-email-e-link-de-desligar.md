@@ -23,7 +23,7 @@ Fatos do código e dos documentos que pesam na decisão (plano da onda 7a, Seç�
 
 A API monta o e-mail e entrega ao servidor SMTP com o Nodemailer, atrás da interface `MailSender`. Cada e-mail leva um link de desligar com um token próprio, conferido por uma rota pública. Detalhes que o código segue:
 
-- **Biblioteca.** A API usa o Nodemailer (licença [a confirmar: MIT-0, conferir no `package.json` instalado]; aprovado pelo PO no plano da onda 7a) atrás de `MailSender`. Os testes usam uma implementação falsa ou o transporte em memória do Nodemailer; o CI não precisa de servidor SMTP.
+- **Biblioteca.** A API usa o Nodemailer (licença MIT-0, conferida no `package.json` da versão 10.5.0 instalada; aprovado pelo PO no plano da onda 7a) atrás de `MailSender`. Os testes usam uma implementação falsa ou o transporte em memória do Nodemailer; o CI não precisa de servidor SMTP.
 - **SMTP por variáveis.** A conexão vem de `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` e do arquivo em `SMTP_PASSWORD_FILE`. A mesma configuração serve ao Postfix local (ADR-038) e ao relay do plano B da ADR-007: usuário e senha só existem no relay. O remetente vem de `MAIL_FROM`, com o nome "Heavy Duty", e o destinatário, de `MAIL_TO` (D88). Todas são opcionais: sem `SMTP_HOST`, `MAIL_FROM` ou `MAIL_TO`, a API sobe com o canal de e-mail desligado.
 - **Conteúdo.** O e-mail tem assunto, texto e HTML mínimos, com grupos, letra, horário e níveis, e nada de carga, repetições ou histórico (ADR-007). O e-mail reusa o aviso calculado pelo agendador (ADR-036), sem recalcular.
 - **Cabeçalhos de desligar.** Todo e-mail leva `List-Unsubscribe`, com a URL da rota de desligar, e `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058), e um rodapé com o link de desligar.

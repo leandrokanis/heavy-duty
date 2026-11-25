@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Database } from '../../db/connection.js'
+import type { NoticeChannelsConfigured } from '../../modules/system/system-status.service.js'
 import { registerCatalogTools } from './catalog.tools.js'
 import { registerProgramTools } from './programs.tools.js'
 import { registerSystemTools } from './system.tools.js'
@@ -9,6 +10,7 @@ import { registerWorkoutTools } from './workouts.tools.js'
 export type ToolDeps = {
   db: Database
   now: () => Date
+  noticeChannels?: NoticeChannelsConfigured
 }
 
 export type ToolRegistration = (server: McpServer, deps: ToolDeps) => void

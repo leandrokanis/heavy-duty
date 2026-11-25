@@ -44,6 +44,8 @@ export type AppOptions = {
   webAuthn?: WebAuthnVerifier
   // Set only when the push channel is configured (ADR-035).
   pushPublicKey?: string
+  // True only when SMTP_HOST, MAIL_FROM and MAIL_TO are set (ADR-037).
+  emailConfigured?: boolean
 }
 
 export const DEFAULT_APP_ORIGIN = 'http://localhost:8080'
@@ -54,6 +56,10 @@ export function createApp(options: AppOptions): OpenAPIHono {
   const app = createRouter()
   const appOrigin = options.appOrigin ?? DEFAULT_APP_ORIGIN
   const now = options.now ?? (() => new Date())
+  const noticeChannels = {
+    push: options.pushPublicKey !== undefined,
+    email: options.emailConfigured === true,
+  }
 
   // Without a database no session can be checked, so only the health route answers.
   if (options.db) {
@@ -78,7 +84,7 @@ export function createApp(options: AppOptions): OpenAPIHono {
     app.route('/', createMuscleRoutes(options.db))
     app.route('/', createExerciseRoutes(options.db))
     app.route('/', createProgramRoutes({ db: options.db, now }))
-    app.route('/', createSystemStatusRoutes(options.db))
+    app.route('/', createSystemStatusRoutes(options.db, noticeChannels))
     app.route('/', createTodayRoutes(options.db))
     app.route('/', createWorkoutSetRoutes(options.db))
     app.route('/', createWorkoutSetCorrectionRoutes({ db: options.db, now }))
@@ -102,7 +108,7 @@ export function createApp(options: AppOptions): OpenAPIHono {
 
   // Without a database no credential can be checked, so /mcp is not mounted, see ADR-020.
   if (options.db) {
-    const toolDeps = { db: options.db, now }
+    const toolDeps = { db: options.db, now, noticeChannels }
     app.use(MCP_PATH, mcpHostGuard(options.mcpAllowedHosts ?? DEFAULT_MCP_ALLOWED_HOSTS))
     app.use(MCP_PATH, mcpBearerGuard({ db: options.db, now, appOrigin }))
     app.all(MCP_PATH, (c) => handleMcpRequest(c, toolDeps))
