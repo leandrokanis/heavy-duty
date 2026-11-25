@@ -5,7 +5,7 @@
 | Nível C4 | 2, contêiner |
 | Pasta | `apps/ui` (`@heavy-duty/ui`) |
 | Onde roda | Processo Node.js no kasparov (servidor do Next.js) e navegador do celular ou do Mac (cliente) |
-| ADRs | ADR-009, ADR-002, ADR-019, ADR-034; substituiu a ADR-003 |
+| ADRs | ADR-009, ADR-002, ADR-019, ADR-034, ADR-035, ADR-037; substituiu a ADR-003 |
 | Ondas | 1 em diante |
 
 ## Responsabilidade
@@ -15,6 +15,7 @@
 - Instalar como PWA, com manifesto e service worker (NFR05).
 - Mostrar o jogo: janelas, níveis, mapa do corpo, período, medalhas e ranking (ondas 5 a 7). O cálculo é da API (ADR-010). Pontos, barra de nível e recorde aparecem provisórios durante o treino, calculados no aparelho com as regras do pacote `@heavy-duty/game`, e o valor da API os substitui quando a fila de envio esvazia (ADR-034).
 - Calcular no treino do dia a sugestão da letra pelas janelas e o nível geral com o grupo que limita, como valor final, com as regras do pacote `@heavy-duty/game`, as cópias da API e o relógio do aparelho (ADR-034, adendo da onda 6b).
+- Ativar os avisos no app instalado e mostrar, pelo service worker, o aviso que chega por Web Push (onda 7a, ADR-035).
 - Oferecer as telas de administração no Mac, depois do MVP (D22).
 
 O app web não guarda regra de negócio própria. Validação de domínio, cálculo do jogo e gravação ficam na API. As exceções são duas, as duas com as regras puras do pacote `@heavy-duty/game` e sem nada do jogo na fila de envio (ADR-034):
@@ -49,7 +50,7 @@ O app web não guarda regra de negócio própria. Validação de domínio, cálc
 | Recebe | Atleta e Planejador, pelo túnel | HTTPS | Páginas, arquivos estáticos, manifesto |
 | Chama | API, no mesmo domínio | HTTPS, JSON em `/api/*` | Catálogo, programa, séries, estado do jogo |
 | Lê e grava | Armazenamento local | IndexedDB, no navegador | Fila de séries, cache do treino do dia |
-| Recebe | Serviço de push do navegador | Web Push, no service worker | Avisos de janela e de queda (onda 7) |
+| Recebe | Serviço de push do navegador | Web Push, no service worker | Avisos de janela e de queda (onda 7a, ADR-035). O toque no aviso abre o treino do dia (D85) |
 
 ## Estrutura planejada
 
@@ -57,7 +58,8 @@ O app web não guarda regra de negócio própria. Validação de domínio, cálc
 apps/ui/src/
   app/                     rotas do App Router
     (treino)/              treino do dia, série, descanso, sequência: renderizados no cliente
-    mapa/  periodo/        telas do jogo (ondas 5 a 7)
+    mapa/  periodo/        telas do jogo: mapa do corpo (US-F08-01, onda 7a) e período (onda 7b)
+    desligar-emails/       página do link de desligar dos e-mails, fora do AuthGate (US-F17-04, ADR-037)
     admin/                 telas de administração no Mac (proposta para a Q10)
     cadastro/              cadastro da chave de acesso pelo link de cadastro (US-F14-01)
     historico/             histórico no celular: lista dos treinos e detalhe só de leitura (US-F20-01)
@@ -72,7 +74,7 @@ apps/ui/src/
   features/mcp-auth/       tela de autorização do MCP e cliente de /api/oauth/authorization
   shared/                  utilitários usados por duas features ou mais
   sync/                    banco local (Dexie), fila de envio, gatilhos de envio, treino em andamento, cópia do treino do dia e das janelas (`windows-cache.ts`) e `SyncProvider` (ADR-021)
-  sw.ts                    service worker (Serwist)
+  sw.ts                    service worker (Serwist): cache e, a partir da US-F09-01, os eventos `push` e `notificationclick` (ADR-035)
   sw-runtime-caching.ts    regras de cache do service worker: /api/* só pela rede
   precache-entries.ts      páginas no precache: `/~offline` e `/`
   test/factories/          factories fishery
@@ -267,3 +269,14 @@ A US-F20-02 acrescenta a remoção no detalhe (D50, ADR-032):
 1. O detalhe tem o botão "Apagar treino" (variante destrutiva, ícone `Trash2`) abaixo do conteúdo. O botão não aparece para os treinos que ainda estão no aparelho: o treino ativo e os que têm item na fila de envio (`loadWorkoutsOnDevice`, `src/sync/workouts-on-device.ts`), porque a fila recriaria o treino. A saída do treino ativo é descartar (US-F03-09).
 2. O botão abre a `DeleteWorkoutSheet` (`delete-workout-sheet.tsx`), uma `Sheet` com papel `alertdialog`, o título "Apagar treino", a letra e a data, o número de séries que saem e os botões "Cancelar" e "Apagar".
 3. "Apagar" chama `deleteHistoryWorkout` (`history-client.ts`), direto, sem a fila: `DELETE /api/workouts/{workoutId}`. Durante a chamada, "Apagar" fica desabilitado. Com 200, 204 ou 404, a tela tira o treino das páginas, troca o endereço para `/historico` e mostra o aviso "Treino apagado". Com 401, mostra a tela de entrada. Com falha de rede ou outro status, a folha continua aberta com "Sem conexão. Tente de novo.".
+
+## Avisos no celular
+
+A onda 7a acrescenta a ativação dos avisos e o recebimento pelo service worker (US-F09-01, US-F09-02, ADR-035):
+
+1. O treino do dia tem, no cabeçalho, o ícone "Avisos" (sino), ao lado de "Mapa" e "Histórico" (D87, D92). O toque abre uma folha com a chave "Avisos no celular". A chave fica indisponível, com o motivo em texto, quando o app não está instalado na tela inicial ("instale o app na tela inicial"), quando `GET /api/notifications/push-key` diz que o push não está configurado ("avisos não configurados no servidor") ou sem rede ("sem conexão").
+2. O app está instalado quando `display-mode: standalone` ou `navigator.standalone` é verdadeiro, e o navegador aceita push quando tem `PushManager` e `Notification` (D44).
+3. O app web pede a permissão só no toque na chave. Com a permissão, inscreve o aparelho com `userVisibleOnly: true` e a chave pública vinda da API, e grava a inscrição com `PUT /api/notifications/push-subscriptions`. A chave pública não entra no build (`NEXT_PUBLIC_*`), porque as imagens são genéricas (ADR-028).
+4. A cada abertura com a permissão dada, o app web manda a inscrição de novo à API, porque o Safari não garante o `pushsubscriptionchange`. Desativar chama `unsubscribe()` e `DELETE /api/notifications/push-subscriptions`.
+5. O evento `push` do service worker sempre mostra uma notificação, com `tag` por letra; uma mensagem sem notificação faz o Safari revogar a inscrição. O `notificationclick` abre `/`, o treino do dia (D85).
+6. O service worker só existe no build de produção (regra 6). O e2e usa um `PushManager` falso; o teste com o serviço de push real só acontece no iPhone, depois do deploy.

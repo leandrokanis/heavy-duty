@@ -176,6 +176,8 @@ O MVP tem uma seção na UI, o treino (PRD, ondas 1 a 4). Uma barra de abas com 
 
 Exceção da onda 4b (decisão do PO no plano da onda, 2026-11-23): o histórico no celular (PRD, F20) é a segunda seção, mas não abre a barra de abas. A entrada é um botão de ícone no cabeçalho do treino do dia, com o nome acessível "Histórico", que leva à rota `/historico`. O histórico e o detalhe do treino têm o voltar no canto de cima, à esquerda. Motivo: a barra de abas pesa no fluxo da academia, e o histórico é consulta, não passo do treino. A exceção vale até a barra de abas entrar; aí o histórico vira aba, se o PO confirmar (Protótipo v2).
 
+Extensão da exceção na onda 7a (decisão do PO no plano da onda, 2026-11-25; PRD, D87 e D92): o mapa do corpo (F08) é a terceira seção e também não abre a barra de abas. O cabeçalho do treino do dia ganha mais dois botões de ícone, ao lado de "Histórico": "Mapa", que leva à rota `/mapa`, e "Avisos" (sino), que abre a folha dos avisos no celular (F09). O mapa tem o voltar no canto de cima, à esquerda, como o histórico. Os três botões seguem a Seção 7 (alvo de toque) e têm nome acessível. A barra de abas entra na onda 7b, uma vez só, com o treino, o mapa e o período; o lugar do histórico e dos avisos nessa barra fica para o plano da onda 7b.
+
 ### 9.3. Botão flutuante sobre a barra de abas
 
 O HIG não especifica botão de ação central sobre a barra de abas. Se o app adotar esse padrão:

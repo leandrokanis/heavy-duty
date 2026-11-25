@@ -27,6 +27,14 @@ O app web autentica o atleta com chave de acesso (passkey, WebAuthn) com verific
 - O `/mcp` não muda até a US-F16-01: continua a responder 404 em produção e a funcionar fora de produção com a guarda de host.
 - O app web mostra a tela de entrada no lugar da tela pedida, na mesma URL, quando a API responde 401 em `GET /api/auth/session`. A tela de cadastro (`/cadastro`) e a página sem conexão (`/~offline`) passam direto. O service worker não guarda resposta de `/api/*`.
 
+## Adendo da onda 7a: rota pública do link de desligar
+
+Decidido pelo PO em 2026-11-25, no plano da onda 7a; a decisão continua Aceita. O link de desligar dos e-mails precisa funcionar sem a sessão de acesso, inclusive no `POST` de um clique do cliente de e-mail (US-F17-04, D90, ADR-037).
+
+- A lista fechada de rotas públicas da guarda de sessão ganha `POST /api/email/unsubscribe`. A rota só muda `email_enabled`, não devolve dado de treino e responde igual a token válido e inválido.
+- A guarda de origem continua valendo para a rota: o `POST` sem `Origin` passa, e o `POST` com `Origin` de outro site é recusado com 403.
+- A página `/desligar-emails` passa direto pelo `AuthGate`, como `/cadastro` e `/~offline`.
+
 ## Consequências
 
 - A entrada é um toque com confirmação no celular, sem senha para lembrar, e a chave de acesso resiste a phishing.

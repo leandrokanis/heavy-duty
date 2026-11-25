@@ -109,7 +109,7 @@ C4Container
 | API | Regras de negócio, rotas HTTP, servidor MCP, cálculo do jogo e avisos | Node.js 24, Hono, MCP TypeScript SDK | `api.md` |
 | Banco de dados | Catálogo, programas, treinos, retratos e registros do sistema | SQLite em WAL, com Drizzle ORM | `banco-de-dados.md` |
 | Backup | Cópia diária do banco para fora do disco principal | Agendador Node.js com restic, no serviço `backup` do Compose (Aceita, ADR-018) | `backup.md` |
-| Servidor SMTP | Entrega os e-mails de aviso e o resumo semanal, a partir da onda 7 | Postfix e OpenDKIM (Aceita, ADR-007) | `servidor-smtp.md` |
+| Servidor SMTP | Entrega os e-mails de aviso e o resumo semanal, a partir da onda 7 | Postfix e OpenDKIM (Aceita, ADR-007); serviço na pilha do Coolify (Proposta, ADR-038) | `servidor-smtp.md` |
 | Túnel e proxy | Publica o app com HTTPS e roteia `/api` e `/mcp` para a API | cloudflared e Caddy (ADR-028) | `tunel.md` |
 
 ## Ambiente de desenvolvimento
@@ -121,7 +121,7 @@ O ambiente de desenvolvimento sobe com `docker compose up`, a partir do `compose
 - O app web, a API, o servidor SMTP, o túnel e o agendador do backup são processos de longa duração no kasparov. O backup executa uma vez por dia, às 03:00 do fuso configurado.
 - O túnel roteia por caminho no mesmo domínio: `/api/*` e `/mcp` vão para a API, e o resto vai para o app web. Com um domínio só, o cookie de sessão é do próprio site, e o navegador não precisa de CORS.
 - A configuração sensível vem de variáveis de ambiente, fora do Git (`docs/convencoes/codigo.md`, Seção 11).
-- O app web, a API, o proxy, o túnel e o backup rodam no Coolify, com a pilha `compose.coolify.yaml` e as imagens que o GitHub Actions testa e publica no GHCR (ADR-028). O deploy acontece depois do CI verde na `main` (`implantacao.md`). O servidor SMTP ainda não tem empacotamento decidido.
+- O app web, a API, o proxy, o túnel e o backup rodam no Coolify, com a pilha `compose.coolify.yaml` e as imagens que o GitHub Actions testa e publica no GHCR (ADR-028). O deploy acontece depois do CI verde na `main` (`implantacao.md`). O servidor SMTP entra na pilha como o serviço `smtp` se o teste da entrega passar (ADR-038, Proposta); senão, a API usa o relay da conta do PO (ADR-007).
 
 ## Fluxos entre contêineres
 
@@ -142,9 +142,10 @@ O ambiente de desenvolvimento sobe com `docker compose up`, a partir do `compose
 
 ### Aviso de janela, a partir da onda 7
 
-1. O agendador da API calcula, a partir do histórico, quando cada janela abre e fecha (ADR-010).
-2. Na hora do aviso, a API monta um aviso por letra (D31) e manda pelos dois canais (D32): Web Push para o serviço de push e e-mail para o servidor SMTP.
-3. A falha de um canal não bloqueia o outro e fica registrada no banco (`notifications`).
+1. O agendador da API, no próprio processo, executa um ciclo a cada 60 s e calcula, a partir do histórico, quando cada letra abre e fecha e quando cada grupo cai de nível (ADR-010, ADR-036).
+2. Na hora do aviso, com a antecedência da D79 e fora do horário de silêncio (D80), a API grava uma linha por aviso e canal em `notifications` e manda um aviso por letra (D31) pelos dois canais (D32): Web Push para o serviço de push (ADR-035) e e-mail para o servidor SMTP (ADR-037).
+3. A falha de um canal não bloqueia o outro e fica registrada em `notifications`. Não há nova tentativa (D86).
+4. O toque no aviso abre o treino do dia (D85). O link de desligar do e-mail desliga só os e-mails (D90).
 
 ## Requisitos não funcionais
 
@@ -164,8 +165,7 @@ O ambiente de desenvolvimento sobe com `docker compose up`, a partir do `compose
 | Método de autenticação do MCP (o do app web está na ADR-019) | NFR02, R07, H12 | Antes da onda 2 (US-F16-01) |
 | Licença "MIT + Commons Clause" do Animate UI: aceitar ou substituir a parte do Animate UI na ADR-009 | ADR-016 | Onda 1, decisão do PO |
 | Destino físico do backup e política de retenção | NFR03, ADR-018, `backup.md` | Onda 1, tarefa manual do PO |
-| Avisos por Web Push no iPhone | Q02, R01 | Antes da onda 7 |
-| Validação da entrega do SMTP próprio | ADR-007, R09 | Antes da onda 7 |
+| Empacotamento do servidor SMTP na pilha do Coolify (ADR-038, Proposta) | ADR-007, R09, tarefa manual #9 do PO | Antes da entrega real dos e-mails da onda 7a |
 | Lugar das telas de administração: proposta de rotas `/admin` no mesmo app web | D22, Q10, `app-web.md` | Antes da onda das telas de administração |
 
 Cada decisão vira uma ADR quando for tomada.

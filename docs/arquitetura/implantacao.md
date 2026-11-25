@@ -45,8 +45,20 @@ O recurso do Coolify é do tipo Docker Compose e usa o arquivo `compose.coolify.
 | `HEAVY_DUTY_RESTIC_PASSWORD_FILE` | Arquivo da senha do restic no host, com dono UID 1000 e permissão `600` | `/srv/heavy-duty/secrets/restic-password` |
 | `BACKUP_TIME_ZONE` | Fuso do horário diário do backup | `America/Sao_Paulo` |
 | `BACKUP_DAILY_AT` | Horário local do backup, em `HH:mm` | `03:00` |
+| `NOTICE_TIME_ZONE` | Fuso do horário de silêncio e do texto dos avisos (D81, ADR-036) | `America/Sao_Paulo` |
+| `VAPID_PUBLIC_KEY` | Chave pública VAPID do Web Push (ADR-035). Exemplo: `<VAPID_PUBLIC_KEY>` | — |
+| `VAPID_PRIVATE_KEY_FILE` | Arquivo da chave privada VAPID no host, com dono UID 1000 e permissão `600`. Segredo; o valor nunca vai para variável (ADR-035). Exemplo: `<VAPID_PRIVATE_KEY_FILE>` | — |
+| `VAPID_SUBJECT` | `subject` VAPID: a origem do app, sem e-mail pessoal (ADR-035). Exemplo: `<APP_ORIGIN>` | — |
+| `SMTP_HOST` | Servidor SMTP: `smtp`, com o serviço da ADR-038, ou o relay do plano B da ADR-007. Exemplo: `<SMTP_HOST>` | — |
+| `SMTP_PORT` | Porta do servidor SMTP. Exemplo: `<SMTP_PORT>` | — |
+| `SMTP_USER` | Usuário do relay; vazio com o serviço `smtp`. Exemplo: `<SMTP_USER>` | — |
+| `SMTP_PASSWORD_FILE` | Arquivo da senha do relay no host, com dono UID 1000 e permissão `600`; vazio com o serviço `smtp`. Segredo (ADR-037). Exemplo: `<SMTP_PASSWORD_FILE>` | — |
+| `MAIL_FROM` | Remetente dos e-mails, no domínio do app, com o nome "Heavy Duty" (D88). Exemplo: `<MAIL_FROM>` | — |
+| `MAIL_TO` | Destinatário dos e-mails, o endereço do PO (D88). Exemplo: `<MAIL_TO>` | — |
 
-O `.env.example` ainda não lista estas variáveis: a inclusão é tarefa manual do PO.
+As variáveis dos avisos são opcionais e entram no `compose.coolify.yaml` sem a marca de obrigatória (`:?`): sem as três variáveis VAPID, a API sobe com o push desligado; sem `SMTP_HOST`, `MAIL_FROM` ou `MAIL_TO`, sobe com o e-mail desligado (ADR-035, ADR-036, ADR-037). Gerar o par VAPID e a chave DKIM e preencher estas variáveis são tarefas manuais do PO; os valores não vão para o Git nem para mensagem. O GitHub não precisa de segredo novo: os testes usam implementações falsas dos canais.
+
+O `.env.example` ainda não lista estas variáveis: a inclusão, só com os nomes e os marcadores dos exemplos, sem valor real, é tarefa manual do PO.
 
 ## Segredos e configurações do GitHub
 

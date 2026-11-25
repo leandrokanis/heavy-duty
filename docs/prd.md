@@ -4,8 +4,8 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 0.7 |
-| Data | 24/11/2026 |
+| Versão | 0.8 |
+| Data | 25/11/2026 |
 | Status | Rascunho — sujeito a revisão humana |
 | Classificação | Público |
 | Elaboração | Elaborado com apoio de IA (Lean Inception solo, método de Paulo Caroli, traduzido para SAFe) |
@@ -931,7 +931,7 @@ Funcionalidade: Janelas aproveitadas e meta semanal
 
 - **US-F08-01.** Como atleta, quero ver num mapa do corpo o estado de cada grupo muscular, para entender de relance o que está em janela, descansando ou esfriando.
 
-O visual segue o protótipo (`docs/prototipo/`).
+O visual segue o protótipo (`docs/prototipo/`). A entrada do mapa e o conteúdo do mapa e do detalhe seguem as decisões D92 e D93.
 
 ```gherkin
 # language: pt
@@ -956,7 +956,7 @@ Funcionalidade: Mapa do corpo
 - **US-F09-01.** Como atleta, quero ativar os avisos no app instalado, para receber os avisos no celular.
 - **US-F09-02.** Como atleta, quero um aviso perto de a janela abrir e perto de fechar, um por letra, e um aviso antes de um grupo cair de nível, para não perder a janela nem o nível.
 
-O celular é um iPhone, e o aviso exige o app instalado na tela inicial, com iOS 16.4 ou posterior (D44, R01). A antecedência dos avisos depende da Q16. Todo aviso também vai por e-mail (D32, F17).
+O celular é um iPhone, e o aviso exige o app instalado na tela inicial, com iOS 16.4 ou posterior (D44, R01). A antecedência, o horário de silêncio, o fuso, o agrupamento por letra, o toque no aviso, a volta do servidor e o controle dos avisos seguem as decisões D79 a D87. Todo aviso também vai por e-mail (D32, F17).
 
 ```gherkin
 # language: pt
@@ -1096,7 +1096,7 @@ Funcionalidade: Medalhas e ranking pessoal
 
 ### F17. Avisos por e-mail (ondas 7a e 7b)
 
-Esta feature entra com os avisos da onda 7a (D32). O resumo semanal (US-F17-03) fica para a 7b, porque traz as medalhas da F19 (D36). O endereço de remetente e o horário do resumo dependem da Q14, e a entrega depende do teste do R09.
+Esta feature entra com os avisos da onda 7a (D32). O resumo semanal (US-F17-03) fica para a 7b, porque traz as medalhas da F19 (D36). O remetente segue a D88, e o horário do resumo depende da Q14. A entrega depende do teste do R09. O link de desligar e a volta dos e-mails seguem as decisões D89 a D91.
 
 - **US-F17-01.** Como atleta, quero receber por e-mail o aviso de janela, um por letra, para não perder a janela quando o aviso no celular não chega.
 - **US-F17-02.** Como atleta, quero receber por e-mail o aviso antes de um grupo cair de nível, para ter tempo de treinar.
@@ -1159,10 +1159,9 @@ Funcionalidade: Avisos por e-mail
 ### Questões em aberto
 - **Q01:** o primeiro período começa fora do ciclo; os períodos seguintes se realinham ao ciclo trimestral?
 - **Q09:** a academia tem sinal de celular e Wi-Fi confiáveis?
-- **Q14:** em que dia e hora sai o resumo semanal, e qual é o endereço de remetente dos e-mails (F17)?
-- **Q16:** com quantas horas de antecedência saem os avisos de abertura, de fechamento e de queda?
+- **Q14:** em que dia e hora sai o resumo semanal (F17)? O remetente dos e-mails já foi decidido (D88).
 - **Q17:** quais são as medalhas e o critério de cada uma? A proposta sai na especificação da US-F19-01.
-- **Resolvidas:** Q02 (D44), Q03 (a F13 foi removida), Q04 (D53), Q05 (MVP sem gamificação, D18), Q06 (D39), Q07 (D46), Q08 (D40), Q10 (D37), Q11 (D41), Q12 (D42), Q13 (D43) e Q15 (D52).
+- **Resolvidas:** Q02 (D44), Q03 (a F13 foi removida), Q04 (D53), Q05 (MVP sem gamificação, D18), Q06 (D39), Q07 (D46), Q08 (D40), Q10 (D37), Q11 (D41), Q12 (D42), Q13 (D43), Q15 (D52), Q16 (D79) e Q14 só no remetente (D88).
 
 ### Hipóteses e validações pendentes (o PO é o único papel)
 
@@ -1264,6 +1263,21 @@ Funcionalidade: Avisos por e-mail
 | D76 | Sem meta definida, o item da meta semanal não aparece na faixa de jogo. Razão: o app não inventa número, e a descrição da ferramenta orienta o planejador a definir a meta |
 | D77 | Sem sinal, o treino do dia mostra as janelas aproveitadas da cópia do aparelho, só se a cópia for da mesma semana, sem valor provisório. A contagem da API substitui a cópia quando a fila de envio esvazia. Razão: o celular não tem o desfecho das janelas, e a D48 já faz o mesmo com os selos |
 | D78 | Na onda 6b, a faixa de jogo do treino do dia mostra só o nível geral e a meta semanal. A sequência de semanas e os pontos da semana entram na onda 7b. Razão: escopo da D36 |
+| D79 | O aviso de abertura sai 12 h antes de a letra abrir, o de fechamento 12 h antes de a letra fechar e o de queda 24 h antes da queda. As antecedências são parâmetros em `notices.config.ts`. Razão: batem com os exemplos do PRD ("abre amanhã às 9h", "fecha hoje às 20h", "cai amanhã") e cabem na janela aberta mínima de 48 h (D47) (responde à Q16) |
+| D80 | O horário de silêncio vai das 22h às 7h: o aviso devido nesse intervalo sai antes, às 21h que antecedem o silêncio. Razão: adiantar nunca faz o aviso chegar depois do evento, e o aviso em hora ruim é o momento crítico do gatilho |
+| D81 | A API calcula o horário dos avisos e o texto dos avisos e dos e-mails no fuso `NOTICE_TIME_ZONE`, com padrão `America/Sao_Paulo`. O fuso vale só para os avisos; a semana continua sem fuso na API até a onda 7b (D74). Razão: segue o `BACKUP_TIME_ZONE` (ADR-018), e o texto "amanhã às 9h" e o silêncio precisam de um fuso |
+| D82 | A letra abre quando deixa de ter a maioria dos grupos principais descansando, pela regra da sugestão (D69). O aviso de abertura lista os grupos da letra que abrem até esse instante. A letra que já está disponível não tem aviso de abertura. Razão: o aviso nunca chama para uma letra que a sugestão ainda exclui (completa a D31) |
+| D83 | A letra fecha no primeiro fechamento entre os grupos da letra em janela. O aviso de fechamento lista os grupos da letra que fecham até 24 h depois desse fechamento. Sem grupo da letra em janela, não há aviso de fechamento. Razão: os grupos treinados juntos fecham juntos (120 h fixas, D47), e o treino na janela tira o grupo do estado "em janela", o que cancela o aviso sem regra extra (completa a D31) |
+| D84 | Os avisos contam só os grupos principais das letras do programa ativo (D67). O aviso de queda sai só na primeira queda de cada esfriamento, por grupo, com a letra de `letterForGroupOf` (D68), e o grupo no nível 1 não tem aviso de queda. Razão: parado, o grupo cai a cada 1 a 2,4 dias, e o aviso de toda queda passaria de um aviso por dia por grupo, nos dois canais |
+| D85 | O toque no aviso abre o treino do dia, como pede a US-F09-02, e não o mapa do corpo do protótipo v1. Razão: o PRD vale sobre o protótipo (`docs/prototipo/README.md`) |
+| D86 | Com o servidor parado na hora de um aviso, a API envia na volta o aviso cujo evento ainda não chegou, fora do horário de silêncio, e descarta o resto, sem nova tentativa. Razão: aviso velho é ruído, e a ADR-018 também não repete a execução que falhou (ADR-036) |
+| D87 | O controle dos avisos é o ícone "Avisos" (sino) no cabeçalho do treino do dia. O ícone abre uma folha com a chave "Avisos no celular" e, quando a chave está indisponível, o motivo: "instale o app na tela inicial", "avisos não configurados no servidor" ou "sem conexão". Razão: a ativação acontece uma vez, fora do treino, e a folha da sequência do treino só abre com treino em andamento |
+| D88 | O remetente dos e-mails é um endereço próprio no domínio do app, com o nome "Heavy Duty" e sem caixa de resposta. O endereço fica na variável `MAIL_FROM`, e o destinatário, em `MAIL_TO`, fora do Git. O horário do resumo semanal continua em aberto para a onda 7b. Razão: SPF, DKIM e DMARC alinham com o domínio que o PO controla (ADR-007); o endereço pessoal do PO falha no alinhamento do DMARC quando o domínio é de um provedor; o protótipo v1 já mostra um remetente no domínio do app (responde à Q14 só no remetente) |
+| D89 | Cada e-mail leva um token aleatório próprio no link de desligar, e o banco guarda só o SHA-256 do token no registro do aviso. Razão: mantém a regra "o banco guarda só o hash" (ADR-019, ADR-020) sem segredo novo; com um hash só em `settings`, a API não conseguiria pôr o token em cada e-mail novo (ADR-037) |
+| D90 | A abertura do link de desligar mostra uma página com o botão "Desligar e-mails", e só o toque no botão desliga. O `POST` de um clique do cliente de e-mail (RFC 8058) desliga direto. Desligar grava `email_enabled = false` em `settings`, e os avisos no celular continuam. Razão: filtros de e-mail abrem os links sozinhos; se o `GET` desligasse, o e-mail se desligaria sem o atleta pedir |
+| D91 | O planejador religa ou desliga os e-mails pelo Claude, com a ferramenta `set_email_notices`, que aplica direto, sem prévia, como `set_weekly_goal`. O app não tem chave dos e-mails. Razão: a US-F17-04 pede só o desligar, o MCP é o canal de administração (D04), e a mudança não altera o histórico, então a confirmação em duas chamadas (ADR-026) não se aplica |
+| D92 | A entrada do mapa do corpo é o ícone "Mapa" no cabeçalho do treino do dia, como o "Histórico". A barra de abas entra na onda 7b, com o "Período". Razão: estende a exceção da onda 4b (`DESIGN.md`, Seção 9.2); a barra de abas entra uma vez só, com as três seções, e o fluxo da academia não muda agora |
+| D93 | O mapa do corpo mostra os 11 grupos; o grupo fora do programa ativo aparece em cinza, com o texto "fora do programa" (protótipo v1). O detalhe do grupo mostra estado, nível, barra de progresso, melhor nível com a marca ↺ ×2 da memória muscular, horário da janela, instante da queda (esfriando) e último treino, sem o progresso no período (onda 7b) e sem os músculos. Razão: cobre o cenário do PRD com os dados que o aparelho já tem, e o período é da onda 7b |
 
 ---
 
@@ -1280,6 +1294,6 @@ Funcionalidade: Avisos por e-mail
 ---
 
 ## Próximos passos sugeridos
-1. Responder às Q14, Q16, Q17 e Q01 antes das stories que cada uma bloqueia. Cada questão e cada story têm uma issue no GitHub, com as dependências.
+1. Responder às Q14 (horário do resumo semanal), Q17 e Q01 antes das stories que cada uma bloqueia. Cada questão e cada story têm uma issue no GitHub, com as dependências.
 2. Testar a entrega de e-mail pelo kasparov antes da onda 7a (R09).
 3. Recalibrar a janela com o histórico real pela simulação da EN01-01 (ADR-031).

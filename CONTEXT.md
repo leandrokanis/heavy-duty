@@ -98,6 +98,10 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Retrato | Registro congelado do progresso ao fim de um período | `PeriodSnapshot` | relatório |
 | Mapa do corpo | Visualização do estado das janelas por grupo muscular | `BodyMap` | — |
 | Aviso | Notificação perto de a janela abrir ou fechar, ou antes de uma queda de nível. Vai pelos dois canais, celular e e-mail | `notification` | alerta, lembrete |
+| Inscrição de push | Registro do aparelho no serviço de push do navegador, que a API guarda para enviar os avisos no celular. O app web cria a inscrição quando o atleta ativa os avisos no app instalado e manda a inscrição de novo à API a cada abertura (ADR-035) | `PushSubscription` | assinatura, token de push |
+| Antecedência | Tempo entre o aviso e o evento: 12 h antes de a letra abrir, 12 h antes de a letra fechar e 24 h antes da queda de nível (D79) | `leadHours` | prazo, aviso prévio |
+| Horário de silêncio | Intervalo das 22h às 7h, no fuso dos avisos, em que nenhum aviso sai. O aviso devido nesse intervalo sai antes, às 21h (D80) | `quietHours` | não perturbe, modo noturno |
+| Link de desligar | Link de cada e-mail que leva à página que desliga os e-mails, sem entrar no app. Os avisos no celular continuam, e o planejador religa os e-mails pelo Claude (D89 a D91, ADR-037) | `emailOptOut` | descadastro, unsubscribe |
 | Resumo semanal | E-mail semanal com janelas aproveitadas, níveis, recordes e medalhas | `weeklyDigest` | newsletter, relatório |
 
 ## Pessoas e canais

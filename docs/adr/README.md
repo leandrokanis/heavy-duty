@@ -40,6 +40,10 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-032](032-remocao-de-treino-pelo-celular.md) | Remoção de treino pelo celular | Aceita |
 | [ADR-033](033-plano-congelado-na-serie.md) | Plano congelado na série | Aceita |
 | [ADR-034](034-regras-do-jogo-em-pacote-compartilhado.md) | Regras do jogo em pacote compartilhado | Aceita |
+| [ADR-035](035-web-push-com-vapid.md) | Web Push com VAPID | Aceita |
+| [ADR-036](036-agendador-dos-avisos-no-processo-da-api.md) | Agendador dos avisos no processo da API | Aceita |
+| [ADR-037](037-envio-de-email-e-link-de-desligar.md) | Envio de e-mail e link de desligar | Aceita |
+| [ADR-038](038-servico-smtp-na-pilha-do-coolify.md) | Serviço SMTP na pilha do Coolify | Proposta |
 
 ## Regras
 

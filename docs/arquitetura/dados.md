@@ -156,6 +156,7 @@ erDiagram
     text sent_at
     text status "pending, sent ou failed"
     text error
+    text unsubscribe_token_hash UK "só no canal email"
   }
   SETTINGS {
     text key PK
@@ -279,13 +280,13 @@ Regras da gravação (US-F03-02):
 | Tabela | Conteúdo | Regras |
 |---|---|---|
 | `push_subscriptions` | Inscrições de Web Push do navegador | `endpoint` único. Inscrição recusada pelo serviço de push é apagada |
-| `notifications` | Registro de cada aviso, por canal | Um aviso de janela por letra (D31), nos dois canais (D32). A falha de um canal não muda o outro |
+| `notifications` | Registro de cada aviso, por canal | Um aviso de janela por letra (D31), nos dois canais (D32). A falha de um canal não muda o outro. Cada aviso sai no máximo uma vez por canal, por uma chave única (ADR-036). A linha do e-mail guarda em `unsubscribe_token_hash` o SHA-256 do token do link de desligar daquele e-mail; o token em claro só existe no e-mail (D89, ADR-037). As colunas finais saem das US-F09-02 e US-F17-04 |
 
 ### Sistema (F14, onda 1)
 
 | Tabela | Conteúdo | Regras |
 |---|---|---|
-| `settings` | Configurações em chave e valor, como `email_enabled`, o hash do token de desligar e-mail e `webauthn_user_id` | Sem segredo em texto puro. O endereço de e-mail do PO e as credenciais ficam em variável de ambiente. `webauthn_user_id` é o identificador estável do usuário nas cerimônias da chave de acesso (16 bytes aleatórios em base64url), criado no primeiro cadastro e nunca trocado (US-F14-01) |
+| `settings` | Configurações em chave e valor, como `email_enabled` e `webauthn_user_id` | Sem segredo em texto puro. `email_enabled = false` desliga só os e-mails, pelo link de desligar ou pela ferramenta `set_email_notices` (D90, D91); o hash do token de desligar fica em `notifications`, um por e-mail (D89). O endereço de e-mail do PO e as credenciais ficam em variável de ambiente. `webauthn_user_id` é o identificador estável do usuário nas cerimônias da chave de acesso (16 bytes aleatórios em base64url), criado no primeiro cadastro e nunca trocado (US-F14-01) |
 | `backup_runs` | Uma linha por execução do backup, com início, fim, situação, tamanho e motivo | Gravada uma vez, no fim da execução, também na falha (F14). `status` é `succeeded` ou `failed`, com `CHECK`. `size_bytes` é o tamanho em bytes da cópia, inteiro não negativo com `CHECK`, e fica nulo na falha. `error` traz o motivo seguro da falha, com até 500 caracteres, e fica nulo no sucesso. Sem índice: a tabela cresce cerca de 365 linhas por ano [estimativa: uma execução por dia]. Só o processo do backup grava a tabela; a API e o MCP só leem (`get_system_status`) |
 
 ### Acesso (F14, onda 1, e F16, onda 2)
