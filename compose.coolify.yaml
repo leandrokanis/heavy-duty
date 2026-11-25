@@ -15,6 +15,8 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       VAPID_PRIVATE_KEY_FILE: /run/secrets/vapid-private-key
+      # Zone of the quiet hours and of the text of the notices (D81).
+      NOTICE_TIME_ZONE: ${NOTICE_TIME_ZONE:-America/Sao_Paulo}
     # Host folder owned by UID 1000, outside the deploy folder, so a redeploy keeps the database.
     volumes:
       - ${HEAVY_DUTY_DATA_DIR:-/srv/heavy-duty/data}:/app/data

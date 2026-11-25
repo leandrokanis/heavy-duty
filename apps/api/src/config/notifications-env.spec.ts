@@ -22,7 +22,7 @@ function load(env: Record<string, string | undefined>, files: Record<string, str
 describe('Given no VAPID variable', () => {
   describe('When the notifications configuration is loaded', () => {
     it('Then should leave the push channel off without warnings', () => {
-      expect(load({})).toEqual({ push: null, warnings: [] })
+      expect(load({})).toEqual({ push: null, timeZone: 'America/Sao_Paulo', warnings: [] })
     })
   })
 })
@@ -34,6 +34,7 @@ describe('Given the public key and the file of the private key', () => {
 
       expect(load(env, { [KEY_FILE]: `${PRIVATE_KEY}\n` })).toEqual({
         push: { publicKey: PUBLIC_KEY, privateKey: PRIVATE_KEY, subject: APP_ORIGIN },
+        timeZone: 'America/Sao_Paulo',
         warnings: [],
       })
     })
@@ -59,6 +60,7 @@ describe('Given empty VAPID variables, as the production stack leaves them', () 
     it('Then should leave the push channel off without warnings', () => {
       expect(load({ VAPID_PUBLIC_KEY: '', VAPID_PRIVATE_KEY_FILE: '' })).toEqual({
         push: null,
+        timeZone: 'America/Sao_Paulo',
         warnings: [],
       })
     })
@@ -70,6 +72,7 @@ describe('Given the file of the private key is empty and the public key is missi
     it('Then should leave the push channel off without warnings', () => {
       expect(load({ VAPID_PRIVATE_KEY_FILE: KEY_FILE }, { [KEY_FILE]: '' })).toEqual({
         push: null,
+        timeZone: 'America/Sao_Paulo',
         warnings: [],
       })
     })
@@ -79,7 +82,7 @@ describe('Given the file of the private key is empty and the public key is missi
 describe('Given only the public key', () => {
   describe('When the notifications configuration is loaded', () => {
     it('Then should leave the push channel off and name the missing variable', () => {
-      expect(load({ VAPID_PUBLIC_KEY: PUBLIC_KEY })).toEqual({
+      expect(load({ VAPID_PUBLIC_KEY: PUBLIC_KEY })).toMatchObject({
         push: null,
         warnings: ['push notices off: set VAPID_PRIVATE_KEY_FILE'],
       })
@@ -92,7 +95,7 @@ describe('Given a private key file that cannot be read', () => {
     it('Then should leave the push channel off and warn without the content', () => {
       const env = { VAPID_PUBLIC_KEY: PUBLIC_KEY, VAPID_PRIVATE_KEY_FILE: KEY_FILE }
 
-      expect(load(env)).toEqual({
+      expect(load(env)).toMatchObject({
         push: null,
         warnings: ['push notices off: could not read the file in VAPID_PRIVATE_KEY_FILE'],
       })
@@ -105,7 +108,31 @@ describe('Given a private key file and no public key', () => {
     it('Then should leave the push channel off and name VAPID_PUBLIC_KEY', () => {
       const result = load({ VAPID_PRIVATE_KEY_FILE: KEY_FILE }, { [KEY_FILE]: PRIVATE_KEY })
 
-      expect(result).toEqual({ push: null, warnings: ['push notices off: set VAPID_PUBLIC_KEY'] })
+      expect(result).toMatchObject({
+        push: null,
+        warnings: ['push notices off: set VAPID_PUBLIC_KEY'],
+      })
+    })
+  })
+})
+
+describe('Given NOTICE_TIME_ZONE', () => {
+  describe('When it is an IANA time zone', () => {
+    it('Then should use it for the notices', () => {
+      expect(load({ NOTICE_TIME_ZONE: 'America/Manaus' })).toMatchObject({
+        timeZone: 'America/Manaus',
+        warnings: [],
+      })
+    })
+  })
+
+  describe('When it is not a time zone', () => {
+    it('Then should fall back to São Paulo and warn', () => {
+      expect(load({ NOTICE_TIME_ZONE: 'Brasilia' })).toEqual({
+        push: null,
+        timeZone: 'America/Sao_Paulo',
+        warnings: ['NOTICE_TIME_ZONE is not an IANA time zone; using America/Sao_Paulo'],
+      })
     })
   })
 })

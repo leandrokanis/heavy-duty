@@ -149,15 +149,18 @@ erDiagram
   }
   NOTIFICATIONS {
     text id PK
-    text kind "window, level_drop ou weekly_digest"
+    text notice_key "UK com channel"
+    text kind "window_open, window_close ou level_drop"
     text channel "push ou email"
-    text program_day_id FK
-    text muscle_group_id FK
-    text scheduled_for
-    text sent_at
-    text status "pending, sent ou failed"
+    text letter
+    text muscle_group_slugs "JSON"
+    text due_at
+    text event_at
+    text created_at
+    text status "sent, failed, skipped ou nulo"
     text error
-    text unsubscribe_token_hash UK "só no canal email"
+    text finished_at
+    text unsubscribe_token_hash UK "só no canal email, US-F17-04"
   }
   SETTINGS {
     text key PK
@@ -281,7 +284,7 @@ Regras da gravação (US-F03-02):
 | Tabela | Conteúdo | Regras |
 |---|---|---|
 | `push_subscriptions` | Inscrições de Web Push do navegador (migração `0013_push_subscriptions`, US-F09-01, ADR-035) | `endpoint` único, só `https`, com até 2048 caracteres. `p256dh` e `auth` em base64url, até 256 caracteres. `created_at` e `updated_at` em UTC; o reenvio do mesmo `endpoint` a cada abertura do app troca as chaves e `updated_at`. Desligar os avisos apaga a linha. Inscrição recusada pelo serviço de push com 404 ou 410 é apagada |
-| `notifications` | Registro de cada aviso, por canal | Um aviso de janela por letra (D31), nos dois canais (D32). A falha de um canal não muda o outro. Cada aviso sai no máximo uma vez por canal, por uma chave única (ADR-036). A linha do e-mail guarda em `unsubscribe_token_hash` o SHA-256 do token do link de desligar daquele e-mail; o token em claro só existe no e-mail (D89, ADR-037). As colunas finais saem das US-F09-02 e US-F17-04 |
+| `notifications` | Registro de cada aviso, por canal | Um aviso de janela por letra (D31), nos dois canais (D32). A falha de um canal não muda o outro. Cada aviso sai no máximo uma vez por canal, por uma chave única (ADR-036). A linha do e-mail guarda em `unsubscribe_token_hash` o SHA-256 do token do link de desligar daquele e-mail; o token em claro só existe no e-mail (D89, ADR-037). Migração `0014_notifications` (US-F09-02): `notice_key` identifica o aviso pelo tipo, pela letra ou pelo grupo e pelo instante do evento; no aviso de queda, o instante é o fechamento da janela que iniciou o esfriamento, para sair um aviso só por esfriamento (D84). `notice_key` e `channel` são únicos juntos. `kind` é `window_open`, `window_close` ou `level_drop`, e `channel`, `push` ou `email`, com `CHECK`. `letter` é a letra do aviso (na queda, a de `letterForGroupOf`); `muscle_group_slugs`, os grupos em JSON. `due_at` é o horário do aviso, já com o silêncio (D80), e `event_at`, o da abertura, do fechamento ou da queda. O agendador grava a linha antes do envio (`created_at`) e o resultado depois: `status` `sent`, `failed` ou `skipped` (canal sem destinatário), `error` com o motivo seguro, até 500 caracteres, e `finished_at`. A linha sem `status` é um envio que o processo não terminou, e o aviso se perde (ADR-036). Índice em `channel` e `created_at`, para a situação dos avisos (US-F17-01). A coluna `unsubscribe_token_hash` sai da US-F17-04 |
 
 ### Sistema (F14, onda 1)
 

@@ -5,6 +5,12 @@ import { loadNotificationsConfig } from './config/notifications-env.js'
 import { type Database, openDatabase } from './db/connection.js'
 import { createDatabaseHealthProbe } from './db/health.js'
 import { createWebAuthnVerifier } from './modules/auth/webauthn.js'
+import {
+  createPushChannel,
+  type RunningNoticeScheduler,
+  startNoticeScheduler,
+} from './modules/notifications/notice-scheduler.js'
+import { createWebPushSender } from './modules/notifications/push-sender.js'
 import type { DatabaseHealthProbe } from './modules/system/health.service.js'
 
 type DatabaseState = {
@@ -37,6 +43,22 @@ const app = createApp({
   pushPublicKey: notifications.push?.publicKey,
 })
 
+// The scheduler starts only with a channel to send through (ADR-036).
+function startNotices(): RunningNoticeScheduler | undefined {
+  if (!db || !notifications.push) return undefined
+  return startNoticeScheduler({
+    db,
+    now: () => new Date(),
+    timeZone: notifications.timeZone,
+    channels: [
+      createPushChannel(db, createWebPushSender(notifications.push), notifications.timeZone),
+    ],
+    log: console,
+  })
+}
+
+const notices = startNotices()
+
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
   console.log(
     `Heavy Duty API listening on port ${info.port} (${config.nodeEnv}, origin ${config.appOrigin}, push notices ${notifications.push ? 'on' : 'off'})`,
@@ -44,7 +66,8 @@ const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
 })
 
 function shutdown(): void {
-  server.close(() => {
+  server.close(async () => {
+    await notices?.stop()
     db?.$client.close()
     process.exit(0)
   })

@@ -104,6 +104,39 @@ export const pushSubscriptions = sqliteTable('push_subscriptions', {
   updatedAt: text('updated_at').notNull(),
 })
 
+// One row per notice and channel, written before the send: the unique key sends it at most once,
+// and a row with no status is a send the process never finished (ADR-036).
+export const notifications = sqliteTable(
+  'notifications',
+  {
+    id: text('id').primaryKey(),
+    noticeKey: text('notice_key').notNull(),
+    kind: text('kind', { enum: ['window_open', 'window_close', 'level_drop'] }).notNull(),
+    channel: text('channel', { enum: ['push', 'email'] }).notNull(),
+    letter: text('letter'),
+    muscleGroupSlugs: text('muscle_group_slugs').notNull(),
+    dueAt: text('due_at').notNull(),
+    eventAt: text('event_at').notNull(),
+    createdAt: text('created_at').notNull(),
+    status: text('status', { enum: ['sent', 'failed', 'skipped'] }),
+    error: text('error'),
+    finishedAt: text('finished_at'),
+  },
+  (table) => [
+    unique('notifications_notice_key_channel_unique').on(table.noticeKey, table.channel),
+    index('notifications_channel_created_at_idx').on(table.channel, table.createdAt),
+    check(
+      'notifications_kind_check',
+      sql`${table.kind} IN ('window_open', 'window_close', 'level_drop')`,
+    ),
+    check('notifications_channel_check', sql`${table.channel} IN ('push', 'email')`),
+    check(
+      'notifications_status_check',
+      sql`${table.status} IS NULL OR ${table.status} IN ('sent', 'failed', 'skipped')`,
+    ),
+  ],
+)
+
 export const authCredentials = sqliteTable(
   'auth_credentials',
   {
