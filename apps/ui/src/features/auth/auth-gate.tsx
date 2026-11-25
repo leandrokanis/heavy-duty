@@ -7,8 +7,9 @@ import { fetchSession, type SessionState } from './auth-client'
 import { goHome, OfflineNotice } from './offline-notice'
 import { SignInScreen } from './sign-in-screen'
 
-// The enrollment link and the offline fallback must open before any passkey exists.
-const OPEN_PATHS: ReadonlySet<string> = new Set(['/cadastro', '/~offline'])
+// The enrollment link and the offline fallback must open before any passkey exists; the link to
+// turn the emails off opens without signing in, see ADR-037.
+const OPEN_PATHS: ReadonlySet<string> = new Set(['/cadastro', '/~offline', '/desligar-emails'])
 
 export type AuthGateProps = {
   children: ReactNode

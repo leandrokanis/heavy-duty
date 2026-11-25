@@ -121,9 +121,12 @@ export const notifications = sqliteTable(
     status: text('status', { enum: ['sent', 'failed', 'skipped'] }),
     error: text('error'),
     finishedAt: text('finished_at'),
+    // SHA-256 of the token of the link to turn the emails off, only on an email (ADR-037).
+    unsubscribeTokenHash: text('unsubscribe_token_hash'),
   },
   (table) => [
     unique('notifications_notice_key_channel_unique').on(table.noticeKey, table.channel),
+    uniqueIndex('notifications_unsubscribe_token_hash_unique').on(table.unsubscribeTokenHash),
     index('notifications_channel_created_at_idx').on(table.channel, table.createdAt),
     check(
       'notifications_kind_check',

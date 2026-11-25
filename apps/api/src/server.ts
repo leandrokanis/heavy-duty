@@ -59,7 +59,7 @@ function noticeChannelsOf(database: Database): NoticeChannel[] {
   }
   if (mail) {
     channels.push(
-      createEmailChannel(createSmtpMailSender(mail), {
+      createEmailChannel(database, createSmtpMailSender(mail), {
         appOrigin: config.appOrigin,
         timeZone: notifications.timeZone,
       }),

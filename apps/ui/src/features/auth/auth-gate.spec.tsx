@@ -113,21 +113,24 @@ describe('Given the AuthGate on the home page', () => {
   })
 })
 
-describe.each(['/cadastro', '/~offline'])('Given the AuthGate on %s', (path) => {
-  describe('When it renders', () => {
-    it('Then should show the screen without checking the session', () => {
-      usePathnameMock.mockReturnValue(path)
-      const fetchMock = stubFetch()
+describe.each(['/cadastro', '/~offline', '/desligar-emails'])(
+  'Given the AuthGate on %s',
+  (path) => {
+    describe('When it renders', () => {
+      it('Then should show the screen without checking the session', () => {
+        usePathnameMock.mockReturnValue(path)
+        const fetchMock = stubFetch()
 
-      renderGate()
+        renderGate()
 
-      expect({
-        child: screen.getByRole('heading', { name: 'Tela pedida' }) !== null,
-        requests: fetchMock.mock.calls.length,
-      }).toEqual({ child: true, requests: 0 })
+        expect({
+          child: screen.getByRole('heading', { name: 'Tela pedida' }) !== null,
+          requests: fetchMock.mock.calls.length,
+        }).toEqual({ child: true, requests: 0 })
+      })
     })
-  })
-})
+  },
+)
 
 describe('Given the AuthGate on the MCP authorization screen', () => {
   beforeEach(() => {

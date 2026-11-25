@@ -10,6 +10,8 @@ import { addExercise } from '../catalog/exercise.service.js'
 import { addMuscle } from '../catalog/muscle.service.js'
 import { addPlannedExercise, addProgramDay, createProgram } from '../programs/program.service.js'
 import { createEmailChannel } from './email-channel.js'
+import { turnEmailsOffByToken, unsubscribeTokenHashOf } from './email-opt-out.service.js'
+import { isEmailEnabled, setEmailNotices } from './email-settings.service.js'
 import {
   createPushChannel,
   type NoticeChannel,
@@ -242,8 +244,8 @@ function recordWorkoutAgain(db: Database, clock: TestClock) {
 
 const APP_ORIGIN = 'https://heavy.example.com'
 
-function emailChannel(sender: FakeMailSender) {
-  return createEmailChannel(sender, { appOrigin: APP_ORIGIN, timeZone: SAO_PAULO })
+function emailChannel(db: Database, sender: FakeMailSender) {
+  return createEmailChannel(db, sender, { appOrigin: APP_ORIGIN, timeZone: SAO_PAULO })
 }
 
 function givenPhoneSubscribed(db: Database, clock: TestClock): void {
@@ -260,7 +262,7 @@ describe('Given letter B closes tomorrow at 10h with the phone and the email on 
       clock.advance(CLOSE_NOTICE_AT.getTime() - clock.now().getTime())
 
       await runNoticeTick(
-        tickDeps(db, clock, [createPushChannel(db, push, SAO_PAULO), emailChannel(mail)]),
+        tickDeps(db, clock, [createPushChannel(db, push, SAO_PAULO), emailChannel(db, mail)]),
       )
 
       expect({
@@ -280,7 +282,7 @@ describe('Given letter B closes tomorrow at 10h with the phone and the email on 
       await runNoticeTick(
         tickDeps(db, clock, [
           createPushChannel(db, createFakePushSender(), SAO_PAULO),
-          emailChannel(createFakeMailSender()),
+          emailChannel(db, createFakeMailSender()),
         ]),
       )
 
@@ -298,7 +300,7 @@ describe('Given letter B closes tomorrow at 10h with the phone and the email on 
       const mail = createFakeMailSender()
       clock.advance(CLOSE_NOTICE_AT.getTime() - clock.now().getTime())
 
-      await runNoticeTick(tickDeps(db, clock, [emailChannel(mail)]))
+      await runNoticeTick(tickDeps(db, clock, [emailChannel(db, mail)]))
 
       const email = mail.sent[0]
       expect([
@@ -318,7 +320,7 @@ describe('Given letter B closes tomorrow at 10h with the phone and the email on 
 
       await runNoticeTick(
         tickDeps(db, clock, [
-          emailChannel(createFakeMailSender('ECONNECTION')),
+          emailChannel(db, createFakeMailSender('ECONNECTION')),
           createPushChannel(db, push, SAO_PAULO),
         ]),
       )
@@ -330,6 +332,74 @@ describe('Given letter B closes tomorrow at 10h with the phone and the email on 
         pushSent: 1,
         rows: [
           ['email', 'failed', 'ECONNECTION'],
+          ['push', 'sent', null],
+        ],
+      })
+    })
+  })
+})
+
+function tokenOf(email: { headers: Record<string, string> } | undefined): string {
+  const header = email?.headers['List-Unsubscribe'] ?? ''
+  return new URL(header.slice(1, -1)).searchParams.get('token') ?? ''
+}
+
+describe('Given letter B closes tomorrow at 10h with the email on (US-F17-04)', () => {
+  describe('When the tick sends the email', () => {
+    it('Then the email should carry a token of 43 characters and the row only its SHA-256', async () => {
+      const { db, clock } = givenLetterBTrained()
+      const mail = createFakeMailSender()
+      clock.advance(CLOSE_NOTICE_AT.getTime() - clock.now().getTime())
+
+      await runNoticeTick(tickDeps(db, clock, [emailChannel(db, mail)]))
+
+      const token = tokenOf(mail.sent[0])
+      const row = listNotifications(db)[0]
+      expect({
+        tokenLength: token.length,
+        pageLinkHasToken: mail.sent[0]?.html.includes(`/desligar-emails#token=${token}`),
+        hash: row?.unsubscribeTokenHash,
+      }).toEqual({ tokenLength: 43, pageLinkHasToken: true, hash: unsubscribeTokenHashOf(token) })
+    })
+  })
+
+  describe('When the athlete turns the emails off with the token of that email', () => {
+    it('Then the emails should be off', async () => {
+      const { db, clock } = givenLetterBTrained()
+      const mail = createFakeMailSender()
+      clock.advance(CLOSE_NOTICE_AT.getTime() - clock.now().getTime())
+      await runNoticeTick(tickDeps(db, clock, [emailChannel(db, mail)]))
+
+      turnEmailsOffByToken(db, tokenOf(mail.sent[0]), clock.now())
+
+      expect(isEmailEnabled(db)).toBe(false)
+    })
+  })
+})
+
+describe('Given letter B closes tomorrow at 10h and the emails turned off (US-F17-04)', () => {
+  describe('When the tick runs at 21h of the evening before', () => {
+    it('Then should send the push notice and record the email as skipped', async () => {
+      const { db, clock } = givenLetterBTrained()
+      givenPhoneSubscribed(db, clock)
+      setEmailNotices(db, { enabled: false }, clock.now())
+      const mail = createFakeMailSender()
+      clock.advance(CLOSE_NOTICE_AT.getTime() - clock.now().getTime())
+
+      await runNoticeTick(
+        tickDeps(db, clock, [
+          createPushChannel(db, createFakePushSender(), SAO_PAULO),
+          emailChannel(db, mail),
+        ]),
+      )
+
+      const rows = rowsOf(db)
+        .map(({ channel, status, error }) => [channel, status, error])
+        .sort()
+      expect({ emailsSent: mail.sent.length, rows }).toEqual({
+        emailsSent: 0,
+        rows: [
+          ['email', 'skipped', 'emails turned off'],
           ['push', 'sent', null],
         ],
       })

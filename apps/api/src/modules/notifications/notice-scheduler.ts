@@ -14,7 +14,12 @@ export const NOTICE_INTERVAL_MS = 60_000
 
 const MAX_ERROR_LENGTH = 500
 
-export type ChannelResult = { status: 'sent' | 'failed' | 'skipped'; error: string | null }
+export type ChannelResult = {
+  status: 'sent' | 'failed' | 'skipped'
+  error: string | null
+  // Only on an email sent: the hash of the token of its link to turn the emails off (ADR-037).
+  unsubscribeTokenHash?: string
+}
 
 // A channel delivers one notice; the scheduler goes through push and email in turn.
 export type NoticeChannel = {
@@ -124,6 +129,7 @@ async function deliverOnce(
     status: result.status,
     error: result.error?.slice(0, MAX_ERROR_LENGTH) ?? null,
     finishedAt: deps.now().toISOString(),
+    unsubscribeTokenHash: result.unsubscribeTokenHash ?? null,
   })
 }
 

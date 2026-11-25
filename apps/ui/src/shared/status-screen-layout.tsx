@@ -1,7 +1,7 @@
 import { CircleAlert, Dumbbell } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-type AuthScreenLayoutProps = {
+type StatusScreenLayoutProps = {
   icon: 'app' | 'status'
   statusIcon?: ReactNode
   title: string
@@ -15,13 +15,13 @@ const ICON_CLASS = {
 }
 
 // The group sits 32 px above the centre through the extra bottom padding; the message hangs below the group.
-export function AuthScreenLayout({
+export function StatusScreenLayout({
   icon,
   statusIcon,
   title,
   children,
   message,
-}: AuthScreenLayoutProps) {
+}: StatusScreenLayoutProps) {
   return (
     <main className="flex flex-1 items-center justify-center px-(--space-24) pt-(--space-24) pb-[calc(var(--space-24)+var(--space-32)*2)]">
       <div className="relative flex w-full max-w-[640px] flex-col items-center">

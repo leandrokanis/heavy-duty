@@ -2,7 +2,7 @@
 
 import { WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { AuthScreenLayout } from './auth-screen-layout'
+import { StatusScreenLayout } from '@/shared/status-screen-layout'
 
 export type OfflineNoticeProps = {
   onRetry?: () => void
@@ -19,7 +19,7 @@ export function OfflineNotice({
   onHome,
 }: OfflineNoticeProps) {
   return (
-    <AuthScreenLayout
+    <StatusScreenLayout
       icon="status"
       statusIcon={<WifiOff aria-hidden="true" size={44} strokeWidth={1.8} />}
       title="Sem conexão"
@@ -34,6 +34,6 @@ export function OfflineNotice({
           </Button>
         ) : null}
       </div>
-    </AuthScreenLayout>
+    </StatusScreenLayout>
   )
 }

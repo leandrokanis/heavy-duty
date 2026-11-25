@@ -15,6 +15,7 @@ import { createWebAuthnVerifier, type WebAuthnVerifier } from './modules/auth/we
 import { createExerciseRoutes } from './modules/catalog/exercise.routes.js'
 import { createMuscleRoutes } from './modules/catalog/muscle.routes.js'
 import { createMuscleGroupRoutes } from './modules/catalog/muscle-group.routes.js'
+import { createEmailOptOutRoutes } from './modules/notifications/email-opt-out.routes.js'
 import { createNotificationsRoutes } from './modules/notifications/notifications.routes.js'
 import { createProgramRoutes } from './modules/programs/program.routes.js'
 import { createHealthRoutes } from './modules/system/health.routes.js'
@@ -97,6 +98,7 @@ export function createApp(options: AppOptions): OpenAPIHono {
       '/',
       createNotificationsRoutes({ db: options.db, now, pushPublicKey: options.pushPublicKey }),
     )
+    app.route('/', createEmailOptOutRoutes({ db: options.db, now }))
     app.openAPIRegistry.registerComponent(
       'securitySchemes',
       'sessionCookie',

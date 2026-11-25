@@ -3,8 +3,12 @@ import type { Database } from '../../db/connection.js'
 import { notifications } from '../../db/schema.js'
 
 export type NotificationRow = typeof notifications.$inferSelect
-export type NotificationClaim = Omit<NotificationRow, 'status' | 'error' | 'finishedAt'>
-export type NotificationResult = Pick<NotificationRow, 'status' | 'error' | 'finishedAt'>
+export type NotificationClaim = Omit<
+  NotificationRow,
+  'status' | 'error' | 'finishedAt' | 'unsubscribeTokenHash'
+>
+export type NotificationResult = Pick<NotificationRow, 'status' | 'error' | 'finishedAt'> &
+  Partial<Pick<NotificationRow, 'unsubscribeTokenHash'>>
 
 // The unique key of the notice and the channel takes the row once; false when another tick, or a
 // run before a restart, already took it.
@@ -56,4 +60,16 @@ export function listRecentFailures(
     .orderBy(desc(notifications.finishedAt))
     .limit(limit)
     .all()
+}
+
+export function hasEmailWithUnsubscribeTokenHash(db: Database, tokenHash: string): boolean {
+  const row = db
+    .select({ id: notifications.id })
+    .from(notifications)
+    .where(
+      and(eq(notifications.channel, 'email'), eq(notifications.unsubscribeTokenHash, tokenHash)),
+    )
+    .limit(1)
+    .get()
+  return row !== undefined
 }

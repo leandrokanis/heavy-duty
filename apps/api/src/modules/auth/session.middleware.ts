@@ -10,7 +10,8 @@ declare module 'hono' {
   }
 }
 
-// Closed list: a new /api route is protected unless it is added here.
+// Closed list: a new /api route is protected unless it is added here. The link to turn the
+// emails off works without signing in (ADR-037, addendum to ADR-019).
 const PUBLIC_ROUTES: ReadonlySet<string> = new Set([
   'GET /api/health',
   'POST /api/auth/enrollment/options',
@@ -19,6 +20,7 @@ const PUBLIC_ROUTES: ReadonlySet<string> = new Set([
   'POST /api/auth/sign-in/verify',
   'POST /api/oauth/register',
   'POST /api/oauth/token',
+  'POST /api/email/unsubscribe',
 ])
 
 export type SessionGuardOptions = {

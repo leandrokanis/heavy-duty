@@ -2182,6 +2182,24 @@
         "required": [
           "endpoint"
         ]
+      },
+      "EmailUnsubscribeBody": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "example": "dG9rZW4tb2YtdGhlLWVtYWls"
+          }
+        }
+      },
+      "EmailOneClickUnsubscribeBody": {
+        "type": "object",
+        "properties": {
+          "List-Unsubscribe": {
+            "type": "string",
+            "example": "One-Click"
+          }
+        }
       }
     },
     "parameters": {}
@@ -5029,6 +5047,87 @@
           },
           "403": {
             "description": "Origin other than the app origin (forbidden_origin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/email/unsubscribe": {
+      "post": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Turn the notices by email off with the token of the link in an email",
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Token of the email, from the List-Unsubscribe URL"
+            },
+            "required": false,
+            "description": "Token of the email, from the List-Unsubscribe URL",
+            "name": "token",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailUnsubscribeBody"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailOneClickUnsubscribeBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Always the same answer, with a valid, unknown or missing token; a valid token turns the emails off"
+          },
+          "400": {
+            "description": "Body that is not valid JSON (invalid_request)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin other than the app origin (forbidden_origin)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body larger than 1 KiB (payload_too_large)",
             "content": {
               "application/json": {
                 "schema": {

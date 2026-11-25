@@ -4,8 +4,8 @@ import { browserSupportsWebAuthn, startRegistration } from '@simplewebauthn/brow
 import { KeyRound } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { StatusScreenLayout } from '@/shared/status-screen-layout'
 import { type EnrollmentFailure, requestEnrollmentOptions, verifyEnrollment } from './auth-client'
-import { AuthScreenLayout } from './auth-screen-layout'
 
 const MESSAGES: Record<EnrollmentFailure | 'unsupported', string> = {
   enrollment_token_invalid: 'Link de cadastro inválido ou vencido. Gere outro link no servidor.',
@@ -60,12 +60,12 @@ export function EnrollmentScreen() {
   const canEnroll = Boolean(token) && failure !== 'unsupported'
 
   return (
-    <AuthScreenLayout icon="app" title="Heavy Duty" message={failure ? MESSAGES[failure] : null}>
+    <StatusScreenLayout icon="app" title="Heavy Duty" message={failure ? MESSAGES[failure] : null}>
       {canEnroll ? (
         <Button size="large" icon={KeyRound} className="w-full" disabled={busy} onClick={enroll}>
           Criar chave de acesso
         </Button>
       ) : null}
-    </AuthScreenLayout>
+    </StatusScreenLayout>
   )
 }

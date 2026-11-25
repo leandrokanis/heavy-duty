@@ -4,8 +4,8 @@ import { browserSupportsWebAuthn, startAuthentication } from '@simplewebauthn/br
 import { Lock } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { StatusScreenLayout } from '@/shared/status-screen-layout'
 import { requestSignInOptions, verifySignIn } from './auth-client'
-import { AuthScreenLayout } from './auth-screen-layout'
 
 export type SignInScreenProps = {
   onSignedIn: () => void
@@ -43,7 +43,7 @@ export function SignInScreen({ onSignedIn }: SignInScreenProps) {
   }
 
   return (
-    <AuthScreenLayout
+    <StatusScreenLayout
       icon="app"
       title="Heavy Duty"
       message={supported ? error : WEBAUTHN_UNSUPPORTED}
@@ -53,6 +53,6 @@ export function SignInScreen({ onSignedIn }: SignInScreenProps) {
           Entrar
         </Button>
       ) : null}
-    </AuthScreenLayout>
+    </StatusScreenLayout>
   )
 }

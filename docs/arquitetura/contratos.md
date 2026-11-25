@@ -24,7 +24,7 @@ O erro de domínio de cada story acrescenta o próprio `code`, com a `message` d
 
 ## Sessão de acesso e guardas
 
-- A guarda de sessão (`apps/api/src/modules/auth/session.middleware.ts`) protege `/api/*` em todos os ambientes. A lista de rotas públicas é fechada: `GET /api/health`, as quatro rotas da cerimônia de cadastro e de entrada, e `POST /api/oauth/register` e `POST /api/oauth/token` (ADR-020). Uma rota nova nasce protegida.
+- A guarda de sessão (`apps/api/src/modules/auth/session.middleware.ts`) protege `/api/*` em todos os ambientes. A lista de rotas públicas é fechada: `GET /api/health`, as quatro rotas da cerimônia de cadastro e de entrada, `POST /api/oauth/register` e `POST /api/oauth/token` (ADR-020), e `POST /api/email/unsubscribe` (ADR-037, adendo da ADR-019). Uma rota nova nasce protegida.
 - A guarda de origem (`apps/api/src/http/origin-guard.ts`) roda antes da guarda de sessão. Sem cabeçalho `Origin`, a requisição segue: cliente fora do navegador não carrega o cookie de outra pessoa.
 - A guarda, as rotas de dados, o documento OpenAPI e o Swagger UI só existem quando a API abriu o banco. Sem banco, só `/api/health` responde.
 - O `/mcp` exige a credencial do MCP em todos os ambientes, inclusive em produção (US-F16-01, ADR-020). O cookie `hd_session` não abre o `/mcp`, e a credencial do MCP não abre `/api/*`. O transporte e as ferramentas estão em `mcp.md`.
@@ -1306,6 +1306,37 @@ Exemplo do corpo:
 O corpo é `{ "endpoint" }`, com a regra do `PUT`. Os status são os do `PUT`.
 
 O envio de push fica atrás da interface `PushSender` (`push-sender.ts`), com o adaptador da biblioteca `web-push`. A mensagem vai em JSON (`title`, `body`, `tag`, `url`), com o TTL do aviso e urgência `normal`. A inscrição que o serviço de push recusa com 404 ou 410 sai da tabela (`sendPushToAll`); outra falha volta como motivo seguro, sem o `endpoint`, porque o endereço dá acesso à inscrição.
+
+## Avisos por e-mail
+
+A rota desta seção vem da US-F17-04 (ADR-037). Ela existe só quando a API abriu o banco e é pública: o link de desligar funciona sem a sessão de acesso (adendo da ADR-019). O service fica em `apps/api/src/modules/notifications/email-opt-out.service.ts`.
+
+Cada e-mail de aviso leva um token aleatório de 32 bytes em base64url. O banco guarda só o SHA-256 do token, em `notifications.unsubscribe_token_hash`, na linha do canal `email` (`dados.md`). O token vai em dois lugares do e-mail:
+
+- no rodapé, no link da página `<APP_ORIGIN>/desligar-emails#token=<token>`, que abre sem entrar no app e só desliga no toque em "Desligar e-mails" (D90);
+- no cabeçalho `List-Unsubscribe: <<APP_ORIGIN>/api/email/unsubscribe?token=<token>>`, com `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, para o cliente de e-mail desligar com um clique (RFC 8058).
+
+### POST /api/email/unsubscribe
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Desligar os avisos por e-mail com o token do link de um e-mail |
+| Story | US-F17-04 |
+| Autenticação | Nenhuma (`security: []`); vale o token do e-mail |
+| Efeito colateral | Com um token de e-mail enviado, grava `email_enabled = false` em `settings`. Os avisos no celular continuam |
+| Idempotência | Idempotente |
+
+O token vem no corpo JSON, `{ "token": "<token>" }`, como a página manda, ou na URL, `?token=<token>`, com o corpo `List-Unsubscribe=One-Click` em `application/x-www-form-urlencoded`, como o cliente de e-mail manda. O token do corpo vale sobre o da URL.
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 204 | Vazio | Sempre que o corpo é aceito: com token válido, desconhecido, de outro canal, com mais de 64 caracteres ou sem token. A resposta não diz se o token existe |
+| 400 | `{ "code": "invalid_request", … }` | Corpo que não é JSON válido |
+| 403 | `{ "code": "forbidden_origin", "message": "origem não permitida" }` | `Origin` de outro site. O `POST` do cliente de e-mail chega sem `Origin` e passa |
+| 413 | `{ "code": "payload_too_large", "message": "corpo maior que 1 KiB" }` | Corpo maior que 1 KiB |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+O `GET` da mesma URL não desliga nada e responde 401, como toda rota protegida: filtros de e-mail abrem os links sozinhos (D90). O token não vence (ADR-037). O planejador religa os e-mails pelo Claude, com `set_email_notices` (`mcp.md`).
 
 ## Situação do app
 

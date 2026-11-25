@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Database } from '../../db/connection.js'
 import type { NoticeChannelsConfigured } from '../../modules/system/system-status.service.js'
 import { registerCatalogTools } from './catalog.tools.js'
+import { registerNotificationTools } from './notifications.tools.js'
 import { registerProgramTools } from './programs.tools.js'
 import { registerSystemTools } from './system.tools.js'
 import { registerWindowTools } from './windows.tools.js'
@@ -21,6 +22,7 @@ export const toolRegistrations: readonly ToolRegistration[] = [
   registerSystemTools,
   registerWindowTools,
   registerWorkoutTools,
+  registerNotificationTools,
 ]
 
 export function registerTools(server: McpServer, deps: ToolDeps): void {
