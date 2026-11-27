@@ -3,6 +3,7 @@ import type { Database } from '../../db/connection.js'
 import type { NoticeChannelsConfigured } from '../../modules/system/system-status.service.js'
 import { registerCatalogTools } from './catalog.tools.js'
 import { registerNotificationTools } from './notifications.tools.js'
+import { registerPeriodTools } from './periods.tools.js'
 import { registerProgramTools } from './programs.tools.js'
 import { registerSystemTools } from './system.tools.js'
 import { registerWindowTools } from './windows.tools.js'
@@ -12,6 +13,8 @@ export type ToolDeps = {
   db: Database
   now: () => Date
   noticeChannels?: NoticeChannelsConfigured
+  // The zone of the weeks and periods of the server; NOTICE_TIME_ZONE by default (ADR-039).
+  timeZone?: string
 }
 
 export type ToolRegistration = (server: McpServer, deps: ToolDeps) => void
@@ -23,6 +26,7 @@ export const toolRegistrations: readonly ToolRegistration[] = [
   registerWindowTools,
   registerWorkoutTools,
   registerNotificationTools,
+  registerPeriodTools,
 ]
 
 export function registerTools(server: McpServer, deps: ToolDeps): void {

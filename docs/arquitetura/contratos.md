@@ -1240,6 +1240,74 @@ Exemplo, com a meta 6 e as costas treinadas na segunda e na quinta:
 }
 ```
 
+## Períodos
+
+O período de 12 semanas organiza o progresso com uma frase de intenção (US-F11-01, ADR-039). A API guarda o início do período 1, gravado na primeira partida com a migração `0016_periods`, na segunda 00:00 da semana no fuso `NOTICE_TIME_ZONE`; os períodos seguintes saem da aritmética, de 84 em 84 dias, sem realinhar ao trimestre. A semana do servidor é um bloco de 7 × 24 h a partir do início do período. As rotas existem só quando a API abriu o banco e exigem sessão de acesso. As ferramentas MCP `get_period` e `set_period_intention` chamam os mesmos services (`mcp.md`), em `apps/api/src/modules/periods/period.service.ts`.
+
+### GET /api/periods/current
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Mostrar o período atual na tela Período: semana, frase, metas O1 e O4 e o progresso de cada grupo no período |
+| Story | US-F11-01 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Grava a linha do período 1, na primeira leitura com a tabela vazia, e as linhas dos períodos que faltam até o atual, sem frase. Nenhum outro dado muda |
+| Idempotência | Idempotente para o mesmo histórico e o mesmo instante |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `{ "now", "number", "startsAt", "endsAt", "week", "weekCount", "intention", "windows", "volume", "groups" }` | Sempre, com sessão |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+- `startsAt` e `endsAt` são instantes UTC; o período vai de `startsAt`, incluso, a `endsAt`, exclusivo, que é o início do período seguinte. `week` é a semana de `now`, de 1 a `weekCount` (12).
+- `intention` é a frase de intenção do período, ou `null`. O período seguinte começa sem frase.
+- `windows` mede o O1 no período: `windowsUsed` e `windowsMissed` somam as janelas dos 11 grupos nas semanas do período, com a regra de `get_windows_used` (cada janela na semana do desfecho); `usedPercent` arredondado, `null` em 0 de 0; `targetPercent` 70. A janela aberta fica fora da taxa.
+- `volume` mede o O4: `baselineVolumeG` é o volume total da semana 1 e `lastWeekVolumeG` o da última semana completa do período, os dois `null` até a semana 1 terminar; `changePercent` arredondado, `null` sem base ou com base 0; `targetPercent` 20. O volume total soma o volume dos 11 grupos, com o músculo secundário pela metade, e o exercício por tempo fica de fora (D46).
+- `groups` traz os 11 grupos na ordem do catálogo, cada um com `windowsUsed`, `windowsMissed` e `usedPercent` no período: o progresso do grupo no período (D100).
+- O nível de cada grupo atravessa os períodos (D24) e continua em `GET /api/levels`.
+
+Exemplo, na quarta da semana 2 do período 1:
+
+```json
+{
+  "now": "2026-12-02T15:00:00.000Z",
+  "number": 1,
+  "startsAt": "2026-11-23T03:00:00.000Z",
+  "endsAt": "2027-02-15T03:00:00.000Z",
+  "week": 2,
+  "weekCount": 12,
+  "intention": "Treinar três vezes por semana até o fim do ano.",
+  "windows": { "windowsUsed": 5, "windowsMissed": 2, "usedPercent": 71, "targetPercent": 70 },
+  "volume": { "baselineVolumeG": 10000000, "lastWeekVolumeG": 10000000, "changePercent": 0, "targetPercent": 20 },
+  "groups": [
+    { "muscleGroup": { "slug": "chest", "name": "peito" }, "windowsUsed": 1, "windowsMissed": 0, "usedPercent": 100 }
+  ]
+}
+```
+
+### PUT /api/periods/current/intention
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Escrever a frase de intenção do período atual, pela tela Período, só com conexão |
+| Story | US-F11-01 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Troca `intention` da linha do período atual em `periods` |
+| Idempotência | Idempotente: o mesmo corpo deixa a mesma frase |
+
+| Campo do corpo | Regra |
+|---|---|
+| `intention` | Obrigatório, texto. A API troca cada sequência de espaços e quebras de linha por um espaço e apara as pontas. Até 120 caracteres depois disso. O texto vazio apaga a frase |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | O mesmo objeto de `GET /api/periods/current`, com a frase nova | Frase válida |
+| 400 | `{ "code": "period_intention_required", "message": "informe a frase de intenção" }` | `intention` ausente ou fora do tipo texto |
+| 400 | `{ "code": "period_intention_too_long", "message": "a frase de intenção deve ter até 120 caracteres" }` | Mais de 120 caracteres |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
 ## Avisos no celular
 
 As rotas desta seção vêm da US-F09-01 (ADR-035). Elas existem só quando a API abriu o banco e exigem sessão de acesso. O service fica em `apps/api/src/modules/notifications/push-subscription.service.ts`. A chave pública VAPID vem da variável `VAPID_PUBLIC_KEY`, e a chave privada, do arquivo de `VAPID_PRIVATE_KEY_FILE` (`implantacao.md`); sem as duas, a API sobe com os avisos no celular desligados. A chave privada não sai em resposta nem em log.
@@ -1340,12 +1408,11 @@ O `GET` da mesma URL não desliga nada e responde 401, como toda rota protegida:
 
 ## Período e medalhas (planejado na onda 7b)
 
-As rotas desta seção estão planejadas para a onda 7b (ADR-039, ADR-040) e ainda não existem no código nem em `openapi.json`. A story de cada rota escreve aqui o contrato completo, no formato das outras seções, e gera `openapi.json` no mesmo commit. Todas exigem sessão de acesso.
+As rotas desta seção estão planejadas para a onda 7b (ADR-039, ADR-040) e ainda não existem no código nem em `openapi.json`, salvo os campos de `GET /api/periods/current` que a US-F11-01 entregou (seção "Períodos"). A story de cada rota escreve aqui o contrato completo, no formato das outras seções, e gera `openapi.json` no mesmo commit. Todas exigem sessão de acesso.
 
 | Rota | Story | Objetivo |
 |---|---|---|
-| `GET /api/periods/current` | US-F11-01 | Mostrar o período atual: número, início, fim e semana atual de 12, frase de intenção, metas O1 e O4 e o progresso no período de cada grupo (D100). A US-F11-03 acrescenta `weeks`, com a meta, as janelas aproveitadas, os pontos e a situação de cada semana do período, e `weekStreak`, com as semanas da sequência e se a proteção já foi usada (D101, D102). A US-F19-02 acrescenta `ranking`, com o treino, a letra, o início, os pontos e a posição de cada treino do período (D105) |
-| `PUT /api/periods/current/intention` | US-F11-01 | Gravar a frase de intenção do período atual, opcional, com até 120 caracteres, sem prévia (D98). A ferramenta `set_period_intention` usa o mesmo service |
+| `GET /api/periods/current` | US-F11-03, US-F19-02 | A rota existe (seção "Períodos", US-F11-01). A US-F11-03 acrescenta `weeks`, com a meta, as janelas aproveitadas, os pontos e a situação de cada semana do período, e `weekStreak`, com as semanas da sequência e se a proteção já foi usada (D101, D102). A US-F19-02 acrescenta `ranking`, com o treino, a letra, o início, os pontos e a posição de cada treino do período (D105) |
 | `GET /api/periods` | US-F11-02 | Listar os períodos, com o retrato de cada período terminado (D99). A leitura congela o período terminado ainda sem retrato (ADR-039) |
 | `GET /api/medals` | US-F19-01 | Listar o catálogo das medalhas, com a conquista de cada uma (`awardedAt`, `subject`, treino). A medalha oculta ainda não conquistada vem sem nome e sem critério (D103, D104) |
 

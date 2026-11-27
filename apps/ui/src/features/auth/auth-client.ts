@@ -5,6 +5,7 @@ import type {
   RegistrationResponseJSON,
 } from '@simplewebauthn/browser'
 import { clearCachedLevels } from '@/sync/levels-cache'
+import { clearCachedPeriod } from '@/sync/period-cache'
 import { clearCachedToday } from '@/sync/today-cache'
 import { clearCachedWeekWindows } from '@/sync/weekly-windows-cache'
 import { clearCachedWindows } from '@/sync/windows-cache'
@@ -76,6 +77,7 @@ export async function signOut(): Promise<void> {
   await clearCachedWindows()
   await clearCachedLevels()
   await clearCachedWeekWindows()
+  await clearCachedPeriod()
   if (typeof caches === 'undefined') return
   const names = await caches.keys()
   await Promise.all(

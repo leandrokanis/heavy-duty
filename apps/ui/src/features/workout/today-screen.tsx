@@ -1,7 +1,8 @@
 'use client'
 
-import { Bell, History, PersonStanding } from 'lucide-react'
+import { Bell, History } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { TabBar } from '@/components/tab-bar'
 import { IconButton } from '@/components/ui/icon-button'
 import { IconLink } from '@/components/ui/icon-link'
 import { OfflineNotice } from '@/features/auth/offline-notice'
@@ -131,52 +132,54 @@ export function TodayScreen() {
   }
 
   return (
-    <main
-      aria-busy={result === null || flow === 'pending' ? 'true' : undefined}
-      className="mx-auto flex flex-1 w-full max-w-[640px] flex-col px-(--space-margin-inline) pt-(--space-12) pb-(--space-24)"
-    >
-      <header className="flex items-center justify-between gap-(--space-12)">
-        <h1 className="m-0 font-(--font-weight-bold) text-(length:--font-size-large-title) leading-(--font-leading-tight) tracking-(--font-tracking-tight)">
-          Heavy Duty
-        </h1>
-        <div className="flex items-center gap-(--space-8)">
-          <IconButton icon={Bell} aria-label="Avisos" onClick={() => setNoticesOpen(true)} />
-          <IconLink href="/mapa" icon={PersonStanding} aria-label="Mapa" />
-          <IconLink href="/historico" icon={History} aria-label="Histórico" />
+    <>
+      <main
+        aria-busy={result === null || flow === 'pending' ? 'true' : undefined}
+        className="mx-auto flex flex-1 w-full max-w-[640px] flex-col px-(--space-margin-inline) pt-(--space-12)"
+      >
+        <header className="flex items-center justify-between gap-(--space-12)">
+          <h1 className="m-0 font-(--font-weight-bold) text-(length:--font-size-large-title) leading-(--font-leading-tight) tracking-(--font-tracking-tight)">
+            Heavy Duty
+          </h1>
+          <div className="flex items-center gap-(--space-8)">
+            <IconButton icon={Bell} aria-label="Avisos" onClick={() => setNoticesOpen(true)} />
+            <IconLink href="/historico" icon={History} aria-label="Histórico" />
+          </div>
+        </header>
+        <QueueNotices align="start" className="mt-(--space-16)" />
+        <div className="mt-(--space-24)">
+          {result?.status === 'ok' ? (
+            <TodayContent
+              today={result.today}
+              windows={windows}
+              levels={levels}
+              week={week}
+              nowMs={nowMs}
+              onSelect={(day) => {
+                if (day.exercises.length > 0) setSheetDay(day)
+              }}
+            />
+          ) : (
+            <LetterListSkeleton />
+          )}
         </div>
-      </header>
-      <QueueNotices align="start" className="mt-(--space-16)" />
-      <div className="mt-(--space-24)">
-        {result?.status === 'ok' ? (
-          <TodayContent
-            today={result.today}
-            windows={windows}
-            levels={levels}
-            week={week}
-            nowMs={nowMs}
-            onSelect={(day) => {
-              if (day.exercises.length > 0) setSheetDay(day)
-            }}
-          />
-        ) : (
-          <LetterListSkeleton />
-        )}
-      </div>
-      <NoticesSheet open={noticesOpen} onClose={() => setNoticesOpen(false)} />
-      <StartSheet
-        day={sheetDay}
-        onClose={() => setSheetDay(null)}
-        onStart={(day) => {
-          setSheetDay(null)
-          if (result?.status === 'ok' && result.today.program) {
-            const session = startSession(result.today.program.id, day, windows, levels)
-            const started = createWorkoutFlow(session)
-            void saveActiveWorkout(started, Date.now())
-            setFlow(started)
-          }
-        }}
-      />
-    </main>
+        <NoticesSheet open={noticesOpen} onClose={() => setNoticesOpen(false)} />
+        <StartSheet
+          day={sheetDay}
+          onClose={() => setSheetDay(null)}
+          onStart={(day) => {
+            setSheetDay(null)
+            if (result?.status === 'ok' && result.today.program) {
+              const session = startSession(result.today.program.id, day, windows, levels)
+              const started = createWorkoutFlow(session)
+              void saveActiveWorkout(started, Date.now())
+              setFlow(started)
+            }
+          }}
+        />
+      </main>
+      <TabBar current="today" />
+    </>
   )
 }
 

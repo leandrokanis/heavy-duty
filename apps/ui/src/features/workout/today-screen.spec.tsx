@@ -111,12 +111,28 @@ describe('Given the workout of the day', () => {
       )
     })
 
-    it('Then should find the link Mapa to /mapa', async () => {
+    it('Then should keep Mapa out of the header, as it moved to the tab bar', async () => {
       stubFetch(json(200, NO_PROGRAM))
 
       renderToday()
 
-      expect(await screen.findByRole('link', { name: 'Mapa' })).toHaveAttribute('href', '/mapa')
+      const header = (await screen.findByRole('heading', { name: 'Heavy Duty' })).closest('header')
+      expect(within(header as HTMLElement).queryByRole('link', { name: 'Mapa' })).toBeNull()
+    })
+  })
+
+  describe('When the athlete looks at the bottom of the screen', () => {
+    it('Then the tab bar should mark Treino as the current page and lead to Mapa and Período', async () => {
+      stubFetch(json(200, NO_PROGRAM))
+
+      renderToday()
+
+      const tabs = within(await screen.findByRole('navigation', { name: 'Seções' }))
+      expect([
+        tabs.getByRole('link', { name: 'Treino' }).getAttribute('aria-current'),
+        tabs.getByRole('link', { name: 'Mapa' }).getAttribute('href'),
+        tabs.getByRole('link', { name: 'Período' }).getAttribute('href'),
+      ]).toEqual(['page', '/mapa', '/periodo'])
     })
   })
 

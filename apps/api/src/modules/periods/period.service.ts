@@ -1,0 +1,102 @@
+import type { Database } from '../../db/connection.js'
+import { createId } from '../../db/id.js'
+import { DomainError } from '../../errors/domain-error.js'
+import { groupTrainingsOf } from '../windows/window.rules.js'
+import { GAME_PARAMETERS } from '../windows/windows.config.js'
+import { listMuscleGroups, listWorkoutSets } from '../windows/windows.repository.js'
+import {
+  findPeriod,
+  insertPeriod,
+  type PeriodRow,
+  updatePeriodIntention,
+} from './period.repository.js'
+import { firstPeriodStartOf, periodAt, periodNumbered, weekOfPeriod } from './period.rules.js'
+import { periodVolumeOf, periodWindowsOf, type WindowsTally } from './period-stats.rules.js'
+import {
+  MAX_INTENTION_LENGTH,
+  PERIOD_WEEKS,
+  WEEKLY_VOLUME_TARGET_PERCENT,
+  WINDOWS_USED_TARGET_PERCENT,
+} from './periods.config.js'
+import type { CurrentPeriod, PeriodIntentionInput } from './periods.schemas.js'
+
+const iso = (instantMs: number) => new Date(instantMs).toISOString()
+const NO_WINDOWS: WindowsTally = { windowsUsed: 0, windowsMissed: 0, usedPercent: null }
+
+// The first call stores period 1 from the Monday of its week; later calls add the periods up to
+// the current one, also the ones that passed with the server stopped (ADR-039).
+export function ensurePeriods(db: Database, now: Date, timeZone: string): PeriodRow {
+  const nowMs = now.getTime()
+  const first = findPeriod(db, 1)
+  const firstStartMs = first ? Date.parse(first.startsAt) : firstPeriodStartOf(nowMs, timeZone)
+  const current = periodAt(firstStartMs, nowMs)
+  for (let number = 1; number <= current.number; number += 1) {
+    if (number === 1 ? first : findPeriod(db, number)) continue
+    const bounds = periodNumbered(firstStartMs, number)
+    insertPeriod(db, {
+      id: createId(nowMs),
+      number,
+      startsAt: iso(bounds.startsAtMs),
+      endsAt: iso(bounds.endsAtMs),
+    })
+  }
+  return findPeriod(db, current.number) as PeriodRow
+}
+
+// Levels cross the periods (D24); only the goals and the progress in the period start over.
+export function getCurrentPeriod(db: Database, now: Date, timeZone: string): CurrentPeriod {
+  const period = ensurePeriods(db, now, timeZone)
+  const nowMs = now.getTime()
+  const startsAtMs = Date.parse(period.startsAt)
+  const sets = listWorkoutSets(db).map(({ performedAt, ...set }) => ({
+    ...set,
+    performedAtMs: Date.parse(performedAt),
+  }))
+  const windows = periodWindowsOf({
+    trainingsOfGroups: groupTrainingsOf(sets, GAME_PARAMETERS),
+    parameters: GAME_PARAMETERS,
+    startsAtMs,
+    nowMs,
+  })
+  return {
+    now: now.toISOString(),
+    number: period.number,
+    startsAt: period.startsAt,
+    endsAt: period.endsAt,
+    week: weekOfPeriod(startsAtMs, nowMs),
+    weekCount: PERIOD_WEEKS,
+    intention: period.intention,
+    windows: { ...windows.total, targetPercent: WINDOWS_USED_TARGET_PERCENT },
+    volume: {
+      ...periodVolumeOf({ sets, parameters: GAME_PARAMETERS, startsAtMs, nowMs }),
+      targetPercent: WEEKLY_VOLUME_TARGET_PERCENT,
+    },
+    groups: listMuscleGroups(db).map((muscleGroup) => ({
+      muscleGroup,
+      ...(windows.byGroup.get(muscleGroup.slug) ?? NO_WINDOWS),
+    })),
+  }
+}
+
+// Optional and editable until the end of the period; an empty text removes it (D98).
+export function setPeriodIntention(
+  db: Database,
+  input: PeriodIntentionInput,
+  now: Date,
+  timeZone: string,
+): CurrentPeriod {
+  if (typeof input.intention !== 'string') {
+    throw new DomainError('period_intention_required', 'informe a frase de intenção', 'invalid')
+  }
+  const intention = input.intention.replace(/\s+/g, ' ').trim()
+  if ([...intention].length > MAX_INTENTION_LENGTH) {
+    throw new DomainError(
+      'period_intention_too_long',
+      'a frase de intenção deve ter até 120 caracteres',
+      'invalid',
+    )
+  }
+  const period = ensurePeriods(db, now, timeZone)
+  updatePeriodIntention(db, period.number, intention === '' ? null : intention)
+  return getCurrentPeriod(db, now, timeZone)
+}

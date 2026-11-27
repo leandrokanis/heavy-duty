@@ -94,6 +94,27 @@ export const weeklyGoals = sqliteTable(
   ],
 )
 
+// One row per period of 12 weeks; the start of period 1 is the fact of the deploy and the
+// others follow by arithmetic (ADR-039).
+export const periods = sqliteTable(
+  'periods',
+  {
+    id: text('id').primaryKey(),
+    number: integer('number').notNull().unique(),
+    startsAt: text('starts_at').notNull(),
+    endsAt: text('ends_at').notNull(),
+    intention: text('intention'),
+    frozenAt: text('frozen_at'),
+  },
+  (table) => [
+    check('periods_number_check', sql`${table.number} >= 1`),
+    check(
+      'periods_intention_check',
+      sql`${table.intention} IS NULL OR length(${table.intention}) BETWEEN 1 AND 120`,
+    ),
+  ],
+)
+
 // One row per browser that turned the notices on; the endpoint identifies it (ADR-035).
 export const pushSubscriptions = sqliteTable('push_subscriptions', {
   id: text('id').primaryKey(),

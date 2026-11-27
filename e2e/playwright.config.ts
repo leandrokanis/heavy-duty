@@ -47,6 +47,7 @@ const MUSCLE_MEMORY_SPEC = /muscle-memory\.feature\.spec\.js$/
 const OVERALL_LEVEL_SPEC = /overall-level\.feature\.spec\.js$/
 const WINDOW_SUGGESTION_SPEC = /window-suggestion\.feature\.spec\.js$/
 const BODY_MAP_SPEC = /body-map\.feature\.spec\.js$/
+const PERIODS_SPEC = /periods\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -109,6 +110,7 @@ export default defineConfig({
         OVERALL_LEVEL_SPEC,
         WINDOW_SUGGESTION_SPEC,
         BODY_MAP_SPEC,
+        PERIODS_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -414,6 +416,15 @@ export default defineConfig({
       testMatch: BODY_MAP_SPEC,
       fullyParallel: false,
       dependencies: ['window-suggestion'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Writes the intention of the single current period and reads it back, so it runs alone and one
+    // scenario at a time, after the body map.
+    {
+      name: 'periods',
+      testMatch: PERIODS_SPEC,
+      fullyParallel: false,
+      dependencies: ['body-map'],
       use: { ...devices['Pixel 7'] },
     },
   ],

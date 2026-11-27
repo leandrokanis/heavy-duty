@@ -67,7 +67,7 @@ apps/ui/src/
     autorizar/             tela de autorização do cliente do MCP (US-F16-01)
     ~offline/              página sem conexão
     manifest.ts            manifesto do PWA
-  components/tab-bar.tsx   planejado na onda 7b: barra de abas com Treino, Mapa e Período (D108)
+  components/tab-bar.tsx   barra de abas com Treino, Mapa e Período (US-F11-01, D108)
   components/ui/           componentes base sobre o Base UI, com os tokens do DESIGN.md: `MotionButton` (derivado do Animate UI), `Button`, `IconButton`, `IconLink` (link de ícone para navegação), `Sheet` e `Toast` (aviso flutuante, com o `ToastProvider` no layout raiz)
   features/<feature>/      componentes, hooks e serviços de uma feature (auth, workout, rest, game…)
   features/auth/           AuthGate, tela de entrada, tela de cadastro, aviso sem conexão, cliente de /api/auth/*
@@ -75,15 +75,15 @@ apps/ui/src/
   features/body-map/       mapa do corpo (US-F08-01): grupos do mapa pelas cópias e pelo relógio (`body-map.ts`), desenho do corpo (`body-figure.tsx`), lista dos grupos (`group-list.tsx`), folha do detalhe (`group-sheet.tsx`) e tela (`body-map-screen.tsx`)
   features/history/        histórico no celular (US-F20-01): cliente de GET /api/workouts (`history-client.ts`), páginas de 92 dias (`history-range.ts`), datas e duração (`history-format.ts`), lista (`history-list.tsx`), detalhe (`workout-detail.tsx`) e tela (`history-screen.tsx`)
   features/notices/        avisos no celular (US-F09-01): suporte do aparelho (`push-support.ts`), cliente de /api/notifications (`push-client.ts`), APIs do navegador atrás de `PushDevice` (`push-device.ts`), estado da chave e reenvio da inscrição (`use-push-notices.ts`) e a folha "Avisos" (`notices-sheet.tsx`)
-  features/period/         planejado na onda 7b: tela Período (`period-screen.tsx`), folha da frase de intenção (`intention-sheet.tsx`), ranking (`ranking-list.tsx`), retratos (`snapshot-list.tsx`, `snapshot-card.tsx`) e cliente de /api/periods (`period-client.ts`)
+  features/period/         tela Período (`period-screen.tsx`), folha da frase de intenção (`intention-sheet.tsx`), semana e datas (`period-format.ts`) e cliente de /api/periods (`period-client.ts`), da US-F11-01; ranking (`ranking-list.tsx`) e retratos (`snapshot-list.tsx`, `snapshot-card.tsx`) planejados na onda 7b
   features/medals/         planejado na onda 7b: estante (`medal-shelf.tsx`), medalha que desce do topo (`medal-toast.tsx`) e cliente de /api/medals (`medals-client.ts`)
   features/mcp-auth/       tela de autorização do MCP e cliente de /api/oauth/authorization
   shared/                  utilitários usados por duas features ou mais: grupos principais de uma letra (`muscle-groups-of-day.ts`)
-  sync/                    banco local (Dexie), fila de envio, gatilhos de envio, treino em andamento, cópia do treino do dia e das janelas (`windows-cache.ts`) e `SyncProvider` (ADR-021); na onda 7b, cópias do período (`period-cache.ts`) e das medalhas (`medals-cache.ts`)
+  sync/                    banco local (Dexie), fila de envio, gatilhos de envio, treino em andamento, cópia do treino do dia, das janelas (`windows-cache.ts`) e do período (`period-cache.ts`) e `SyncProvider` (ADR-021); na onda 7b, cópias do período (`period-cache.ts`) e das medalhas (`medals-cache.ts`)
   sw.ts                    service worker (Serwist): cache e, a partir da US-F09-01, os eventos `push` e `notificationclick` (ADR-035)
   sw-push.ts               texto da notificação a partir da mensagem e abertura do app no toque (US-F09-01)
   sw-runtime-caching.ts    regras de cache do service worker: /api/* só pela rede
-  precache-entries.ts      páginas no precache: `/~offline`, `/` e `/mapa`
+  precache-entries.ts      páginas no precache: `/~offline`, `/`, `/mapa` e `/periodo`
   test/factories/          factories fishery
 ```
 
@@ -96,8 +96,8 @@ apps/ui/src/
 5. Animação respeita `prefers-reduced-motion`, e vidro respeita `prefers-reduced-transparency` e `prefers-contrast: more` (`DESIGN.md`, Seções 12 e 15).
 6. O comportamento sem rede é testado no build de produção, porque o `next.config.ts` só aplica o Serwist fora de `NODE_ENV=development`: o `next dev` com Turbopack recusa a configuração de webpack que o Serwist acrescenta (conferido no EN-S0). O cenário `@EN-S0` do e2e executa contra o build de produção.
 
-7. O `AuthGate` do layout raiz consulta `GET /api/auth/session` e mostra a tela de entrada no lugar da tela pedida, na mesma URL, quando a resposta é 401; depois da entrada, mostra a tela pedida. Enquanto consulta, não mostra nada. Na falha de rede ou na API fora do ar, mostra "Sem conexão", salvo em `/` e em `/mapa` com a cópia do treino do dia no aparelho (`hasCachedToday`), que abrem a tela pedida sem conexão (ADR-021 e o adendo da onda 7a). `/cadastro` e `/~offline` passam direto (ADR-019). Fora de `/`, o aviso "Sem conexão" e a página `/~offline` oferecem "Voltar ao treino do dia", que abre `/`: o app instalado no iPhone não tem botão de voltar (US-F20-01). A API é a fronteira de segurança: a tela não traz dado no HTML.
-8. O service worker não guarda resposta de `/api/*` do mesmo domínio: a primeira regra de `runtimeCaching` é `NetworkOnly` para essas rotas, antes do `defaultCache`. A saída (`signOut`) apaga todos os caches cujo nome não contém `precache` e a cópia do treino do dia (FR-019, FR-020). As páginas `/` e `/mapa` ficam no precache, com a revisão do build, para abrir sem sinal; `reloadOnOnline` fica desligado, para a volta do sinal não recarregar a tela do treino (ADR-021).
+7. O `AuthGate` do layout raiz consulta `GET /api/auth/session` e mostra a tela de entrada no lugar da tela pedida, na mesma URL, quando a resposta é 401; depois da entrada, mostra a tela pedida. Enquanto consulta, não mostra nada. Na falha de rede ou na API fora do ar, mostra "Sem conexão", salvo em `/`, em `/mapa` e em `/periodo` com a cópia do treino do dia no aparelho (`hasCachedToday`), que abrem a tela pedida sem conexão (ADR-021 e o adendo da onda 7a). `/cadastro` e `/~offline` passam direto (ADR-019). Fora de `/`, o aviso "Sem conexão" e a página `/~offline` oferecem "Voltar ao treino do dia", que abre `/`: o app instalado no iPhone não tem botão de voltar (US-F20-01). A API é a fronteira de segurança: a tela não traz dado no HTML.
+8. O service worker não guarda resposta de `/api/*` do mesmo domínio: a primeira regra de `runtimeCaching` é `NetworkOnly` para essas rotas, antes do `defaultCache`. A saída (`signOut`) apaga todos os caches cujo nome não contém `precache` e a cópia do treino do dia (FR-019, FR-020). As páginas `/`, `/mapa` e `/periodo` ficam no precache, com a revisão do build, para abrir sem sinal; `reloadOnOnline` fica desligado, para a volta do sinal não recarregar a tela do treino (ADR-021).
 9. A tela `/autorizar` é o `authorization_endpoint` do servidor de autorização do MCP (ADR-020) e fica atrás do `AuthGate`: sem sessão de acesso, a tela de entrada aparece na mesma URL. A tela chama `GET /api/oauth/authorization` com a query do pedido e mostra o host do `redirect_uri` em destaque e o nome declarado pelo cliente como dado secundário, com os botões "Recusar" e "Permitir". O toque duplo manda uma decisão só, e o navegador segue para o `redirectTo` com `window.location.assign`. A prévia 400 mostra a mensagem sem redirecionar; a prévia `error_redirect` redireciona direto; a falha de rede mostra "Sem conexão". O `next.config.ts` manda em `/autorizar` os cabeçalhos `Content-Security-Policy: frame-ancestors 'none'`, `X-Frame-Options: DENY` e `Referrer-Policy: no-referrer`, contra clickjacking e vazamento da query.
 10. O manifesto declara ícones PNG de 192 e 512 px e um de 512 px `maskable`; o layout declara o `apple-touch-icon` de 180 px. Os PNG são versionados e renderizados dos SVG com o Chromium (`apps/ui/README.md`).
 
@@ -265,15 +265,15 @@ A US-F15b-02 acrescenta à faixa de jogo o item da meta semanal (D74 a D78):
 
 A US-F08-01 acrescenta a rota `/mapa`, sem API nova (D92, D93):
 
-1. O treino do dia tem, no cabeçalho, o link de ícone "Mapa" (`IconLink`, ícone `PersonStanding`), ao lado de "Histórico", que leva a `/mapa`. A barra de abas não entra (DESIGN.md 9.2, extensão da onda 7a; D92).
+1. A entrada do mapa é a aba "Mapa" da barra de abas (US-F11-01, D108). Na onda 7a, era o link de ícone no cabeçalho do treino do dia (D92).
 2. A tela lê `loadWindows`, `loadLevels` e `loadToday` juntos: a resposta da API ou, sem sinal, a cópia do aparelho. Com 401 em qualquer leitura, mostra a tela de entrada; sem janelas e sem níveis, mostra "Sem conexão", com "Tentar de novo".
 3. `bodyMapOf` (`body-map.ts`) lista os grupos na ordem do catálogo, como a API devolve, com o estado pelos horários da janela e pelo relógio do aparelho (`windowStateAt`, ADR-034). O grupo fora dos grupos principais das letras do programa ativo (D67) fica cinza, com o texto "Fora do programa"; sem a cópia do treino do dia, nenhum grupo fica fora. O relógio avança a cada 60 s, sem nova leitura.
 4. O desenho do corpo (`BodyFigure`), frente e costas do protótipo v1, fica fora da árvore de acessibilidade (`aria-hidden`). O grupo em janela usa `--color-window-open`; o descansando, `--color-window-rest`; o esfriando, a hachura de `--color-window-cooling`; sem treino, fora do programa e partes sem grupo, `--color-fill-strong`. O toque numa parte abre o detalhe do grupo.
 5. A lista dos grupos (`GroupList`) é o equivalente em texto do desenho: um botão por grupo, com o selo do nível, o nome, o indicador e o texto do estado ("Janela aberta · fecha qui 20h", "Descansando · abre amanhã 9h", "Esfriando há 2 dias", "Sem treino", "Fora do programa") e a barra curta do nível. O nome acessível junta o nome, o estado, o nível e a memória muscular.
-6. A folha do detalhe (`GroupSheet`) mostra o estado, o selo, o nível, os pontos e a barra (`progressbar` "Nível de <grupo>"), a queda com o nível seguinte e o horário quando o grupo esfria e tem `nextDropAt`, o melhor nível com ↺ ×2, a janela e a data do último treino (`lastTrainedAt`). O progresso no período fica para a onda 7b.
+6. A folha do detalhe (`GroupSheet`) mostra o estado, o selo, o nível, os pontos e a barra (`progressbar` "Nível de <grupo>"), a queda com o nível seguinte e o horário quando o grupo esfria e tem `nextDropAt`, o melhor nível com ↺ ×2, a janela e a data do último treino (`lastTrainedAt`). Com a cópia do período, mostra também o "Progresso no período": a taxa de janelas aproveitadas do grupo no período, ou "Nenhuma janela terminou" (US-F11-01, D100).
 7. Sem sinal, `/mapa` abre com a cópia do treino do dia, como `/`, e fica no precache (ADR-021, adendo da onda 7a).
 
-## Barra de abas, período e medalhas (planejado na onda 7b)
+## Barra de abas, período e medalhas (onda 7b)
 
 A onda 7b acrescenta a barra de abas e as telas do período e das medalhas (D98, D104, D105, D108; ADR-039, ADR-040):
 
@@ -283,6 +283,13 @@ A onda 7b acrescenta a barra de abas e as telas do período e das medalhas (D98,
 4. O treino concluído mostra os pontos do treino e a posição ("2º do período"), provisórios, com `shownSetPointsOf` e `rankOf` do pacote sobre o ranking congelado no início do treino, e troca pelos valores da API quando a fila de envio esvazia (ADR-034, adendo da onda 7b).
 5. A medalha nova aparece quando a fila de envio esvazia e o app lê as medalhas de novo: a medalha desce do topo da tela e entra no treino concluído (D104). O celular não calcula medalha.
 6. O detalhe do grupo do mapa ganha o progresso no período, a taxa de janelas aproveitadas do grupo no período (D100).
+
+A US-F11-01 entregou a barra de abas, o progresso no período do item 6 e a parte da tela Período que lê `GET /api/periods/current`; os itens 3 a 5, a lista dos períodos e as medalhas seguem planejados:
+
+1. A barra de abas (`components/tab-bar.tsx`) tem três links: "Treino" (`/`, ícone `Dumbbell`), "Mapa" (`/mapa`, ícone `PersonStanding`) e "Período" (`/periodo`, ícone `CalendarDays`), com `aria-current="page"` na seção atual. Ela flutua no rodapé, com vidro (`.glass`), fora do `main`, e deixa um espaço sob o conteúdo. Não tem `z-index`, para as folhas cobrirem a barra.
+2. A tela Período lê `loadPeriod` (`sync/period-cache.ts`) e `loadLevels` juntos: a resposta da API ou, sem sinal, a cópia do aparelho, com a regra das outras cópias (200 troca, 401 apaga, rede, tempo esgotado e 5xx usam a cópia). Sem período, mostra "Sem conexão". Sem sinal, `/periodo` abre com a cópia do treino do dia, como `/` e `/mapa`, e fica no precache.
+3. A tela mostra "Período N · 12 semanas", o anel e "Semana N de 12", contada pelo relógio do aparelho a partir de `startsAt`, o primeiro e o último dia ("De 23 de nov. a 14 de fev."), a frase entre aspas ou "Sem frase de intenção", as metas O1 e O4 com a meta do período e os níveis dos 11 grupos.
+4. "Escrever a frase" ou "Editar a frase" abre a folha da frase (`intention-sheet.tsx`), com o campo de até 120 caracteres e o contador. "Salvar" chama `PUT /api/periods/current/intention` direto, sem a fila: a frase não é passo do treino. Sem sinal, a folha fica aberta com "Sem conexão. A frase não foi salva."; com sucesso, a tela troca a cópia pelo período devolvido.
 
 ## Histórico no celular
 

@@ -6,7 +6,7 @@ Feature: Push notices on the phone
 
   Scenario: the app outside the home screen
     Given the app is open in the browser, outside the home screen
-    Then the header buttons "Avisos", "Mapa" and "Histórico" should be targets of 44 px on one line
+    Then the header buttons "Avisos" and "Histórico" should be targets of 44 px on one line
     When the athlete opens the notices control
     Then the notices switch should be unavailable with the reason "Instale o app na tela inicial."
 

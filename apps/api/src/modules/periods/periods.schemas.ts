@@ -1,0 +1,59 @@
+import { z } from '@hono/zod-openapi'
+
+const WindowsTallyShape = {
+  windowsUsed: z.number().int().openapi({ example: 17 }),
+  windowsMissed: z.number().int().openapi({ example: 8 }),
+  usedPercent: z.number().int().nullable().openapi({ example: 68 }),
+}
+
+export const PeriodGroupSchema = z
+  .object({
+    muscleGroup: z.object({
+      slug: z.string().openapi({ example: 'chest' }),
+      name: z.string().openapi({ example: 'peito' }),
+    }),
+    ...WindowsTallyShape,
+  })
+  .openapi('PeriodGroup')
+
+export const CurrentPeriodSchema = z
+  .object({
+    now: z.string().openapi({ example: '2026-11-27T12:00:00.000Z' }),
+    number: z.number().int().openapi({ example: 1 }),
+    startsAt: z.string().openapi({ example: '2026-11-23T03:00:00.000Z' }),
+    endsAt: z.string().openapi({ example: '2027-02-15T03:00:00.000Z' }),
+    week: z.number().int().openapi({ example: 1 }),
+    weekCount: z.number().int().openapi({ example: 12 }),
+    intention: z
+      .string()
+      .nullable()
+      .openapi({ example: 'Treinar três vezes por semana até o fim do ano.' }),
+    windows: z
+      .object({
+        ...WindowsTallyShape,
+        targetPercent: z.number().int().openapi({ example: 70 }),
+      })
+      .openapi('PeriodWindows'),
+    volume: z
+      .object({
+        baselineVolumeG: z.number().int().nullable().openapi({ example: 10_000_000 }),
+        lastWeekVolumeG: z.number().int().nullable().openapi({ example: 11_200_000 }),
+        changePercent: z.number().int().nullable().openapi({ example: 12 }),
+        targetPercent: z.number().int().openapi({ example: 20 }),
+      })
+      .openapi('PeriodVolume'),
+    groups: z.array(PeriodGroupSchema),
+  })
+  .openapi('CurrentPeriod')
+
+export type CurrentPeriod = z.infer<typeof CurrentPeriodSchema>
+
+// intention stays a plain optional string so the service refuses it with its own code.
+export const PeriodIntentionInputSchema = z.object({
+  intention: z
+    .string()
+    .optional()
+    .openapi({ example: 'Treinar três vezes por semana até o fim do ano.' }),
+})
+
+export type PeriodIntentionInput = z.infer<typeof PeriodIntentionInputSchema>

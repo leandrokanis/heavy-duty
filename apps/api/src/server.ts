@@ -15,6 +15,7 @@ import {
   startNoticeScheduler,
 } from './modules/notifications/notice-scheduler.js'
 import { createWebPushSender } from './modules/notifications/push-sender.js'
+import { type RunningGameScheduler, startGameScheduler } from './modules/periods/game-scheduler.js'
 import type { DatabaseHealthProbe } from './modules/system/health.service.js'
 
 type DatabaseState = {
@@ -48,6 +49,7 @@ const app = createApp({
   webAuthn: createWebAuthnVerifier({ appOrigin: config.appOrigin, rpId: config.rpId }),
   pushPublicKey: notifications.push?.publicKey,
   emailConfigured: mail !== null,
+  timeZone: notifications.timeZone,
 })
 
 function noticeChannelsOf(database: Database): NoticeChannel[] {
@@ -84,6 +86,19 @@ function startNotices(): RunningNoticeScheduler | undefined {
 
 const notices = startNotices()
 
+// Always on with the database, with or without a channel of notices (ADR-039).
+function startGame(): RunningGameScheduler | undefined {
+  if (!db) return undefined
+  return startGameScheduler({
+    db,
+    now: () => new Date(),
+    timeZone: notifications.timeZone,
+    log: console,
+  })
+}
+
+const game = startGame()
+
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
   console.log(
     `Heavy Duty API listening on port ${info.port} (${config.nodeEnv}, origin ${config.appOrigin}, push notices ${notifications.push ? 'on' : 'off'}, email notices ${mail ? 'on' : 'off'})`,
@@ -93,6 +108,7 @@ const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
 function shutdown(): void {
   server.close(async () => {
     await notices?.stop()
+    await game?.stop()
     db?.$client.close()
     process.exit(0)
   })

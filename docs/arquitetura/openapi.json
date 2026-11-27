@@ -2107,6 +2107,175 @@
           "usedPercent"
         ]
       },
+      "CurrentPeriod": {
+        "type": "object",
+        "properties": {
+          "now": {
+            "type": "string",
+            "example": "2026-11-27T12:00:00.000Z"
+          },
+          "number": {
+            "type": "integer",
+            "example": 1
+          },
+          "startsAt": {
+            "type": "string",
+            "example": "2026-11-23T03:00:00.000Z"
+          },
+          "endsAt": {
+            "type": "string",
+            "example": "2027-02-15T03:00:00.000Z"
+          },
+          "week": {
+            "type": "integer",
+            "example": 1
+          },
+          "weekCount": {
+            "type": "integer",
+            "example": 12
+          },
+          "intention": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Treinar três vezes por semana até o fim do ano."
+          },
+          "windows": {
+            "$ref": "#/components/schemas/PeriodWindows"
+          },
+          "volume": {
+            "$ref": "#/components/schemas/PeriodVolume"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PeriodGroup"
+            }
+          }
+        },
+        "required": [
+          "now",
+          "number",
+          "startsAt",
+          "endsAt",
+          "week",
+          "weekCount",
+          "intention",
+          "windows",
+          "volume",
+          "groups"
+        ]
+      },
+      "PeriodWindows": {
+        "type": "object",
+        "properties": {
+          "windowsUsed": {
+            "type": "integer",
+            "example": 17
+          },
+          "windowsMissed": {
+            "type": "integer",
+            "example": 8
+          },
+          "usedPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 68
+          },
+          "targetPercent": {
+            "type": "integer",
+            "example": 70
+          }
+        },
+        "required": [
+          "windowsUsed",
+          "windowsMissed",
+          "usedPercent",
+          "targetPercent"
+        ]
+      },
+      "PeriodVolume": {
+        "type": "object",
+        "properties": {
+          "baselineVolumeG": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 10000000
+          },
+          "lastWeekVolumeG": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 11200000
+          },
+          "changePercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 12
+          },
+          "targetPercent": {
+            "type": "integer",
+            "example": 20
+          }
+        },
+        "required": [
+          "baselineVolumeG",
+          "lastWeekVolumeG",
+          "changePercent",
+          "targetPercent"
+        ]
+      },
+      "PeriodGroup": {
+        "type": "object",
+        "properties": {
+          "muscleGroup": {
+            "type": "object",
+            "properties": {
+              "slug": {
+                "type": "string",
+                "example": "chest"
+              },
+              "name": {
+                "type": "string",
+                "example": "peito"
+              }
+            },
+            "required": [
+              "slug",
+              "name"
+            ]
+          },
+          "windowsUsed": {
+            "type": "integer",
+            "example": 17
+          },
+          "windowsMissed": {
+            "type": "integer",
+            "example": 8
+          },
+          "usedPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 68
+          }
+        },
+        "required": [
+          "muscleGroup",
+          "windowsUsed",
+          "windowsMissed",
+          "usedPercent"
+        ]
+      },
       "PushKey": {
         "type": "object",
         "properties": {
@@ -4873,6 +5042,111 @@
           },
           "400": {
             "description": "Missing or malformed from (week_start_required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/periods/current": {
+      "get": {
+        "tags": [
+          "periods"
+        ],
+        "summary": "Get the current period of 12 weeks, with its intention, the goals of the period and the windows used by each muscle group in it",
+        "responses": {
+          "200": {
+            "description": "The period that holds now, with its start, its end (exclusive), the week of now (1 to 12), the intention (null with none), the windows used in the period against the target of 70%, the volume of the last complete week against week 1 against the target of +20% and the 11 muscle groups in catalog order with their windows used in the period",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentPeriod"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/periods/current/intention": {
+      "put": {
+        "tags": [
+          "periods"
+        ],
+        "summary": "Write the intention of the current period; an empty text removes it",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "intention": {
+                    "type": "string",
+                    "example": "Treinar três vezes por semana até o fim do ano."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The current period with the new intention",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentPeriod"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing intention (period_intention_required) or longer than 120 characters (period_intention_too_long)",
             "content": {
               "application/json": {
                 "schema": {
