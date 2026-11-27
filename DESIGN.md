@@ -169,14 +169,18 @@ O espaçamento DEVE usar a escala de tokens da Seção 18, com base de 4 px (Pro
 - O rótulo da aba DEVERIA ter uma palavra. Todas as abas usam o mesmo estilo de ícone.
 - O selo (ponto ou número) DEVE marcar só informação que pede atenção.
 - No estilo do iOS 27, a barra de abas flutua sobre o conteúdo, com material de vidro (Seção 12).
+- A barra de abas do app tem três abas, nesta ordem: "Treino" (`/`, ícone `Dumbbell`), "Mapa" (`/mapa`, ícone `PersonStanding`) e "Período" (`/periodo`, ícone `Calendar`), como no protótipo v1 (PRD, D108). A barra é um `nav` com o nome acessível "Seções", e a aba da seção atual leva `aria-current="page"`.
+- A tela de treino em andamento é tela cheia temporária: a barra de abas NÃO DEVE aparecer nela, do "Começar" até o treino concluído ou encerrado. O histórico e o detalhe do treino também não mostram a barra, porque são consulta aberta a partir do treino do dia, com o voltar (Seção 9.2).
 
 ### 9.2. Navegação no MVP
 
-O MVP tem uma seção na UI, o treino (PRD, ondas 1 a 4). Uma barra de abas com uma aba só NÃO DEVE existir. A barra de abas entra quando a UI tiver 2 seções ou mais, como o mapa do corpo da onda 7 [a confirmar: lista de seções na onda 6].
+O MVP tem uma seção na UI, o treino (PRD, ondas 1 a 4). Uma barra de abas com uma aba só NÃO DEVE existir. A barra de abas entra quando a UI tiver 2 seções ou mais, e entra na onda 7b, com o treino, o mapa do corpo e o período (D108).
 
 Exceção da onda 4b (decisão do PO no plano da onda, 2026-11-23): o histórico no celular (PRD, F20) é a segunda seção, mas não abre a barra de abas. A entrada é um botão de ícone no cabeçalho do treino do dia, com o nome acessível "Histórico", que leva à rota `/historico`. O histórico e o detalhe do treino têm o voltar no canto de cima, à esquerda. Motivo: a barra de abas pesa no fluxo da academia, e o histórico é consulta, não passo do treino. A exceção vale até a barra de abas entrar; aí o histórico vira aba, se o PO confirmar (Protótipo v2).
 
 Extensão da exceção na onda 7a (decisão do PO no plano da onda, 2026-11-25; PRD, D87 e D92): o mapa do corpo (F08) é a terceira seção e também não abre a barra de abas. O cabeçalho do treino do dia ganha mais dois botões de ícone, ao lado de "Histórico": "Mapa", que leva à rota `/mapa`, e "Avisos" (sino), que abre a folha dos avisos no celular (F09). O mapa tem o voltar no canto de cima, à esquerda, como o histórico. Os três botões seguem a Seção 7 (alvo de toque) e têm nome acessível. A barra de abas entra na onda 7b, uma vez só, com o treino, o mapa e o período; o lugar do histórico e dos avisos nessa barra fica para o plano da onda 7b.
+
+Barra de abas da onda 7b (decisão do PO no plano da onda, 2026-11-27; PRD, D108): a UI passa a ter três seções na barra de abas, Treino, Mapa e Período (Seção 9.1), e a exceção das ondas 4b e 7a termina para o mapa. O ícone "Mapa" sai do cabeçalho do treino do dia, e o mapa perde o voltar: a entrada é a aba. O cabeçalho do treino do dia fica com dois botões de ícone, "Avisos" (sino) e "Histórico". O histórico continua fora da barra, como consulta: a entrada é o ícone do cabeçalho, com o voltar no canto de cima, à esquerda, e a barra não aparece no histórico nem no detalhe do treino. O fluxo da academia não muda.
 
 ### 9.3. Botão flutuante sobre a barra de abas
 

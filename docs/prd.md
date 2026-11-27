@@ -4,8 +4,8 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 0.8 |
-| Data | 25/11/2026 |
+| Versão | 0.9 |
+| Data | 27/11/2026 |
 | Status | Rascunho — sujeito a revisão humana |
 | Classificação | Público |
 | Elaboração | Elaborado com apoio de IA (Lean Inception solo, método de Paulo Caroli, traduzido para SAFe) |
@@ -1011,7 +1011,7 @@ Funcionalidade: Avisos no celular
 - **US-F11-02.** Como atleta, quero que o fim do período congele o mapa num retrato, para guardar a forma de cada período.
 - **US-F11-03.** Como atleta, quero ver a sequência de semanas com a meta semanal cumprida, para manter a regularidade de uma semana para outra.
 
-O período zera as metas e o ranking; o nível de cada grupo atravessa os períodos (D24). A sequência de semanas tem uma proteção por período (D42). O alinhamento dos períodos ao ciclo trimestral depende da Q01.
+O período zera as metas e o ranking; o nível de cada grupo atravessa os períodos (D24). A sequência de semanas tem uma proteção por período (D42). Os períodos seguem a D94, sem realinhar ao ciclo trimestral; o início do período 1, o fuso, o histórico anterior, a frase de intenção, o retrato, o progresso no período e a sequência seguem as decisões D95 a D102.
 
 ```gherkin
 # language: pt
@@ -1063,7 +1063,7 @@ Funcionalidade: Períodos, retratos e sequência de semanas
 - **US-F19-01.** Como atleta, quero conquistar medalhas por marcos, algumas ocultas até a conquista, para guardar o que alcancei.
 - **US-F19-02.** Como atleta, quero ver a posição de cada treino no ranking pessoal do período, para comparar o treino só com os meus treinos.
 
-As medalhas marcam volume, janelas, sequência, nível e recorde. O catálogo de medalhas depende da Q17. O ranking não compara com outras pessoas (D23).
+As medalhas marcam volume, janelas, sequência, nível e recorde. O catálogo de medalhas segue a D103, e a conquista, a D104. O ranking não compara com outras pessoas (D23), e os pontos do treino e a posição seguem a D105.
 
 ```gherkin
 # language: pt
@@ -1096,7 +1096,7 @@ Funcionalidade: Medalhas e ranking pessoal
 
 ### F17. Avisos por e-mail (ondas 7a e 7b)
 
-Esta feature entra com os avisos da onda 7a (D32). O resumo semanal (US-F17-03) fica para a 7b, porque traz as medalhas da F19 (D36). O remetente segue a D88, e o horário do resumo depende da Q14. A entrega depende do teste do R09. O link de desligar e a volta dos e-mails seguem as decisões D89 a D91.
+Esta feature entra com os avisos da onda 7a (D32). O resumo semanal (US-F17-03) fica para a 7b, porque traz as medalhas da F19 (D36). O remetente segue a D88, e o horário e o conteúdo do resumo, a D106 e a D107. A entrega depende do teste do R09. O link de desligar e a volta dos e-mails seguem as decisões D89 a D91.
 
 - **US-F17-01.** Como atleta, quero receber por e-mail o aviso de janela, um por letra, para não perder a janela quando o aviso no celular não chega.
 - **US-F17-02.** Como atleta, quero receber por e-mail o aviso antes de um grupo cair de nível, para ter tempo de treinar.
@@ -1157,11 +1157,8 @@ Funcionalidade: Avisos por e-mail
 | R09 | E-mail enviado do servidor de casa cai no spam ou é bloqueado: provedores de internet costumam bloquear a porta 25, e IP residencial tem má reputação | Assumido | Validar a entrega antes da onda 7, com SPF, DKIM, DMARC e DNS reverso (ADR-007) |
 
 ### Questões em aberto
-- **Q01:** o primeiro período começa fora do ciclo; os períodos seguintes se realinham ao ciclo trimestral?
 - **Q09:** a academia tem sinal de celular e Wi-Fi confiáveis?
-- **Q14:** em que dia e hora sai o resumo semanal (F17)? O remetente dos e-mails já foi decidido (D88).
-- **Q17:** quais são as medalhas e o critério de cada uma? A proposta sai na especificação da US-F19-01.
-- **Resolvidas:** Q02 (D44), Q03 (a F13 foi removida), Q04 (D53), Q05 (MVP sem gamificação, D18), Q06 (D39), Q07 (D46), Q08 (D40), Q10 (D37), Q11 (D41), Q12 (D42), Q13 (D43), Q15 (D52), Q16 (D79) e Q14 só no remetente (D88).
+- **Resolvidas:** Q01 (D94), Q02 (D44), Q03 (a F13 foi removida), Q04 (D53), Q05 (MVP sem gamificação, D18), Q06 (D39), Q07 (D46), Q08 (D40), Q10 (D37), Q11 (D41), Q12 (D42), Q13 (D43), Q14 (remetente na D88, horário na D106), Q15 (D52), Q16 (D79) e Q17 (D103).
 
 ### Hipóteses e validações pendentes (o PO é o único papel)
 
@@ -1278,6 +1275,21 @@ Funcionalidade: Avisos por e-mail
 | D91 | O planejador religa ou desliga os e-mails pelo Claude, com a ferramenta `set_email_notices`, que aplica direto, sem prévia, como `set_weekly_goal`. O app não tem chave dos e-mails. Razão: a US-F17-04 pede só o desligar, o MCP é o canal de administração (D04), e a mudança não altera o histórico, então a confirmação em duas chamadas (ADR-026) não se aplica |
 | D92 | A entrada do mapa do corpo é o ícone "Mapa" no cabeçalho do treino do dia, como o "Histórico". A barra de abas entra na onda 7b, com o "Período". Razão: estende a exceção da onda 4b (`DESIGN.md`, Seção 9.2); a barra de abas entra uma vez só, com as três seções, e o fluxo da academia não muda agora |
 | D93 | O mapa do corpo mostra os 11 grupos; o grupo fora do programa ativo aparece em cinza, com o texto "fora do programa" (protótipo v1). O detalhe do grupo mostra estado, nível, barra de progresso, melhor nível com a marca ↺ ×2 da memória muscular, horário da janela, instante da queda (esfriando) e último treino, sem o progresso no período (onda 7b) e sem os músculos. Razão: cobre o cenário do PRD com os dados que o aparelho já tem, e o período é da onda 7b |
+| D94 | Os períodos são blocos de 12 semanas (84 dias) seguidos, a partir do período 1, sem realinhar ao ciclo trimestral, e as semanas começam na segunda-feira. Razão: o período tem sempre as 12 semanas do PRD e da D36, sem exceção; a D20 já trata o ciclo como marco, não como prazo, e o trimestre de 13 semanas só desloca o período uma semana a cada ciclo (responde à Q01) |
+| D95 | O período 1 começa na segunda-feira 00:00 da semana do deploy da onda 7b, no fuso da D96, e termina 84 dias depois. Os treinos dessa semana, inclusive os de antes do deploy, entram no período 1. A API grava o início do período 1 na primeira partida com a migração da onda; os períodos seguintes saem da conta início do período 1 + *n* × 84 dias. Razão: a semana do período coincide com a semana da meta semanal (D74), e a tela Período já aparece no deploy (completa a D01 e a D36) |
+| D96 | O fuso `NOTICE_TIME_ZONE` (D81) vale também para o período, a semana do servidor, a sequência de semanas e o resumo semanal. O período guarda o início em UTC, e as semanas do período são blocos de 7 × 24 h a partir do início. O celular continua com a semana do fuso do aparelho na meta semanal (D74). Razão: uma variável só, já prevista na configuração da produção, com padrão `America/Sao_Paulo`, sem horário de verão; a semana do servidor não depende de pedido do celular (revisa a D74 e a D81 só no servidor; ADR-039) |
+| D97 | O histórico anterior ao período 1 fica fora do ranking pessoal, da sequência de semanas, das medalhas e do retrato. O nível, o melhor nível, o recorde, as janelas e o histórico continuam com o histórico todo. Razão: o jogo completo começa com o deploy da onda 7b (D36), o nível atravessa os períodos (D24), e a estante de medalhas não estreia cheia |
+| D98 | A frase de intenção é opcional, com até 120 caracteres. O atleta escreve e edita a frase na tela Período, numa folha, só com conexão, até o fim do período; o planejador também, pelo Claude, com `set_period_intention`, que aplica direto, sem prévia. O retrato congela a frase no fim do período. Razão: atende o cenário "o atleta escreve a frase de intenção" sem travar o período; a frase não altera o histórico, então a confirmação em duas chamadas (ADR-026) não se aplica, como na D75 |
+| D99 | O retrato congela, por grupo muscular, o nível, os pontos da barra, o melhor nível, o estado da janela e as janelas aproveitadas e perdidas no período. No período, congela a frase de intenção, as janelas aproveitadas e perdidas, os pontos, os pontos do melhor treino e a sequência de semanas no fim. As medalhas do período saem das medalhas conquistadas, que não mudam. Razão: cobre o "mapa do corpo, os níveis e a frase de intenção" do cenário do retrato e o modelo de dados; o retrato é gravado uma vez (ADR-010, ADR-039) |
+| D100 | O progresso no período, a "barra do período" da D24, é a taxa de janelas aproveitadas do grupo no período, no detalhe do grupo do mapa do corpo e no retrato. Razão: mede o O1 por grupo, recomeça a cada período e completa a D93 |
+| D101 | A semana do período é cumprida com as janelas aproveitadas iguais ou acima da meta semanal; a semana sem meta é neutra: não soma nem quebra a sequência. A semana atual soma quando é cumprida e só quebra quando termina. A proteção se gasta sozinha na primeira semana perdida com a sequência acima de 0, não acumula e volta a cada período. A sequência atravessa os períodos e começa do zero no período 1. Razão: segue os cenários da US-F11-03 e a D76 (o app não inventa meta); zerar a sequência a cada período castigaria a regularidade (completa a D42) |
+| D102 | Os pontos da semana, na faixa de jogo, são a soma dos pontos dos treinos que começaram na semana do período. Razão: completa a D78 e sai da mesma conta do ranking pessoal (D105) |
+| D103 | O catálogo inicial tem 10 medalhas, cada uma conquistada uma vez. Visíveis: **Primeiro recorde** (primeira série recorde, D59); **Primeira janela** (primeira janela aproveitada); **Meta da semana** (primeira semana com a meta semanal cumprida); **4 semanas seguidas** (sequência de semanas de 4); **Nível 10** (um grupo chega ao nível 10 ou acima depois de uma série); **Nível 20** (um grupo chega ao nível 20 depois de uma série); **+20% de volume** (semana completa com volume total 20% acima da semana 1 do período, a linha de base do O4); **Período completo** (treino em todas as 12 semanas de um período). Ocultas: **Todas as letras na semana** (todas as letras do programa ativo na mesma semana); **Janela salva no fim** (grupo treinado nas 12 h antes do fechamento da janela, a antecedência da D79). A medalha de nível guarda o grupo da conquista, como o "nível 10 em peito" da US-F19-01. Os limiares ficam no código, recalibráveis só para quem ainda não conquistou a medalha. Razão: cobre volume, janelas, sequência, nível e recorde, tudo derivável do histórico; o nível geral fica fora, porque só o celular o calcula (ADR-034, adendo da onda 6b) (responde à Q17) |
+| D104 | A API avalia o catálogo de medalhas na leitura e no agendador do jogo e grava a conquista nova com o instante do evento. O celular mostra a medalha nova quando a fila de envio esvazia: a medalha desce do topo da tela e aparece no treino concluído. A medalha nunca sai, nem com a correção ou a remoção do treino que a rendeu. Razão: as regras usam as janelas, que só a API calcula (ADR-031); com sinal, a fila esvazia em segundos (ADR-040) |
+| D105 | Os pontos do treino são a soma dos pontos mostrados das séries (D55, D65). A posição no ranking pessoal é 1 mais o número de treinos do período com mais pontos; no empate, os treinos dividem a posição. O treino pertence ao período pelo início, e o treino encerrado antes conta. O treino concluído mostra os pontos e a posição provisórios, com o ranking da cópia congelada no início do treino, e troca pelos da API quando a fila de envio esvazia. Razão: é o número que o atleta vê série a série; a conta é a mesma no celular e na API (ADR-034, adendo da onda 7b) (completa a D62) |
+| D106 | O resumo semanal sai na segunda-feira às 7h, no fuso da D96, com a semana do período que terminou, só por e-mail. Com o servidor parado nessa hora, o resumo sai na volta, até 24 h depois; passado esse prazo, não sai. Razão: a semana já terminou ("quando termina a semana"), o horário cumpre a D80 sem exceção e a volta segue a D86; o PRD pede o resumo por e-mail, e a tela Período mostra o mesmo conteúdo no app (responde à Q14 no horário; ADR-041) |
+| D107 | O resumo semanal traz as janelas aproveitadas e a meta, as janelas perdidas, os pontos da semana, a sequência de semanas, os níveis que mudaram na semana, os recordes só pelo nome do exercício e as medalhas da semana, sem carga, com o botão "Abrir o app" e o link de desligar. Razão: segue o conteúdo mínimo da ADR-007 e o e-mail "Sua semana" do protótipo v1 (ADR-041) |
+| D108 | A barra de abas tem três abas: Treino (`/`), Mapa (`/mapa`) e Período (`/periodo`). O histórico e os avisos ficam como ícones no cabeçalho do treino do dia, e o ícone "Mapa" sai do cabeçalho. A barra não aparece na tela de treino em andamento nem no histórico. Razão: é o que a D92 anunciou ("três seções"); o histórico é consulta, e o fluxo da academia não muda (`DESIGN.md`, Seções 9.1 e 9.2) |
 
 ---
 
@@ -1294,6 +1306,6 @@ Funcionalidade: Avisos por e-mail
 ---
 
 ## Próximos passos sugeridos
-1. Responder às Q14 (horário do resumo semanal), Q17 e Q01 antes das stories que cada uma bloqueia. Cada questão e cada story têm uma issue no GitHub, com as dependências.
+1. Entregar a onda 7b inteira num PR só da `dev` para a `main`: o deploy abre o período 1 (D95). Cada story tem uma issue no GitHub, com as dependências.
 2. Testar a entrega de e-mail pelo kasparov antes da onda 7a (R09).
 3. Recalibrar a janela com o histórico real pela simulação da EN01-01 (ADR-031).

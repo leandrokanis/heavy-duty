@@ -78,6 +78,20 @@ As ferramentas do programa recebem no mesmo objeto o corpo da rota HTTP e os par
 
 As ferramentas `remove_program_day` e `remove_planned_exercise` declaram `destructiveHint: true` porque tiram parte do plano, mas não pedem confirmação: a remoção não muda treino registrado, e a regra da confirmação vale para o histórico (US-F06-02). As ferramentas de edição mudam só o campo enviado, como a rota `PATCH` equivalente. As ferramentas `create_program`, `add_program_day` e `add_planned_exercise` usam o relógio da API (`now` do `ToolDeps`), o mesmo das rotas HTTP.
 
+## Ferramentas planejadas na onda 7b
+
+As ferramentas abaixo estão planejadas para a onda 7b (ADR-039, ADR-040, ADR-041) e ainda não existem no registro. A story de cada ferramenta escreve a descrição em inglês e acrescenta a linha na lista de ferramentas, no mesmo commit.
+
+| Ferramenta | Story | Efeito | Destrutiva |
+|---|---|---|---|
+| `get_period` | US-F11-01 | Lê o período atual, com o mesmo objeto de `GET /api/periods/current` (`contratos.md`), inclusive a sequência de semanas (US-F11-03) e o ranking pessoal (US-F19-02) | Não (`readOnlyHint: true`) |
+| `set_period_intention` | US-F11-01 | Grava a frase de intenção do período atual, opcional, com até 120 caracteres. Aplica direto, sem prévia nem código de confirmação, como `set_weekly_goal`, porque não altera o histórico (D98; ADR-026 não se aplica) | Não (`destructiveHint: false`) |
+| `list_periods` | US-F11-02 | Lista os períodos com o retrato de cada período terminado, com o mesmo objeto de `GET /api/periods` | Não (`readOnlyHint: true`) |
+| `list_medals` | US-F19-01 | Lista o catálogo das medalhas com as conquistas, com o mesmo objeto de `GET /api/medals` | Não (`readOnlyHint: true`) |
+| `get_weekly_digest` | US-F17-03 | Mostra o conteúdo do resumo semanal de uma semana do período, sem enviar e sem servidor SMTP (D107, ADR-041) | Não (`readOnlyHint: true`) |
+
+A edição de um treino pelo Claude (`update_workout_set`, `remove_workout`) não muda o retrato de um período congelado nem tira uma medalha conquistada (ADR-039, ADR-040).
+
 ## Confirmação em duas chamadas
 
 As ferramentas `update_workout_set` e `remove_workout` não têm rota HTTP e agem em duas chamadas (ADR-026). Sem `confirmationCode` (ausente, vazio ou só com espaços), o service confere o pedido e devolve a prévia, sem mudar o banco. Com o código, o service recalcula o código sobre o estado atual do treino, dentro da mesma transação, e aplica se ele conferir.

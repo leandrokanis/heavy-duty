@@ -5,15 +5,16 @@
 | Nível C4 | 2, contêiner |
 | Pasta | `apps/api` (`@heavy-duty/api`) |
 | Onde roda | Processo Node.js no kasparov |
-| ADRs | ADR-004, ADR-005, ADR-006, ADR-007, ADR-010, ADR-013, ADR-014, ADR-017, ADR-019, ADR-035, ADR-036, ADR-037 |
+| ADRs | ADR-004, ADR-005, ADR-006, ADR-007, ADR-010, ADR-013, ADR-014, ADR-017, ADR-019, ADR-034, ADR-035, ADR-036, ADR-037, ADR-039, ADR-040, ADR-041 |
 | Ondas | 1 em diante |
 
 ## Responsabilidade
 
 - Aplicar as regras de negócio e gravar os dados no banco.
 - Atender o app web por HTTP e o Claude por MCP, com os mesmos services (ADR-006).
-- Calcular o estado do jogo a partir do histórico: janela, pontos, nível, perda e recorde (ADR-010). A sugestão da letra pelas janelas e o nível geral ficam no app web (ADR-034, adendo da onda 6b).
-- Agendar e enviar os avisos e o resumo semanal, por Web Push e por e-mail (onda 7), com um agendador no próprio processo (ADR-036).
+- Calcular o estado do jogo a partir do histórico: janela, pontos, nível, perda, recorde, período, sequência de semanas, pontos do treino e ranking pessoal (ADR-010, ADR-039). A sugestão da letra pelas janelas e o nível geral ficam no app web (ADR-034, adendo da onda 6b).
+- Abrir os períodos, congelar o retrato no fim de cada período e gravar as medalhas conquistadas, com o agendador do jogo, sempre ligado no próprio processo (onda 7b, ADR-039, ADR-040).
+- Agendar e enviar os avisos e o resumo semanal, por Web Push e por e-mail (onda 7), com o agendador dos avisos no próprio processo (ADR-036, ADR-041).
 - Expor a situação do sistema: backup, envio de e-mail e falhas.
 
 ## Tecnologias
@@ -44,8 +45,10 @@
 | `system` | Situação do backup e do envio de e-mail | 1 | F14, F17 |
 | `programs` | `Program`, `ProgramDay`, `PlannedExercise` | 2 | F02 |
 | `workouts` | `Workout`, `WorkoutSet`, exercícios pulados. Treino do dia (US-F03-01): `GET /api/today`, só de leitura, com a letra sugerida, a carga preenchida e a duração estimada (`today.service.ts`, regras puras em `today.rules.ts`). Gravação da série (US-F03-02): `POST /api/workouts/{workoutId}/sets`, idempotente pelo `id` da série, que cria o treino na primeira série (`workout-set.service.ts`). Remoção pelo celular (US-F03-09, US-F20-02): `DELETE /api/workouts/{workoutId}`, sem código de confirmação (`deleteWorkoutById` em `workout-removal.service.ts`, ADR-032) | 3 e 4 | F03, F04, F05, F06 |
-| `windows` | Cálculo derivado: janela, volume, pontos, nível, recorde; `Period`, `PeriodSnapshot`, medalhas. Já existe o volume por grupo muscular (US-F15a-01): a regra pura `volumeByMuscleGroup` (`volume.rules.ts`), com a porcentagem do músculo secundário em `windows.config.ts`, o repositório das séries de um intervalo e o service `getMuscleGroupVolume`, que a ferramenta MCP `get_muscle_group_volume` chama. A EN01-01 acrescentou a simulação das janelas: as regras puras `groupTrainingsOf`, `windowOf` e `simulateGroupWindows` (`window.rules.ts`), a validação dos parâmetros pedidos (`window-parameters.ts`) e o service `simulateActivityWindows`, que a ferramenta `simulate_activity_windows` chama. A US-F07-01 acrescentou o estado atual da janela: a regra pura `windowStateOf` e o service `listActivityWindows` (`window-state.service.ts`), que a rota `GET /api/windows` e a ferramenta `list_activity_windows` chamam. A US-F15b-01 acrescentou a contagem das janelas aproveitadas por semana: a regra pura `windowsUsedByWeek` (`windows-used.rules.ts`) e o service `getWindowsUsed`, que a ferramenta `get_windows_used` chama. A US-F15b-02 acrescentou a meta semanal: a tabela `weekly_goals`, o service `setWeeklyGoal` (`weekly-goal.service.ts`), que a ferramenta `set_weekly_goal` chama, e o service `getWeekWindows`, que a rota `GET /api/windows/week` chama | 5 a 7 | F07, F10, F11, F12, F15a |
-| `notifications` | Inscrições de push (`PushSubscription`); agendador dos avisos com ciclo de 60 s e regras puras em `notices.rules.ts`, com antecedência e horário de silêncio em `notices.config.ts` (ADR-036); envio por `PushSender` (ADR-035) e `MailSender` (ADR-037); registro de cada aviso por canal em `notifications`; link de desligar e ferramenta `set_email_notices` (ADR-037); resumo semanal na onda 7b. O agendador usa `setInterval`, como o agendador do backup, sem o `croner` | 7 | F09, F17 |
+| `windows` | Cálculo derivado: janela, volume, pontos, nível, recorde. Período, retrato e medalhas ficam nos módulos `periods` e `medals` (onda 7b). Já existe o volume por grupo muscular (US-F15a-01): a regra pura `volumeByMuscleGroup` (`volume.rules.ts`), com a porcentagem do músculo secundário em `windows.config.ts`, o repositório das séries de um intervalo e o service `getMuscleGroupVolume`, que a ferramenta MCP `get_muscle_group_volume` chama. A EN01-01 acrescentou a simulação das janelas: as regras puras `groupTrainingsOf`, `windowOf` e `simulateGroupWindows` (`window.rules.ts`), a validação dos parâmetros pedidos (`window-parameters.ts`) e o service `simulateActivityWindows`, que a ferramenta `simulate_activity_windows` chama. A US-F07-01 acrescentou o estado atual da janela: a regra pura `windowStateOf` e o service `listActivityWindows` (`window-state.service.ts`), que a rota `GET /api/windows` e a ferramenta `list_activity_windows` chamam. A US-F15b-01 acrescentou a contagem das janelas aproveitadas por semana: a regra pura `windowsUsedByWeek` (`windows-used.rules.ts`) e o service `getWindowsUsed`, que a ferramenta `get_windows_used` chama. A US-F15b-02 acrescentou a meta semanal: a tabela `weekly_goals`, o service `setWeeklyGoal` (`weekly-goal.service.ts`), que a ferramenta `set_weekly_goal` chama, e o service `getWeekWindows`, que a rota `GET /api/windows/week` chama | 5 a 7 | F07, F10, F11, F12, F15a |
+| `notifications` | Inscrições de push (`PushSubscription`); agendador dos avisos com ciclo de 60 s e regras puras em `notices.rules.ts`, com antecedência e horário de silêncio em `notices.config.ts` (ADR-036); envio por `PushSender` (ADR-035) e `MailSender` (ADR-037); registro de cada aviso por canal em `notifications`; link de desligar e ferramenta `set_email_notices` (ADR-037); resumo semanal na onda 7b. O agendador usa `setInterval`, como o agendador do backup, sem o `croner`. Na onda 7b (US-F17-03, ADR-041): o resumo semanal, com o `kind` `weekly_digest`, só pelo canal de e-mail, na segunda-feira às 7h (`weekly-digest.rules.ts`, puro, `weekly-digest.service.ts` e `email-digest.ts`), e a ferramenta `get_weekly_digest`, só de leitura | 7 | F09, F17 |
+| `periods` | Planejado na onda 7b (ADR-039). `Period` e `PeriodSnapshot`: limites do período e semana do servidor pela aritmética (`period.rules.ts`), frase de intenção, metas O1 e O4 e progresso no período (`period-stats.rules.ts`), sequência de semanas e proteção (`week-streak.rules.ts`), ranking pessoal (`ranking.rules.ts`) e retrato congelado (`snapshot.rules.ts`, `snapshot.service.ts`). O agendador do jogo (`game-scheduler.ts`), com ciclo de 60 s, sempre ligado, abre o período novo, congela o retrato e sincroniza as medalhas | 7 | F11, F19 |
+| `medals` | Planejado na onda 7b (ADR-040). Catálogo das medalhas em `medals.catalog.ts`, regras puras de conquista em `medals.rules.ts` e conquistas gravadas em `medal_awards` por `syncMedalAwards`, na leitura e no agendador do jogo | 7 | F19 |
 
 Cada módulo junta rota, ferramenta MCP, service, repositório e testes (`docs/convencoes/codigo.md`, Seção 6). A rota e a ferramenta MCP chamam o mesmo service.
 
@@ -70,9 +73,11 @@ O contrato de cada rota é gerado dos schemas em `docs/arquitetura/openapi.json`
 4. A gravação de série é idempotente pelo ID gerado no cliente: o mesmo ID não cria outra série.
 5. O erro de domínio tem `code` em inglês, em `snake_case`, e `message` em português (`docs/convencoes/codigo.md`, Seção 8).
 6. Data e hora são ISO 8601 em UTC; a carga é inteiro em gramas (`loadG`); o tempo é inteiro em segundos. A API não usa número de ponto flutuante para medida.
-7. O cálculo do jogo fica em funções puras, com os parâmetros num arquivo de configuração versionado (ADR-010). A janela fica no módulo `windows`; pontos, nível, perda e recorde ficam no pacote `@heavy-duty/game`, que o app web também usa, e o módulo `windows` os chama com o histórico (ADR-034).
+7. O cálculo do jogo fica em funções puras, com os parâmetros num arquivo de configuração versionado (ADR-010). A janela fica no módulo `windows`; pontos, nível, perda e recorde, os pontos mostrados da série e a posição no ranking ficam no pacote `@heavy-duty/game`, que o app web também usa, e a API os chama com o histórico (ADR-034 e o adendo da onda 7b). Período, sequência, retrato, medalhas e resumo semanal ficam só na API (ADR-039, ADR-040, ADR-041).
 8. A falha de um canal de aviso não bloqueia o outro e fica registrada em `notifications`. Cada aviso sai no máximo uma vez por canal, pela chave única da linha, sem nova tentativa (ADR-036).
 9. O log não leva credencial, token, chave VAPID nem o endereço de e-mail do PO. O banco guarda só o SHA-256 do código de autorização, da credencial do MCP, do token de renovação e do token do link de desligar. As cerimônias da chave de acesso descartam a exceção da biblioteca, que cita o desafio, em vez de registrar a exceção no log (FR-028).
+10. Do jogo, só ficam guardados o início do período 1, a frase de intenção de cada período, o retrato e a medalha conquistada. O retrato e a medalha são gravados uma vez e nunca mudam, nem com a correção ou a remoção de treino, nem com a mudança de fórmula (ADR-010, ADR-039, ADR-040). O histórico anterior ao período 1 fica fora do ranking, da sequência, das medalhas e do retrato (D97).
+11. O agendador do jogo parte sempre, com ou sem canal de aviso configurado, e nada do período nem das medalhas depende do agendador dos avisos (ADR-039).
 
 ## Configuração
 
@@ -84,7 +89,7 @@ O contrato de cada rota é gerado dos schemas em `docs/arquitetura/openapi.json`
 | `MCP_ALLOWED_HOSTS` | Hosts aceitos no `/mcp`, separados por vírgula. O hostname de `APP_ORIGIN` entra sempre na lista | `localhost`, `127.0.0.1`, `[::1]` | — (o domínio público vem de `APP_ORIGIN`) |
 | `APP_ORIGIN` | Origem pública do app (esquema, host e porta). O RP ID do WebAuthn é o hostname; o cookie leva `Secure` quando o esquema é `https`; a guarda de origem compara o `Origin` com o valor; as URLs OAuth e o `WWW-Authenticate` do `/mcp` usam o valor | `http://localhost:8080` | Obrigatória e `https`, senão a API não sobe e o erro cita `APP_ORIGIN` |
 
-| `NOTICE_TIME_ZONE` | Fuso do horário de silêncio e do texto dos avisos e dos e-mails (D81, ADR-036) | `America/Sao_Paulo` | Opcional |
+| `NOTICE_TIME_ZONE` | Fuso do horário de silêncio e do texto dos avisos e dos e-mails (D81, ADR-036) e, a partir da onda 7b, do período, da semana do servidor, da sequência de semanas e do resumo semanal (D96, ADR-039) | `America/Sao_Paulo` | Opcional |
 | `VAPID_PUBLIC_KEY` | Chave pública VAPID, servida por `GET /api/notifications/push-key` (ADR-035) | — | Opcional; sem as três variáveis VAPID, o push fica desligado |
 | `VAPID_PRIVATE_KEY_FILE` | Arquivo com a chave privada VAPID, montado só leitura (ADR-035) | — | Opcional |
 | `VAPID_SUBJECT` | `subject` VAPID: a origem do app, sem e-mail pessoal (ADR-035) | `APP_ORIGIN` | Opcional |
@@ -93,7 +98,7 @@ O contrato de cada rota é gerado dos schemas em `docs/arquitetura/openapi.json`
 | `MAIL_FROM` | Remetente dos e-mails, no domínio do app, com o nome "Heavy Duty" (D88) | — | Opcional |
 | `MAIL_TO` | Destinatário dos e-mails: o endereço do PO (D88) | — | Opcional |
 
-Sem canal configurado, a API sobe e o agendador dos avisos não parte (ADR-036). As chaves e a senha vêm de arquivo, nunca de variável com o valor.
+Sem canal configurado, a API sobe e o agendador dos avisos não parte (ADR-036); o agendador do jogo parte assim mesmo (ADR-039). As chaves e a senha vêm de arquivo, nunca de variável com o valor.
 
 `APP_ORIGIN` não é segredo. O `compose.yaml` passa `http://localhost:${PROXY_PORT:-8080}`, e o `compose.coolify.yaml` exige `APP_ORIGIN`, preenchida nas variáveis do recurso no Coolify (`implantacao.md`). O `.env.example` ainda não traz a variável: a inclusão de `APP_ORIGIN=https://<HOSTNAME>` é tarefa manual do PO. O desenvolvimento usa `http://localhost:8080`, não `http://127.0.0.1:8080`, porque o WebAuthn não aceita endereço IP como RP ID.
 

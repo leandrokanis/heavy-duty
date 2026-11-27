@@ -5,7 +5,7 @@
 | Nível C4 | 2, contêiner |
 | Pasta | `apps/ui` (`@heavy-duty/ui`) |
 | Onde roda | Processo Node.js no kasparov (servidor do Next.js) e navegador do celular ou do Mac (cliente) |
-| ADRs | ADR-009, ADR-002, ADR-019, ADR-034, ADR-035, ADR-037; substituiu a ADR-003 |
+| ADRs | ADR-009, ADR-002, ADR-019, ADR-034, ADR-035, ADR-037, ADR-039, ADR-040; substituiu a ADR-003 |
 | Ondas | 1 em diante |
 
 ## Responsabilidade
@@ -13,7 +13,7 @@
 - Mostrar o treino do dia, guiar a série com um toque por passo, contar o descanso e o tempo de execução (F03, F04, F05).
 - Funcionar sem sinal no fluxo da academia, com a fila do armazenamento local (NFR06).
 - Instalar como PWA, com manifesto e service worker (NFR05).
-- Mostrar o jogo: janelas, níveis, mapa do corpo, período, medalhas e ranking (ondas 5 a 7). O cálculo é da API (ADR-010). Pontos, barra de nível e recorde aparecem provisórios durante o treino, calculados no aparelho com as regras do pacote `@heavy-duty/game`, e o valor da API os substitui quando a fila de envio esvazia (ADR-034).
+- Mostrar o jogo: janelas, níveis, mapa do corpo, período, medalhas e ranking (ondas 5 a 7). O cálculo é da API (ADR-010). Pontos, barra de nível e recorde aparecem provisórios durante o treino, calculados no aparelho com as regras do pacote `@heavy-duty/game`, e o valor da API os substitui quando a fila de envio esvazia (ADR-034). Na onda 7b, os pontos do treino e a posição no ranking pessoal também aparecem provisórios no treino concluído (ADR-034, adendo da onda 7b), e a medalha nova aparece só quando a fila esvazia, sem provisório (ADR-040).
 - Calcular no treino do dia a sugestão da letra pelas janelas e o nível geral com o grupo que limita, como valor final, com as regras do pacote `@heavy-duty/game`, as cópias da API e o relógio do aparelho (ADR-034, adendo da onda 6b).
 - Ativar os avisos no app instalado e mostrar, pelo service worker, o aviso que chega por Web Push (onda 7a, ADR-035).
 - Oferecer as telas de administração no Mac, depois do MVP (D22).
@@ -59,7 +59,7 @@ apps/ui/src/
   app/                     rotas do App Router
     (treino)/              treino do dia, série, descanso, sequência: renderizados no cliente
     mapa/                  mapa do corpo: estado da janela e nível de cada grupo, com o detalhe do grupo (US-F08-01)
-    periodo/               tela do período (onda 7b)
+    periodo/               tela do período (onda 7b): semana do período, frase de intenção, metas O1 e O4, níveis, estante de medalhas, ranking pessoal e retratos (US-F11-01, US-F11-02, US-F19-01, US-F19-02)
     desligar-emails/       página do link de desligar dos e-mails, fora do AuthGate (US-F17-04, ADR-037)
     admin/                 telas de administração no Mac (proposta para a Q10)
     cadastro/              cadastro da chave de acesso pelo link de cadastro (US-F14-01)
@@ -67,6 +67,7 @@ apps/ui/src/
     autorizar/             tela de autorização do cliente do MCP (US-F16-01)
     ~offline/              página sem conexão
     manifest.ts            manifesto do PWA
+  components/tab-bar.tsx   planejado na onda 7b: barra de abas com Treino, Mapa e Período (D108)
   components/ui/           componentes base sobre o Base UI, com os tokens do DESIGN.md: `MotionButton` (derivado do Animate UI), `Button`, `IconButton`, `IconLink` (link de ícone para navegação), `Sheet` e `Toast` (aviso flutuante, com o `ToastProvider` no layout raiz)
   features/<feature>/      componentes, hooks e serviços de uma feature (auth, workout, rest, game…)
   features/auth/           AuthGate, tela de entrada, tela de cadastro, aviso sem conexão, cliente de /api/auth/*
@@ -74,9 +75,11 @@ apps/ui/src/
   features/body-map/       mapa do corpo (US-F08-01): grupos do mapa pelas cópias e pelo relógio (`body-map.ts`), desenho do corpo (`body-figure.tsx`), lista dos grupos (`group-list.tsx`), folha do detalhe (`group-sheet.tsx`) e tela (`body-map-screen.tsx`)
   features/history/        histórico no celular (US-F20-01): cliente de GET /api/workouts (`history-client.ts`), páginas de 92 dias (`history-range.ts`), datas e duração (`history-format.ts`), lista (`history-list.tsx`), detalhe (`workout-detail.tsx`) e tela (`history-screen.tsx`)
   features/notices/        avisos no celular (US-F09-01): suporte do aparelho (`push-support.ts`), cliente de /api/notifications (`push-client.ts`), APIs do navegador atrás de `PushDevice` (`push-device.ts`), estado da chave e reenvio da inscrição (`use-push-notices.ts`) e a folha "Avisos" (`notices-sheet.tsx`)
+  features/period/         planejado na onda 7b: tela Período (`period-screen.tsx`), folha da frase de intenção (`intention-sheet.tsx`), ranking (`ranking-list.tsx`), retratos (`snapshot-list.tsx`, `snapshot-card.tsx`) e cliente de /api/periods (`period-client.ts`)
+  features/medals/         planejado na onda 7b: estante (`medal-shelf.tsx`), medalha que desce do topo (`medal-toast.tsx`) e cliente de /api/medals (`medals-client.ts`)
   features/mcp-auth/       tela de autorização do MCP e cliente de /api/oauth/authorization
   shared/                  utilitários usados por duas features ou mais: grupos principais de uma letra (`muscle-groups-of-day.ts`)
-  sync/                    banco local (Dexie), fila de envio, gatilhos de envio, treino em andamento, cópia do treino do dia e das janelas (`windows-cache.ts`) e `SyncProvider` (ADR-021)
+  sync/                    banco local (Dexie), fila de envio, gatilhos de envio, treino em andamento, cópia do treino do dia e das janelas (`windows-cache.ts`) e `SyncProvider` (ADR-021); na onda 7b, cópias do período (`period-cache.ts`) e das medalhas (`medals-cache.ts`)
   sw.ts                    service worker (Serwist): cache e, a partir da US-F09-01, os eventos `push` e `notificationclick` (ADR-035)
   sw-push.ts               texto da notificação a partir da mensagem e abertura do app no toque (US-F09-01)
   sw-runtime-caching.ts    regras de cache do service worker: /api/* só pela rede
@@ -269,6 +272,17 @@ A US-F08-01 acrescenta a rota `/mapa`, sem API nova (D92, D93):
 5. A lista dos grupos (`GroupList`) é o equivalente em texto do desenho: um botão por grupo, com o selo do nível, o nome, o indicador e o texto do estado ("Janela aberta · fecha qui 20h", "Descansando · abre amanhã 9h", "Esfriando há 2 dias", "Sem treino", "Fora do programa") e a barra curta do nível. O nome acessível junta o nome, o estado, o nível e a memória muscular.
 6. A folha do detalhe (`GroupSheet`) mostra o estado, o selo, o nível, os pontos e a barra (`progressbar` "Nível de <grupo>"), a queda com o nível seguinte e o horário quando o grupo esfria e tem `nextDropAt`, o melhor nível com ↺ ×2, a janela e a data do último treino (`lastTrainedAt`). O progresso no período fica para a onda 7b.
 7. Sem sinal, `/mapa` abre com a cópia do treino do dia, como `/`, e fica no precache (ADR-021, adendo da onda 7a).
+
+## Barra de abas, período e medalhas (planejado na onda 7b)
+
+A onda 7b acrescenta a barra de abas e as telas do período e das medalhas (D98, D104, D105, D108; ADR-039, ADR-040):
+
+1. A barra de abas (`TabBar`) tem as abas Treino (`/`), Mapa (`/mapa`) e Período (`/periodo`), conforme o `DESIGN.md`, Seções 9.1 e 9.2. O ícone "Mapa" sai do cabeçalho do treino do dia, e o mapa perde o voltar; o cabeçalho fica com "Avisos" e "Histórico". A barra não aparece na tela de treino em andamento nem no histórico. Os itens 1 das seções "Mapa do corpo" e "Histórico no celular" mudam com a US-F11-01.
+2. A tela Período lê `GET /api/periods/current`, `GET /api/periods` e `GET /api/medals`. A frase de intenção se edita numa folha, só com conexão (D98).
+3. A faixa de jogo ganha a sequência de semanas e os pontos da semana, da resposta do período (D101, D102). A meta semanal continua com a semana do fuso do aparelho (D74).
+4. O treino concluído mostra os pontos do treino e a posição ("2º do período"), provisórios, com `shownSetPointsOf` e `rankOf` do pacote sobre o ranking congelado no início do treino, e troca pelos valores da API quando a fila de envio esvazia (ADR-034, adendo da onda 7b).
+5. A medalha nova aparece quando a fila de envio esvazia e o app lê as medalhas de novo: a medalha desce do topo da tela e entra no treino concluído (D104). O celular não calcula medalha.
+6. O detalhe do grupo do mapa ganha o progresso no período, a taxa de janelas aproveitadas do grupo no período (D100).
 
 ## Histórico no celular
 

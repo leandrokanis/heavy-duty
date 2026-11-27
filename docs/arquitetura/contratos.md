@@ -1338,6 +1338,19 @@ O token vem no corpo JSON, `{ "token": "<token>" }`, como a página manda, ou na
 
 O `GET` da mesma URL não desliga nada e responde 401, como toda rota protegida: filtros de e-mail abrem os links sozinhos (D90). O token não vence (ADR-037). O planejador religa os e-mails pelo Claude, com `set_email_notices` (`mcp.md`).
 
+## Período e medalhas (planejado na onda 7b)
+
+As rotas desta seção estão planejadas para a onda 7b (ADR-039, ADR-040) e ainda não existem no código nem em `openapi.json`. A story de cada rota escreve aqui o contrato completo, no formato das outras seções, e gera `openapi.json` no mesmo commit. Todas exigem sessão de acesso.
+
+| Rota | Story | Objetivo |
+|---|---|---|
+| `GET /api/periods/current` | US-F11-01 | Mostrar o período atual: número, início, fim e semana atual de 12, frase de intenção, metas O1 e O4 e o progresso no período de cada grupo (D100). A US-F11-03 acrescenta `weeks`, com a meta, as janelas aproveitadas, os pontos e a situação de cada semana do período, e `weekStreak`, com as semanas da sequência e se a proteção já foi usada (D101, D102). A US-F19-02 acrescenta `ranking`, com o treino, a letra, o início, os pontos e a posição de cada treino do período (D105) |
+| `PUT /api/periods/current/intention` | US-F11-01 | Gravar a frase de intenção do período atual, opcional, com até 120 caracteres, sem prévia (D98). A ferramenta `set_period_intention` usa o mesmo service |
+| `GET /api/periods` | US-F11-02 | Listar os períodos, com o retrato de cada período terminado (D99). A leitura congela o período terminado ainda sem retrato (ADR-039) |
+| `GET /api/medals` | US-F19-01 | Listar o catálogo das medalhas, com a conquista de cada uma (`awardedAt`, `subject`, treino). A medalha oculta ainda não conquistada vem sem nome e sem critério (D103, D104) |
+
+O período e as semanas do período usam o fuso `NOTICE_TIME_ZONE`, e as datas vêm em ISO 8601, em UTC (D96). Na US-F17-03, `recentFailures` de `GET /api/system/status` passa a aceitar o `kind` `weekly_digest` (ADR-041).
+
 ## Situação do app
 
 A rota desta seção vem da US-F14-02. A rota existe só quando a API abriu o banco e exige sessão de acesso (US-F14-01). A ferramenta MCP `get_system_status` devolve o mesmo objeto (`mcp.md`), pelo mesmo service `getSystemStatus`, em `apps/api/src/modules/system/system-status.service.ts`.
