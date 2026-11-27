@@ -34,7 +34,7 @@ async function givenBackHistory(now: Date) {
 
 describe('Given a database with no period', () => {
   describe('When the periods are ensured on a Wednesday', () => {
-    it('Then should store period 1 from the Monday of the week, 12 weeks long, with no intention', () => {
+    it('Then should store period 1 from the Monday of the week, 12 weeks long, with no intention and no snapshot', () => {
       const db = createTestDatabase()
 
       const current = ensurePeriods(db, new Date('2026-11-25T13:00:00.000Z'), SAO_PAULO)
@@ -46,6 +46,11 @@ describe('Given a database with no period', () => {
           endsAt: '2027-02-15T03:00:00.000Z',
           intention: null,
           frozenAt: null,
+          windowsUsed: null,
+          windowsMissed: null,
+          points: null,
+          bestWorkoutPoints: null,
+          weekStreak: null,
         },
       ])
       expect(current.number).toBe(1)

@@ -1,6 +1,6 @@
 import type { Database } from '../../db/connection.js'
-import { ensurePeriods } from './period.service.js'
 import { GAME_TICK_MS } from './periods.config.js'
+import { freezeEndedPeriods } from './snapshot.service.js'
 
 export type GameLog = { error: (message: string) => void }
 
@@ -16,12 +16,14 @@ export type RunningGameScheduler = { stop: () => Promise<void> }
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error))
 
 // The game derives from the database at each tick and keeps nothing in memory, so a restart
-// catches up on what passed with the server stopped (ADR-039).
+// catches up on what passed with the server stopped: the periods to open and to freeze (ADR-039).
 export async function runGameTick(deps: GameTickDeps): Promise<void> {
   try {
-    ensurePeriods(deps.db, deps.now(), deps.timeZone)
+    freezeEndedPeriods(deps.db, deps.now(), deps.timeZone)
   } catch (error) {
-    deps.log.error(`game: could not ensure the current period: ${messageOf(error)}`)
+    deps.log.error(
+      `game: could not ensure the current period and freeze the ended ones: ${messageOf(error)}`,
+    )
   }
 }
 

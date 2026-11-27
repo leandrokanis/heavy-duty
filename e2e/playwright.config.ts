@@ -50,6 +50,7 @@ const BODY_MAP_SPEC = /body-map\.feature\.spec\.js$/
 const PERIODS_SPEC = /periods\.feature\.spec\.js$/
 const WEEK_STREAK_SPEC = /week-streak\.feature\.spec\.js$/
 const PERSONAL_RANKING_SPEC = /personal-ranking\.feature\.spec\.js$/
+const PERIOD_SNAPSHOT_SPEC = /period-snapshot\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -115,6 +116,7 @@ export default defineConfig({
         PERIODS_SPEC,
         WEEK_STREAK_SPEC,
         PERSONAL_RANKING_SPEC,
+        PERIOD_SNAPSHOT_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -447,6 +449,15 @@ export default defineConfig({
       testMatch: PERSONAL_RANKING_SPEC,
       fullyParallel: false,
       dependencies: ['week-streak'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Moves the start of period 1 back to freeze two periods and edits a workout through MCP, so it
+    // runs alone and one scenario at a time, after the ranking.
+    {
+      name: 'period-snapshot',
+      testMatch: PERIOD_SNAPSHOT_SPEC,
+      fullyParallel: false,
+      dependencies: ['personal-ranking'],
       use: { ...devices['Pixel 7'] },
     },
   ],

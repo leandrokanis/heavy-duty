@@ -3,11 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { groupLevel } from '@/features/body-map/test-body-map'
 import { loadLevels } from '@/sync/levels-cache'
 import { loadPeriod } from '@/sync/period-cache'
+import { loadPeriods } from '@/sync/periods-cache'
+import type { PeriodListItem } from './period.types'
 import { PeriodScreen } from './period-screen'
 import { testPeriod } from './test-period'
+import { frozenPeriod } from './test-snapshot'
 
 vi.mock('@/sync/period-cache', () => ({ loadPeriod: vi.fn(), storePeriod: vi.fn() }))
 vi.mock('@/sync/levels-cache', () => ({ loadLevels: vi.fn() }))
+vi.mock('@/sync/periods-cache', () => ({ loadPeriods: vi.fn() }))
 vi.mock('@simplewebauthn/browser', () => ({
   browserSupportsWebAuthn: () => true,
   startAuthentication: vi.fn(),
@@ -19,8 +23,12 @@ const SAO_PAULO = 'America/Sao_Paulo'
 // Wednesday of week 2 of the test period.
 const NOW_MS = Date.parse('2026-12-02T15:00:00.000Z')
 
-function stubCopies(period = testPeriod()) {
+function stubCopies(period = testPeriod(), periods: PeriodListItem[] = []) {
   loadPeriodMock.mockResolvedValue({ status: 'ok', period })
+  vi.mocked(loadPeriods).mockResolvedValue({
+    status: 'ok',
+    list: { now: period.now, periods },
+  })
   loadLevelsMock.mockResolvedValue({
     status: 'ok',
     levels: { now: period.now, groups: [groupLevel('chest'), groupLevel('back')] },
@@ -134,6 +142,28 @@ describe('Given two workouts in the period, 240 and 180 points (US-F19-02)', () 
   })
 })
 
+describe('Given two ended periods (US-F11-02)', () => {
+  describe('When the athlete opens the period', () => {
+    it('Then the two snapshots should show side by side, the most recent first', async () => {
+      stubCopies(testPeriod({ number: 3 }), [
+        frozenPeriod({ number: 3, frozenAt: null, snapshot: null }),
+        frozenPeriod({ number: 2 }),
+        frozenPeriod(),
+      ])
+
+      render(<PeriodScreen timeZone={SAO_PAULO} />)
+
+      const snapshots = await screen.findByRole('list', { name: 'Retratos' })
+      expect({
+        heading: screen.getByRole('heading', { level: 2, name: 'Retratos' }) !== null,
+        cards: within(snapshots)
+          .getAllByRole('article')
+          .map((card) => card.getAttribute('aria-label')),
+      }).toEqual({ heading: true, cards: ['Período 2', 'Período 1'] })
+    })
+  })
+})
+
 describe('Given a period with an intention and no goal measured yet', () => {
   describe('When the athlete opens the period', () => {
     it('Then should show the intention, a way to edit it and why each goal is empty', async () => {
@@ -180,6 +210,7 @@ describe('Given no signal and no copy of the period', () => {
     it('Then should show the offline notice', async () => {
       loadPeriodMock.mockResolvedValue({ status: 'offline' })
       loadLevelsMock.mockResolvedValue({ status: 'offline' })
+      vi.mocked(loadPeriods).mockResolvedValue({ status: 'offline' })
 
       render(<PeriodScreen timeZone={SAO_PAULO} />)
 

@@ -81,12 +81,19 @@ function ShapeOf({ shape, ...props }: { shape: Shape } & Record<string, unknown>
 export type BodyFigureProps = {
   groups: BodyMapGroup[]
   selectedSlug: string | null
-  onSelect: (slug: string) => void
+  // Absent on a figure only to look at, as the reduced map of a snapshot.
+  onSelect?: (slug: string) => void
+  className?: string
 }
 
 // Decorative for the screen reader: the list of the groups below says the same in text. The tap on
 // a part is a shortcut to the row of the group, which keyboard and screen reader use.
-export function BodyFigure({ groups, selectedSlug, onSelect }: BodyFigureProps) {
+export function BodyFigure({
+  groups,
+  selectedSlug,
+  onSelect,
+  className = 'max-h-[290px]',
+}: BodyFigureProps) {
   const hatchId = useId()
   const stateOf = (slug: string): FigureState => {
     const group = groups.find((listed) => listed.slug === slug)
@@ -94,14 +101,14 @@ export function BodyFigure({ groups, selectedSlug, onSelect }: BodyFigureProps) 
   }
   const select = (event: MouseEvent<SVGSVGElement>) => {
     const slug = (event.target as Element).closest('[data-group]')?.getAttribute('data-group')
-    if (slug) onSelect(slug)
+    if (slug) onSelect?.(slug)
   }
   return (
     <svg
       viewBox="0 0 300 330"
       aria-hidden="true"
-      className="block h-auto max-h-[290px] w-full"
-      onClick={select}
+      className={`block h-auto w-full ${className}`}
+      onClick={onSelect ? select : undefined}
     >
       <defs>
         <pattern
@@ -133,7 +140,7 @@ export function BodyFigure({ groups, selectedSlug, onSelect }: BodyFigureProps) 
             fill={state === 'cooling' ? `url(#${hatchId})` : FLAT_FILL[state]}
             stroke={selected ? 'var(--color-label)' : 'var(--color-background-grouped)'}
             strokeWidth={selected ? 3 : 2}
-            className="cursor-pointer"
+            className={onSelect ? 'cursor-pointer' : undefined}
           />
         )
       })}

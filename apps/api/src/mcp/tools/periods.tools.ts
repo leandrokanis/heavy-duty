@@ -5,7 +5,9 @@ import { getCurrentPeriod, setPeriodIntention } from '../../modules/periods/peri
 import {
   CurrentPeriodSchema,
   PeriodIntentionInputSchema,
+  PeriodListSchema,
 } from '../../modules/periods/periods.schemas.js'
+import { listPeriodsWithSnapshots } from '../../modules/periods/snapshot.service.js'
 import type { ToolDeps } from './index.js'
 import { runTool } from './tool-result.js'
 
@@ -35,5 +37,17 @@ export function registerPeriodTools(server: McpServer, { db, now, timeZone }: To
       annotations: { readOnlyHint: false, destructiveHint: false },
     },
     (input) => runTool(() => setPeriodIntention(db, input, now(), zone)),
+  )
+
+  server.registerTool(
+    'list_periods',
+    {
+      description:
+        'List the periods of 12 weeks from the most recent to period 1, each with number, startsAt, endsAt (UTC instants in ISO 8601, endsAt exclusive), intention (null with none), frozenAt (the instant the snapshot was written, null for the current period) and snapshot. Takes no parameter and only reads, apart from freezing an ended period still with no snapshot, as the game scheduler does every 60 s. The snapshot is written once at the end of the period and never changes, not even when a workout of that period is edited or removed with update_workout_set or remove_workout, nor when the formula of the game changes. It uses only the sets before the end and holds windowsUsed, windowsMissed and usedPercent (rounded, null with 0 of 0) of the period, points (the sum of the points of the workouts that started in the period), bestWorkoutPoints (the points of its best workout, 0 with none), weekStreak (the weeks in a row with the weekly goal met at the end, as in get_period) and groups (the 11 muscle groups in catalog order, each with level, points on the bar, bestLevel and tier at the end, windowState at the end, resting, open, cooling or none, and windowsUsed, windowsMissed and usedPercent in the period). The current period has a null snapshot; read it with get_period. The same object that GET /api/periods returns.',
+      inputSchema: z.object({}),
+      outputSchema: PeriodListSchema,
+      annotations: { readOnlyHint: true },
+    },
+    () => runTool(() => listPeriodsWithSnapshots(db, now(), zone)),
   )
 }

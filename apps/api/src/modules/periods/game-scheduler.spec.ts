@@ -62,6 +62,32 @@ describe('Given the game scheduler running at the end of period 1', () => {
   })
 })
 
+describe('Given period 1 ended with the server running (US-F11-02)', () => {
+  describe('When a tick runs after the end', () => {
+    it('Then should freeze the snapshot of period 1', async () => {
+      const db = createTestDatabase()
+      await runGameTick({
+        db,
+        now: () => new Date('2026-11-25T13:00:00.000Z'),
+        timeZone: SAO_PAULO,
+        log: quietLog(),
+      })
+
+      await runGameTick({
+        db,
+        now: () => new Date('2027-02-15T03:00:30.000Z'),
+        timeZone: SAO_PAULO,
+        log: quietLog(),
+      })
+
+      expect(listPeriods(db).map(({ number, frozenAt }) => [number, frozenAt])).toEqual([
+        [1, '2027-02-15T03:00:30.000Z'],
+        [2, null],
+      ])
+    })
+  })
+})
+
 describe('Given a database that fails', () => {
   describe('When a tick runs', () => {
     it('Then should log the error and not throw', async () => {
@@ -75,7 +101,7 @@ describe('Given a database that fails', () => {
       await runGameTick({ db: broken, now: () => new Date(), timeZone: SAO_PAULO, log })
 
       expect(log.error).toHaveBeenCalledWith(
-        'game: could not ensure the current period: database is locked',
+        'game: could not ensure the current period and freeze the ended ones: database is locked',
       )
     })
   })

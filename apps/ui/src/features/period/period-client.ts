@@ -1,4 +1,4 @@
-import type { CurrentPeriod } from './period.types'
+import type { CurrentPeriod, PeriodList } from './period.types'
 
 export type PeriodResult =
   | { status: 'ok'; period: CurrentPeriod }
@@ -12,7 +12,25 @@ export type IntentionResult =
   | { status: 'rejected'; message: string }
 
 const CURRENT_PERIOD_PATH = '/api/periods/current'
+const PERIODS_PATH = '/api/periods'
 const INTENTION_PATH = '/api/periods/current/intention'
+
+export type PeriodListResult =
+  | { status: 'ok'; list: PeriodList }
+  | { status: 'unauthenticated' }
+  | { status: 'offline' }
+
+export async function fetchPeriods(): Promise<PeriodListResult> {
+  try {
+    const response = await fetch(PERIODS_PATH, { credentials: 'same-origin' })
+    if (response.status === 200)
+      return { status: 'ok', list: (await response.json()) as PeriodList }
+    if (response.status === 401) return { status: 'unauthenticated' }
+    return { status: 'offline' }
+  } catch {
+    return { status: 'offline' }
+  }
+}
 
 export async function fetchCurrentPeriod(): Promise<PeriodResult> {
   try {

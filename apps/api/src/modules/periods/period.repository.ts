@@ -9,6 +9,20 @@ export type PeriodRow = {
   endsAt: string
   intention: string | null
   frozenAt: string | null
+  // The summary of the snapshot, null until frozenAt.
+  windowsUsed: number | null
+  windowsMissed: number | null
+  points: number | null
+  bestWorkoutPoints: number | null
+  weekStreak: number | null
+}
+
+export type PeriodSummary = {
+  windowsUsed: number
+  windowsMissed: number
+  points: number
+  bestWorkoutPoints: number
+  weekStreak: number
 }
 
 export function findPeriod(db: Database, number: number): PeriodRow | undefined {
@@ -20,7 +34,10 @@ export function listPeriods(db: Database): PeriodRow[] {
 }
 
 // The unique number keeps one row per period when two callers ensure the same period.
-export function insertPeriod(db: Database, row: Omit<PeriodRow, 'intention' | 'frozenAt'>): void {
+export function insertPeriod(
+  db: Database,
+  row: Pick<PeriodRow, 'id' | 'number' | 'startsAt' | 'endsAt'>,
+): void {
   db.insert(periods).values(row).onConflictDoNothing({ target: periods.number }).run()
 }
 

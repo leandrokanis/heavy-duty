@@ -11,10 +11,12 @@ import { LevelBadge } from '@/features/workout/level-badge'
 import type { MuscleGroupLevels } from '@/features/workout/levels.types'
 import { loadLevels } from '@/sync/levels-cache'
 import { loadPeriod, storePeriod } from '@/sync/period-cache'
+import { loadPeriods } from '@/sync/periods-cache'
 import { IntentionSheet } from './intention-sheet'
-import type { CurrentPeriod } from './period.types'
+import type { CurrentPeriod, PeriodListItem } from './period.types'
 import { formatPeriodDays, weekOfPeriod } from './period-format'
 import { RankingList } from './ranking-list'
+import { SnapshotList } from './snapshot-list'
 
 const CLOCK_TICK_MS = 60_000
 const RING_RADIUS = 42
@@ -30,11 +32,21 @@ type ScreenState =
   | { status: 'loading' }
   | { status: 'offline' }
   | { status: 'unauthenticated' }
-  | { status: 'ok'; period: CurrentPeriod; levels: MuscleGroupLevels | null }
+  | {
+      status: 'ok'
+      period: CurrentPeriod
+      levels: MuscleGroupLevels | null
+      // Null while the list of the periods is unknown, as with no signal and no copy.
+      periods: PeriodListItem[] | null
+    }
 
 async function loadCopies(): Promise<ScreenState> {
-  const [period, levels] = await Promise.all([loadPeriod(), loadLevels()])
-  if (period.status === 'unauthenticated' || levels.status === 'unauthenticated') {
+  const [period, levels, list] = await Promise.all([loadPeriod(), loadLevels(), loadPeriods()])
+  if (
+    period.status === 'unauthenticated' ||
+    levels.status === 'unauthenticated' ||
+    list.status === 'unauthenticated'
+  ) {
     return { status: 'unauthenticated' }
   }
   if (period.status !== 'ok') return { status: 'offline' }
@@ -42,6 +54,7 @@ async function loadCopies(): Promise<ScreenState> {
     status: 'ok',
     period: period.period,
     levels: levels.status === 'ok' ? levels.levels : null,
+    periods: list.status === 'ok' ? list.list.periods : null,
   }
 }
 
@@ -87,6 +100,7 @@ export function PeriodScreen({ timeZone }: PeriodScreenProps = {}) {
             <PeriodContent
               period={state.period}
               levels={state.levels}
+              periods={state.periods}
               nowMs={nowMs}
               timeZone={timeZone}
               onEdit={() => setEditing(true)}
@@ -114,12 +128,13 @@ export function PeriodScreen({ timeZone }: PeriodScreenProps = {}) {
 type PeriodContentProps = {
   period: CurrentPeriod
   levels: MuscleGroupLevels | null
+  periods: PeriodListItem[] | null
   nowMs: number
   timeZone?: string
   onEdit: () => void
 }
 
-function PeriodContent({ period, levels, nowMs, timeZone, onEdit }: PeriodContentProps) {
+function PeriodContent({ period, levels, periods, nowMs, timeZone, onEdit }: PeriodContentProps) {
   const week = weekOfPeriod(period.startsAt, period.weekCount, nowMs)
   return (
     <>
@@ -221,6 +236,12 @@ function PeriodContent({ period, levels, nowMs, timeZone, onEdit }: PeriodConten
       ) : null}
       <h2 className={SECTION_TITLE_CLASS}>Ranking dos seus treinos</h2>
       <RankingList ranking={period.ranking ?? []} timeZone={timeZone} />
+      {periods ? (
+        <>
+          <h2 className={SECTION_TITLE_CLASS}>Retratos</h2>
+          <SnapshotList periods={periods} timeZone={timeZone} />
+        </>
+      ) : null}
     </>
   )
 }

@@ -2,7 +2,12 @@ import { createRoute, type OpenAPIHono } from '@hono/zod-openapi'
 import type { Database } from '../../db/connection.js'
 import { createRouter, ErrorSchema, UNAUTHENTICATED_RESPONSE } from '../../http/errors.js'
 import { getCurrentPeriod, setPeriodIntention } from './period.service.js'
-import { CurrentPeriodSchema, PeriodIntentionInputSchema } from './periods.schemas.js'
+import {
+  CurrentPeriodSchema,
+  PeriodIntentionInputSchema,
+  PeriodListSchema,
+} from './periods.schemas.js'
+import { listPeriodsWithSnapshots } from './snapshot.service.js'
 
 const UNEXPECTED_RESPONSE = {
   description: 'Unexpected error',
@@ -49,6 +54,23 @@ const periodIntentionRoute = createRoute({
   },
 })
 
+const periodListRoute = createRoute({
+  method: 'get',
+  path: '/api/periods',
+  tags: ['periods'],
+  summary:
+    'List the periods from the most recent, with the snapshot frozen at the end of each ended period',
+  responses: {
+    200: {
+      description:
+        'The periods from the most recent to period 1. An ended period carries its snapshot, frozen once at its end: the windows used and missed, the points of its workouts, the points of its best workout, the streak of weeks and, for each of the 11 muscle groups in catalog order, the level, the bar, the best level, the tier, the state of the window and the windows used and missed in the period. The current period has a null snapshot. Reading freezes an ended period still with no snapshot',
+      content: { 'application/json': { schema: PeriodListSchema } },
+    },
+    401: UNAUTHENTICATED_RESPONSE,
+    500: UNEXPECTED_RESPONSE,
+  },
+})
+
 export function createPeriodsRoutes({
   db,
   now,
@@ -61,6 +83,7 @@ export function createPeriodsRoutes({
   const routes = createRouter()
 
   routes.openapi(currentPeriodRoute, (c) => c.json(getCurrentPeriod(db, now(), timeZone), 200))
+  routes.openapi(periodListRoute, (c) => c.json(listPeriodsWithSnapshots(db, now(), timeZone), 200))
   routes.openapi(periodIntentionRoute, (c) =>
     c.json(setPeriodIntention(db, c.req.valid('json'), now(), timeZone), 200),
   )

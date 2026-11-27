@@ -105,12 +105,46 @@ export const periods = sqliteTable(
     endsAt: text('ends_at').notNull(),
     intention: text('intention'),
     frozenAt: text('frozen_at'),
+    // The summary of the snapshot, null until frozen_at (D99, ADR-039).
+    windowsUsed: integer('windows_used'),
+    windowsMissed: integer('windows_missed'),
+    points: integer('points'),
+    bestWorkoutPoints: integer('best_workout_points'),
+    weekStreak: integer('week_streak'),
   },
   (table) => [
     check('periods_number_check', sql`${table.number} >= 1`),
     check(
       'periods_intention_check',
       sql`${table.intention} IS NULL OR length(${table.intention}) BETWEEN 1 AND 120`,
+    ),
+  ],
+)
+
+// Written once at the end of the period and never changed, even if a workout of the period is
+// edited or the formula of the game changes (ADR-010, ADR-039).
+export const periodSnapshots = sqliteTable(
+  'period_snapshots',
+  {
+    id: text('id').primaryKey(),
+    periodId: text('period_id')
+      .notNull()
+      .references(() => periods.id, { onDelete: 'restrict' }),
+    muscleGroupId: text('muscle_group_id')
+      .notNull()
+      .references(() => muscleGroups.id, { onDelete: 'restrict' }),
+    level: integer('level').notNull(),
+    points: integer('points').notNull(),
+    bestLevel: integer('best_level').notNull(),
+    windowState: text('window_state', { enum: ['resting', 'open', 'cooling', 'none'] }).notNull(),
+    windowsUsed: integer('windows_used').notNull(),
+    windowsMissed: integer('windows_missed').notNull(),
+  },
+  (table) => [
+    unique('period_snapshots_period_group_unique').on(table.periodId, table.muscleGroupId),
+    check(
+      'period_snapshots_window_state_check',
+      sql`${table.windowState} IN ('resting', 'open', 'cooling', 'none')`,
     ),
   ],
 )

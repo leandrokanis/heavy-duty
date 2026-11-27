@@ -1,3 +1,5 @@
+import type { Tier } from '@/features/workout/levels.types'
+
 export type WindowsTally = {
   windowsUsed: number
   windowsMissed: number
@@ -52,3 +54,32 @@ export type CurrentPeriod = {
   // Absent in a copy saved on the device before US-F19-02.
   ranking?: RankedWorkout[]
 }
+
+// The snapshot of an ended period, frozen once at its end (US-F11-02, D99).
+export type GroupSnapshot = WindowsTally & {
+  muscleGroup: { slug: string; name: string }
+  level: number
+  points: number
+  bestLevel: number
+  tier: Tier
+  windowState: 'resting' | 'open' | 'cooling' | 'none'
+}
+
+export type PeriodSnapshot = WindowsTally & {
+  points: number
+  bestWorkoutPoints: number
+  weekStreak: number
+  groups: GroupSnapshot[]
+}
+
+export type PeriodListItem = {
+  number: number
+  startsAt: string
+  endsAt: string
+  intention: string | null
+  frozenAt: string | null
+  snapshot: PeriodSnapshot | null
+}
+
+// The answer of GET /api/periods (contratos.md), from the most recent period.
+export type PeriodList = { now: string; periods: PeriodListItem[] }

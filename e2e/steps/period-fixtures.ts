@@ -27,10 +27,12 @@ export function mondayOfThisWeekMs(nowMs: number = Date.now()): number {
   )
 }
 
-// Moves the start of period 1 back, as if the API first started weeks before this week.
+// Moves the start of period 1 back, as if the API first started weeks before this week; the
+// snapshots of the periods go with them.
 export function startFirstPeriodWeeksAgo(weeks: number): void {
   const startsAtMs = mondayOfThisWeekMs() - weeks * WEEK_MS
   withDatabase((db) => {
+    db.exec('DELETE FROM period_snapshots')
     db.exec('DELETE FROM periods')
     db.prepare('INSERT INTO periods (id, number, starts_at, ends_at) VALUES (?, 1, ?, ?)').run(
       randomUUID(),
@@ -50,4 +52,18 @@ export function setOnlyWeeklyGoal(windows: number, definedAtMs: number): void {
       new Date(definedAtMs).toISOString(),
     )
   })
+}
+
+// The first set of the earliest workout, for an edit through MCP.
+export function firstSetOfEarliestWorkout(): { workoutId: string; setId: string } {
+  return withDatabase(
+    (db) =>
+      db
+        .prepare(
+          `SELECT w.id AS workoutId, s.id AS setId FROM workouts w
+           JOIN workout_sets s ON s.workout_id = w.id
+           ORDER BY w.started_at, s.performed_at LIMIT 1`,
+        )
+        .get() as { workoutId: string; setId: string },
+  )
 }

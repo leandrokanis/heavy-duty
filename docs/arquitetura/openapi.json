@@ -2395,6 +2395,190 @@
           "position"
         ]
       },
+      "PeriodList": {
+        "type": "object",
+        "properties": {
+          "now": {
+            "type": "string",
+            "example": "2027-02-20T12:00:00.000Z"
+          },
+          "periods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PeriodListItem"
+            }
+          }
+        },
+        "required": [
+          "now",
+          "periods"
+        ]
+      },
+      "PeriodListItem": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer",
+            "example": 1
+          },
+          "startsAt": {
+            "type": "string",
+            "example": "2026-11-23T03:00:00.000Z"
+          },
+          "endsAt": {
+            "type": "string",
+            "example": "2027-02-15T03:00:00.000Z"
+          },
+          "intention": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Treinar três vezes por semana até o fim do ano."
+          },
+          "frozenAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2027-02-15T03:00:41.000Z"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/PeriodSnapshot"
+          }
+        },
+        "required": [
+          "number",
+          "startsAt",
+          "endsAt",
+          "intention",
+          "frozenAt",
+          "snapshot"
+        ]
+      },
+      "PeriodSnapshot": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "windowsUsed": {
+            "type": "integer",
+            "example": 17
+          },
+          "windowsMissed": {
+            "type": "integer",
+            "example": 8
+          },
+          "usedPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 68
+          },
+          "points": {
+            "type": "integer",
+            "example": 3120
+          },
+          "bestWorkoutPoints": {
+            "type": "integer",
+            "example": 240
+          },
+          "weekStreak": {
+            "type": "integer",
+            "example": 5
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupSnapshot"
+            }
+          }
+        },
+        "required": [
+          "windowsUsed",
+          "windowsMissed",
+          "usedPercent",
+          "points",
+          "bestWorkoutPoints",
+          "weekStreak",
+          "groups"
+        ]
+      },
+      "GroupSnapshot": {
+        "type": "object",
+        "properties": {
+          "muscleGroup": {
+            "type": "object",
+            "properties": {
+              "slug": {
+                "type": "string",
+                "example": "chest"
+              },
+              "name": {
+                "type": "string",
+                "example": "peito"
+              }
+            },
+            "required": [
+              "slug",
+              "name"
+            ]
+          },
+          "level": {
+            "type": "integer",
+            "example": 12
+          },
+          "points": {
+            "type": "integer",
+            "example": 31
+          },
+          "bestLevel": {
+            "type": "integer",
+            "example": 13
+          },
+          "tier": {
+            "$ref": "#/components/schemas/Tier"
+          },
+          "windowState": {
+            "type": "string",
+            "enum": [
+              "resting",
+              "open",
+              "cooling",
+              "none"
+            ],
+            "example": "open"
+          },
+          "windowsUsed": {
+            "type": "integer",
+            "example": 17
+          },
+          "windowsMissed": {
+            "type": "integer",
+            "example": 8
+          },
+          "usedPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 68
+          }
+        },
+        "required": [
+          "muscleGroup",
+          "level",
+          "points",
+          "bestLevel",
+          "tier",
+          "windowState",
+          "windowsUsed",
+          "windowsMissed",
+          "usedPercent"
+        ]
+      },
       "PushKey": {
         "type": "object",
         "properties": {
@@ -5205,6 +5389,46 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CurrentPeriod"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/periods": {
+      "get": {
+        "tags": [
+          "periods"
+        ],
+        "summary": "List the periods from the most recent, with the snapshot frozen at the end of each ended period",
+        "responses": {
+          "200": {
+            "description": "The periods from the most recent to period 1. An ended period carries its snapshot, frozen once at its end: the windows used and missed, the points of its workouts, the points of its best workout, the streak of weeks and, for each of the 11 muscle groups in catalog order, the level, the bar, the best level, the tier, the state of the window and the windows used and missed in the period. The current period has a null snapshot. Reading freezes an ended period still with no snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeriodList"
                 }
               }
             }

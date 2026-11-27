@@ -1,4 +1,4 @@
-import type { CurrentPeriod } from '@/features/period/period.types'
+import type { CurrentPeriod, PeriodList } from '@/features/period/period.types'
 import type { MuscleGroupLevels } from '@/features/workout/levels.types'
 import type { Today } from '@/features/workout/today.types'
 import type { WeekWindows } from '@/features/workout/weekly-windows.types'
@@ -102,6 +102,7 @@ export type ProgramCacheRow =
   | { key: 'levels'; savedAtMs: number; levels: MuscleGroupLevels }
   | { key: 'weekWindows'; savedAtMs: number; week: WeekWindows }
   | { key: 'period'; savedAtMs: number; period: CurrentPeriod }
+  | { key: 'periods'; savedAtMs: number; list: PeriodList }
 
 // Where the queue persists; the queue keeps its own in-memory mirror on top of it.
 export interface QueueStore {

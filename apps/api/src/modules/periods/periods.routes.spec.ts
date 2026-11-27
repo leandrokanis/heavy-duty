@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { createApp } from '../../app.js'
+import { createId } from '../../db/id.js'
 import { createTestDatabase } from '../../test/database.js'
 import { createProgramTestApp } from '../../test/programs.js'
 import { recordWorkout } from '../../test/workouts.js'
 import { addExercise } from '../catalog/exercise.service.js'
 import { addMuscle } from '../catalog/muscle.service.js'
-import type { CurrentPeriod } from './periods.schemas.js'
+import { insertPeriod } from './period.repository.js'
+import type { CurrentPeriod, PeriodList } from './periods.schemas.js'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -222,6 +224,54 @@ describe('Given the current period has an intention', () => {
       await putIntention(app, { intention: '   ' })
 
       expect((await getPeriod(app)).intention).toBeNull()
+    })
+  })
+})
+
+// The sessions of access expire in 30 days, so period 1 starts 13 weeks before the clock.
+describe('Given back trained in period 1, which ended a week before the clock (US-F11-02)', () => {
+  describe('When GET /api/periods is called', () => {
+    it('Then should freeze period 1 and list period 2 first, open, then period 1 with its snapshot', async () => {
+      const { app, db, train } = await givenBackHistory()
+      insertPeriod(db, {
+        id: createId(),
+        number: 1,
+        startsAt: '2026-08-17T03:00:00.000Z',
+        endsAt: '2026-11-09T03:00:00.000Z',
+      })
+      train('2026-08-17T10:00:00.000Z')
+
+      const response = await app.request('/api/periods')
+      const body = (await response.json()) as PeriodList
+
+      expect({
+        status: response.status,
+        periods: body.periods.map(({ number, frozenAt, snapshot }) => [
+          number,
+          frozenAt !== null,
+          snapshot?.points ?? null,
+        ]),
+      }).toEqual({
+        status: 200,
+        periods: [
+          [2, false, null],
+          [1, true, 30],
+        ],
+      })
+    })
+  })
+})
+
+describe('Given no session of access, for the list of periods', () => {
+  describe('When GET /api/periods is called', () => {
+    it('Then should respond 401 with no period', async () => {
+      const app = createApp({
+        nodeEnv: 'test',
+        databaseHealth: () => true,
+        db: createTestDatabase(),
+      })
+
+      expect((await app.request('/api/periods')).status).toBe(401)
     })
   })
 })

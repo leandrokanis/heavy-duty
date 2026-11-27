@@ -1,4 +1,5 @@
 import { z } from '@hono/zod-openapi'
+import { TierSchema } from '../windows/windows.schemas.js'
 
 const WindowsTallyShape = {
   windowsUsed: z.number().int().openapi({ example: 17 }),
@@ -88,3 +89,51 @@ export const PeriodIntentionInputSchema = z.object({
 })
 
 export type PeriodIntentionInput = z.infer<typeof PeriodIntentionInputSchema>
+
+export const GroupSnapshotSchema = z
+  .object({
+    muscleGroup: z.object({
+      slug: z.string().openapi({ example: 'chest' }),
+      name: z.string().openapi({ example: 'peito' }),
+    }),
+    level: z.number().int().openapi({ example: 12 }),
+    points: z.number().int().openapi({ example: 31 }),
+    bestLevel: z.number().int().openapi({ example: 13 }),
+    tier: TierSchema,
+    windowState: z.enum(['resting', 'open', 'cooling', 'none']).openapi({ example: 'open' }),
+    ...WindowsTallyShape,
+  })
+  .openapi('GroupSnapshot')
+
+export const PeriodSnapshotSchema = z
+  .object({
+    ...WindowsTallyShape,
+    points: z.number().int().openapi({ example: 3120 }),
+    bestWorkoutPoints: z.number().int().openapi({ example: 240 }),
+    weekStreak: z.number().int().openapi({ example: 5 }),
+    groups: z.array(GroupSnapshotSchema),
+  })
+  .openapi('PeriodSnapshot')
+
+export const PeriodListItemSchema = z
+  .object({
+    number: z.number().int().openapi({ example: 1 }),
+    startsAt: z.string().openapi({ example: '2026-11-23T03:00:00.000Z' }),
+    endsAt: z.string().openapi({ example: '2027-02-15T03:00:00.000Z' }),
+    intention: z
+      .string()
+      .nullable()
+      .openapi({ example: 'Treinar três vezes por semana até o fim do ano.' }),
+    frozenAt: z.string().nullable().openapi({ example: '2027-02-15T03:00:41.000Z' }),
+    snapshot: PeriodSnapshotSchema.nullable(),
+  })
+  .openapi('PeriodListItem')
+
+export const PeriodListSchema = z
+  .object({
+    now: z.string().openapi({ example: '2027-02-20T12:00:00.000Z' }),
+    periods: z.array(PeriodListItemSchema),
+  })
+  .openapi('PeriodList')
+
+export type PeriodList = z.infer<typeof PeriodListSchema>

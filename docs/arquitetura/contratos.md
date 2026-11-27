@@ -1242,7 +1242,7 @@ Exemplo, com a meta 6 e as costas treinadas na segunda e na quinta:
 
 ## Períodos
 
-O período de 12 semanas organiza o progresso com uma frase de intenção (US-F11-01, ADR-039). A API guarda o início do período 1, gravado na primeira partida com a migração `0016_periods`, na segunda 00:00 da semana no fuso `NOTICE_TIME_ZONE`; os períodos seguintes saem da aritmética, de 84 em 84 dias, sem realinhar ao trimestre. A semana do servidor é um bloco de 7 × 24 h a partir do início do período. As rotas existem só quando a API abriu o banco e exigem sessão de acesso. As ferramentas MCP `get_period` e `set_period_intention` chamam os mesmos services (`mcp.md`), em `apps/api/src/modules/periods/period.service.ts`.
+O período de 12 semanas organiza o progresso com uma frase de intenção (US-F11-01, ADR-039). A API guarda o início do período 1, gravado na primeira partida com a migração `0016_periods`, na segunda 00:00 da semana no fuso `NOTICE_TIME_ZONE`; os períodos seguintes saem da aritmética, de 84 em 84 dias, sem realinhar ao trimestre. A semana do servidor é um bloco de 7 × 24 h a partir do início do período. As rotas existem só quando a API abriu o banco e exigem sessão de acesso. As ferramentas MCP `get_period` e `set_period_intention` chamam os mesmos services (`mcp.md`), em `apps/api/src/modules/periods/period.service.ts`, e `list_periods`, o mesmo service de `GET /api/periods` (US-F11-02), em `snapshot.service.ts`. O retrato de cada período terminado fica na migração `0017_period_snapshots`.
 
 ### GET /api/periods/current
 
@@ -1319,6 +1319,52 @@ Exemplo, na quarta da semana 2 do período 1:
 | 400 | `{ "code": "period_intention_too_long", "message": "a frase de intenção deve ter até 120 caracteres" }` | Mais de 120 caracteres |
 | 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
 | 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+### GET /api/periods
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Listar os períodos na tela Período, com o retrato de cada período terminado |
+| Story | US-F11-02 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Grava as linhas dos períodos que faltam até o atual, como `GET /api/periods/current`, e congela o período terminado ainda sem retrato (ADR-039). Nenhum outro dado muda |
+| Idempotência | Idempotente: o retrato de um período é gravado uma vez |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `{ "now", "periods" }` | Sempre, com sessão |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+- `periods` vai do período mais recente ao período 1. Cada item tem `number`, `startsAt`, `endsAt` (exclusivo), `intention`, `frozenAt` (o instante em que o retrato foi gravado, `null` no período atual) e `snapshot`.
+- `snapshot` é `null` no período atual. No período terminado, é o retrato congelado no fim (D99): `windowsUsed`, `windowsMissed` e `usedPercent` do período, `points` (a soma dos pontos dos treinos que começaram no período, D105), `bestWorkoutPoints` (os pontos do melhor treino, 0 sem treino), `weekStreak` (a sequência de semanas no fim, D101) e `groups`, os 11 grupos na ordem do catálogo, cada um com `level`, `points` (da barra), `bestLevel`, `tier`, `windowState` (`resting`, `open`, `cooling` ou `none`, no instante do fim) e `windowsUsed`, `windowsMissed` e `usedPercent` no período, o progresso do grupo no período (D100).
+- O retrato usa só as séries anteriores ao fim do período. Ele é gravado uma vez, pelo agendador do jogo ou pela primeira leitura depois do fim, e não muda depois, nem com a edição ou a remoção de um treino do período pelo Claude, nem com a mudança da fórmula do jogo (ADR-010, ADR-039). O retrato gravado com atraso, depois de uma edição feita entre o fim e o congelamento, já sai com a edição.
+- `usedPercent` e `tier` saem da conta sobre os números gravados, a cada leitura.
+
+Exemplo, na semana 1 do período 2:
+
+```json
+{
+  "now": "2027-02-20T12:00:00.000Z",
+  "periods": [
+    { "number": 2, "startsAt": "2027-02-15T03:00:00.000Z", "endsAt": "2027-05-10T03:00:00.000Z", "intention": null, "frozenAt": null, "snapshot": null },
+    {
+      "number": 1,
+      "startsAt": "2026-11-23T03:00:00.000Z",
+      "endsAt": "2027-02-15T03:00:00.000Z",
+      "intention": "Treinar três vezes por semana até o fim do ano.",
+      "frozenAt": "2027-02-15T03:00:41.000Z",
+      "snapshot": {
+        "windowsUsed": 54, "windowsMissed": 21, "usedPercent": 72,
+        "points": 3120, "bestWorkoutPoints": 240, "weekStreak": 5,
+        "groups": [
+          { "muscleGroup": { "slug": "chest", "name": "peito" }, "level": 12, "points": 31, "bestLevel": 13, "tier": "gold", "windowState": "open", "windowsUsed": 9, "windowsMissed": 2, "usedPercent": 82 }
+        ]
+      }
+    }
+  ]
+}
+```
 
 ## Avisos no celular
 
@@ -1420,11 +1466,10 @@ O `GET` da mesma URL não desliga nada e responde 401, como toda rota protegida:
 
 ## Período e medalhas (planejado na onda 7b)
 
-As rotas desta seção estão planejadas para a onda 7b (ADR-039, ADR-040) e ainda não existem no código nem em `openapi.json`. A rota `GET /api/periods/current` já está completa (seção "Períodos", US-F11-01, US-F11-03 e US-F19-02). A story de cada rota escreve aqui o contrato completo, no formato das outras seções, e gera `openapi.json` no mesmo commit. Todas exigem sessão de acesso.
+As rotas desta seção estão planejadas para a onda 7b (ADR-039, ADR-040) e ainda não existem no código nem em `openapi.json`. As rotas `GET /api/periods/current` (US-F11-01, US-F11-03 e US-F19-02) e `GET /api/periods` (US-F11-02) já existem, na seção "Períodos". A story de cada rota escreve aqui o contrato completo, no formato das outras seções, e gera `openapi.json` no mesmo commit. Todas exigem sessão de acesso.
 
 | Rota | Story | Objetivo |
 |---|---|---|
-| `GET /api/periods` | US-F11-02 | Listar os períodos, com o retrato de cada período terminado (D99). A leitura congela o período terminado ainda sem retrato (ADR-039) |
 | `GET /api/medals` | US-F19-01 | Listar o catálogo das medalhas, com a conquista de cada uma (`awardedAt`, `subject`, treino). A medalha oculta ainda não conquistada vem sem nome e sem critério (D103, D104) |
 
 O período e as semanas do período usam o fuso `NOTICE_TIME_ZONE`, e as datas vêm em ISO 8601, em UTC (D96). Na US-F17-03, `recentFailures` de `GET /api/system/status` passa a aceitar o `kind` `weekly_digest` (ADR-041).

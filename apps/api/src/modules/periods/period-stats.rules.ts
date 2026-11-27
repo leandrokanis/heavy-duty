@@ -12,7 +12,7 @@ export type WindowsTally = {
 
 export type PeriodWindows = { total: WindowsTally; byGroup: Map<string, WindowsTally> }
 
-function tallyOf(windowsUsed: number, windowsMissed: number): WindowsTally {
+export function tallyOf(windowsUsed: number, windowsMissed: number): WindowsTally {
   const finished = windowsUsed + windowsMissed
   return {
     windowsUsed,

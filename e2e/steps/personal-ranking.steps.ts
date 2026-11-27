@@ -18,6 +18,7 @@ Given('the current period started {int} days ago', ({}, days: number) => {
   const db = new DatabaseSync(API_DATABASE_PATH)
   try {
     db.exec('PRAGMA busy_timeout = 5000')
+    db.exec('DELETE FROM period_snapshots')
     db.exec('DELETE FROM periods')
     db.prepare(
       'INSERT INTO periods (id, number, starts_at, ends_at, intention, frozen_at) VALUES (?, 1, ?, ?, NULL, NULL)',

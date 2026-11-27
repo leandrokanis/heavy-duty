@@ -26,7 +26,7 @@ import {
 } from './periods.config.js'
 import type { CurrentPeriod, PeriodIntentionInput } from './periods.schemas.js'
 import { periodRankingOf, pointsStartedBetween, type RankedWorkout } from './ranking.rules.js'
-import { type WeekStatus, weekStreakOf } from './week-streak.rules.js'
+import { type StreakWeek, type WeekStatus, weekStreakOf } from './week-streak.rules.js'
 
 const iso = (instantMs: number) => new Date(instantMs).toISOString()
 const NO_WINDOWS: WindowsTally = { windowsUsed: 0, windowsMissed: 0, usedPercent: null }
@@ -96,6 +96,32 @@ export function getCurrentPeriod(db: Database, now: Date, timeZone: string): Cur
   }
 }
 
+export type CountedWeek = StreakWeek & { fromMs: number; toMs: number }
+
+// The weeks from period 1 with the windows used and the goal of each (D75, D101), for the streak.
+export function weeksSinceFirstPeriod(
+  db: Database,
+  trainingsOfGroups: Map<string, GroupTraining[]>,
+  weekCount: number,
+  nowMs: number,
+): CountedWeek[] {
+  const firstStartMs = Date.parse((findPeriod(db, 1) as PeriodRow).startsAt)
+  return windowsUsedByWeek({
+    trainingsOfGroups: trainingsOfGroups.values(),
+    parameters: GAME_PARAMETERS,
+    fromMs: firstStartMs,
+    weekCount,
+    nowMs,
+  }).map(({ fromMs, toMs, windowsUsed }) => ({
+    fromMs,
+    toMs,
+    periodNumber: periodAt(firstStartMs, fromMs).number,
+    weeklyGoal: findWeeklyGoalBefore(db, iso(toMs)),
+    windowsUsed,
+    finished: toMs <= nowMs,
+  }))
+}
+
 // The streak replays every week from period 1, so it crosses the periods (D101); the answer
 // lists the weeks of the current period up to the week of now.
 function streakOf(
@@ -107,21 +133,7 @@ function streakOf(
 ): Pick<CurrentPeriod, 'weeks' | 'weekStreak'> {
   const firstStartMs = Date.parse((findPeriod(db, 1) as PeriodRow).startsAt)
   const weekCount = Math.max(1, Math.floor((nowMs - firstStartMs) / WEEK_MS) + 1)
-  const counted = windowsUsedByWeek({
-    trainingsOfGroups: trainingsOfGroups.values(),
-    parameters: GAME_PARAMETERS,
-    fromMs: firstStartMs,
-    weekCount,
-    nowMs,
-  })
-  const weeks = counted.map(({ fromMs, toMs, windowsUsed }) => ({
-    fromMs,
-    toMs,
-    periodNumber: periodAt(firstStartMs, fromMs).number,
-    weeklyGoal: findWeeklyGoalBefore(db, iso(toMs)),
-    windowsUsed,
-    finished: toMs <= nowMs,
-  }))
+  const weeks = weeksSinceFirstPeriod(db, trainingsOfGroups, weekCount, nowMs)
   const streak = weekStreakOf(weeks)
   const periodStartMs = Date.parse(period.startsAt)
   return {

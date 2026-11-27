@@ -120,6 +120,13 @@
       "when": 1795752705844,
       "tag": "0016_periods",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1795756550768,
+      "tag": "0017_period_snapshots",
+      "breakpoints": true
     }
   ]
 }
