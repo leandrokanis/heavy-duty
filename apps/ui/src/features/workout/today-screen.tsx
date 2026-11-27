@@ -28,6 +28,7 @@ import { StartSheet } from './start-sheet'
 import { shownStreakOf } from './streak-item'
 import type { Today, TodayDay } from './today.types'
 import { countOfThisWeek } from './week'
+import { weekPointsOf } from './week-points-item'
 import type { WeekWindows } from './weekly-windows.types'
 import { suggestedLetterOf } from './window-suggestion'
 import type { ActivityWindows } from './windows.types'
@@ -39,6 +40,7 @@ import {
   type WorkoutFlowState,
   type WorkoutSession,
 } from './workout-flow'
+import { frozenPeriodPointsOf } from './workout-rank'
 import { WorkoutScreen } from './workout-screen'
 
 const WINDOW_TICK_MS = 60_000
@@ -176,7 +178,11 @@ export function TodayScreen() {
           onStart={(day) => {
             setSheetDay(null)
             if (result?.status === 'ok' && result.today.program) {
-              const session = startSession(result.today.program.id, day, windows, levels)
+              const session = startSession(result.today.program.id, day, {
+                windows,
+                levels,
+                period,
+              })
               const started = createWorkoutFlow(session)
               void saveActiveWorkout(started, Date.now())
               setFlow(started)
@@ -189,14 +195,19 @@ export function TodayScreen() {
   )
 }
 
+type GameCopies = {
+  windows: ActivityWindows | null
+  levels: MuscleGroupLevels | null
+  period: CurrentPeriod | null
+}
+
 // The workout id and start are born on the phone at "Começar"; the API creates the workout with the
-// first set. The windows and the levels on screen, from the API or the copy on the device, freeze
-// here (D56, ADR-034).
+// first set. The windows, the levels and the ranking of the period on screen, from the API or the
+// copy on the device, freeze here (D56, ADR-034).
 function startSession(
   programId: string,
   day: TodayDay,
-  windows: ActivityWindows | null,
-  levels: MuscleGroupLevels | null,
+  { windows, levels, period }: GameCopies,
 ): WorkoutSession {
   const nowMs = Date.now()
   return {
@@ -206,6 +217,7 @@ function startSession(
     day,
     windows: frozenWindowsOf(windows),
     levels: frozenLevelsOf(levels),
+    periodPoints: frozenPeriodPointsOf(period, nowMs),
   }
 }
 
@@ -242,6 +254,7 @@ function TodayContent({
         overallLevel={overallLevelViewOf(today, levels, windows, nowMs)}
         week={countOfThisWeek(week, nowMs)}
         streak={shownStreakOf(period)}
+        weekPoints={weekPointsOf(period, nowMs)}
         nowMs={nowMs}
         onSelectDay={onSelect}
       />

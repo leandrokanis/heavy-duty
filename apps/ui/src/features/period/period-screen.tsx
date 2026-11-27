@@ -14,6 +14,7 @@ import { loadPeriod, storePeriod } from '@/sync/period-cache'
 import { IntentionSheet } from './intention-sheet'
 import type { CurrentPeriod } from './period.types'
 import { formatPeriodDays, weekOfPeriod } from './period-format'
+import { RankingList } from './ranking-list'
 
 const CLOCK_TICK_MS = 60_000
 const RING_RADIUS = 42
@@ -218,6 +219,8 @@ function PeriodContent({ period, levels, nowMs, timeZone, onEdit }: PeriodConten
           </ul>
         </>
       ) : null}
+      <h2 className={SECTION_TITLE_CLASS}>Ranking dos seus treinos</h2>
+      <RankingList ranking={period.ranking ?? []} timeZone={timeZone} />
     </>
   )
 }

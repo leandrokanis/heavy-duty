@@ -24,6 +24,7 @@ import {
   type WorkoutFlowState,
   type WorkoutSession,
   workoutFlowReducer,
+  workoutPointsOf,
 } from './workout-flow'
 import type { RecordWorkoutSetBody } from './workout-set.types'
 
@@ -2867,6 +2868,31 @@ describe('lastSetPointsOf', () => {
 
         expect(announcementOf(state)).toBe('Série 1 de 3 registrada, 20 pontos em dobro')
       })
+    })
+  })
+})
+
+describe('workoutPointsOf (US-F19-02)', () => {
+  const SUPINO_AT_PLAN = { ...SUPINO_RETO, loadG: 40000 }
+  const chestOpen: FrozenWindow = {
+    muscleGroupSlug: 'chest',
+    opensAt: '2026-11-20T18:00:00.000Z',
+    closesAt: '2026-11-25T18:00:00.000Z',
+  }
+
+  describe('Given no set recorded', () => {
+    it('Then the workout has 0 points', () => {
+      expect(workoutPointsOf(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN])))).toBe(0)
+    })
+  })
+
+  describe('Given the window of chest closing between set 1 and set 2 of supino-reto at plan', () => {
+    it('Then the workout sums the points shown by each set, 20 and 10', () => {
+      const closing = { ...chestOpen, closesAt: '2026-11-21T18:31:06.000Z' }
+      const first = next(createWorkoutFlow(sessionOf([SUPINO_AT_PLAN], [closing])), T0)
+      const second = next(next(first, T0 + 1000), T0 + 2000)
+
+      expect(workoutPointsOf(second)).toBe(30)
     })
   })
 })

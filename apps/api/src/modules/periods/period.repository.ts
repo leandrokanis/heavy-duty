@@ -1,6 +1,6 @@
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq, gte, lt } from 'drizzle-orm'
 import type { Database } from '../../db/connection.js'
-import { periods } from '../../db/schema.js'
+import { periods, workouts } from '../../db/schema.js'
 
 export type PeriodRow = {
   id: string
@@ -30,4 +30,19 @@ export function updatePeriodIntention(
   intention: string | null,
 ): void {
   db.update(periods).set({ intention }).where(eq(periods.number, number)).run()
+}
+
+export type PeriodWorkoutRow = { id: string; letter: string; startedAt: string }
+
+// Both bounds are UTC instants in the toISOString() form, so text order is time order.
+export function listWorkoutsStartedBetween(
+  db: Database,
+  fromInstant: string,
+  toInstant: string,
+): PeriodWorkoutRow[] {
+  return db
+    .select({ id: workouts.id, letter: workouts.letter, startedAt: workouts.startedAt })
+    .from(workouts)
+    .where(and(gte(workouts.startedAt, fromInstant), lt(workouts.startedAt, toInstant)))
+    .all()
 }

@@ -44,6 +44,7 @@ export function testPeriod(overrides: Partial<CurrentPeriod> = {}): CurrentPerio
         to: '2026-11-30T03:00:00.000Z',
         weeklyGoal: 2,
         windowsUsed: 3,
+        points: 180,
         status: 'met',
       },
       {
@@ -52,10 +53,12 @@ export function testPeriod(overrides: Partial<CurrentPeriod> = {}): CurrentPerio
         to: '2026-12-07T03:00:00.000Z',
         weeklyGoal: 2,
         windowsUsed: 1,
+        points: 240,
         status: 'pending',
       },
     ],
     weekStreak: { weeks: 1, protectionUsed: false },
+    ranking: [],
     ...overrides,
   }
 }

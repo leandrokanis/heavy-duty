@@ -2161,6 +2161,12 @@
           },
           "weekStreak": {
             "$ref": "#/components/schemas/WeekStreak"
+          },
+          "ranking": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RankedWorkout"
+            }
           }
         },
         "required": [
@@ -2175,7 +2181,8 @@
           "volume",
           "groups",
           "weeks",
-          "weekStreak"
+          "weekStreak",
+          "ranking"
         ]
       },
       "PeriodWindows": {
@@ -2313,6 +2320,10 @@
             "type": "integer",
             "example": 7
           },
+          "points": {
+            "type": "integer",
+            "example": 420
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -2331,6 +2342,7 @@
           "to",
           "weeklyGoal",
           "windowsUsed",
+          "points",
           "status"
         ]
       },
@@ -2349,6 +2361,38 @@
         "required": [
           "weeks",
           "protectionUsed"
+        ]
+      },
+      "RankedWorkout": {
+        "type": "object",
+        "properties": {
+          "workoutId": {
+            "type": "string",
+            "example": "019d7f2e-8c41-7a3b-9f10-4c2d8e6a1b23"
+          },
+          "letter": {
+            "type": "string",
+            "example": "A"
+          },
+          "startedAt": {
+            "type": "string",
+            "example": "2026-11-25T10:00:00.000Z"
+          },
+          "points": {
+            "type": "integer",
+            "example": 240
+          },
+          "position": {
+            "type": "integer",
+            "example": 2
+          }
+        },
+        "required": [
+          "workoutId",
+          "letter",
+          "startedAt",
+          "points",
+          "position"
         ]
       },
       "PushKey": {

@@ -6,7 +6,9 @@ import {
   hasMuscleMemory,
   multiplierPercentOf,
   nextDropAtMsOf,
+  type SetBonuses,
   type SetPlan,
+  shownSetPointsOf,
   startingProgress,
   subtractCoolingLoss,
 } from '@heavy-duty/game'
@@ -44,15 +46,20 @@ export type GroupLevelState = {
   nextDropAtMs: number | null
 }
 
+// The points a set showed on the phone, with the bonuses of its primary groups (ADR-034).
+export type SetPoints = { workoutId: string; performedAtMs: number; points: number }
+
+export type GameReplay = { levels: Map<string, GroupLevelState>; setPoints: SetPoints[] }
+
 // Replays the history in time order: each set adds the gain of D54 to each group of its exercise,
 // doubled in the window before (D55), back from cooling (D53) or below the best level (D63);
 // from the close to the next training or now, the group cools (D58). A workout with no letter
-// counts its sets of the group.
-export function groupLevelsOf(
+// counts its sets of the group. Each set also yields the points the phone showed (D65).
+export function gameReplayOf(
   sets: ProgressSet[],
   parameters: GameParameters,
   nowMs: number,
-): Map<string, GroupLevelState> {
+): GameReplay {
   const trainings = groupTrainingsOf(sets, parameters)
   const recordedGroupSets = new Map<string, number>()
   for (const set of sets) {
@@ -66,7 +73,9 @@ export function groupLevelsOf(
   // The first set of each group in each workout: the cooling ends there, and it says whether the
   // workout is the first one back after the window closed (D53).
   const firstSetMs = new Map<string, number>()
+  const setPoints: SetPoints[] = []
   for (const set of [...sets].sort(orderOf)) {
+    const primaryBonuses: SetBonuses[] = []
     const primary = new Set(set.primaryGroupSlugs)
     const secondary = [...new Set(set.secondaryGroupSlugs)].filter((slug) => !primary.has(slug))
     const roles = [
@@ -93,15 +102,19 @@ export function groupLevelsOf(
         window !== undefined && (firstSetMs.get(key) as number) >= window.closesAtMs
       // Below the best level after the cooling and before the gain, the set doubles whole (D64).
       const muscleMemory = hasMuscleMemory(progressOf(slug))
+      const bonuses = { inWindow, welcomeBack, muscleMemory }
+      if (role === 'primary') primaryBonuses.push(bonuses)
       const plannedGroupSets = set.plannedGroupSets?.[slug] ?? recordedGroupSets.get(key) ?? 1
       const gain = groupGainOf(
         set,
         set.plan,
         { role, plannedGroupSets },
-        multiplierPercentOf({ inWindow, welcomeBack, muscleMemory }),
+        multiplierPercentOf(bonuses),
       )
       progress.set(slug, addGroupGain(progressOf(slug), gain).progress)
     }
+    const { points } = shownSetPointsOf(set, set.plan, primaryBonuses)
+    setPoints.push({ workoutId: set.workoutId, performedAtMs: set.performedAtMs, points })
   }
   const levels = new Map<string, GroupLevelState>()
   for (const [slug, groupTrainings] of trainings) {
@@ -120,5 +133,13 @@ export function groupLevelsOf(
       nextDropAtMs: nextDropAtMsOf(closesAtMs, loss, cooled),
     })
   }
-  return levels
+  return { levels, setPoints }
+}
+
+export function groupLevelsOf(
+  sets: ProgressSet[],
+  parameters: GameParameters,
+  nowMs: number,
+): Map<string, GroupLevelState> {
+  return gameReplayOf(sets, parameters, nowMs).levels
 }

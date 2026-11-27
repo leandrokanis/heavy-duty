@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { isInWindowAt, multiplierPercentOf, type SetPlan, setPointsOf } from './index.ts'
+import {
+  isInWindowAt,
+  multiplierPercentOf,
+  rankOf,
+  type SetPlan,
+  setPointsOf,
+  shownSetPointsOf,
+} from './index.ts'
 
 const benchPlan: SetPlan = { plannedLoadG: 40000, targetReps: 10, targetSeconds: null }
 
@@ -157,6 +164,60 @@ describe('isInWindowAt', () => {
       expect(
         isInWindowAt({ opensAt: null, closesAt: null }, Date.parse('2026-11-23T12:00:00.000Z')),
       ).toBe(false)
+    })
+  })
+})
+
+describe('shownSetPointsOf', () => {
+  const done = { loadG: 40000, reps: 10, seconds: null }
+
+  describe('Given a set at plan whose primary groups have no bonus', () => {
+    it('Then it shows the common 10 points', () => {
+      expect(shownSetPointsOf(done, benchPlan, [{ inWindow: false }])).toEqual({
+        points: 10,
+        multiplierPercent: 100,
+      })
+    })
+  })
+
+  describe('Given a set at plan with one primary group in its window and another out of it', () => {
+    it('Then it shows the double, the highest multiplier of the primary groups', () => {
+      expect(shownSetPointsOf(done, benchPlan, [{ inWindow: false }, { inWindow: true }])).toEqual({
+        points: 20,
+        multiplierPercent: 200,
+      })
+    })
+  })
+
+  describe('Given a set with no primary group', () => {
+    it('Then it shows the common points', () => {
+      expect(shownSetPointsOf(done, benchPlan, []).points).toBe(10)
+    })
+  })
+})
+
+describe('rankOf', () => {
+  describe('Given a workout with fewer points than one workout of the period', () => {
+    it('Then it is second', () => {
+      expect(rankOf(120, [150, 90, 60])).toBe(2)
+    })
+  })
+
+  describe('Given a workout tied with another one at the top', () => {
+    it('Then both share the first position', () => {
+      expect(rankOf(150, [150, 90])).toBe(1)
+    })
+  })
+
+  describe('Given the points of the workout itself among the points of the period', () => {
+    it('Then the workout does not count against itself', () => {
+      expect(rankOf(90, [150, 90, 60])).toBe(2)
+    })
+  })
+
+  describe('Given a period with no other workout', () => {
+    it('Then the workout is first', () => {
+      expect(rankOf(0, [])).toBe(1)
     })
   })
 })

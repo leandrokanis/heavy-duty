@@ -36,6 +36,7 @@ import type { TodayExercise } from './today.types'
 import { defaultTonePlayer, type TonePlayer } from './tone-player'
 import { useReopenWindows } from './use-reopen-windows'
 import { useScreenWakeLock } from './use-screen-wake-lock'
+import { useWorkoutRankFromApi } from './use-workout-rank'
 import { ValueWheel } from './value-wheel'
 import { LEVEL_CELEBRATION_MS, TICK_MS } from './workout.config'
 import { WorkoutClock } from './workout-clock'
@@ -68,6 +69,8 @@ import {
   type WorkoutFlowState,
   workoutFlowReducer,
 } from './workout-flow'
+import { WorkoutPointsSummary } from './workout-points-summary'
+import { provisionalRankOf } from './workout-rank'
 import type { RecordWorkoutSetBody } from './workout-set.types'
 
 export type WorkoutScreenProps = {
@@ -425,6 +428,10 @@ export function WorkoutScreen({
   const totalSets = day.exercises.reduce((total, { sets }) => total + sets, 0)
   const finished = state.phase === 'finished'
   const windows = useReopenWindows(finished && allQueued && state.recorded.length > 0)
+  const rankFromApi = useWorkoutRankFromApi(
+    finished && allQueued && state.recorded.length > 0,
+    state.session.workoutId,
+  )
   const timerOpen = state.phase === 'countdown' || state.phase === 'timing'
   const reachDeadline = useCallback(
     (nowMs: number) => dispatch({ type: resting ? 'restEnd' : 'timerReach', nowMs }),
@@ -585,6 +592,9 @@ export function WorkoutScreen({
             <p className="m-0 mt-(--space-4) text-(--color-label-secondary) text-(length:--font-size-body) tabular-nums">
               {`Tempo total · ${formatDurationMinutes(totalSecondsOf(state.session, state.finish.finishedAt))}`}
             </p>
+          ) : null}
+          {state.recorded.length > 0 ? (
+            <WorkoutPointsSummary rank={rankFromApi ?? provisionalRankOf(state)} />
           ) : null}
           {lastSet ? (
             <div className="mt-(--space-16)">

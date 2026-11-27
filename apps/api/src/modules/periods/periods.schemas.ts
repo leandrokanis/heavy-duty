@@ -23,11 +23,21 @@ export const PeriodWeekSchema = z
     to: z.string().openapi({ example: '2026-11-30T03:00:00.000Z' }),
     weeklyGoal: z.number().int().nullable().openapi({ example: 6 }),
     windowsUsed: z.number().int().openapi({ example: 7 }),
+    points: z.number().int().openapi({ example: 420 }),
     status: z
       .enum(['met', 'missed', 'protected', 'neutral', 'pending'])
       .openapi({ example: 'met' }),
   })
   .openapi('PeriodWeek')
+export const RankedWorkoutSchema = z
+  .object({
+    workoutId: z.string().openapi({ example: '019d7f2e-8c41-7a3b-9f10-4c2d8e6a1b23' }),
+    letter: z.string().openapi({ example: 'A' }),
+    startedAt: z.string().openapi({ example: '2026-11-25T10:00:00.000Z' }),
+    points: z.number().int().openapi({ example: 240 }),
+    position: z.number().int().openapi({ example: 2 }),
+  })
+  .openapi('RankedWorkout')
 
 export const CurrentPeriodSchema = z
   .object({
@@ -63,6 +73,7 @@ export const CurrentPeriodSchema = z
         protectionUsed: z.boolean().openapi({ example: false }),
       })
       .openapi('WeekStreak'),
+    ranking: z.array(RankedWorkoutSchema),
   })
   .openapi('CurrentPeriod')
 

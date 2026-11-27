@@ -1177,7 +1177,29 @@ describe('Given the streak at zero and no weekly goal this week (US-F11-03)', ()
       renderToday()
 
       await screen.findByRole('button', { name: LETTER_A })
-      expect(screen.queryByRole('region', { name: 'Faixa de jogo' })).toBeNull()
+      expect(screen.queryByRole('img', { name: /seguidas? com a meta cumprida/ })).toBeNull()
+    })
+  })
+})
+
+describe('Given 240 points in the week of now (US-F19-02, D102)', () => {
+  describe('When the athlete opens the app', () => {
+    it('Then the game strip should show "240 pontos na semana"', async () => {
+      const period = testPeriod()
+      const dayMs = 24 * 60 * 60 * 1000
+      const thisWeek = {
+        ...(period.weeks[0] as (typeof period.weeks)[number]),
+        from: new Date(Date.now() - dayMs).toISOString(),
+        to: new Date(Date.now() + 6 * dayMs).toISOString(),
+        points: 240,
+      }
+      periodAnswer = () => json(200, { ...period, weeks: [thisWeek] })
+      stubFetch(json(200, todayBody()))
+
+      renderToday()
+
+      const item = await screen.findByRole('img', { name: '240 pontos na semana' })
+      expect(item.closest('section')?.getAttribute('aria-label')).toBe('Faixa de jogo')
     })
   })
 })

@@ -97,6 +97,43 @@ describe('Given the current period on the device', () => {
   })
 })
 
+describe('Given two workouts in the period, 240 and 180 points (US-F19-02)', () => {
+  describe('When the athlete opens the period', () => {
+    it('Then should show the ranking of the workouts in the order of points', async () => {
+      stubCopies(
+        testPeriod({
+          ranking: [
+            {
+              workoutId: 'w1',
+              letter: 'B',
+              startedAt: '2026-11-25T13:00:00.000Z',
+              points: 240,
+              position: 1,
+            },
+            {
+              workoutId: 'w2',
+              letter: 'A',
+              startedAt: '2026-11-23T13:00:00.000Z',
+              points: 180,
+              position: 2,
+            },
+          ],
+        }),
+      )
+
+      render(<PeriodScreen timeZone={SAO_PAULO} />)
+
+      const ranking = await screen.findByRole('list', { name: 'Ranking dos seus treinos' })
+      expect({
+        heading: screen.getByRole('heading', { name: 'Ranking dos seus treinos' }) !== null,
+        points: within(ranking)
+          .getAllByRole('listitem')
+          .map((item) => within(item).getByText(/pontos$/).textContent),
+      }).toEqual({ heading: true, points: ['240 pontos', '180 pontos'] })
+    })
+  })
+})
+
 describe('Given a period with an intention and no goal measured yet', () => {
   describe('When the athlete opens the period', () => {
     it('Then should show the intention, a way to edit it and why each goal is empty', async () => {

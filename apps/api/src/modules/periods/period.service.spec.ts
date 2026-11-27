@@ -245,3 +245,45 @@ describe('Given the weekly goal of 1 window met in weeks 2 to 4 of period 1 (US-
     })
   })
 })
+
+describe('Given back trained before period 1 and three times in it (US-F19-02)', () => {
+  const NOW = new Date('2026-11-27T13:00:00.000Z')
+
+  // Back after a month: double; inside the window of the first: double; 2 h later: common.
+  async function rankingOfHistory() {
+    const { db, train } = await givenBackHistory(NOW)
+    ensurePeriods(db, NOW, SAO_PAULO)
+    train('2026-11-02T10:00:00.000Z')
+    const back = train('2026-11-23T10:00:00.000Z')
+    const inWindow = train('2026-11-25T10:00:00.000Z')
+    const early = train('2026-11-25T12:00:00.000Z')
+    const { ranking, weeks } = getCurrentPeriod(db, NOW, SAO_PAULO)
+    return { ranking, weeks, back, inWindow, early }
+  }
+
+  describe('When the current period is read', () => {
+    it('Then the ranking should hold only the workouts of the period, by points, ties sharing the position', async () => {
+      const { ranking, back, inWindow, early } = await rankingOfHistory()
+
+      expect(
+        ranking.map(({ workoutId, points, position }) => [workoutId, points, position]),
+      ).toEqual([
+        [back, 60, 1],
+        [inWindow, 60, 1],
+        [early, 30, 3],
+      ])
+    })
+
+    it('Then each workout of the ranking should carry its letter and its start', async () => {
+      const { ranking } = await rankingOfHistory()
+
+      expect(ranking[0]).toMatchObject({ letter: 'A', startedAt: '2026-11-23T10:00:00.000Z' })
+    })
+
+    it('Then week 1 should hold the points of the 3 workouts that started in it (D102)', async () => {
+      const { weeks } = await rankingOfHistory()
+
+      expect(weeks.map(({ week, points }) => [week, points])).toEqual([[1, 150]])
+    })
+  })
+})

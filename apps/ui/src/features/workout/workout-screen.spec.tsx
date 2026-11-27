@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TOAST_EXIT_MS, TOAST_VISIBLE_MS, ToastProvider } from '@/components/ui/toast'
+import { testPeriod } from '@/features/period/test-period'
 import { clearActiveWorkout, loadActiveWorkout } from '@/sync/active-workout-store'
 import { createMemoryQueueStore } from '@/sync/queue-store'
 import { SYNC_RETRY_INTERVAL_MS } from '@/sync/sync.config'
@@ -704,6 +705,54 @@ describe('Given a workout of triceps-polia finished with the set still in the qu
         asked: fetchMock.mock.calls.length,
         section: screen.queryByRole('region', { name: 'Janelas reabrem' }),
       }).toEqual({ asked: 0, section: null })
+    })
+  })
+})
+
+describe('Given a period with one workout of 1000 points and one of 1, frozen at the start (US-F19-02)', () => {
+  const flow = () => ({
+    ...flowOf([TRICEPS_ONE_SET]),
+    session: { ...flowOf([TRICEPS_ONE_SET]).session, periodPoints: [1000, 1] },
+  })
+
+  describe('When the workout finishes with its set still in the queue', () => {
+    it('Then should show the provisional points of the workout and "2º do período"', async () => {
+      vi.useFakeTimers({ now: T0 })
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => created()),
+      )
+      renderWorkout([TRICEPS_ONE_SET], vi.fn(), async () => ({ status: 'retry' }), flow())
+
+      await act(async () => tapNext())
+
+      expect(screen.getByRole('region', { name: 'Pontos do treino' }).textContent).toMatch(
+        /^\+\d+ pontos?2º do período$/,
+      )
+    })
+  })
+
+  describe('When the queue sends the set and the API ranks the workout first with 40 points', () => {
+    it('Then should show the points and the position of the API', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const period = testPeriod({
+        ranking: [
+          { workoutId: WORKOUT_ID, letter: 'A', startedAt: STARTED_AT, points: 40, position: 1 },
+        ],
+      })
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string) =>
+          url === '/api/periods/current' ? new Response(JSON.stringify(period)) : created(),
+        ),
+      )
+      renderWorkout([TRICEPS_ONE_SET], vi.fn(), sendPendingItem, flow())
+
+      await act(async () => tapNext())
+
+      expect(screen.getByRole('region', { name: 'Pontos do treino' }).textContent).toBe(
+        '+40 pontos1º do período',
+      )
     })
   })
 })

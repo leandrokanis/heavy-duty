@@ -59,7 +59,7 @@ const backOf = (period: CurrentPeriod) =>
 
 describe('Given the first read of the period with no workout', () => {
   describe('When GET /api/periods/current is called', () => {
-    it('Then should respond with period 1 from the Monday of the week, week 1 of 12, empty goals', async () => {
+    it('Then should respond with period 1 from the Monday of the week, week 1 of 12, empty goals and ranking', async () => {
       const { app, clock } = createProgramTestApp()
 
       const response = await app.request('/api/periods/current')
@@ -89,10 +89,12 @@ describe('Given the first read of the period with no workout', () => {
             to: '2026-11-23T03:00:00.000Z',
             weeklyGoal: null,
             windowsUsed: 0,
+            points: 0,
             status: 'neutral',
           },
         ],
         weekStreak: { weeks: 0, protectionUsed: false },
+        ranking: [],
       })
     })
   })

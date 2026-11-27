@@ -1,6 +1,8 @@
 import type { Database } from '../../db/connection.js'
 import { createId } from '../../db/id.js'
 import { DomainError } from '../../errors/domain-error.js'
+import { gameReplayOf } from '../windows/progress.rules.js'
+import { loadProgressSets } from '../windows/progress.service.js'
 import { findWeeklyGoalBefore } from '../windows/weekly-goal.repository.js'
 import { type GroupTraining, groupTrainingsOf } from '../windows/window.rules.js'
 import { GAME_PARAMETERS } from '../windows/windows.config.js'
@@ -9,6 +11,7 @@ import { windowsUsedByWeek } from '../windows/windows-used.rules.js'
 import {
   findPeriod,
   insertPeriod,
+  listWorkoutsStartedBetween,
   type PeriodRow,
   updatePeriodIntention,
 } from './period.repository.js'
@@ -22,6 +25,7 @@ import {
   WINDOWS_USED_TARGET_PERCENT,
 } from './periods.config.js'
 import type { CurrentPeriod, PeriodIntentionInput } from './periods.schemas.js'
+import { periodRankingOf, pointsStartedBetween, type RankedWorkout } from './ranking.rules.js'
 import { type WeekStatus, weekStreakOf } from './week-streak.rules.js'
 
 const iso = (instantMs: number) => new Date(instantMs).toISOString()
@@ -63,6 +67,13 @@ export function getCurrentPeriod(db: Database, now: Date, timeZone: string): Cur
     startsAtMs,
     nowMs,
   })
+  const { setPoints } = gameReplayOf(loadProgressSets(db), GAME_PARAMETERS, nowMs)
+  const ranking = periodRankingOf({
+    workouts: listWorkoutsStartedBetween(db, period.startsAt, period.endsAt),
+    setPoints,
+    startsAtMs,
+    endsAtMs: Date.parse(period.endsAt),
+  })
   return {
     now: now.toISOString(),
     number: period.number,
@@ -80,7 +91,8 @@ export function getCurrentPeriod(db: Database, now: Date, timeZone: string): Cur
       muscleGroup,
       ...(windows.byGroup.get(muscleGroup.slug) ?? NO_WINDOWS),
     })),
-    ...streakOf(db, trainingsOfGroups, period, nowMs),
+    ...streakOf(db, trainingsOfGroups, period, ranking, nowMs),
+    ranking,
   }
 }
 
@@ -90,6 +102,7 @@ function streakOf(
   db: Database,
   trainingsOfGroups: Map<string, GroupTraining[]>,
   period: PeriodRow,
+  ranking: RankedWorkout[],
   nowMs: number,
 ): Pick<CurrentPeriod, 'weeks' | 'weekStreak'> {
   const firstStartMs = Date.parse((findPeriod(db, 1) as PeriodRow).startsAt)
@@ -121,6 +134,7 @@ function streakOf(
               to: iso(toMs),
               weeklyGoal,
               windowsUsed,
+              points: pointsStartedBetween(ranking, fromMs, toMs),
               status: streak.statuses[index] as WeekStatus,
             },
           ]

@@ -49,6 +49,7 @@ const WINDOW_SUGGESTION_SPEC = /window-suggestion\.feature\.spec\.js$/
 const BODY_MAP_SPEC = /body-map\.feature\.spec\.js$/
 const PERIODS_SPEC = /periods\.feature\.spec\.js$/
 const WEEK_STREAK_SPEC = /week-streak\.feature\.spec\.js$/
+const PERSONAL_RANKING_SPEC = /personal-ranking\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -113,6 +114,7 @@ export default defineConfig({
         BODY_MAP_SPEC,
         PERIODS_SPEC,
         WEEK_STREAK_SPEC,
+        PERSONAL_RANKING_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -436,6 +438,15 @@ export default defineConfig({
       testMatch: WEEK_STREAK_SPEC,
       fullyParallel: false,
       dependencies: ['periods'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Replaces the periods and records workouts relative to the real clock, so it runs alone and
+    // one scenario at a time, after the week streak.
+    {
+      name: 'personal-ranking',
+      testMatch: PERSONAL_RANKING_SPEC,
+      fullyParallel: false,
+      dependencies: ['week-streak'],
       use: { ...devices['Pixel 7'] },
     },
   ],
