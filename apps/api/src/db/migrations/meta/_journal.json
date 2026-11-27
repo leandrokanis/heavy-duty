@@ -134,6 +134,13 @@
       "when": 1795758393742,
       "tag": "0018_medal_awards",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1795758893170,
+      "tag": "0019_notifications_weekly_digest",
+      "breakpoints": true
     }
   ]
 }

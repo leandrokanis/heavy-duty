@@ -1152,7 +1152,8 @@
             "enum": [
               "window_open",
               "window_close",
-              "level_drop"
+              "level_drop",
+              "weekly_digest"
             ],
             "example": "window_close"
           },

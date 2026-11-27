@@ -1508,7 +1508,7 @@ O `GET` da mesma URL não desliga nada e responde 401, como toda rota protegida:
 
 ## Período e medalhas na onda 7b
 
-As rotas do período e das medalhas da onda 7b estão nas seções "Períodos" (`GET /api/periods/current`, `PUT /api/periods/current/intention` e `GET /api/periods`) e "Medalhas" (`GET /api/medals`). Todas exigem sessão de acesso. O período e as semanas do período usam o fuso `NOTICE_TIME_ZONE`, e as datas vêm em ISO 8601, em UTC (D96). Na US-F17-03, `recentFailures` de `GET /api/system/status` passa a aceitar o `kind` `weekly_digest` (ADR-041).
+As rotas do período e das medalhas da onda 7b estão nas seções "Períodos" (`GET /api/periods/current`, `PUT /api/periods/current/intention` e `GET /api/periods`) e "Medalhas" (`GET /api/medals`). Todas exigem sessão de acesso. O período e as semanas do período usam o fuso `NOTICE_TIME_ZONE`, e as datas vêm em ISO 8601, em UTC (D96). Desde a US-F17-03, `recentFailures` de `GET /api/system/status` aceita o `kind` `weekly_digest` (ADR-041).
 
 ## Situação do app
 
@@ -1544,6 +1544,6 @@ O motivo da falha começa pela etapa em inglês (`snapshot failed` ou `offsite c
 
 - `configured` diz se o servidor tem a configuração do canal: as variáveis VAPID no push (ADR-035) e `SMTP_HOST`, `MAIL_FROM` e `MAIL_TO` no e-mail (ADR-037). Com `false`, nada sai pelo canal.
 - `lastSentAt` é o fim do envio mais recente com sucesso, em ISO 8601 e UTC, e fica `null` antes do primeiro envio.
-- `recentFailures` traz até 5 falhas, da mais nova para a mais antiga, cada uma com `failedAt`, `kind` (`window_open`, `window_close` ou `level_drop`), `letter` e `error`. O motivo é seguro: no e-mail, o código do erro do Nodemailer e, quando há, o código de resposta SMTP, como `ECONNECTION` ou `EENVELOPE (SMTP 550)`, sem endereço, senha nem texto do servidor.
+- `recentFailures` traz até 5 falhas, da mais nova para a mais antiga, cada uma com `failedAt`, `kind` (`window_open`, `window_close`, `level_drop` ou `weekly_digest`, o resumo semanal da US-F17-03), `letter` e `error`. O motivo é seguro: no e-mail, o código do erro do Nodemailer e, quando há, o código de resposta SMTP, como `ECONNECTION` ou `EENVELOPE (SMTP 550)`, sem endereço, senha nem texto do servidor.
 
 A falha de um canal não impede o outro: o e-mail que falha fica em `recentFailures`, e o aviso no celular sai mesmo assim (cenário "falha no envio" da F17).

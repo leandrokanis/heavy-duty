@@ -6,9 +6,15 @@ import { listActivityWindows } from '../windows/window-state.service.js'
 import { getToday } from '../workouts/today.service.js'
 import { pushMessageOf } from './notice-format.js'
 import { dueNoticesOf, type Notice, type NoticesInput } from './notices.rules.js'
-import { claimNotification, finishNotification } from './notification.repository.js'
+import {
+  claimNotification,
+  finishNotification,
+  type NotificationClaim,
+} from './notification.repository.js'
 import type { PushSender } from './push-sender.js'
 import { sendPushToAll } from './push-subscription.service.js'
+import { dueWeeklyDigestOf, type WeeklyDigest } from './weekly-digest.rules.js'
+import { digestWeeksOf, weeklyDigestFor } from './weekly-digest.service.js'
 
 export const NOTICE_INTERVAL_MS = 60_000
 
@@ -25,6 +31,8 @@ export type ChannelResult = {
 export type NoticeChannel = {
   name: 'push' | 'email'
   deliver: (notice: Notice, nowMs: number) => Promise<ChannelResult>
+  // Only the email channel sends the weekly digest (ADR-041).
+  deliverDigest?: (digest: WeeklyDigest, nowMs: number) => Promise<ChannelResult>
 }
 
 export type NoticeLog = { error: (message: string) => void }
@@ -99,27 +107,17 @@ function messageOf(error: unknown): string {
   return (error instanceof Error ? error.message : String(error)).slice(0, MAX_ERROR_LENGTH)
 }
 
-async function deliverOnce(
+// The row goes in before the send, so a restart never sends the same notice twice (ADR-036).
+async function deliverClaimed(
   deps: NoticeTickDeps,
-  channel: NoticeChannel,
-  notice: Notice,
+  claim: Omit<NotificationClaim, 'id' | 'createdAt'>,
   now: Date,
+  deliver: () => Promise<ChannelResult>,
 ): Promise<void> {
   const id = createId(now.getTime())
-  const claimed = claimNotification(deps.db, {
-    id,
-    noticeKey: notice.key,
-    kind: notice.kind,
-    channel: channel.name,
-    letter: notice.letter,
-    muscleGroupSlugs: JSON.stringify(notice.groups.map(({ slug }) => slug)),
-    dueAt: new Date(notice.dueAtMs).toISOString(),
-    eventAt: new Date(notice.eventAtMs).toISOString(),
-    createdAt: now.toISOString(),
-  })
-  if (!claimed) return
+  if (!claimNotification(deps.db, { ...claim, id, createdAt: now.toISOString() })) return
   // A channel that throws is recorded as failed, and the next channel still goes (D32).
-  const result = await channel.deliver(notice, now.getTime()).catch(
+  const result = await deliver().catch(
     (error): ChannelResult => ({
       status: 'failed',
       error: `channel failed: ${messageOf(error)}`,
@@ -131,6 +129,66 @@ async function deliverOnce(
     finishedAt: deps.now().toISOString(),
     unsubscribeTokenHash: result.unsubscribeTokenHash ?? null,
   })
+}
+
+function deliverOnce(
+  deps: NoticeTickDeps,
+  channel: NoticeChannel,
+  notice: Notice,
+  now: Date,
+): Promise<void> {
+  return deliverClaimed(
+    deps,
+    {
+      noticeKey: notice.key,
+      kind: notice.kind,
+      channel: channel.name,
+      letter: notice.letter,
+      muscleGroupSlugs: JSON.stringify(notice.groups.map(({ slug }) => slug)),
+      dueAt: new Date(notice.dueAtMs).toISOString(),
+      eventAt: new Date(notice.eventAtMs).toISOString(),
+    },
+    now,
+    () => channel.deliver(notice, now.getTime()),
+  )
+}
+
+// Monday at 7h, the digest of the week that ended goes by the email channel only (D106, ADR-041).
+async function deliverWeeklyDigest(deps: NoticeTickDeps, now: Date): Promise<void> {
+  const channels = deps.channels.flatMap(({ name, deliverDigest }) =>
+    deliverDigest ? [{ name, deliverDigest }] : [],
+  )
+  if (channels.length === 0) return
+  const nowMs = now.getTime()
+  let due: ReturnType<typeof dueWeeklyDigestOf>
+  try {
+    const weeks = digestWeeksOf(deps.db, nowMs).map(({ fromMs, toMs }) => ({
+      startsAtMs: fromMs,
+      endsAtMs: toMs,
+    }))
+    due = dueWeeklyDigestOf({ weeks, nowMs, timeZone: deps.timeZone })
+  } catch (error) {
+    deps.log.error(`notices: could not read the weeks of the digest: ${messageOf(error)}`)
+    return
+  }
+  if (!due) return
+  const week = { startsAtMs: due.weekStartsAtMs, endsAtMs: due.weekEndsAtMs }
+  for (const channel of channels) {
+    await deliverClaimed(
+      deps,
+      {
+        noticeKey: due.key,
+        kind: 'weekly_digest',
+        channel: channel.name,
+        letter: null,
+        muscleGroupSlugs: null,
+        dueAt: new Date(due.dueAtMs).toISOString(),
+        eventAt: new Date(due.weekEndsAtMs).toISOString(),
+      },
+      now,
+      () => channel.deliverDigest(weeklyDigestFor(deps.db, week, nowMs), nowMs),
+    )
+  }
 }
 
 export async function runNoticeTick(deps: NoticeTickDeps): Promise<void> {
@@ -147,6 +205,7 @@ export async function runNoticeTick(deps: NoticeTickDeps): Promise<void> {
       await deliverOnce(deps, channel, notice, now)
     }
   }
+  await deliverWeeklyDigest(deps, now)
 }
 
 export type RunningNoticeScheduler = { stop: () => Promise<void> }

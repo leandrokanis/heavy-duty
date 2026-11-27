@@ -166,10 +166,13 @@ export const notifications = sqliteTable(
   {
     id: text('id').primaryKey(),
     noticeKey: text('notice_key').notNull(),
-    kind: text('kind', { enum: ['window_open', 'window_close', 'level_drop'] }).notNull(),
+    kind: text('kind', {
+      enum: ['window_open', 'window_close', 'level_drop', 'weekly_digest'],
+    }).notNull(),
     channel: text('channel', { enum: ['push', 'email'] }).notNull(),
     letter: text('letter'),
-    muscleGroupSlugs: text('muscle_group_slugs').notNull(),
+    // Null on the weekly digest, which names no group (ADR-041).
+    muscleGroupSlugs: text('muscle_group_slugs'),
     dueAt: text('due_at').notNull(),
     eventAt: text('event_at').notNull(),
     createdAt: text('created_at').notNull(),
@@ -185,7 +188,7 @@ export const notifications = sqliteTable(
     index('notifications_channel_created_at_idx').on(table.channel, table.createdAt),
     check(
       'notifications_kind_check',
-      sql`${table.kind} IN ('window_open', 'window_close', 'level_drop')`,
+      sql`${table.kind} IN ('window_open', 'window_close', 'level_drop', 'weekly_digest')`,
     ),
     check('notifications_channel_check', sql`${table.channel} IN ('push', 'email')`),
     check(

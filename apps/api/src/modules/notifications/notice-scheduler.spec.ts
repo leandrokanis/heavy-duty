@@ -8,6 +8,7 @@ import { createFakePushSender } from '../../test/push-sender.js'
 import { recordWorkout } from '../../test/workouts.js'
 import { addExercise } from '../catalog/exercise.service.js'
 import { addMuscle } from '../catalog/muscle.service.js'
+import { ensurePeriods } from '../periods/period.service.js'
 import { addPlannedExercise, addProgramDay, createProgram } from '../programs/program.service.js'
 import { createEmailChannel } from './email-channel.js'
 import { turnEmailsOffByToken, unsubscribeTokenHashOf } from './email-opt-out.service.js'
@@ -78,7 +79,7 @@ function rowsOf(db: Database) {
       kind,
       channel,
       letter,
-      groups: JSON.parse(muscleGroupSlugs),
+      groups: muscleGroupSlugs === null ? null : JSON.parse(muscleGroupSlugs),
       eventAt,
       status,
       error,
@@ -403,6 +404,116 @@ describe('Given letter B closes tomorrow at 10h and the emails turned off (US-F1
           ['push', 'sent', null],
         ],
       })
+    })
+  })
+})
+
+// Period 1 starts on Monday 2026-11-16 at 00:00 in São Paulo; its week 1 ends on Monday 2026-11-23
+// at 00:00, and the digest of week 1 is due at 7h that day (D106).
+const DIGEST_DUE_AT = new Date('2026-11-23T10:00:00.000Z')
+
+function givenWeek1Ended(at: Date = DIGEST_DUE_AT) {
+  const { db, clock } = givenLetterBTrained()
+  ensurePeriods(db, clock.now(), SAO_PAULO)
+  clock.advance(at.getTime() - clock.now().getTime())
+  return { db, clock }
+}
+
+function digestRowsOf(db: Database) {
+  return listNotifications(db)
+    .filter(({ kind }) => kind === 'weekly_digest')
+    .map(({ noticeKey, channel, letter, muscleGroupSlugs, eventAt, status, error }) => ({
+      noticeKey,
+      channel,
+      letter,
+      muscleGroupSlugs,
+      eventAt,
+      status,
+      error,
+    }))
+}
+
+describe('Given week 1 of the period ended, with the email channel (US-F17-03)', () => {
+  describe('When a tick runs on Monday at 7h', () => {
+    it('Then should send the digest of week 1 once, by email only, and record it', async () => {
+      const { db, clock } = givenWeek1Ended()
+      const mail = createFakeMailSender()
+      const channels = [
+        createPushChannel(db, createFakePushSender(), SAO_PAULO),
+        emailChannel(db, mail),
+      ]
+
+      await runNoticeTick(tickDeps(db, clock, channels))
+      await runNoticeTick(tickDeps(db, clock, channels))
+
+      expect({
+        subjects: mail.sent.map(({ subject }) => subject).filter((s) => s.startsWith('Sua semana')),
+        rows: digestRowsOf(db),
+      }).toEqual({
+        subjects: ['Sua semana: 0 janelas aproveitadas'],
+        rows: [
+          {
+            noticeKey: 'weekly_digest:2026-11-16T03:00:00.000Z',
+            channel: 'email',
+            letter: null,
+            muscleGroupSlugs: null,
+            eventAt: '2026-11-23T03:00:00.000Z',
+            status: 'sent',
+            error: null,
+          },
+        ],
+      })
+    })
+  })
+
+  describe('When the emails were turned off', () => {
+    it('Then should record the digest as skipped and send nothing', async () => {
+      const { db, clock } = givenWeek1Ended()
+      setEmailNotices(db, { enabled: false }, clock.now())
+      const mail = createFakeMailSender()
+
+      await runNoticeTick(tickDeps(db, clock, [emailChannel(db, mail)]))
+
+      expect({
+        sent: mail.sent.length,
+        rows: digestRowsOf(db).map(({ status }) => status),
+      }).toEqual({ sent: 0, rows: ['skipped'] })
+    })
+  })
+
+  describe('When only the push channel is configured', () => {
+    it('Then should record no digest', async () => {
+      const { db, clock } = givenWeek1Ended()
+
+      await runNoticeTick(
+        tickDeps(db, clock, [createPushChannel(db, createFakePushSender(), SAO_PAULO)]),
+      )
+
+      expect(digestRowsOf(db)).toEqual([])
+    })
+  })
+})
+
+describe('Given the server stopped on Monday at 7h (US-F17-03)', () => {
+  describe('When it comes back at 20h', () => {
+    it('Then should still send the digest of week 1', async () => {
+      const { db, clock } = givenWeek1Ended(new Date('2026-11-23T23:00:00.000Z'))
+      const mail = createFakeMailSender()
+
+      await runNoticeTick(tickDeps(db, clock, [emailChannel(db, mail)]))
+
+      expect(digestRowsOf(db).map(({ status }) => status)).toEqual(['sent'])
+    })
+  })
+
+  describe('When it comes back on Tuesday at 7h, 24 h later', () => {
+    it('Then should send no digest', async () => {
+      const { db, clock } = givenWeek1Ended(new Date('2026-11-24T10:00:00.000Z'))
+      const mail = createFakeMailSender()
+
+      await runNoticeTick(tickDeps(db, clock, [emailChannel(db, mail)]))
+
+      expect(digestRowsOf(db)).toEqual([])
     })
   })
 })

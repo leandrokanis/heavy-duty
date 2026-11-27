@@ -28,7 +28,7 @@ export const NoticeFailureSchema = z
   .object({
     failedAt: z.string().openapi({ example: '2026-11-23T00:00:01.000Z' }),
     kind: z
-      .enum(['window_open', 'window_close', 'level_drop'])
+      .enum(['window_open', 'window_close', 'level_drop', 'weekly_digest'])
       .openapi({ example: 'window_close' }),
     letter: z.string().nullable().openapi({ example: 'B' }),
     error: z.string().nullable().openapi({ example: 'ECONNECTION' }),
