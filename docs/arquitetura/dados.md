@@ -114,9 +114,16 @@ erDiagram
   }
   PERIODS {
     text id PK
-    text starts_on
-    text ends_on
-    text intention
+    integer number UK
+    text starts_at
+    text ends_at
+    text intention "até 120 caracteres, opcional"
+    text frozen_at "nulo até o retrato"
+    integer windows_used "nulo até o retrato"
+    integer windows_missed "nulo até o retrato"
+    integer points "nulo até o retrato"
+    integer best_workout_points "nulo até o retrato"
+    integer week_streak "nulo até o retrato"
   }
   WEEKLY_GOALS {
     integer windows "1 a 77"
@@ -125,18 +132,20 @@ erDiagram
   }
   PERIOD_SNAPSHOTS {
     text id PK
-    text period_id FK
+    text period_id FK "UK com muscle_group_id"
     text muscle_group_id FK
     integer level
+    integer points
     integer best_level
+    text window_state
     integer windows_used
-    integer windows_total
-    text frozen_at
+    integer windows_missed
   }
   MEDAL_AWARDS {
     text id PK
     text medal_code UK
-    text workout_id FK "nulo se não vier de um treino"
+    text subject "grupo da medalha de nível, opcional"
+    text workout_id FK "nulo sem treino ou com o treino removido"
     text awarded_at
   }
   PUSH_SUBSCRIPTIONS {
@@ -150,10 +159,10 @@ erDiagram
   NOTIFICATIONS {
     text id PK
     text notice_key "UK com channel"
-    text kind "window_open, window_close ou level_drop"
+    text kind "window_open, window_close, level_drop ou weekly_digest"
     text channel "push ou email"
     text letter
-    text muscle_group_slugs "JSON"
+    text muscle_group_slugs "JSON, nulo no resumo semanal"
     text due_at
     text event_at
     text created_at
@@ -274,9 +283,9 @@ Regras da gravação (US-F03-02):
 
 | Tabela | Conteúdo | Regras |
 |---|---|---|
-| `periods` | Períodos de 12 semanas, com a frase de intenção | Um período aberto por vez |
-| `period_snapshots` | Retrato congelado de cada grupo no fim do período | Gravado uma vez e nunca alterado, mesmo se a fórmula do jogo mudar (ADR-010) |
-| `medal_awards` | Medalhas conquistadas | `medal_code` único: a medalha se conquista uma vez. A definição das medalhas fica no código do módulo `windows` |
+| `periods` | Períodos de 12 semanas, com a frase de intenção (US-F11-01, ADR-039) | Um período aberto por vez. `number` é único, a partir de 1. Só o início do período 1 é fato guardado: a API grava a linha do período 1 na primeira partida com a tabela vazia, com `starts_at` na segunda-feira 00:00 da semana, no fuso `NOTICE_TIME_ZONE`, em UTC, e `ends_at` 84 dias depois (D95, D96). A linha do período *n* nasce na primeira leitura ou no agendador do jogo, com `starts_at` = início do período 1 + (*n* − 1) × 84 dias (D94). `intention` é opcional, com de 1 a 120 caracteres (`CHECK`; o texto vazio grava nulo), e muda até o fim do período (D98). `frozen_at` fica nulo até o retrato; no congelamento, recebe o instante da gravação, junto com o resumo do retrato em `windows_used`, `windows_missed`, `points`, `best_workout_points` e `week_streak` (D99, US-F11-02, migração `0017_period_snapshots`), nulos antes. Migração `0016_periods` (US-F11-01), com `CHECK` de `number >= 1`; sem índice além do único, porque a tabela cresce cerca de 4 linhas por ano |
+| `period_snapshots` | Retrato congelado de cada grupo no fim do período (US-F11-02, ADR-039) | Gravado uma vez e nunca alterado, mesmo se a fórmula do jogo mudar ou se um treino do período for editado (ADR-010). Uma linha por grupo muscular, com `period_id` e `muscle_group_id` únicos juntos: nível, pontos da barra, melhor nível, estado da janela e janelas aproveitadas e perdidas no período, no instante do fim do período (D99). O resumo do período fica nas colunas de `periods`, gravado na mesma transação; a frase é a `intention` da linha, que só muda no período atual. A transação marca `frozen_at` só quando ele é nulo e grava as linhas depois, então o retrato sai uma vez, mesmo com o agendador do jogo e a leitura ao mesmo tempo. `window_state` é `resting`, `open`, `cooling` ou `none`, com `CHECK`; `period_id` e `muscle_group_id` com `ON DELETE RESTRICT`. Migração `0017_period_snapshots` (US-F11-02) |
+| `medal_awards` | Medalhas conquistadas (US-F19-01, ADR-040) | `medal_code` único: a medalha se conquista uma vez. `subject` guarda o grupo muscular da medalha de nível, como o "nível 10 em peito", e fica nulo nas outras. `workout_id` aponta o treino da conquista e usa `ON DELETE SET NULL`: a remoção do treino não tira a medalha. `awarded_at` é o instante do evento, não o da detecção. Nenhuma linha muda nem sai. O catálogo das medalhas fica no código do módulo `medals` (`medals.catalog.ts`, D103) |
 | `weekly_goals` | Metas semanais de janelas (US-F15b-02), uma linha por definição | Só inclusão: a ferramenta `set_weekly_goal` grava uma linha com o relógio da API em `defined_at` (ISO 8601, UTC) e nenhuma linha muda nem sai. `windows` é inteiro com `CHECK` de 1 a 77 (11 grupos × 7 dias). A meta de uma semana é a da linha mais recente com `defined_at` anterior ao fim da semana (D75); sem linha, a semana não tem meta (D76). Índice `weekly_goals_defined_at_idx`. Migração `0012_weekly_goals` |
 
 ### Avisos (F09 e F17, onda 7)
@@ -284,7 +293,7 @@ Regras da gravação (US-F03-02):
 | Tabela | Conteúdo | Regras |
 |---|---|---|
 | `push_subscriptions` | Inscrições de Web Push do navegador (migração `0013_push_subscriptions`, US-F09-01, ADR-035) | `endpoint` único, só `https`, com até 2048 caracteres. `p256dh` e `auth` em base64url, até 256 caracteres. `created_at` e `updated_at` em UTC; o reenvio do mesmo `endpoint` a cada abertura do app troca as chaves e `updated_at`. Desligar os avisos apaga a linha. Inscrição recusada pelo serviço de push com 404 ou 410 é apagada |
-| `notifications` | Registro de cada aviso, por canal | Um aviso de janela por letra (D31), nos dois canais (D32). A falha de um canal não muda o outro. Cada aviso sai no máximo uma vez por canal, por uma chave única (ADR-036). A linha do e-mail guarda em `unsubscribe_token_hash` o SHA-256 do token do link de desligar daquele e-mail; o token em claro só existe no e-mail (D89, ADR-037). Migração `0014_notifications` (US-F09-02): `notice_key` identifica o aviso pelo tipo, pela letra ou pelo grupo e pelo instante do evento; no aviso de queda, o instante é o fechamento da janela que iniciou o esfriamento, para sair um aviso só por esfriamento (D84). `notice_key` e `channel` são únicos juntos. `kind` é `window_open`, `window_close` ou `level_drop`, e `channel`, `push` ou `email`, com `CHECK`. `letter` é a letra do aviso (na queda, a de `letterForGroupOf`); `muscle_group_slugs`, os grupos em JSON. `due_at` é o horário do aviso, já com o silêncio (D80), e `event_at`, o da abertura, do fechamento ou da queda. O agendador grava a linha antes do envio (`created_at`) e o resultado depois: `status` `sent`, `failed` ou `skipped` (canal sem destinatário), `error` com o motivo seguro, até 500 caracteres, e `finished_at`. A linha sem `status` é um envio que o processo não terminou, e o aviso se perde (ADR-036). Índice em `channel` e `created_at`, para a situação dos avisos (US-F17-01). A coluna `unsubscribe_token_hash` sai da US-F17-04 |
+| `notifications` | Registro de cada aviso, por canal | Um aviso de janela por letra (D31), nos dois canais (D32). A falha de um canal não muda o outro. Cada aviso sai no máximo uma vez por canal, por uma chave única (ADR-036). A linha do e-mail guarda em `unsubscribe_token_hash` o SHA-256 do token do link de desligar daquele e-mail; o token em claro só existe no e-mail (D89, ADR-037). Migração `0014_notifications` (US-F09-02): `notice_key` identifica o aviso pelo tipo, pela letra ou pelo grupo e pelo instante do evento; no aviso de queda, o instante é o fechamento da janela que iniciou o esfriamento, para sair um aviso só por esfriamento (D84). `notice_key` e `channel` são únicos juntos. `kind` é `window_open`, `window_close` ou `level_drop`, e `channel`, `push` ou `email`, com `CHECK`. `letter` é a letra do aviso (na queda, a de `letterForGroupOf`); `muscle_group_slugs`, os grupos em JSON. `due_at` é o horário do aviso, já com o silêncio (D80), e `event_at`, o da abertura, do fechamento ou da queda. O agendador grava a linha antes do envio (`created_at`) e o resultado depois: `status` `sent`, `failed` ou `skipped` (canal sem destinatário), `error` com o motivo seguro, até 500 caracteres, e `finished_at`. A linha sem `status` é um envio que o processo não terminou, e o aviso se perde (ADR-036). Índice em `channel` e `created_at`, para a situação dos avisos (US-F17-01). A coluna `unsubscribe_token_hash` sai da US-F17-04. A migração `0018_notifications_weekly_digest` (US-F17-03, ADR-041) recria a tabela, porque o SQLite não altera `CHECK`, e preserva as linhas: `kind` passa a aceitar `weekly_digest`, só no canal `email`, com `notice_key` `weekly_digest:<início da semana>`, `muscle_group_slugs` fica nulo no resumo semanal, e `event_at` é o fim da semana |
 
 ### Sistema (F14, onda 1)
 
@@ -319,7 +328,11 @@ Pela ADR-010, estes dados são calculados pela API a cada leitura, a partir de `
 | Pontos, progresso, nível, melhor nível e faixa | Pontos, Progresso, Nível, Melhor nível, Faixa |
 | Perda de nível e memória muscular | Esfriar, Memória muscular |
 | Recorde por exercício | Recorde |
-| Ranking dos treinos e sequência de semanas | Ranking pessoal, Sequência de semanas |
+| Limites e semanas de cada período a partir do início do período 1 (ADR-039) | Período |
+| Pontos do treino, pontos da semana e posição no ranking (ADR-034, adendo da onda 7b) | Pontos do treino, Ranking pessoal |
+| Sequência de semanas e proteção da sequência (D101) | Sequência de semanas, Proteção da sequência |
+| Metas O1 e O4 do período e progresso no período de cada grupo (D100) | Período, Janela aproveitada |
+| Conteúdo do resumo semanal (ADR-041) | Resumo semanal |
 | Janelas aproveitadas, perdidas e abertas de cada semana (a meta semanal fica em `weekly_goals`) | Janela aproveitada |
 
 O nível geral, o grupo que limita e a sugestão da letra pelas janelas também não são tabela, mas o celular é quem os calcula, com as regras do pacote `@heavy-duty/game`, a partir das cópias de `GET /api/today`, das janelas e dos níveis (ADR-034, adendo da onda 6b). A API dá só a letra da rotação da US-F03-01, em `GET /api/today`.

@@ -47,6 +47,12 @@ const MUSCLE_MEMORY_SPEC = /muscle-memory\.feature\.spec\.js$/
 const OVERALL_LEVEL_SPEC = /overall-level\.feature\.spec\.js$/
 const WINDOW_SUGGESTION_SPEC = /window-suggestion\.feature\.spec\.js$/
 const BODY_MAP_SPEC = /body-map\.feature\.spec\.js$/
+const PERIODS_SPEC = /periods\.feature\.spec\.js$/
+const WEEK_STREAK_SPEC = /week-streak\.feature\.spec\.js$/
+const PERSONAL_RANKING_SPEC = /personal-ranking\.feature\.spec\.js$/
+const PERIOD_SNAPSHOT_SPEC = /period-snapshot\.feature\.spec\.js$/
+const MEDALS_SPEC = /medals\.feature\.spec\.js$/
+const WEEKLY_DIGEST_SPEC = /weekly-digest\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -109,6 +115,12 @@ export default defineConfig({
         OVERALL_LEVEL_SPEC,
         WINDOW_SUGGESTION_SPEC,
         BODY_MAP_SPEC,
+        PERIODS_SPEC,
+        WEEK_STREAK_SPEC,
+        PERSONAL_RANKING_SPEC,
+        PERIOD_SNAPSHOT_SPEC,
+        MEDALS_SPEC,
+        WEEKLY_DIGEST_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -414,6 +426,60 @@ export default defineConfig({
       testMatch: BODY_MAP_SPEC,
       fullyParallel: false,
       dependencies: ['window-suggestion'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Writes the intention of the single current period and reads it back, so it runs alone and one
+    // scenario at a time, after the body map.
+    {
+      name: 'periods',
+      testMatch: PERIODS_SPEC,
+      fullyParallel: false,
+      dependencies: ['body-map'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Moves the start of period 1 back, replaces the weekly goals and records workouts relative to
+    // the real clock, so it runs alone and one scenario at a time, after the periods.
+    {
+      name: 'week-streak',
+      testMatch: WEEK_STREAK_SPEC,
+      fullyParallel: false,
+      dependencies: ['periods'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Replaces the periods and records workouts relative to the real clock, so it runs alone and
+    // one scenario at a time, after the week streak.
+    {
+      name: 'personal-ranking',
+      testMatch: PERSONAL_RANKING_SPEC,
+      fullyParallel: false,
+      dependencies: ['week-streak'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Moves the start of period 1 back to freeze two periods and edits a workout through MCP, so it
+    // runs alone and one scenario at a time, after the ranking.
+    {
+      name: 'period-snapshot',
+      testMatch: PERIOD_SNAPSHOT_SPEC,
+      fullyParallel: false,
+      dependencies: ['personal-ranking'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Replaces the periods and the medal awards and records workouts relative to the real clock,
+    // so it runs alone and one scenario at a time, after the period snapshot.
+    {
+      name: 'medals',
+      testMatch: MEDALS_SPEC,
+      fullyParallel: false,
+      dependencies: ['period-snapshot'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Replaces the periods and the medal awards and records workouts days before the real clock,
+    // so it runs alone, after the medals.
+    {
+      name: 'weekly-digest',
+      testMatch: WEEKLY_DIGEST_SPEC,
+      fullyParallel: false,
+      dependencies: ['medals'],
       use: { ...devices['Pixel 7'] },
     },
   ],

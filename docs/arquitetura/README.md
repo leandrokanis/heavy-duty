@@ -146,6 +146,14 @@ O ambiente de desenvolvimento sobe com `docker compose up`, a partir do `compose
 2. Na hora do aviso, com a antecedência da D79 e fora do horário de silêncio (D80), a API grava uma linha por aviso e canal em `notifications` e manda um aviso por letra (D31) pelos dois canais (D32): Web Push para o serviço de push (ADR-035) e e-mail para o servidor SMTP (ADR-037).
 3. A falha de um canal não bloqueia o outro e fica registrada em `notifications`. Não há nova tentativa (D86).
 4. O toque no aviso abre o treino do dia (D85). O link de desligar do e-mail desliga só os e-mails (D90).
+5. Na segunda-feira às 7h, no fuso `NOTICE_TIME_ZONE`, o mesmo agendador manda o resumo da semana que terminou, só por e-mail (onda 7b, D106, ADR-041).
+
+### Período e medalhas, a partir da onda 7b
+
+1. Na primeira partida com a migração da onda 7b, a API grava o período 1, que começa na segunda-feira 00:00 da semana do deploy (D95, ADR-039).
+2. O agendador do jogo, no processo da API e sempre ligado, executa um ciclo a cada 60 s: abre o período novo, congela o retrato do período que terminou e grava as medalhas conquistadas (ADR-039, ADR-040). A leitura do período e das medalhas faz o mesmo, se o servidor estava parado.
+3. O retrato e a medalha conquistada nunca mudam depois de gravados; o resto do jogo continua derivado do histórico (ADR-010).
+4. O app web lê o período e as medalhas e mostra a medalha nova quando a fila de envio esvazia (D104).
 
 ## Requisitos não funcionais
 

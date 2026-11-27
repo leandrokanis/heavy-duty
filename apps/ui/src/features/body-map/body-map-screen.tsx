@@ -1,15 +1,16 @@
 'use client'
 
-import { ChevronLeft } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { IconLink } from '@/components/ui/icon-link'
+import { TabBar } from '@/components/tab-bar'
 import { goHome, OfflineNotice } from '@/features/auth/offline-notice'
 import { SignInScreen } from '@/features/auth/sign-in-screen'
+import type { CurrentPeriod } from '@/features/period/period.types'
 import type { MuscleGroupLevels } from '@/features/workout/levels.types'
 import type { Today } from '@/features/workout/today.types'
 import { HATCH } from '@/features/workout/window-badge-list'
 import type { ActivityWindows } from '@/features/workout/windows.types'
 import { loadLevels } from '@/sync/levels-cache'
+import { loadPeriod } from '@/sync/period-cache'
 import { loadToday } from '@/sync/today-cache'
 import { loadWindows } from '@/sync/windows-cache'
 import { BodyFigure } from './body-figure'
@@ -23,6 +24,7 @@ type Copies = {
   windows: ActivityWindows | null
   levels: MuscleGroupLevels | null
   today: Today | null
+  period: CurrentPeriod | null
 }
 
 type ScreenState =
@@ -32,13 +34,18 @@ type ScreenState =
   | ({ status: 'ok' } & Copies)
 
 const PAGE_CLASS =
-  'mx-auto flex flex-1 w-full max-w-[640px] flex-col px-(--space-margin-inline) pt-(--space-12) pb-(--space-24)'
+  'mx-auto flex flex-1 w-full max-w-[640px] flex-col px-(--space-margin-inline) pt-(--space-12)'
 
 // The API answers or, without signal, the copies on the device answer (ADR-021); the map shows
 // once the windows or the levels are known.
 async function loadCopies(): Promise<ScreenState> {
-  const [windows, levels, today] = await Promise.all([loadWindows(), loadLevels(), loadToday()])
-  if ([windows, levels, today].some(({ status }) => status === 'unauthenticated')) {
+  const [windows, levels, today, period] = await Promise.all([
+    loadWindows(),
+    loadLevels(),
+    loadToday(),
+    loadPeriod(),
+  ])
+  if ([windows, levels, today, period].some(({ status }) => status === 'unauthenticated')) {
     return { status: 'unauthenticated' }
   }
   if (windows.status !== 'ok' && levels.status !== 'ok') return { status: 'offline' }
@@ -47,6 +54,7 @@ async function loadCopies(): Promise<ScreenState> {
     windows: windows.status === 'ok' ? windows.windows : null,
     levels: levels.status === 'ok' ? levels.levels : null,
     today: today.status === 'ok' ? today.today : null,
+    period: period.status === 'ok' ? period.period : null,
   }
 }
 
@@ -89,47 +97,57 @@ export function BodyMapScreen({ timeZone }: BodyMapScreenProps = {}) {
   const groups =
     state.status === 'ok' ? bodyMapOf(state.windows, state.levels, state.today, nowMs) : []
   const selected = groups.find(({ slug }) => slug === selectedSlug) ?? null
+  const periodProgress =
+    state.status === 'ok'
+      ? (state.period?.groups.find(({ muscleGroup }) => muscleGroup.slug === selectedSlug) ?? null)
+      : null
 
   return (
-    <main aria-busy={state.status === 'loading' ? 'true' : undefined} className={PAGE_CLASS}>
-      <nav className="flex min-h-(--target-min) items-center">
-        <IconLink href="/" icon={ChevronLeft} aria-label="Voltar ao treino do dia" />
-      </nav>
-      <h1 className="m-0 mt-(--space-8) font-(--font-weight-bold) text-(length:--font-size-large-title) leading-(--font-leading-tight) tracking-(--font-tracking-tight)">
-        Mapa
-      </h1>
-      {state.status === 'ok' ? (
-        <div className="mt-(--space-24) flex flex-col gap-(--space-16)">
-          <div className="rounded-(--radius-card) bg-(--color-background-grouped) px-(--space-12) pt-(--space-16) pb-(--space-12)">
-            <BodyFigure groups={groups} selectedSlug={selectedSlug} onSelect={setSelectedSlug} />
-            <ul
-              aria-label="Legenda"
-              className="m-0 mt-(--space-8) flex list-none flex-wrap justify-center gap-x-(--space-16) gap-y-(--space-8) p-0 text-(--color-label-secondary) text-(length:--font-size-footnote)"
-            >
-              {LEGEND.map(({ label, background }) => (
-                <li key={label} className="flex items-center gap-(--space-8)">
-                  <span
-                    aria-hidden="true"
-                    className="size-[10px] rounded-(--radius-circle)"
-                    style={{ background }}
-                  />
-                  {label}
-                </li>
-              ))}
-            </ul>
+    <>
+      <main aria-busy={state.status === 'loading' ? 'true' : undefined} className={PAGE_CLASS}>
+        <h1 className="m-0 mt-(--space-8) font-(--font-weight-bold) text-(length:--font-size-large-title) leading-(--font-leading-tight) tracking-(--font-tracking-tight)">
+          Mapa
+        </h1>
+        {state.status === 'ok' ? (
+          <div className="mt-(--space-24) flex flex-col gap-(--space-16)">
+            <div className="rounded-(--radius-card) bg-(--color-background-grouped) px-(--space-12) pt-(--space-16) pb-(--space-12)">
+              <BodyFigure groups={groups} selectedSlug={selectedSlug} onSelect={setSelectedSlug} />
+              <ul
+                aria-label="Legenda"
+                className="m-0 mt-(--space-8) flex list-none flex-wrap justify-center gap-x-(--space-16) gap-y-(--space-8) p-0 text-(--color-label-secondary) text-(length:--font-size-footnote)"
+              >
+                {LEGEND.map(({ label, background }) => (
+                  <li key={label} className="flex items-center gap-(--space-8)">
+                    <span
+                      aria-hidden="true"
+                      className="size-[10px] rounded-(--radius-circle)"
+                      style={{ background }}
+                    />
+                    {label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <GroupList
+              groups={groups}
+              nowMs={nowMs}
+              timeZone={timeZone}
+              onSelect={setSelectedSlug}
+            />
           </div>
-          <GroupList groups={groups} nowMs={nowMs} timeZone={timeZone} onSelect={setSelectedSlug} />
-        </div>
-      ) : (
-        <MapSkeleton />
-      )}
-      <GroupSheet
-        group={selected}
-        nowMs={nowMs}
-        timeZone={timeZone}
-        onClose={() => setSelectedSlug(null)}
-      />
-    </main>
+        ) : (
+          <MapSkeleton />
+        )}
+        <GroupSheet
+          group={selected}
+          periodProgress={periodProgress}
+          nowMs={nowMs}
+          timeZone={timeZone}
+          onClose={() => setSelectedSlug(null)}
+        />
+      </main>
+      <TabBar current="map" />
+    </>
   )
 }
 

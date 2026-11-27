@@ -6,7 +6,7 @@ const APP_PATH = '/'
 const MIN_TTL_SECONDS = 60
 
 // "costas, bíceps e lombar"
-function listOf(names: readonly string[]): string {
+export function listOf(names: readonly string[]): string {
   if (names.length <= 1) return names.join('')
   return `${names.slice(0, -1).join(', ')} e ${names.at(-1)}`
 }

@@ -13,7 +13,12 @@ import type { Goal } from './windows.config.js'
 
 export type PerformedSet = VolumeSet & { performedAt: string }
 
-export type WorkoutPerformedSet = PerformedSet & { workoutId: string; letter: string; goal: Goal }
+export type WorkoutPerformedSet = PerformedSet & {
+  workoutId: string
+  exerciseId: string
+  letter: string
+  goal: Goal
+}
 
 export type MuscleGroupRow = { slug: string; name: string }
 
@@ -99,7 +104,7 @@ export function listWorkoutSets(db: Database): WorkoutPerformedSet[] {
 function withGroups<T extends { exerciseId: string }>(
   db: Database,
   sets: T[],
-): (Omit<T, 'exerciseId'> & Pick<VolumeSet, 'primaryGroupSlugs' | 'secondaryGroupSlugs'>)[] {
+): (T & Pick<VolumeSet, 'primaryGroupSlugs' | 'secondaryGroupSlugs'>)[] {
   if (sets.length === 0) {
     return []
   }
@@ -121,9 +126,9 @@ function withGroups<T extends { exerciseId: string }>(
     entry[row.role].push(row.groupSlug)
     groupsOfExercise.set(row.exerciseId, entry)
   }
-  return sets.map(({ exerciseId, ...set }) => ({
+  return sets.map((set) => ({
     ...set,
-    primaryGroupSlugs: groupsOfExercise.get(exerciseId)?.primary ?? [],
-    secondaryGroupSlugs: groupsOfExercise.get(exerciseId)?.secondary ?? [],
+    primaryGroupSlugs: groupsOfExercise.get(set.exerciseId)?.primary ?? [],
+    secondaryGroupSlugs: groupsOfExercise.get(set.exerciseId)?.secondary ?? [],
   }))
 }

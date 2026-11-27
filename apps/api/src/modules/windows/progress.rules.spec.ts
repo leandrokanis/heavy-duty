@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupLevelsOf, type ProgressSet } from './progress.rules.js'
+import { gameReplayOf, groupLevelsOf, type ProgressSet } from './progress.rules.js'
 import { GAME_PARAMETERS } from './windows.config.js'
 
 const HOUR_MS = 60 * 60 * 1000
@@ -212,6 +212,105 @@ describe('groupLevelsOf with muscle memory (US-F10-04)', () => {
       expect(
         groupLevelsOf(sets, GAME_PARAMETERS, backMs + 3 * HOUR_MS).get('chest')?.progress,
       ).toEqual({ level: 5, points: 42, bestLevel: 5 })
+    })
+  })
+})
+
+describe('gameReplayOf, the points of each set (US-F19-02)', () => {
+  function pointsOf(sets: ProgressSet[]) {
+    const lastMs = Math.max(...sets.map(({ performedAtMs }) => performedAtMs))
+    return gameReplayOf(sets, GAME_PARAMETERS, lastMs).setPoints
+  }
+
+  describe('Given one workout with 3 sets at plan, with no window before', () => {
+    it('Then each set yields the common 10 points, in time order', () => {
+      expect(pointsOf(benchWorkout('workout-1', T0))).toEqual([
+        { workoutId: 'workout-1', performedAtMs: T0, points: 10 },
+        { workoutId: 'workout-1', performedAtMs: T0 + 60_000, points: 10 },
+        { workoutId: 'workout-1', performedAtMs: T0 + 120_000, points: 10 },
+      ])
+    })
+  })
+
+  describe('Given a second chest workout 50 hours later, inside the window of the first', () => {
+    it('Then each set of the second workout yields the double', () => {
+      const sets = [
+        ...benchWorkout('workout-1', T0),
+        ...benchWorkout('workout-2', T0 + 50 * HOUR_MS),
+      ]
+
+      expect(
+        pointsOf(sets)
+          .filter(({ workoutId }) => workoutId === 'workout-2')
+          .map(({ points }) => points),
+      ).toEqual([20, 20, 20])
+    })
+  })
+
+  describe('Given only the secondary group of a set inside its window', () => {
+    it('Then the set yields the common points', () => {
+      const sets = [
+        benchSet({
+          workoutId: 'workout-1',
+          primaryGroupSlugs: ['triceps'],
+          secondaryGroupSlugs: [],
+          plannedGroupSets: { triceps: 1 },
+        }),
+        benchSet({ workoutId: 'workout-2', performedAtMs: T0 + 50 * HOUR_MS }),
+      ]
+
+      expect(pointsOf(sets).at(-1)?.points).toBe(10)
+    })
+  })
+
+  describe('Given chest back a month after its window closed, below its best level', () => {
+    it('Then the set back yields the double, once', () => {
+      const sets = [
+        ...benchWorkout('workout-1', T0),
+        ...benchWorkout('workout-2', T0 + 50 * HOUR_MS),
+        benchSet({ workoutId: 'workout-3', performedAtMs: T0 + 30 * 24 * HOUR_MS }),
+      ]
+
+      expect(pointsOf(sets).at(-1)?.points).toBe(20)
+    })
+  })
+
+  describe('Given the same history', () => {
+    it('Then the levels are the ones of groupLevelsOf', () => {
+      const sets = [
+        ...benchWorkout('workout-1', T0),
+        ...benchWorkout('workout-2', T0 + 50 * HOUR_MS),
+      ]
+      const nowMs = T0 + 60 * HOUR_MS
+
+      expect(gameReplayOf(sets, GAME_PARAMETERS, nowMs).levels).toEqual(
+        groupLevelsOf(sets, GAME_PARAMETERS, nowMs),
+      )
+    })
+  })
+})
+
+describe('gameReplayOf, the level of each group after each set (US-F19-01)', () => {
+  function stepsOf(sets: ProgressSet[], groupSlug: string) {
+    const lastMs = Math.max(...sets.map(({ performedAtMs }) => performedAtMs))
+    return gameReplayOf(sets, GAME_PARAMETERS, lastMs).levelSteps.filter(
+      (step) => step.groupSlug === groupSlug,
+    )
+  }
+
+  describe('Given one workout with 3 sets at plan, 20 points each for chest', () => {
+    it('Then chest should step to level 2 at the second set, which fills the 40 of level 1', () => {
+      expect(stepsOf(benchWorkout('workout-1', T0), 'chest')).toEqual([
+        { workoutId: 'workout-1', performedAtMs: T0, groupSlug: 'chest', level: 1 },
+        { workoutId: 'workout-1', performedAtMs: T0 + 60_000, groupSlug: 'chest', level: 2 },
+        { workoutId: 'workout-1', performedAtMs: T0 + 120_000, groupSlug: 'chest', level: 2 },
+      ])
+    })
+
+    it('Then the secondary triceps should have a step at each set too', () => {
+      expect(stepsOf(benchWorkout('workout-1', T0), 'triceps').map(({ level }) => level)).toEqual([
+        1, 1, 1,
+      ])
     })
   })
 })

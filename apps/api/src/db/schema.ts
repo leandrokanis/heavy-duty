@@ -94,6 +94,61 @@ export const weeklyGoals = sqliteTable(
   ],
 )
 
+// One row per period of 12 weeks; the start of period 1 is the fact of the deploy and the
+// others follow by arithmetic (ADR-039).
+export const periods = sqliteTable(
+  'periods',
+  {
+    id: text('id').primaryKey(),
+    number: integer('number').notNull().unique(),
+    startsAt: text('starts_at').notNull(),
+    endsAt: text('ends_at').notNull(),
+    intention: text('intention'),
+    frozenAt: text('frozen_at'),
+    // The summary of the snapshot, null until frozen_at (D99, ADR-039).
+    windowsUsed: integer('windows_used'),
+    windowsMissed: integer('windows_missed'),
+    points: integer('points'),
+    bestWorkoutPoints: integer('best_workout_points'),
+    weekStreak: integer('week_streak'),
+  },
+  (table) => [
+    check('periods_number_check', sql`${table.number} >= 1`),
+    check(
+      'periods_intention_check',
+      sql`${table.intention} IS NULL OR length(${table.intention}) BETWEEN 1 AND 120`,
+    ),
+  ],
+)
+
+// Written once at the end of the period and never changed, even if a workout of the period is
+// edited or the formula of the game changes (ADR-010, ADR-039).
+export const periodSnapshots = sqliteTable(
+  'period_snapshots',
+  {
+    id: text('id').primaryKey(),
+    periodId: text('period_id')
+      .notNull()
+      .references(() => periods.id, { onDelete: 'restrict' }),
+    muscleGroupId: text('muscle_group_id')
+      .notNull()
+      .references(() => muscleGroups.id, { onDelete: 'restrict' }),
+    level: integer('level').notNull(),
+    points: integer('points').notNull(),
+    bestLevel: integer('best_level').notNull(),
+    windowState: text('window_state', { enum: ['resting', 'open', 'cooling', 'none'] }).notNull(),
+    windowsUsed: integer('windows_used').notNull(),
+    windowsMissed: integer('windows_missed').notNull(),
+  },
+  (table) => [
+    unique('period_snapshots_period_group_unique').on(table.periodId, table.muscleGroupId),
+    check(
+      'period_snapshots_window_state_check',
+      sql`${table.windowState} IN ('resting', 'open', 'cooling', 'none')`,
+    ),
+  ],
+)
+
 // One row per browser that turned the notices on; the endpoint identifies it (ADR-035).
 export const pushSubscriptions = sqliteTable('push_subscriptions', {
   id: text('id').primaryKey(),
@@ -111,10 +166,13 @@ export const notifications = sqliteTable(
   {
     id: text('id').primaryKey(),
     noticeKey: text('notice_key').notNull(),
-    kind: text('kind', { enum: ['window_open', 'window_close', 'level_drop'] }).notNull(),
+    kind: text('kind', {
+      enum: ['window_open', 'window_close', 'level_drop', 'weekly_digest'],
+    }).notNull(),
     channel: text('channel', { enum: ['push', 'email'] }).notNull(),
     letter: text('letter'),
-    muscleGroupSlugs: text('muscle_group_slugs').notNull(),
+    // Null on the weekly digest, which names no group (ADR-041).
+    muscleGroupSlugs: text('muscle_group_slugs'),
     dueAt: text('due_at').notNull(),
     eventAt: text('event_at').notNull(),
     createdAt: text('created_at').notNull(),
@@ -130,7 +188,7 @@ export const notifications = sqliteTable(
     index('notifications_channel_created_at_idx').on(table.channel, table.createdAt),
     check(
       'notifications_kind_check',
-      sql`${table.kind} IN ('window_open', 'window_close', 'level_drop')`,
+      sql`${table.kind} IN ('window_open', 'window_close', 'level_drop', 'weekly_digest')`,
     ),
     check('notifications_channel_check', sql`${table.channel} IN ('push', 'email')`),
     check(
@@ -401,4 +459,20 @@ export const oauthGrants = sqliteTable(
     index('oauth_grants_client_idx').on(table.clientId),
     index('oauth_grants_previous_refresh_idx').on(table.previousRefreshTokenHash),
   ],
+)
+
+// One row per medal awarded, kept forever: no correction, removal or change of formula takes it
+// away (ADR-040).
+export const medalAwards = sqliteTable(
+  'medal_awards',
+  {
+    id: text('id').primaryKey(),
+    medalCode: text('medal_code').notNull().unique(),
+    // The muscle group of a level medal, as in "level 10 in chest"; null on the others.
+    subject: text('subject'),
+    workoutId: text('workout_id').references(() => workouts.id, { onDelete: 'set null' }),
+    // The instant of the event, not of its detection.
+    awardedAt: text('awarded_at').notNull(),
+  },
+  (table) => [index('medal_awards_awarded_at_idx').on(table.awardedAt)],
 )

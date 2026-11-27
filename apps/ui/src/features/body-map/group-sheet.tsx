@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/sheet'
 import { formatWorkoutDate } from '@/features/history/history-format'
+import type { WindowsTally } from '@/features/period/period.types'
 import { DoubleMark } from '@/features/workout/double-mark'
 import { LevelBadge } from '@/features/workout/level-badge'
 import { formatCoolingFor, formatWindowWhen } from '@/features/workout/window-format'
@@ -14,6 +15,8 @@ import { capitalized, LevelBar, StateIndicator } from './group-parts'
 
 export type GroupSheetProps = {
   group: BodyMapGroup | null
+  // The windows of the group in the current period; null while the period is unknown.
+  periodProgress?: WindowsTally | null
   nowMs: number
   timeZone?: string
   onClose: () => void
@@ -40,9 +43,9 @@ function Detail({ term, children }: { term: string; children: ReactNode }) {
   )
 }
 
-// The detail of a group from the copies on the device (decision 15 of wave 7a): no progress in the
-// period, which comes with wave 7b.
-export function GroupSheet({ group, nowMs, timeZone, onClose }: GroupSheetProps) {
+// The detail of a group from the copies on the device (decision 15 of wave 7a), with the rate of
+// windows used in the period as its progress in the period (D100).
+export function GroupSheet({ group, periodProgress, nowMs, timeZone, onClose }: GroupSheetProps) {
   return (
     <Sheet.Root
       open={group !== null}
@@ -50,7 +53,14 @@ export function GroupSheet({ group, nowMs, timeZone, onClose }: GroupSheetProps)
         if (!open) onClose()
       }}
     >
-      {group ? <GroupDetail group={group} nowMs={nowMs} timeZone={timeZone} /> : null}
+      {group ? (
+        <GroupDetail
+          group={group}
+          periodProgress={periodProgress}
+          nowMs={nowMs}
+          timeZone={timeZone}
+        />
+      ) : null}
       {group ? (
         <Button
           variant="secondary"
@@ -67,6 +77,7 @@ export function GroupSheet({ group, nowMs, timeZone, onClose }: GroupSheetProps)
 
 function GroupDetail({
   group,
+  periodProgress,
   nowMs,
   timeZone,
 }: Omit<GroupSheetProps, 'onClose' | 'group'> & {
@@ -125,6 +136,13 @@ function GroupDetail({
               {level.muscleMemory ? (
                 <DoubleMark muscleMemory aria-label="Recuperação em dobro" />
               ) : null}
+            </Detail>
+          ) : null}
+          {periodProgress ? (
+            <Detail term="Progresso no período">
+              {periodProgress.usedPercent === null
+                ? 'Nenhuma janela terminou'
+                : `${periodProgress.usedPercent} %`}
             </Detail>
           ) : null}
           <Detail term="Janela">{windowTextOf(group, nowMs, timeZone)}</Detail>

@@ -8,7 +8,7 @@ import {
   multiplierPercentOf,
   type SetBonuses,
   type SetPlan,
-  setPointsOf,
+  shownSetPointsOf,
   startingProgress,
   type Tier,
   tierOf,
@@ -62,6 +62,9 @@ export type WorkoutSession = {
   windows: FrozenWindow[]
   // Frozen at the start; the screen swaps them for the answer of the API when the queue empties.
   levels: FrozenLevel[]
+  // The points of the workouts of the period at the start, for the provisional position (D105);
+  // null with no copy of the period, absent in a workout saved before the ranking.
+  periodPoints?: number[] | null
 }
 
 // The numbers on the set screen; reps or seconds is null for the other kind of exercise.
@@ -502,16 +505,15 @@ type GroupStep = GroupRole & {
 
 // One replay for the points and the bars: from the base, each set it does not hold adds the gain
 // of each group with the multiplier of the group itself (D55), as it stood before the set, the
-// same rules the API runs over the whole history. The steps of the last set, null if held.
-function lastSetStepsOf(state: WorkoutFlowState, base: LevelsBase): GroupStep[] | null {
+// same rules the API runs over the whole history. The steps of each set the base does not hold.
+function setStepsOf(state: WorkoutFlowState, base: LevelsBase): GroupStep[][] {
   const progress = new Map(
     base.levels.map(({ muscleGroupSlug, ...level }) => [muscleGroupSlug, level as GroupProgress]),
   )
   const progressOf = (slug: string) => progress.get(slug) ?? startingProgress()
-  let steps: GroupStep[] | null = null
-  for (const set of state.recorded.slice(base.includedSetCount)) {
+  return state.recorded.slice(base.includedSetCount).map((set) => {
     const planned = plannedOf(state, set)
-    steps = groupRolesOf(planned).map((group) => {
+    return groupRolesOf(planned).map((group) => {
       const before = progressOf(group.slug)
       const bonuses = bonusesOf(state, group.slug, set.performedAt, before)
       const gain = groupGainOf(
@@ -531,12 +533,20 @@ function lastSetStepsOf(state: WorkoutFlowState, base: LevelsBase): GroupStep[] 
         bonuses,
       }
     })
-  }
-  return steps
+  })
+}
+
+// The steps of the last set, null if the base holds it.
+function lastSetStepsOf(state: WorkoutFlowState, base: LevelsBase): GroupStep[] | null {
+  return setStepsOf(state, base).at(-1) ?? null
 }
 
 function frozenBaseOf(state: WorkoutFlowState): LevelsBase {
   return { levels: state.session.levels, includedSetCount: 0 }
+}
+
+function primaryBonusesOf(steps: GroupStep[]): SetBonuses[] {
+  return steps.filter(({ role }) => role === 'primary').map(({ bonuses }) => bonuses)
 }
 
 // The provisional points of the last recorded set (ADR-034), against its plan in the workout of
@@ -545,20 +555,33 @@ function frozenBaseOf(state: WorkoutFlowState): LevelsBase {
 export function lastSetPointsOf(state: WorkoutFlowState): SetPointsView | null {
   const set = state.recorded.at(-1)
   if (set === undefined) return null
-  const primary = (lastSetStepsOf(state, frozenBaseOf(state)) ?? []).filter(
-    ({ role }) => role === 'primary',
+  const primaryBonuses = primaryBonusesOf(lastSetStepsOf(state, frozenBaseOf(state)) ?? [])
+  const { points, multiplierPercent } = shownSetPointsOf(
+    measureOf(set),
+    planOf(plannedOf(state, set)),
+    primaryBonuses,
   )
   const common = multiplierPercentOf({ inWindow: false })
-  const multiplierPercent = Math.max(
-    common,
-    ...primary.map(({ bonuses }) => multiplierPercentOf(bonuses)),
-  )
-  const points = setPointsOf(measureOf(set), planOf(plannedOf(state, set)), multiplierPercent)
   return {
     setId: set.id,
     points,
-    bonus: multiplierPercent > common ? bonusOf(primary.map(({ bonuses }) => bonuses)) : null,
+    bonus: multiplierPercent > common ? bonusOf(primaryBonuses) : null,
   }
+}
+
+// The provisional points of the workout: the sum of the points each set showed (D105).
+export function workoutPointsOf(state: WorkoutFlowState): number {
+  const steps = setStepsOf(state, frozenBaseOf(state))
+  return state.recorded.reduce(
+    (total, set, index) =>
+      total +
+      shownSetPointsOf(
+        measureOf(set),
+        planOf(plannedOf(state, set)),
+        primaryBonusesOf(steps[index] ?? []),
+      ).points,
+    0,
+  )
 }
 
 export type GroupLevelRow = {

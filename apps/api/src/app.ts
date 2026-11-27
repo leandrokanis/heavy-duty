@@ -1,5 +1,6 @@
 import { swaggerUI } from '@hono/swagger-ui'
 import type { OpenAPIHono } from '@hono/zod-openapi'
+import { DEFAULT_NOTICE_TIME_ZONE } from './config/notifications-env.js'
 import type { Database } from './db/connection.js'
 import { createRouter, handleError, handleNotFound } from './http/errors.js'
 import { originGuard } from './http/origin-guard.js'
@@ -15,8 +16,10 @@ import { createWebAuthnVerifier, type WebAuthnVerifier } from './modules/auth/we
 import { createExerciseRoutes } from './modules/catalog/exercise.routes.js'
 import { createMuscleRoutes } from './modules/catalog/muscle.routes.js'
 import { createMuscleGroupRoutes } from './modules/catalog/muscle-group.routes.js'
+import { createMedalsRoutes } from './modules/medals/medals.routes.js'
 import { createEmailOptOutRoutes } from './modules/notifications/email-opt-out.routes.js'
 import { createNotificationsRoutes } from './modules/notifications/notifications.routes.js'
+import { createPeriodsRoutes } from './modules/periods/periods.routes.js'
 import { createProgramRoutes } from './modules/programs/program.routes.js'
 import { createHealthRoutes } from './modules/system/health.routes.js'
 import type { DatabaseHealthProbe } from './modules/system/health.service.js'
@@ -47,6 +50,8 @@ export type AppOptions = {
   pushPublicKey?: string
   // True only when SMTP_HOST, MAIL_FROM and MAIL_TO are set (ADR-037).
   emailConfigured?: boolean
+  // NOTICE_TIME_ZONE, also the zone of the weeks and periods of the server (ADR-039).
+  timeZone?: string
 }
 
 export const DEFAULT_APP_ORIGIN = 'http://localhost:8080'
@@ -57,6 +62,7 @@ export function createApp(options: AppOptions): OpenAPIHono {
   const app = createRouter()
   const appOrigin = options.appOrigin ?? DEFAULT_APP_ORIGIN
   const now = options.now ?? (() => new Date())
+  const timeZone = options.timeZone ?? DEFAULT_NOTICE_TIME_ZONE
   const noticeChannels = {
     push: options.pushPublicKey !== undefined,
     email: options.emailConfigured === true,
@@ -94,6 +100,8 @@ export function createApp(options: AppOptions): OpenAPIHono {
     app.route('/', createWorkoutHistoryRoutes(options.db))
     app.route('/', createWorkoutDeleteRoutes(options.db))
     app.route('/', createWindowsRoutes({ db: options.db, now }))
+    app.route('/', createPeriodsRoutes({ db: options.db, now, timeZone }))
+    app.route('/', createMedalsRoutes({ db: options.db, now, timeZone }))
     app.route(
       '/',
       createNotificationsRoutes({ db: options.db, now, pushPublicKey: options.pushPublicKey }),
@@ -110,7 +118,7 @@ export function createApp(options: AppOptions): OpenAPIHono {
 
   // Without a database no credential can be checked, so /mcp is not mounted, see ADR-020.
   if (options.db) {
-    const toolDeps = { db: options.db, now, noticeChannels }
+    const toolDeps = { db: options.db, now, noticeChannels, timeZone }
     app.use(MCP_PATH, mcpHostGuard(options.mcpAllowedHosts ?? DEFAULT_MCP_ALLOWED_HOSTS))
     app.use(MCP_PATH, mcpBearerGuard({ db: options.db, now, appOrigin }))
     app.all(MCP_PATH, (c) => handleMcpRequest(c, toolDeps))

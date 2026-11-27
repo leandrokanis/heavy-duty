@@ -1,7 +1,9 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { testPeriod } from '@/features/period/test-period'
 import { SUPINO_RETO, todayBody, todayDay } from '@/features/workout/test-today'
 import { loadLevels } from '@/sync/levels-cache'
+import { loadPeriod } from '@/sync/period-cache'
 import { loadToday } from '@/sync/today-cache'
 import { loadWindows } from '@/sync/windows-cache'
 import { BodyMapScreen } from './body-map-screen'
@@ -10,6 +12,7 @@ import { groupLevel, groupWindow, NOW_MS, SAO_PAULO } from './test-body-map'
 vi.mock('@/sync/windows-cache', () => ({ loadWindows: vi.fn() }))
 vi.mock('@/sync/levels-cache', () => ({ loadLevels: vi.fn() }))
 vi.mock('@/sync/today-cache', () => ({ loadToday: vi.fn() }))
+vi.mock('@/sync/period-cache', () => ({ loadPeriod: vi.fn() }))
 vi.mock('@simplewebauthn/browser', () => ({
   browserSupportsWebAuthn: () => true,
   startAuthentication: vi.fn(),
@@ -18,6 +21,7 @@ vi.mock('@simplewebauthn/browser', () => ({
 const loadWindowsMock = vi.mocked(loadWindows)
 const loadLevelsMock = vi.mocked(loadLevels)
 const loadTodayMock = vi.mocked(loadToday)
+const loadPeriodMock = vi.mocked(loadPeriod)
 
 const WINDOWS = {
   now: new Date(NOW_MS).toISOString(),
@@ -51,6 +55,7 @@ function stubCopies() {
 }
 
 beforeEach(() => {
+  loadPeriodMock.mockResolvedValue({ status: 'offline' })
   vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
   vi.setSystemTime(NOW_MS)
 })
@@ -62,14 +67,15 @@ afterEach(() => {
 
 describe('Given the copies of the windows, the levels and the workout of the day on the device', () => {
   describe('When the athlete opens the map', () => {
-    it('Then should show the title, the way back, the legend and a row per group', async () => {
+    it('Then should show the title, the tab bar on Mapa, the legend and a row per group', async () => {
       stubCopies()
 
       render(<BodyMapScreen timeZone={SAO_PAULO} />)
 
       expect(await screen.findByRole('heading', { level: 1, name: 'Mapa' })).toBeInTheDocument()
       expect({
-        back: screen.getByRole('link', { name: 'Voltar ao treino do dia' }).getAttribute('href'),
+        back: screen.queryByRole('link', { name: 'Voltar ao treino do dia' }),
+        tab: screen.getByRole('link', { name: 'Mapa' }).getAttribute('aria-current'),
         legend: within(screen.getByRole('list', { name: 'Legenda' }))
           .getAllByRole('listitem')
           .map((item) => item.textContent),
@@ -77,7 +83,8 @@ describe('Given the copies of the windows, the levels and the workout of the day
           .getAllByRole('button')
           .map((row) => row.getAttribute('aria-label')),
       }).toEqual({
-        back: '/',
+        back: null,
+        tab: 'page',
         legend: ['Janela aberta', 'Descansando', 'Esfriando'],
         rows: [
           'Peito, Janela aberta · fecha qui 20h, nível 6',
@@ -94,6 +101,32 @@ describe('Given the copies of the windows, the levels and the workout of the day
       fireEvent.click(await screen.findByRole('button', { name: /^Peito/ }))
 
       expect(await screen.findByRole('dialog', { name: 'Peito' })).toBeInTheDocument()
+    })
+  })
+
+  describe('When the copy of the period is also on the device and the athlete opens the chest', () => {
+    it('Then the detail should show the progress of the chest in the period', async () => {
+      stubCopies()
+      const period = testPeriod()
+      loadPeriodMock.mockResolvedValue({
+        status: 'ok',
+        period: {
+          ...period,
+          groups: period.groups.map((group) =>
+            group.muscleGroup.slug === 'chest'
+              ? { ...group, windowsUsed: 3, windowsMissed: 1, usedPercent: 75 }
+              : group,
+          ),
+        },
+      })
+      render(<BodyMapScreen timeZone={SAO_PAULO} />)
+
+      fireEvent.click(await screen.findByRole('button', { name: /^Peito/ }))
+
+      const dialog = await screen.findByRole('dialog', { name: 'Peito' })
+      expect(within(dialog).getByText('Progresso no período').nextElementSibling).toHaveTextContent(
+        '75 %',
+      )
     })
   })
 

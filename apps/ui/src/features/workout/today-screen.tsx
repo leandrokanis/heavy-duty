@@ -1,7 +1,8 @@
 'use client'
 
-import { Bell, History, PersonStanding } from 'lucide-react'
+import { Bell, History } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { TabBar } from '@/components/tab-bar'
 import { IconButton } from '@/components/ui/icon-button'
 import { IconLink } from '@/components/ui/icon-link'
 import { OfflineNotice } from '@/features/auth/offline-notice'
@@ -9,8 +10,10 @@ import { SignInScreen } from '@/features/auth/sign-in-screen'
 import { NoticesSheet } from '@/features/notices/notices-sheet'
 import { browserPushDevice } from '@/features/notices/push-device'
 import { resyncPushSubscription } from '@/features/notices/use-push-notices'
+import type { CurrentPeriod } from '@/features/period/period.types'
 import { loadActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
 import { loadLevels } from '@/sync/levels-cache'
+import { loadPeriod } from '@/sync/period-cache'
 import { useSyncQueue, useSyncSnapshot } from '@/sync/sync-context'
 import { type LoadedToday, loadToday } from '@/sync/today-cache'
 import { loadWeekWindows } from '@/sync/weekly-windows-cache'
@@ -22,8 +25,10 @@ import type { MuscleGroupLevels } from './levels.types'
 import { overallLevelViewOf } from './overall-level'
 import { QueueNotices } from './queue-notices'
 import { StartSheet } from './start-sheet'
+import { shownStreakOf } from './streak-item'
 import type { Today, TodayDay } from './today.types'
 import { countOfThisWeek } from './week'
+import { weekPointsOf } from './week-points-item'
 import type { WeekWindows } from './weekly-windows.types'
 import { suggestedLetterOf } from './window-suggestion'
 import type { ActivityWindows } from './windows.types'
@@ -35,6 +40,7 @@ import {
   type WorkoutFlowState,
   type WorkoutSession,
 } from './workout-flow'
+import { frozenPeriodPointsOf } from './workout-rank'
 import { WorkoutScreen } from './workout-screen'
 
 const WINDOW_TICK_MS = 60_000
@@ -55,14 +61,15 @@ export function TodayScreen() {
   const [windows, setWindows] = useState<ActivityWindows | null>(null)
   const [levels, setLevels] = useState<MuscleGroupLevels | null>(null)
   const [week, setWeek] = useState<WeekWindows | null>(null)
+  const [period, setPeriod] = useState<CurrentPeriod | null>(null)
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [sheetDay, setSheetDay] = useState<TodayDay | null>(null)
   const [noticesOpen, setNoticesOpen] = useState(false)
   // 'pending' until the device has answered whether a workout is in progress.
   const [flow, setFlow] = useState<WorkoutFlowState | null | 'pending'>('pending')
 
-  // The windows, the levels and the windows used in the week come from the history the API holds,
-  // so they reload together.
+  // The windows, the levels, the windows used in the week and the period come from the history the
+  // API holds, so they reload together.
   const reloadWindows = useCallback(() => {
     loadWindows().then((loaded) => {
       setWindows(loaded.status === 'ok' ? loaded.windows : null)
@@ -70,6 +77,7 @@ export function TodayScreen() {
     })
     loadLevels().then((loaded) => setLevels(loaded.status === 'ok' ? loaded.levels : null))
     loadWeekWindows().then((loaded) => setWeek(loaded.status === 'ok' ? loaded.week : null))
+    loadPeriod().then((loaded) => setPeriod(loaded.status === 'ok' ? loaded.period : null))
   }, [])
 
   // The queue sends again after each answer of the API, as it may be a session that came back.
@@ -131,63 +139,75 @@ export function TodayScreen() {
   }
 
   return (
-    <main
-      aria-busy={result === null || flow === 'pending' ? 'true' : undefined}
-      className="mx-auto flex flex-1 w-full max-w-[640px] flex-col px-(--space-margin-inline) pt-(--space-12) pb-(--space-24)"
-    >
-      <header className="flex items-center justify-between gap-(--space-12)">
-        <h1 className="m-0 font-(--font-weight-bold) text-(length:--font-size-large-title) leading-(--font-leading-tight) tracking-(--font-tracking-tight)">
-          Heavy Duty
-        </h1>
-        <div className="flex items-center gap-(--space-8)">
-          <IconButton icon={Bell} aria-label="Avisos" onClick={() => setNoticesOpen(true)} />
-          <IconLink href="/mapa" icon={PersonStanding} aria-label="Mapa" />
-          <IconLink href="/historico" icon={History} aria-label="Histórico" />
+    <>
+      <main
+        aria-busy={result === null || flow === 'pending' ? 'true' : undefined}
+        className="mx-auto flex flex-1 w-full max-w-[640px] flex-col px-(--space-margin-inline) pt-(--space-12)"
+      >
+        <header className="flex items-center justify-between gap-(--space-12)">
+          <h1 className="m-0 font-(--font-weight-bold) text-(length:--font-size-large-title) leading-(--font-leading-tight) tracking-(--font-tracking-tight)">
+            Heavy Duty
+          </h1>
+          <div className="flex items-center gap-(--space-8)">
+            <IconButton icon={Bell} aria-label="Avisos" onClick={() => setNoticesOpen(true)} />
+            <IconLink href="/historico" icon={History} aria-label="Histórico" />
+          </div>
+        </header>
+        <QueueNotices align="start" className="mt-(--space-16)" />
+        <div className="mt-(--space-24)">
+          {result?.status === 'ok' ? (
+            <TodayContent
+              today={result.today}
+              windows={windows}
+              levels={levels}
+              week={week}
+              period={period}
+              nowMs={nowMs}
+              onSelect={(day) => {
+                if (day.exercises.length > 0) setSheetDay(day)
+              }}
+            />
+          ) : (
+            <LetterListSkeleton />
+          )}
         </div>
-      </header>
-      <QueueNotices align="start" className="mt-(--space-16)" />
-      <div className="mt-(--space-24)">
-        {result?.status === 'ok' ? (
-          <TodayContent
-            today={result.today}
-            windows={windows}
-            levels={levels}
-            week={week}
-            nowMs={nowMs}
-            onSelect={(day) => {
-              if (day.exercises.length > 0) setSheetDay(day)
-            }}
-          />
-        ) : (
-          <LetterListSkeleton />
-        )}
-      </div>
-      <NoticesSheet open={noticesOpen} onClose={() => setNoticesOpen(false)} />
-      <StartSheet
-        day={sheetDay}
-        onClose={() => setSheetDay(null)}
-        onStart={(day) => {
-          setSheetDay(null)
-          if (result?.status === 'ok' && result.today.program) {
-            const session = startSession(result.today.program.id, day, windows, levels)
-            const started = createWorkoutFlow(session)
-            void saveActiveWorkout(started, Date.now())
-            setFlow(started)
-          }
-        }}
-      />
-    </main>
+        <NoticesSheet open={noticesOpen} onClose={() => setNoticesOpen(false)} />
+        <StartSheet
+          day={sheetDay}
+          onClose={() => setSheetDay(null)}
+          onStart={(day) => {
+            setSheetDay(null)
+            if (result?.status === 'ok' && result.today.program) {
+              const session = startSession(result.today.program.id, day, {
+                windows,
+                levels,
+                period,
+              })
+              const started = createWorkoutFlow(session)
+              void saveActiveWorkout(started, Date.now())
+              setFlow(started)
+            }
+          }}
+        />
+      </main>
+      <TabBar current="today" />
+    </>
   )
 }
 
+type GameCopies = {
+  windows: ActivityWindows | null
+  levels: MuscleGroupLevels | null
+  period: CurrentPeriod | null
+}
+
 // The workout id and start are born on the phone at "Começar"; the API creates the workout with the
-// first set. The windows and the levels on screen, from the API or the copy on the device, freeze
-// here (D56, ADR-034).
+// first set. The windows, the levels and the ranking of the period on screen, from the API or the
+// copy on the device, freeze here (D56, ADR-034).
 function startSession(
   programId: string,
   day: TodayDay,
-  windows: ActivityWindows | null,
-  levels: MuscleGroupLevels | null,
+  { windows, levels, period }: GameCopies,
 ): WorkoutSession {
   const nowMs = Date.now()
   return {
@@ -197,6 +217,7 @@ function startSession(
     day,
     windows: frozenWindowsOf(windows),
     levels: frozenLevelsOf(levels),
+    periodPoints: frozenPeriodPointsOf(period, nowMs),
   }
 }
 
@@ -205,11 +226,20 @@ type TodayContentProps = {
   windows: ActivityWindows | null
   levels: MuscleGroupLevels | null
   week: WeekWindows | null
+  period: CurrentPeriod | null
   nowMs: number
   onSelect: (day: TodayDay) => void
 }
 
-function TodayContent({ today, windows, levels, week, nowMs, onSelect }: TodayContentProps) {
+function TodayContent({
+  today,
+  windows,
+  levels,
+  week,
+  period,
+  nowMs,
+  onSelect,
+}: TodayContentProps) {
   const emptyState = emptyStateOf(today)
   if (emptyState) {
     return (
@@ -223,6 +253,8 @@ function TodayContent({ today, windows, levels, week, nowMs, onSelect }: TodayCo
       <GameStrip
         overallLevel={overallLevelViewOf(today, levels, windows, nowMs)}
         week={countOfThisWeek(week, nowMs)}
+        streak={shownStreakOf(period)}
+        weekPoints={weekPointsOf(period, nowMs)}
         nowMs={nowMs}
         onSelectDay={onSelect}
       />

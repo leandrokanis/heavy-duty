@@ -10,6 +10,11 @@ import type { Sound, TonePlayer } from './tone-player'
 import { createWorkoutFlow } from './workout-flow'
 import { WorkoutScreen } from './workout-screen'
 
+// The medals have their own tests (features/medals); here the screen reads none.
+vi.mock('@/features/medals/use-medals-after-sync', () => ({
+  useMedalsAfterSync: vi.fn(() => ({ medals: null, awardedNow: [], dismiss: () => {} })),
+}))
+
 // Supino 3 x 10 at 42.5 kg on screen, with the record for 10 reps at 42.5 kg.
 const SUPINO_WITH_RECORD: TodayExercise = {
   ...SUPINO_RETO,

@@ -87,6 +87,27 @@ export function multiplierPercentOf(
   return Math.min(Math.max(...percents), config.maxMultiplierPercent)
 }
 
+// The points the set shows (D65, decision 1 of US-F10-01): the highest multiplier among the
+// bonuses of its primary groups; a secondary group never doubles the set.
+export function shownSetPointsOf(
+  done: SetMeasure,
+  plan: SetPlan | null,
+  primaryBonuses: SetBonuses[],
+  config: PointsConfig & MultiplierConfig = GAME_CONFIG,
+): { points: number; multiplierPercent: number } {
+  const multiplierPercent = Math.max(
+    multiplierPercentOf({ inWindow: false }, config),
+    ...primaryBonuses.map((bonuses) => multiplierPercentOf(bonuses, config)),
+  )
+  return { points: setPointsOf(done, plan, multiplierPercent, config), multiplierPercent }
+}
+
+// Decision D105: the position of a workout in the personal ranking of its period is 1 plus the
+// workouts with more points, so a tie shares it, and the workout never counts against itself.
+export function rankOf(points: number, periodPoints: number[]): number {
+  return 1 + periodPoints.filter((other) => other > points).length
+}
+
 export type WindowBounds = { opensAt: string | null; closesAt: string | null }
 
 // The window is half open, as in ADR-031: open at opensAt and already closed at closesAt.

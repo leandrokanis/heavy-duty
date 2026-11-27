@@ -44,6 +44,9 @@ Uma ADR registra uma decisão de arquitetura que continua valendo: o contexto, a
 | [ADR-036](036-agendador-dos-avisos-no-processo-da-api.md) | Agendador dos avisos no processo da API | Aceita |
 | [ADR-037](037-envio-de-email-e-link-de-desligar.md) | Envio de e-mail e link de desligar | Aceita |
 | [ADR-038](038-servico-smtp-na-pilha-do-coolify.md) | Serviço SMTP na pilha do Coolify | Proposta |
+| [ADR-039](039-periodos-e-retrato-congelado.md) | Períodos e retrato congelado | Aceita |
+| [ADR-040](040-medalhas-gravadas-na-conquista.md) | Medalhas gravadas na conquista | Aceita |
+| [ADR-041](041-resumo-semanal-por-email.md) | Resumo semanal por e-mail | Aceita |
 
 ## Regras
 

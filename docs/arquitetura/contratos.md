@@ -1240,6 +1240,174 @@ Exemplo, com a meta 6 e as costas treinadas na segunda e na quinta:
 }
 ```
 
+## Períodos
+
+O período de 12 semanas organiza o progresso com uma frase de intenção (US-F11-01, ADR-039). A API guarda o início do período 1, gravado na primeira partida com a migração `0016_periods`, na segunda 00:00 da semana no fuso `NOTICE_TIME_ZONE`; os períodos seguintes saem da aritmética, de 84 em 84 dias, sem realinhar ao trimestre. A semana do servidor é um bloco de 7 × 24 h a partir do início do período. As rotas existem só quando a API abriu o banco e exigem sessão de acesso. As ferramentas MCP `get_period` e `set_period_intention` chamam os mesmos services (`mcp.md`), em `apps/api/src/modules/periods/period.service.ts`, e `list_periods`, o mesmo service de `GET /api/periods` (US-F11-02), em `snapshot.service.ts`. O retrato de cada período terminado fica na migração `0017_period_snapshots`.
+
+### GET /api/periods/current
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Mostrar o período atual na tela Período: semana, frase, metas O1 e O4, o progresso de cada grupo no período e o ranking pessoal |
+| Story | US-F11-01; sequência de semanas na US-F11-03; pontos da semana e ranking pessoal na US-F19-02 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Grava a linha do período 1, na primeira leitura com a tabela vazia, e as linhas dos períodos que faltam até o atual, sem frase. Nenhum outro dado muda |
+| Idempotência | Idempotente para o mesmo histórico e o mesmo instante |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `{ "now", "number", "startsAt", "endsAt", "week", "weekCount", "intention", "windows", "volume", "groups", "weeks", "weekStreak", "ranking" }` | Sempre, com sessão |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+- `startsAt` e `endsAt` são instantes UTC; o período vai de `startsAt`, incluso, a `endsAt`, exclusivo, que é o início do período seguinte. `week` é a semana de `now`, de 1 a `weekCount` (12).
+- `intention` é a frase de intenção do período, ou `null`. O período seguinte começa sem frase.
+- `windows` mede o O1 no período: `windowsUsed` e `windowsMissed` somam as janelas dos 11 grupos nas semanas do período, com a regra de `get_windows_used` (cada janela na semana do desfecho); `usedPercent` arredondado, `null` em 0 de 0; `targetPercent` 70. A janela aberta fica fora da taxa.
+- `volume` mede o O4: `baselineVolumeG` é o volume total da semana 1 e `lastWeekVolumeG` o da última semana completa do período, os dois `null` até a semana 1 terminar; `changePercent` arredondado, `null` sem base ou com base 0; `targetPercent` 20. O volume total soma o volume dos 11 grupos, com o músculo secundário pela metade, e o exercício por tempo fica de fora (D46).
+- `groups` traz os 11 grupos na ordem do catálogo, cada um com `windowsUsed`, `windowsMissed` e `usedPercent` no período: o progresso do grupo no período (D100).
+- `weeks` traz as semanas do período até a de `now` (US-F11-03), cada uma com `week`, `from`, `to`, `weeklyGoal` (a meta da semana, a última definida antes de `to`, D75, ou `null`), `windowsUsed` (as janelas aproveitadas na semana do servidor, D72), `points` (os pontos dos treinos que começaram na semana, a mesma soma do `ranking`, D102) e `status`: `met` (aproveitadas iguais ou acima da meta, também na semana de `now`), `missed` (terminou abaixo da meta e quebrou a sequência), `protected` (terminou abaixo da meta e gastou a proteção), `neutral` (sem meta) ou `pending` (semana de `now` ainda abaixo da meta).
+- `weekStreak` traz `weeks`, as semanas seguidas com a meta cumprida, e `protectionUsed`, verdadeiro depois que a proteção do período atual foi gasta. A conta percorre as semanas desde o período 1, atravessa os períodos e ignora as semanas neutras; a proteção se gasta sozinha na primeira semana perdida com a sequência acima de 0, uma vez por período, e mantém a sequência (D101).
+- `ranking` traz os treinos que começaram no período, encerrados antes ou não, do que rendeu mais pontos ao que rendeu menos (D105). Cada item tem `workoutId`, `letter`, `startedAt`, `points` e `position`. `points` é a soma dos pontos que cada série mostrou no celular, com o multiplicador mais alto entre os grupos principais do exercício (D55, D65), recalculada do histórico a cada leitura. `position` é 1 mais o número de treinos do período com mais pontos: no empate, os treinos dividem a posição, e o que começou antes vem primeiro. O treino sem série vale 0. O histórico anterior ao período fica de fora (D97).
+- O nível de cada grupo atravessa os períodos (D24) e continua em `GET /api/levels`.
+
+Exemplo, na quarta da semana 2 do período 1:
+
+```json
+{
+  "now": "2026-12-02T15:00:00.000Z",
+  "number": 1,
+  "startsAt": "2026-11-23T03:00:00.000Z",
+  "endsAt": "2027-02-15T03:00:00.000Z",
+  "week": 2,
+  "weekCount": 12,
+  "intention": "Treinar três vezes por semana até o fim do ano.",
+  "windows": { "windowsUsed": 5, "windowsMissed": 2, "usedPercent": 71, "targetPercent": 70 },
+  "volume": { "baselineVolumeG": 10000000, "lastWeekVolumeG": 10000000, "changePercent": 0, "targetPercent": 20 },
+  "groups": [
+    { "muscleGroup": { "slug": "chest", "name": "peito" }, "windowsUsed": 1, "windowsMissed": 0, "usedPercent": 100 }
+  ],
+  "weeks": [
+    { "week": 1, "from": "2026-11-23T03:00:00.000Z", "to": "2026-11-30T03:00:00.000Z", "weeklyGoal": 4, "windowsUsed": 5, "points": 180, "status": "met" },
+    { "week": 2, "from": "2026-11-30T03:00:00.000Z", "to": "2026-12-07T03:00:00.000Z", "weeklyGoal": 4, "windowsUsed": 1, "points": 240, "status": "pending" }
+  ],
+  "weekStreak": { "weeks": 1, "protectionUsed": false },
+  "ranking": [
+    { "workoutId": "019ad6f0-6a80-7c41-9b2e-5d1f3c8a7e10", "letter": "B", "startedAt": "2026-11-25T10:00:00.000Z", "points": 240, "position": 1 },
+    { "workoutId": "019ac1d8-2f40-7a3b-8c19-0e6b4d2a9f31", "letter": "A", "startedAt": "2026-11-23T10:00:00.000Z", "points": 180, "position": 2 }
+  ]
+}
+```
+
+### PUT /api/periods/current/intention
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Escrever a frase de intenção do período atual, pela tela Período, só com conexão |
+| Story | US-F11-01 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Troca `intention` da linha do período atual em `periods` |
+| Idempotência | Idempotente: o mesmo corpo deixa a mesma frase |
+
+| Campo do corpo | Regra |
+|---|---|
+| `intention` | Obrigatório, texto. A API troca cada sequência de espaços e quebras de linha por um espaço e apara as pontas. Até 120 caracteres depois disso. O texto vazio apaga a frase |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | O mesmo objeto de `GET /api/periods/current`, com a frase nova | Frase válida |
+| 400 | `{ "code": "period_intention_required", "message": "informe a frase de intenção" }` | `intention` ausente ou fora do tipo texto |
+| 400 | `{ "code": "period_intention_too_long", "message": "a frase de intenção deve ter até 120 caracteres" }` | Mais de 120 caracteres |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+### GET /api/periods
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Listar os períodos na tela Período, com o retrato de cada período terminado |
+| Story | US-F11-02 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Grava as linhas dos períodos que faltam até o atual, como `GET /api/periods/current`, e congela o período terminado ainda sem retrato (ADR-039). Nenhum outro dado muda |
+| Idempotência | Idempotente: o retrato de um período é gravado uma vez |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `{ "now", "periods" }` | Sempre, com sessão |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+- `periods` vai do período mais recente ao período 1. Cada item tem `number`, `startsAt`, `endsAt` (exclusivo), `intention`, `frozenAt` (o instante em que o retrato foi gravado, `null` no período atual) e `snapshot`.
+- `snapshot` é `null` no período atual. No período terminado, é o retrato congelado no fim (D99): `windowsUsed`, `windowsMissed` e `usedPercent` do período, `points` (a soma dos pontos dos treinos que começaram no período, D105), `bestWorkoutPoints` (os pontos do melhor treino, 0 sem treino), `weekStreak` (a sequência de semanas no fim, D101) e `groups`, os 11 grupos na ordem do catálogo, cada um com `level`, `points` (da barra), `bestLevel`, `tier`, `windowState` (`resting`, `open`, `cooling` ou `none`, no instante do fim) e `windowsUsed`, `windowsMissed` e `usedPercent` no período, o progresso do grupo no período (D100).
+- O retrato usa só as séries anteriores ao fim do período. Ele é gravado uma vez, pelo agendador do jogo ou pela primeira leitura depois do fim, e não muda depois, nem com a edição ou a remoção de um treino do período pelo Claude, nem com a mudança da fórmula do jogo (ADR-010, ADR-039). O retrato gravado com atraso, depois de uma edição feita entre o fim e o congelamento, já sai com a edição.
+- `usedPercent` e `tier` saem da conta sobre os números gravados, a cada leitura.
+
+Exemplo, na semana 1 do período 2:
+
+```json
+{
+  "now": "2027-02-20T12:00:00.000Z",
+  "periods": [
+    { "number": 2, "startsAt": "2027-02-15T03:00:00.000Z", "endsAt": "2027-05-10T03:00:00.000Z", "intention": null, "frozenAt": null, "snapshot": null },
+    {
+      "number": 1,
+      "startsAt": "2026-11-23T03:00:00.000Z",
+      "endsAt": "2027-02-15T03:00:00.000Z",
+      "intention": "Treinar três vezes por semana até o fim do ano.",
+      "frozenAt": "2027-02-15T03:00:41.000Z",
+      "snapshot": {
+        "windowsUsed": 54, "windowsMissed": 21, "usedPercent": 72,
+        "points": 3120, "bestWorkoutPoints": 240, "weekStreak": 5,
+        "groups": [
+          { "muscleGroup": { "slug": "chest", "name": "peito" }, "level": 12, "points": 31, "bestLevel": 13, "tier": "gold", "windowState": "open", "windowsUsed": 9, "windowsMissed": 2, "usedPercent": 82 }
+        ]
+      }
+    }
+  ]
+}
+```
+
+## Medalhas
+
+As medalhas marcam volume, janelas, sequência, nível e recorde, e cada uma é conquistada uma vez (US-F19-01, D103, ADR-040). O catálogo fica no código, em `apps/api/src/modules/medals/medals.catalog.ts`, e as regras de conquista são funções puras em `medals.rules.ts`. A API grava cada conquista em `medal_awards`, com o instante do evento, na leitura das medalhas e no ciclo de 60 s do agendador do jogo; a conquista nunca sai. A rota existe só quando a API abriu o banco e exige sessão de acesso. A ferramenta MCP `list_medals` chama o mesmo service `listMedals` (`mcp.md`), em `apps/api/src/modules/medals/medal.service.ts`.
+
+### GET /api/medals
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Mostrar a estante de medalhas na tela Período e a medalha nova quando a fila de envio esvazia (D104) |
+| Story | US-F19-01 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Grava os períodos que faltam até o atual, como `GET /api/periods/current`, e as conquistas que o histórico alcançou e ainda não estavam gravadas. Nenhuma conquista muda nem sai |
+| Idempotência | Idempotente: a segunda leitura não grava nada novo para o mesmo histórico |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `{ "now", "medals" }` | Sempre, com sessão |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+- `medals` traz as 10 medalhas na ordem do catálogo, cada uma com `code`, `name`, `criterion`, `icon`, `hidden`, `awardedAt`, `subject` e `workoutId`.
+- `code` é um de `first_record`, `first_window`, `weekly_goal`, `week_streak_4`, `level_10`, `level_20`, `volume_up_20`, `full_period`, `all_letters_in_week` e `window_saved_at_end` (D103). As duas últimas são ocultas (`hidden: true`).
+- `name` e `criterion` vêm em português, como o app mostra; `icon` é um de `sparkle`, `bolt`, `target`, `flame`, `shield`, `medal`, `trophy` e `star`. A medalha oculta ainda não conquistada vem com `name`, `criterion` e `icon` nulos.
+- `awardedAt` é o instante UTC do evento que rendeu a medalha, não o da detecção, ou `null` sem conquista. `workoutId` é o treino do evento, ou `null` sem conquista, sem treino ou com o treino removido (`ON DELETE SET NULL`). `subject` traz `slug` e `name` do grupo muscular da medalha de nível, como o "nível 10 em peito", e é `null` nas outras.
+- Só conta evento a partir do início do período 1; o histórico anterior serve de base para o recorde, o nível e as janelas (D97). A semana é a do período (D96): no volume, cada série conta na semana do instante dela, como o O4 de `GET /api/periods/current`; nas outras medalhas, o treino pertence à semana pelo início.
+- O instante de cada conquista: a série recorde (`first_record`); o treino do grupo que caiu na janela (`first_window`; `window_saved_at_end` quando o treino veio nas 12 h antes do fechamento, a antecedência da D79); a janela aproveitada que alcançou a meta da semana (`weekly_goal`; `week_streak_4` quando essa semana leva a sequência a 4); a série que deixa um grupo no nível 10 ou 20 ou acima (`level_10`, `level_20`); a série que leva o volume total da semana a 120% da semana 1 do período (`volume_up_20`); o primeiro treino da última semana que faltava no período (`full_period`) ou da última letra do programa ativo que faltava na semana (`all_letters_in_week`).
+
+Exemplo, com a medalha de nível 10 em peito:
+
+```json
+{
+  "now": "2026-12-04T10:00:00.000Z",
+  "medals": [
+    { "code": "first_record", "name": "Primeiro recorde", "criterion": "Registre a primeira série recorde.", "icon": "sparkle", "hidden": false, "awardedAt": null, "subject": null, "workoutId": null },
+    { "code": "level_10", "name": "Nível 10", "criterion": "Leve um grupo muscular ao nível 10.", "icon": "shield", "hidden": false, "awardedAt": "2026-12-03T21:40:00.000Z", "subject": { "slug": "chest", "name": "peito" }, "workoutId": "019ad6f0-6a80-7c41-9b2e-5d1f3c8a7e10" },
+    { "code": "window_saved_at_end", "name": null, "criterion": null, "icon": null, "hidden": true, "awardedAt": null, "subject": null, "workoutId": null }
+  ]
+}
+```
+
+O exemplo mostra só 3 das 10 medalhas.
+
 ## Avisos no celular
 
 As rotas desta seção vêm da US-F09-01 (ADR-035). Elas existem só quando a API abriu o banco e exigem sessão de acesso. O service fica em `apps/api/src/modules/notifications/push-subscription.service.ts`. A chave pública VAPID vem da variável `VAPID_PUBLIC_KEY`, e a chave privada, do arquivo de `VAPID_PRIVATE_KEY_FILE` (`implantacao.md`); sem as duas, a API sobe com os avisos no celular desligados. A chave privada não sai em resposta nem em log.
@@ -1338,6 +1506,10 @@ O token vem no corpo JSON, `{ "token": "<token>" }`, como a página manda, ou na
 
 O `GET` da mesma URL não desliga nada e responde 401, como toda rota protegida: filtros de e-mail abrem os links sozinhos (D90). O token não vence (ADR-037). O planejador religa os e-mails pelo Claude, com `set_email_notices` (`mcp.md`).
 
+## Período e medalhas na onda 7b
+
+As rotas do período e das medalhas da onda 7b estão nas seções "Períodos" (`GET /api/periods/current`, `PUT /api/periods/current/intention` e `GET /api/periods`) e "Medalhas" (`GET /api/medals`). Todas exigem sessão de acesso. O período e as semanas do período usam o fuso `NOTICE_TIME_ZONE`, e as datas vêm em ISO 8601, em UTC (D96). Desde a US-F17-03, `recentFailures` de `GET /api/system/status` aceita o `kind` `weekly_digest` (ADR-041).
+
 ## Situação do app
 
 A rota desta seção vem da US-F14-02. A rota existe só quando a API abriu o banco e exige sessão de acesso (US-F14-01). A ferramenta MCP `get_system_status` devolve o mesmo objeto (`mcp.md`), pelo mesmo service `getSystemStatus`, em `apps/api/src/modules/system/system-status.service.ts`.
@@ -1372,6 +1544,6 @@ O motivo da falha começa pela etapa em inglês (`snapshot failed` ou `offsite c
 
 - `configured` diz se o servidor tem a configuração do canal: as variáveis VAPID no push (ADR-035) e `SMTP_HOST`, `MAIL_FROM` e `MAIL_TO` no e-mail (ADR-037). Com `false`, nada sai pelo canal.
 - `lastSentAt` é o fim do envio mais recente com sucesso, em ISO 8601 e UTC, e fica `null` antes do primeiro envio.
-- `recentFailures` traz até 5 falhas, da mais nova para a mais antiga, cada uma com `failedAt`, `kind` (`window_open`, `window_close` ou `level_drop`), `letter` e `error`. O motivo é seguro: no e-mail, o código do erro do Nodemailer e, quando há, o código de resposta SMTP, como `ECONNECTION` ou `EENVELOPE (SMTP 550)`, sem endereço, senha nem texto do servidor.
+- `recentFailures` traz até 5 falhas, da mais nova para a mais antiga, cada uma com `failedAt`, `kind` (`window_open`, `window_close`, `level_drop` ou `weekly_digest`, o resumo semanal da US-F17-03), `letter` e `error`. O motivo é seguro: no e-mail, o código do erro do Nodemailer e, quando há, o código de resposta SMTP, como `ECONNECTION` ou `EENVELOPE (SMTP 550)`, sem endereço, senha nem texto do servidor.
 
 A falha de um canal não impede o outro: o e-mail que falha fica em `recentFailures`, e o aviso no celular sai mesmo assim (cenário "falha no envio" da F17).

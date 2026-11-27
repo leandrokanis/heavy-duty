@@ -6,6 +6,9 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { MotionButton } from '@/components/ui/motion-button'
 import { useToast } from '@/components/ui/toast'
+import { MedalToast, medalAnnouncementOf } from '@/features/medals/medal-toast'
+import { NewMedalsSummary } from '@/features/medals/new-medals-summary'
+import { useMedalsAfterSync } from '@/features/medals/use-medals-after-sync'
 import { clearActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
 import { loadLevels } from '@/sync/levels-cache'
 import { useSyncQueue, useSyncSnapshot } from '@/sync/sync-context'
@@ -36,6 +39,7 @@ import type { TodayExercise } from './today.types'
 import { defaultTonePlayer, type TonePlayer } from './tone-player'
 import { useReopenWindows } from './use-reopen-windows'
 import { useScreenWakeLock } from './use-screen-wake-lock'
+import { useWorkoutRankFromApi } from './use-workout-rank'
 import { ValueWheel } from './value-wheel'
 import { LEVEL_CELEBRATION_MS, TICK_MS } from './workout.config'
 import { WorkoutClock } from './workout-clock'
@@ -68,6 +72,8 @@ import {
   type WorkoutFlowState,
   workoutFlowReducer,
 } from './workout-flow'
+import { WorkoutPointsSummary } from './workout-points-summary'
+import { provisionalRankOf } from './workout-rank'
 import type { RecordWorkoutSetBody } from './workout-set.types'
 
 export type WorkoutScreenProps = {
@@ -425,6 +431,11 @@ export function WorkoutScreen({
   const totalSets = day.exercises.reduce((total, { sets }) => total + sets, 0)
   const finished = state.phase === 'finished'
   const windows = useReopenWindows(finished && allQueued && state.recorded.length > 0)
+  const rankFromApi = useWorkoutRankFromApi(
+    finished && allQueued && state.recorded.length > 0,
+    state.session.workoutId,
+  )
+  const medals = useMedalsAfterSync()
   const timerOpen = state.phase === 'countdown' || state.phase === 'timing'
   const reachDeadline = useCallback(
     (nowMs: number) => dispatch({ type: resting ? 'restEnd' : 'timerReach', nowMs }),
@@ -586,6 +597,9 @@ export function WorkoutScreen({
               {`Tempo total · ${formatDurationMinutes(totalSecondsOf(state.session, state.finish.finishedAt))}`}
             </p>
           ) : null}
+          {state.recorded.length > 0 ? (
+            <WorkoutPointsSummary rank={rankFromApi ?? provisionalRankOf(state)} />
+          ) : null}
           {lastSet ? (
             <div className="mt-(--space-16)">
               <LastSetButton
@@ -597,6 +611,13 @@ export function WorkoutScreen({
             </div>
           ) : null}
           <QueueNotices align="center" className="mt-(--space-16) w-full" />
+          <div className="mt-(--space-24) w-full empty:hidden">
+            <NewMedalsSummary
+              medals={(medals.medals?.medals ?? []).filter(
+                ({ workoutId }) => workoutId === state.session.workoutId,
+              )}
+            />
+          </div>
           <div className="mt-(--space-24) w-full">
             <LeftOutSummary items={leftOutOf(state)} />
           </div>
@@ -764,9 +785,12 @@ export function WorkoutScreen({
           tier={celebration.tier}
         />
       ) : null}
+      <MedalToast medals={medals.awardedNow} onDone={medals.dismiss} />
       {/* Mounted from the start: screen readers skip a live region born with its text. */}
       <p role="status" aria-live="polite" className="sr-only">
-        {[announcementOf(state), levelUpText].filter(Boolean).join('. ')}
+        {[announcementOf(state), levelUpText, medalAnnouncementOf(medals.awardedNow)]
+          .filter(Boolean)
+          .join('. ')}
       </p>
     </main>
   )

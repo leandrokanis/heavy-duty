@@ -1,6 +1,6 @@
 # Projeto de gamificação do Heavy Duty (Octalysis)
 
-**Versão:** 0.5 · **Data:** 2026-11-22 · **Status:** rascunho, sujeito a revisão do PO · Elaborado com apoio de IA
+**Versão:** 0.6 · **Data:** 2026-11-27 · **Status:** rascunho, sujeito a revisão do PO · Elaborado com apoio de IA
 
 Neste documento, **Decisão** marca o que o PO decidiu e **Proposta** marca o que foi sugerido e ainda não foi validado. O resumo do projeto e os IDs de questões (Q), riscos (R), hipóteses (H) e decisões (D) estão em `prd.md`, Seção 3. A gamificação entra nas ondas 5 a 7 do roadmap.
 
@@ -10,7 +10,7 @@ O protótipo navegável mostra as mecânicas deste documento com valores ilustra
 
 A academia caiu para uma vez por semana ou menos porque nada puxa o PO de volta. A gamificação existe para criar esse gatilho fora da academia, sustentar a regularidade ao longo do tempo e dar sensação de progresso durante o treino.
 
-Ela usa pontos, níveis, recordes, medalhas e ranking pessoal, sem elementos sociais (**Decisão**, PRD D23). A versão 0.1 deste documento excluía pontos, medalhas e ranking. O PO retirou essa exclusão porque a gamificação ficou discreta demais no dia a dia. Na versão 0.3, o grupo passou a perder nível quando a janela passa (PRD, D24). Na versão 0.4, o nível passou a ir de 1 a 20 e a medir a forma atual do grupo (PRD, D28). Na versão 0.5, o PO aceitou as propostas da Q06, da Q08, da Q11, da Q12 e da Q13 (PRD, D39 a D43): a sugestão pelas janelas, o músculo secundário pela metade, os pontos e o nível, a proteção da sequência de semanas e o ritmo da perda passam de **Proposta** a **Decisão**, com os números como parâmetros de partida, recalculáveis com os dados reais (ADR-010). As stories estão no PRD, Seção 9.
+Ela usa pontos, níveis, recordes, medalhas e ranking pessoal, sem elementos sociais (**Decisão**, PRD D23). A versão 0.1 deste documento excluía pontos, medalhas e ranking. O PO retirou essa exclusão porque a gamificação ficou discreta demais no dia a dia. Na versão 0.3, o grupo passou a perder nível quando a janela passa (PRD, D24). Na versão 0.4, o nível passou a ir de 1 a 20 e a medir a forma atual do grupo (PRD, D28). Na versão 0.5, o PO aceitou as propostas da Q06, da Q08, da Q11, da Q12 e da Q13 (PRD, D39 a D43): a sugestão pelas janelas, o músculo secundário pela metade, os pontos e o nível, a proteção da sequência de semanas e o ritmo da perda passam de **Proposta** a **Decisão**, com os números como parâmetros de partida, recalculáveis com os dados reais (ADR-010). Na versão 0.6, entram as decisões da onda 7b (PRD, D94 a D108): os períodos sem realinhar ao ciclo trimestral (Q01), o catálogo de medalhas (Q17) e a medalha que aparece quando a fila de envio esvazia. As stories estão no PRD, Seção 9.
 
 ## Regra de desenho: black hat e white hat
 
@@ -53,7 +53,7 @@ Os nomes no código estão em `../CONTEXT.md`, Seção "Gamificação".
    - **O que nunca se perde:** medalhas, recordes, retratos e o melhor nível de cada grupo.
    - **Ritmo lento:** a perda é gradual, com ritmo calibrado pelos dados reais (PRD, Q13).
 7. **Avisos.** Um perto de a janela abrir e outro perto de fechar. O aviso é um por letra, com os grupos que ela treina, e não um por grupo (PRD, D31). Todo aviso vai pelos dois canais, celular e e-mail (PRD, D32).
-8. **Períodos.** Duram 12 semanas. No fim, o mapa do corpo é congelado num retrato, e o período seguinte recomeça do zero na barra do período, nas metas e no ranking. O nível de cada grupo atravessa os períodos (PRD, D24).
+8. **Períodos.** Duram 12 semanas, em blocos seguidos a partir do período 1, que começa na segunda-feira da semana do deploy da onda 7b, sem realinhar ao ciclo trimestral (PRD, D94 e D95). No fim, o mapa do corpo é congelado num retrato, e o período seguinte recomeça do zero na barra do período, nas metas e no ranking. O nível de cada grupo atravessa os períodos (PRD, D24).
 9. **Pontos e conquistas.** Cada série rende pontos, que sobem o nível dos grupos treinados. Recordes, medalhas e ranking pessoal marcam o progresso. Não há compartilhamento nem comparação com outras pessoas (PRD, D23).
 10. **Nível de 1 a 20.** O nível mede a forma atual do grupo e premia a regularidade. Aproveitando todas as janelas, o grupo chega ao 20 em cerca de 4 semanas, período em que o corpo já mostra diferença perceptível. As 4 semanas são um parâmetro, calibrado com os dados reais (PRD, D28 e Q11). No 20, os pontos continuam contando para o ranking e as medalhas, e a perda continua valendo: o jogo passa a ser manter o 20.
 
@@ -99,7 +99,7 @@ As mecânicas desta seção são **Proposta**. Os números servem ao protótipo 
 | Nível geral | O nível do grupo mais fraco entre os que o programa treina, de 1 a 20. O app mostra qual grupo limita o nível geral, e um toque leva à letra que mais treina esse grupo (PRD, D29). Nível geral 20 é forma completa: todos os grupos no topo ao mesmo tempo | Topo do treino do dia |
 | Subida de nível | Nível comum sobe na própria barra do descanso, com animação e som curtos. A tela cheia, por cerca de 1,7 s e sem pedir toque, fica para a entrada numa faixa (5, 11 e 17) e para o 20 | Descanso |
 | Recorde | Maior carga com as mesmas repetições, ou mais repetições com a mesma carga. A marca do recorde aparece ao lado da carga e acende quando o valor passa dela | Série e descanso |
-| Medalha | Marco de volume, de janelas, de sequência, de nível ou de recorde. Algumas ficam ocultas até a conquista | Aviso no topo da tela, fim do treino e estante na tela Período |
+| Medalha | Marco de volume, de janelas, de sequência, de nível ou de recorde, conquistado uma vez. O catálogo inicial tem 10 medalhas, 2 delas ocultas até a conquista (PRD, D103). A API calcula e grava a conquista, que nunca sai (ADR-040) | Aviso no topo da tela quando a fila de envio esvazia, fim do treino e estante na tela Período (PRD, D104) |
 | Ranking pessoal | Treinos ordenados por pontos dentro do período | Fim do treino ("2º do período") e tela Período |
 | Meta semanal de janelas | Janelas aproveitadas na semana contra uma meta | Faixa de jogo no treino do dia |
 | Sequência de semanas | Semanas seguidas com a meta semanal cumprida, com uma proteção por período (Q12) | Faixa de jogo no treino do dia |
@@ -134,7 +134,7 @@ A janela estreia calibrada com o histórico registrado antes da gamificação (o
 
 ### Dentro do treino
 
-Cada "Próximo" rende pontos na hora. No descanso, a barra de nível dos grupos cresce, e um recorde, uma subida de nível ou uma medalha aparecem assim que acontecem. O descanso é o momento ocioso do treino e por isso concentra o retorno.
+Cada "Próximo" rende pontos na hora. No descanso, a barra de nível dos grupos cresce, e um recorde ou uma subida de nível aparecem assim que acontecem. A medalha nova aparece quando a fila de envio esvazia e a API confirma a conquista, porque só a API calcula as janelas e a sequência (PRD, D104); com sinal, isso leva segundos. O descanso é o momento ocioso do treino e por isso concentra o retorno.
 
 ### Ciclo do meio do período
 
@@ -157,7 +157,6 @@ A frase de intenção e o mapa final são congelados num retrato, exibido ao lad
 - **Ativação secundária (PRD, Q08).** Um músculo ativado de forma secundária conta o volume inteiro para o grupo, ou só uma parte? Com 11 grupos, a resposta pesa mais: o supino ativa peito, tríceps e ombros. A **Proposta** é metade (PRD, D30).
 - **Janela contra plano (PRD, Q06).** Quando as janelas abertas sugerem uma letra do programa e a ordem do plano sugere outra, qual vale? **Proposta:** a recuperação decide quais letras podem ser feitas, porque treinar um grupo antes de ele se recuperar rende menos e aumenta o risco de lesão. Sai da sugestão a letra cujos grupos estão na maioria descansando. Entre as outras, o grupo esfriando vem primeiro (recuperado e perdendo nível), depois o grupo em janela, e o grupo mais fraco desempata. O atalho do nível geral segue a mesma regra.
 - **Perda de nível e biologia.** Do 20 ao 1 em 4 a 5 semanas é mais rápido que a perda real de força, que costuma se manter por algumas semanas sem treino [a confirmar]. É uma escolha de jogo, para dar peso à regularidade.
-- **Alinhamento ao ciclo (PRD, Q01).** O primeiro período começa quando a gamificação ficar pronta. Os seguintes se realinham ao ciclo trimestral?
 - **Antecedência dos avisos.** Quantas horas antes de abrir e de fechar.
 - **Visual.** Como o mapa, as barras e o esfriamento aparecem na tela. O protótipo descartável é o lugar para resolver essa questão.
 

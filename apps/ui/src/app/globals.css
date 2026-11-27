@@ -455,3 +455,15 @@ body {
     transform: none;
   }
 }
+
+/* docs/gamificacao.md: a new medal drops from the top; reduced motion keeps it still. */
+@keyframes medal-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-120%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

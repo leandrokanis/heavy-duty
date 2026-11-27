@@ -1,0 +1,53 @@
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { z } from 'zod'
+import { DEFAULT_NOTICE_TIME_ZONE } from '../../config/notifications-env.js'
+import { getCurrentPeriod, setPeriodIntention } from '../../modules/periods/period.service.js'
+import {
+  CurrentPeriodSchema,
+  PeriodIntentionInputSchema,
+  PeriodListSchema,
+} from '../../modules/periods/periods.schemas.js'
+import { listPeriodsWithSnapshots } from '../../modules/periods/snapshot.service.js'
+import type { ToolDeps } from './index.js'
+import { runTool } from './tool-result.js'
+
+const PERIOD_FIELDS =
+  'Returns now (the clock of the API), number (1 for the first period), startsAt and endsAt (UTC instants in ISO 8601; the period is half open, so endsAt is the start of the next one), week (the week of now, 1 to 12; a week is a block of 7 × 24 h from startsAt), weekCount (12), intention (null with none), windows (windowsUsed and windowsMissed in the weeks of the period, usedPercent rounded, null with 0 of 0, and targetPercent 70, the goal O1), volume (baselineVolumeG, the total volume of week 1, and lastWeekVolumeG, the total volume of the last complete week, both null until week 1 ends, changePercent rounded, null with no baseline or a baseline of 0, and targetPercent 20, the goal O4; the total adds the volume of the 11 muscle groups, the secondary muscle at half, and time exercises stay out) and groups (the 11 muscle groups in catalog order, each with windowsUsed, windowsMissed and usedPercent in the period, the progress of the group in the period), weeks (the weeks of the period up to the week of now, each with week, from, to, weeklyGoal, the goal of the week set with set_weekly_goal, null with none, windowsUsed, points, the points of the workouts that started in the week, and status: met when windowsUsed reaches the goal, also in the week of now; missed when the week ended below the goal and broke the streak; protected when it ended below the goal and spent the protection; neutral with no goal; pending for the week of now still below the goal) and weekStreak (weeks, the weeks in a row with the goal met, and protectionUsed, true once the protection of the current period was spent). The streak counts the weeks from period 1, crosses the periods and ignores the neutral weeks; the protection spends itself on the first week missed with a streak above 0, once per period, and keeps the streak. ranking lists the personal ranking of the workouts that started in the period, ended early or not, from the most points to the fewest: workoutId, letter, startedAt, points, the sum of the points each set showed on the phone, and position, 1 plus the workouts of the period with more points, so a tie shares the position and the earlier workout comes first; the workouts before the period stay out.'
+
+export function registerPeriodTools(server: McpServer, { db, now, timeZone }: ToolDeps): void {
+  const zone = timeZone ?? DEFAULT_NOTICE_TIME_ZONE
+
+  server.registerTool(
+    'get_period',
+    {
+      description: `Get the current period of 12 weeks, which organizes the progress with an intention, the goals of the period and the progress of each muscle group in it. Takes no parameter and only reads. Periods follow each other in blocks of 12 weeks from period 1, which started on Monday at 00:00 of the week of the deploy, in the zone of the server (NOTICE_TIME_ZONE, America/Sao_Paulo by default), with no realignment to the quarter. Levels cross the periods; the goals and the progress in the period start over. A window counts in the week of its outcome, as in get_windows_used, so the history before the period stays out. ${PERIOD_FIELDS} The same object that GET /api/periods/current returns.`,
+      inputSchema: z.object({}),
+      outputSchema: CurrentPeriodSchema,
+      annotations: { readOnlyHint: true },
+    },
+    () => runTool(() => getCurrentPeriod(db, now(), zone)),
+  )
+
+  server.registerTool(
+    'set_period_intention',
+    {
+      description: `Write the intention of the current period, a short phrase the athlete sees on the Period screen, such as "Treinar três vezes por semana até o fim do ano." Applies at once, with no preview, and replaces the intention of the current period only; the athlete can also write it on the phone. intention is a text of up to 120 characters after trimming, with runs of spaces and line breaks turned into one space; an empty text removes the intention. A missing intention is refused with period_intention_required and a longer one with period_intention_too_long, and nothing is saved. ${PERIOD_FIELDS}`,
+      inputSchema: PeriodIntentionInputSchema,
+      outputSchema: CurrentPeriodSchema,
+      annotations: { readOnlyHint: false, destructiveHint: false },
+    },
+    (input) => runTool(() => setPeriodIntention(db, input, now(), zone)),
+  )
+
+  server.registerTool(
+    'list_periods',
+    {
+      description:
+        'List the periods of 12 weeks from the most recent to period 1, each with number, startsAt, endsAt (UTC instants in ISO 8601, endsAt exclusive), intention (null with none), frozenAt (the instant the snapshot was written, null for the current period) and snapshot. Takes no parameter and only reads, apart from freezing an ended period still with no snapshot, as the game scheduler does every 60 s. The snapshot is written once at the end of the period and never changes, not even when a workout of that period is edited or removed with update_workout_set or remove_workout, nor when the formula of the game changes. It uses only the sets before the end and holds windowsUsed, windowsMissed and usedPercent (rounded, null with 0 of 0) of the period, points (the sum of the points of the workouts that started in the period), bestWorkoutPoints (the points of its best workout, 0 with none), weekStreak (the weeks in a row with the weekly goal met at the end, as in get_period) and groups (the 11 muscle groups in catalog order, each with level, points on the bar, bestLevel and tier at the end, windowState at the end, resting, open, cooling or none, and windowsUsed, windowsMissed and usedPercent in the period). The current period has a null snapshot; read it with get_period. The same object that GET /api/periods returns.',
+      inputSchema: z.object({}),
+      outputSchema: PeriodListSchema,
+      annotations: { readOnlyHint: true },
+    },
+    () => runTool(() => listPeriodsWithSnapshots(db, now(), zone)),
+  )
+}

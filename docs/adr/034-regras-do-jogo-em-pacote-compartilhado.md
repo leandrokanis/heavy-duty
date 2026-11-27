@@ -48,6 +48,21 @@ Consequências do adendo:
 - Uma cópia velha dos níveis muda só o desempate da sugestão e o nível geral, até a próxima leitura.
 - A frase "o app web não guarda regra de negócio" ganha uma segunda exceção, em `docs/arquitetura/app-web.md`.
 
+## Adendo da onda 7b: pontos do treino e posição no ranking
+
+Decidido pelo PO em 2026-11-27, no plano da onda 7b; a decisão continua Aceita. O treino concluído mostra os pontos do treino e a posição no ranking pessoal do período, como "2º do período" (US-F19-02, D105). Hoje a API não calcula os pontos da série: `setPointsOf` só roda no celular, com o multiplicador mais alto entre os grupos principais, e o recálculo dos níveis da API refaz só o ganho do grupo.
+
+- **Regras no pacote.** O pacote ganha `shownSetPointsOf`, os pontos mostrados da série, com o multiplicador mais alto entre os grupos principais do exercício (D55, D56, D65), e `rankOf`, a posição de um total de pontos entre os treinos do período, com empate que divide a posição (D105). O app web troca a conta própria por essas funções.
+- **Recálculo da API.** O recálculo dos níveis da API passa a devolver também os pontos mostrados de cada série, com o mesmo bônus do celular, e aceita um instante de corte, para o retrato do período (ADR-039). Os níveis que a API devolve não mudam.
+- **Provisório no treino concluído.** No início do treino, o app web congela também o ranking do período. No treino concluído, mostra os pontos do treino e a posição provisórios, com `shownSetPointsOf` e `rankOf` sobre esse estado, e troca pelos valores da API quando a fila de envio esvazia, como os outros provisórios desta ADR.
+- **O resto fica na API.** Período, sequência de semanas, retrato, medalhas e resumo semanal ficam na API, porque o celular só lê o resultado (ADR-039, ADR-040, ADR-041).
+
+Consequências do adendo:
+
+- Os pontos do treino e a posição aparecem no treino concluído sem sinal, com a mesma conta da API.
+- A API passa a calcular os pontos da série, o que alimenta o ranking, os pontos da semana, o retrato, as medalhas e o resumo semanal.
+- A posição provisória usa o ranking congelado no início do treino, e o recálculo da API pode diferir dela, como numa correção de série feita pelo Claude no meio do treino; a troca pelo valor da API fecha a diferença.
+
 ## Consequências
 
 - Pontos, barra e recorde aparecem na academia sem sinal, com a mesma regra da API.

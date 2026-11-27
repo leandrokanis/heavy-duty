@@ -22,10 +22,10 @@ export type NoticeEmail = {
   headers: Record<string, string>
 }
 
-const PHONE_NOTICES_GO_ON = 'Os avisos no celular continuam.'
+export const PHONE_NOTICES_GO_ON = 'Os avisos no celular continuam.'
 
 // Colors of the light theme of the prototype v1; email clients ignore CSS variables.
-const COLOR = {
+export const COLOR = {
   text: '#12151C',
   muted: '#596173',
   line: '#D8DCE4',
@@ -137,7 +137,7 @@ ${level}<p style="margin:0 0 16px;padding:12px;border-radius:18px;background:${C
 `
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')

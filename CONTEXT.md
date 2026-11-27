@@ -80,29 +80,34 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Progresso | Barra por grupo muscular que cresce com o treino, mais dentro da janela, e esvazia enquanto o grupo esfria. Cheia, sobe o nível do grupo; vazia, o grupo cai um nível | `progress` | — |
 | Volume ajustado | Volume vezes o fator do objetivo do programa (força 130%, hipertrofia 100%, resistência 75%). Entra só no cálculo da janela (ADR-031) | `adjustedVolume` | intensidade |
 | Pontos | O que cada série rende, relativo ao plano: a série que bate o planejado vale 10; em dobro dentro da janela | `points` | XP, moedas |
+| Pontos do treino | Soma dos pontos mostrados das séries de um treino. Ordenam o ranking pessoal e somam os pontos da semana; o treino concluído mostra o valor provisório até a fila de envio esvaziar (D102, D105, ADR-034) | `workoutPoints` | XP do treino, placar |
 | Ganho do grupo | Parte da série que enche a barra de progresso de cada grupo do exercício, com o multiplicador do próprio grupo. O grupo principal recebe 10 × razão × 6 ÷ séries planejadas do grupo na letra, cerca de 60 por treino completo; o secundário recebe 10 × razão × 0,5 (D54) | `groupGain` | XP do grupo, pontos do grupo |
 | Bem-vindo de volta | Pontos em dobro no primeiro treino de um grupo depois do esfriamento, sem somar com a janela nem com a memória muscular: o máximo é ×2 (D53). Vale para o treino cuja primeira série do grupo veio depois do fechamento da janela | `welcomeBack` | bônus de retorno |
 | Nível | Degrau de 1 a 20 de cada grupo muscular, que mede a forma atual: sobe quando a barra de progresso enche e cai aos poucos quando o grupo esfria | `level` | rank |
 | Nível geral | Nível do grupo mais fraco entre os grupos principais das letras do programa ativo; no empate, limita o grupo com menos saldo na barra e, depois, o primeiro do catálogo (D29, D67). Calculado no aparelho (ADR-034) | `overallLevel`, `overallLevelOf` | nível do atleta, média |
 | Faixa | Grupo de níveis que define a forma e a cor do selo: círculo de bronze (1 a 4), escudo de prata (5 a 10), hexágono de ouro (11 a 16) e estrela violeta (17 a 20) | `tier` | liga, divisão |
 | Faixa de jogo | Área no topo do treino do dia com o nível geral e a meta semanal; a sequência de semanas e os pontos da semana entram na onda 7b (D78). Diferente da faixa de níveis do selo | `GameStrip` | barra do jogo, painel, placar |
+| Barra de abas | Navegação entre as três seções do app: Treino, Mapa e Período. Não aparece na tela de treino em andamento nem no histórico; o histórico e os avisos ficam no cabeçalho do treino do dia (D108) | `TabBar` | menu, rodapé, barra de navegação |
 | Melhor nível | Maior nível que um grupo já teve. O esfriamento não o reduz; a correção ou a remoção de um treino o recalculam com o histórico (D66) | `bestLevel` | recorde de nível |
 | Memória muscular | Pontos em dobro para um grupo que está abaixo do melhor nível, em qualquer estado da janela, até alcançá-lo de novo, sem somar com a janela nem com o bem-vindo de volta. Vale pelo nível antes da série: a série que alcança o melhor nível rende em dobro inteira (D63, D64). Marca ↺ ×2 | `muscleMemory` | — |
 | Aviso de queda | Aviso antes de um grupo esfriando cair de nível | `levelDropNotice` | — |
 | Recorde | Maior carga de um exercício para um número de repetições | `personalRecord` | PR, marca |
-| Medalha | Conquista por um marco; algumas ficam ocultas até a conquista | `medal` | troféu, badge, conquista |
-| Ranking pessoal | Ordem dos treinos do PO por pontos, só contra o próprio histórico | `personalRanking` | placar, leaderboard |
-| Sequência de semanas | Semanas seguidas com a meta semanal de janelas cumprida | `weekStreak` | streak, ofensiva |
+| Medalha | Conquista por um marco; algumas ficam ocultas até a conquista. A API grava a conquista com o instante do evento, e a medalha nunca sai (D103, D104, ADR-040) | `Medal`; a conquista gravada é `MedalAward` (tabela `medal_awards`) | troféu, badge, conquista |
+| Ranking pessoal | Ordem dos treinos do período por pontos do treino, só contra o próprio histórico. No empate, os treinos dividem a posição (D105) | `personalRanking` | placar, leaderboard |
+| Sequência de semanas | Semanas seguidas com a meta semanal de janelas cumprida. A semana sem meta é neutra, e a sequência atravessa os períodos (D101) | `weekStreak` | streak, ofensiva |
+| Proteção da sequência | Uma semana perdida por período que não quebra a sequência de semanas. Gasta-se sozinha na primeira semana perdida com a sequência acima de 0, não acumula e volta a cada período (D42, D101) | `streakProtection` | escudo, congelamento |
 | Meta semanal | Número de janelas a aproveitar na semana, definido pelo planejador pelo Claude. A meta de uma semana é a última definida até o fim dela (D75) | `weeklyGoal`; tabela `weekly_goals`; ferramenta MCP `set_weekly_goal` | — |
-| Período | Ciclo de 12 semanas que termina com um retrato congelado | `Period` | temporada, ciclo |
-| Retrato | Registro congelado do progresso ao fim de um período | `PeriodSnapshot` | relatório |
+| Período | Ciclo de 12 semanas que termina com um retrato congelado. Os períodos são blocos de 84 dias seguidos a partir do período 1, que começa na segunda-feira 00:00 da semana do deploy da onda 7b, no fuso `NOTICE_TIME_ZONE`, sem realinhar ao trimestre (D94 a D96, ADR-039) | `Period` | temporada, ciclo |
+| Frase de intenção | Frase opcional do período, com até 120 caracteres, que o atleta escreve na tela Período ou o planejador define pelo Claude, editável até o fim do período (D98) | `intention`; ferramenta MCP `set_period_intention` | meta, lema, objetivo |
+| Retrato | Registro congelado do progresso ao fim de um período: por grupo, nível, pontos da barra, melhor nível, estado da janela e janelas aproveitadas e perdidas; no período, frase de intenção, janelas, pontos, melhor treino e sequência de semanas. Gravado uma vez e nunca alterado (D99, ADR-039) | `PeriodSnapshot` | relatório |
+| Agendador do jogo | Ciclo de 60 s no processo da API, sempre ligado, que abre o período novo, congela o retrato do período que terminou e grava as medalhas conquistadas. Diferente do agendador dos avisos, que só parte com canal configurado (ADR-039, ADR-040) | `gameScheduler` | cron, job |
 | Mapa do corpo | Visualização do estado das janelas por grupo muscular | `BodyMap` | — |
 | Aviso | Notificação perto de a janela abrir ou fechar, ou antes de uma queda de nível. Vai pelos dois canais, celular e e-mail | `notification` | alerta, lembrete |
 | Inscrição de push | Registro do aparelho no serviço de push do navegador, que a API guarda para enviar os avisos no celular. O app web cria a inscrição quando o atleta ativa os avisos no app instalado e manda a inscrição de novo à API a cada abertura (ADR-035) | `PushSubscription` | assinatura, token de push |
 | Antecedência | Tempo entre o aviso e o evento: 12 h antes de a letra abrir, 12 h antes de a letra fechar e 24 h antes da queda de nível (D79) | `leadHours` | prazo, aviso prévio |
 | Horário de silêncio | Intervalo das 22h às 7h, no fuso dos avisos, em que nenhum aviso sai. O aviso devido nesse intervalo sai antes, às 21h (D80) | `quietHours` | não perturbe, modo noturno |
 | Link de desligar | Link de cada e-mail que leva à página que desliga os e-mails, sem entrar no app. Os avisos no celular continuam, e o planejador religa os e-mails pelo Claude (D89 a D91, ADR-037) | `emailOptOut` | descadastro, unsubscribe |
-| Resumo semanal | E-mail semanal com janelas aproveitadas, níveis, recordes e medalhas | `weeklyDigest` | newsletter, relatório |
+| Resumo semanal | E-mail semanal com janelas aproveitadas, níveis, recordes e medalhas da semana do período que terminou, na segunda-feira às 7h, só por e-mail (D106, D107, ADR-041) | `weeklyDigest`; `kind: 'weekly_digest'` (`notifications`); ferramenta MCP `get_weekly_digest` | newsletter, relatório |
 
 ## Pessoas e canais
 

@@ -1152,7 +1152,8 @@
             "enum": [
               "window_open",
               "window_close",
-              "level_drop"
+              "level_drop",
+              "weekly_digest"
             ],
             "example": "window_close"
           },
@@ -2105,6 +2106,600 @@
           "windowsMissed",
           "windowsOpen",
           "usedPercent"
+        ]
+      },
+      "CurrentPeriod": {
+        "type": "object",
+        "properties": {
+          "now": {
+            "type": "string",
+            "example": "2026-11-27T12:00:00.000Z"
+          },
+          "number": {
+            "type": "integer",
+            "example": 1
+          },
+          "startsAt": {
+            "type": "string",
+            "example": "2026-11-23T03:00:00.000Z"
+          },
+          "endsAt": {
+            "type": "string",
+            "example": "2027-02-15T03:00:00.000Z"
+          },
+          "week": {
+            "type": "integer",
+            "example": 1
+          },
+          "weekCount": {
+            "type": "integer",
+            "example": 12
+          },
+          "intention": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Treinar três vezes por semana até o fim do ano."
+          },
+          "windows": {
+            "$ref": "#/components/schemas/PeriodWindows"
+          },
+          "volume": {
+            "$ref": "#/components/schemas/PeriodVolume"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PeriodGroup"
+            }
+          },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PeriodWeek"
+            }
+          },
+          "weekStreak": {
+            "$ref": "#/components/schemas/WeekStreak"
+          },
+          "ranking": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RankedWorkout"
+            }
+          }
+        },
+        "required": [
+          "now",
+          "number",
+          "startsAt",
+          "endsAt",
+          "week",
+          "weekCount",
+          "intention",
+          "windows",
+          "volume",
+          "groups",
+          "weeks",
+          "weekStreak",
+          "ranking"
+        ]
+      },
+      "PeriodWindows": {
+        "type": "object",
+        "properties": {
+          "windowsUsed": {
+            "type": "integer",
+            "example": 17
+          },
+          "windowsMissed": {
+            "type": "integer",
+            "example": 8
+          },
+          "usedPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 68
+          },
+          "targetPercent": {
+            "type": "integer",
+            "example": 70
+          }
+        },
+        "required": [
+          "windowsUsed",
+          "windowsMissed",
+          "usedPercent",
+          "targetPercent"
+        ]
+      },
+      "PeriodVolume": {
+        "type": "object",
+        "properties": {
+          "baselineVolumeG": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 10000000
+          },
+          "lastWeekVolumeG": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 11200000
+          },
+          "changePercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 12
+          },
+          "targetPercent": {
+            "type": "integer",
+            "example": 20
+          }
+        },
+        "required": [
+          "baselineVolumeG",
+          "lastWeekVolumeG",
+          "changePercent",
+          "targetPercent"
+        ]
+      },
+      "PeriodGroup": {
+        "type": "object",
+        "properties": {
+          "muscleGroup": {
+            "type": "object",
+            "properties": {
+              "slug": {
+                "type": "string",
+                "example": "chest"
+              },
+              "name": {
+                "type": "string",
+                "example": "peito"
+              }
+            },
+            "required": [
+              "slug",
+              "name"
+            ]
+          },
+          "windowsUsed": {
+            "type": "integer",
+            "example": 17
+          },
+          "windowsMissed": {
+            "type": "integer",
+            "example": 8
+          },
+          "usedPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 68
+          }
+        },
+        "required": [
+          "muscleGroup",
+          "windowsUsed",
+          "windowsMissed",
+          "usedPercent"
+        ]
+      },
+      "PeriodWeek": {
+        "type": "object",
+        "properties": {
+          "week": {
+            "type": "integer",
+            "example": 1
+          },
+          "from": {
+            "type": "string",
+            "example": "2026-11-23T03:00:00.000Z"
+          },
+          "to": {
+            "type": "string",
+            "example": "2026-11-30T03:00:00.000Z"
+          },
+          "weeklyGoal": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 6
+          },
+          "windowsUsed": {
+            "type": "integer",
+            "example": 7
+          },
+          "points": {
+            "type": "integer",
+            "example": 420
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "met",
+              "missed",
+              "protected",
+              "neutral",
+              "pending"
+            ],
+            "example": "met"
+          }
+        },
+        "required": [
+          "week",
+          "from",
+          "to",
+          "weeklyGoal",
+          "windowsUsed",
+          "points",
+          "status"
+        ]
+      },
+      "WeekStreak": {
+        "type": "object",
+        "properties": {
+          "weeks": {
+            "type": "integer",
+            "example": 3
+          },
+          "protectionUsed": {
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "required": [
+          "weeks",
+          "protectionUsed"
+        ]
+      },
+      "RankedWorkout": {
+        "type": "object",
+        "properties": {
+          "workoutId": {
+            "type": "string",
+            "example": "019d7f2e-8c41-7a3b-9f10-4c2d8e6a1b23"
+          },
+          "letter": {
+            "type": "string",
+            "example": "A"
+          },
+          "startedAt": {
+            "type": "string",
+            "example": "2026-11-25T10:00:00.000Z"
+          },
+          "points": {
+            "type": "integer",
+            "example": 240
+          },
+          "position": {
+            "type": "integer",
+            "example": 2
+          }
+        },
+        "required": [
+          "workoutId",
+          "letter",
+          "startedAt",
+          "points",
+          "position"
+        ]
+      },
+      "PeriodList": {
+        "type": "object",
+        "properties": {
+          "now": {
+            "type": "string",
+            "example": "2027-02-20T12:00:00.000Z"
+          },
+          "periods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PeriodListItem"
+            }
+          }
+        },
+        "required": [
+          "now",
+          "periods"
+        ]
+      },
+      "PeriodListItem": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer",
+            "example": 1
+          },
+          "startsAt": {
+            "type": "string",
+            "example": "2026-11-23T03:00:00.000Z"
+          },
+          "endsAt": {
+            "type": "string",
+            "example": "2027-02-15T03:00:00.000Z"
+          },
+          "intention": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Treinar três vezes por semana até o fim do ano."
+          },
+          "frozenAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2027-02-15T03:00:41.000Z"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/PeriodSnapshot"
+          }
+        },
+        "required": [
+          "number",
+          "startsAt",
+          "endsAt",
+          "intention",
+          "frozenAt",
+          "snapshot"
+        ]
+      },
+      "PeriodSnapshot": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "windowsUsed": {
+            "type": "integer",
+            "example": 17
+          },
+          "windowsMissed": {
+            "type": "integer",
+            "example": 8
+          },
+          "usedPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 68
+          },
+          "points": {
+            "type": "integer",
+            "example": 3120
+          },
+          "bestWorkoutPoints": {
+            "type": "integer",
+            "example": 240
+          },
+          "weekStreak": {
+            "type": "integer",
+            "example": 5
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupSnapshot"
+            }
+          }
+        },
+        "required": [
+          "windowsUsed",
+          "windowsMissed",
+          "usedPercent",
+          "points",
+          "bestWorkoutPoints",
+          "weekStreak",
+          "groups"
+        ]
+      },
+      "GroupSnapshot": {
+        "type": "object",
+        "properties": {
+          "muscleGroup": {
+            "type": "object",
+            "properties": {
+              "slug": {
+                "type": "string",
+                "example": "chest"
+              },
+              "name": {
+                "type": "string",
+                "example": "peito"
+              }
+            },
+            "required": [
+              "slug",
+              "name"
+            ]
+          },
+          "level": {
+            "type": "integer",
+            "example": 12
+          },
+          "points": {
+            "type": "integer",
+            "example": 31
+          },
+          "bestLevel": {
+            "type": "integer",
+            "example": 13
+          },
+          "tier": {
+            "$ref": "#/components/schemas/Tier"
+          },
+          "windowState": {
+            "type": "string",
+            "enum": [
+              "resting",
+              "open",
+              "cooling",
+              "none"
+            ],
+            "example": "open"
+          },
+          "windowsUsed": {
+            "type": "integer",
+            "example": 17
+          },
+          "windowsMissed": {
+            "type": "integer",
+            "example": 8
+          },
+          "usedPercent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 68
+          }
+        },
+        "required": [
+          "muscleGroup",
+          "level",
+          "points",
+          "bestLevel",
+          "tier",
+          "windowState",
+          "windowsUsed",
+          "windowsMissed",
+          "usedPercent"
+        ]
+      },
+      "Medals": {
+        "type": "object",
+        "properties": {
+          "now": {
+            "type": "string",
+            "example": "2026-12-04T10:00:00.000Z"
+          },
+          "medals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Medal"
+            }
+          }
+        },
+        "required": [
+          "now",
+          "medals"
+        ]
+      },
+      "Medal": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "first_record",
+              "first_window",
+              "weekly_goal",
+              "week_streak_4",
+              "level_10",
+              "level_20",
+              "volume_up_20",
+              "full_period",
+              "all_letters_in_week",
+              "window_saved_at_end"
+            ],
+            "example": "level_10"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Nível 10"
+          },
+          "criterion": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Leve um grupo muscular ao nível 10."
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "sparkle",
+              "bolt",
+              "target",
+              "flame",
+              "shield",
+              "medal",
+              "trophy",
+              "star",
+              null
+            ],
+            "example": "shield"
+          },
+          "hidden": {
+            "type": "boolean",
+            "example": false
+          },
+          "awardedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-12-03T21:40:00.000Z"
+          },
+          "subject": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "slug",
+              "name"
+            ],
+            "example": {
+              "slug": "chest",
+              "name": "peito"
+            }
+          },
+          "workoutId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "0193a1b2-0000-7000-8000-000000000010"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "criterion",
+          "icon",
+          "hidden",
+          "awardedAt",
+          "subject",
+          "workoutId"
         ]
       },
       "PushKey": {
@@ -4877,6 +5472,191 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/periods/current": {
+      "get": {
+        "tags": [
+          "periods"
+        ],
+        "summary": "Get the current period of 12 weeks, with its intention, the goals of the period and the windows used by each muscle group in it",
+        "responses": {
+          "200": {
+            "description": "The period that holds now, with its start, its end (exclusive), the week of now (1 to 12), the intention (null with none), the windows used in the period against the target of 70%, the volume of the last complete week against week 1 against the target of +20% and the 11 muscle groups in catalog order with their windows used in the period",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentPeriod"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/periods": {
+      "get": {
+        "tags": [
+          "periods"
+        ],
+        "summary": "List the periods from the most recent, with the snapshot frozen at the end of each ended period",
+        "responses": {
+          "200": {
+            "description": "The periods from the most recent to period 1. An ended period carries its snapshot, frozen once at its end: the windows used and missed, the points of its workouts, the points of its best workout, the streak of weeks and, for each of the 11 muscle groups in catalog order, the level, the bar, the best level, the tier, the state of the window and the windows used and missed in the period. The current period has a null snapshot. Reading freezes an ended period still with no snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeriodList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/periods/current/intention": {
+      "put": {
+        "tags": [
+          "periods"
+        ],
+        "summary": "Write the intention of the current period; an empty text removes it",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "intention": {
+                    "type": "string",
+                    "example": "Treinar três vezes por semana até o fim do ano."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The current period with the new intention",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentPeriod"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing intention (period_intention_required) or longer than 120 characters (period_intention_too_long)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/medals": {
+      "get": {
+        "tags": [
+          "medals"
+        ],
+        "summary": "Get the catalog of the medals with the award of each one, storing first the medals the history reached since the last read",
+        "responses": {
+          "200": {
+            "description": "The 10 medals in catalog order, each with its award (awardedAt, the instant of the event; subject, the muscle group of a level medal; workoutId) or null fields when not awarded; a hidden medal not yet awarded comes with no name, criterion nor icon",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Medals"
                 }
               }
             }

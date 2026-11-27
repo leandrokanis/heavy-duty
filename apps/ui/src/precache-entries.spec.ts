@@ -3,11 +3,11 @@ import { precacheEntries } from './precache-entries'
 
 describe('Given the precache entries', () => {
   describe('When they are read', () => {
-    it('Then should list "/~offline", "/" and "/mapa" with the same build revision', () => {
+    it('Then should list "/~offline", "/", "/mapa" and "/periodo" with the same build revision', () => {
       expect({
         urls: precacheEntries.map(({ url }) => url),
         sameRevision: new Set(precacheEntries.map(({ revision }) => revision)).size,
-      }).toEqual({ urls: ['/~offline', '/', '/mapa'], sameRevision: 1 })
+      }).toEqual({ urls: ['/~offline', '/', '/mapa', '/periodo'], sameRevision: 1 })
     })
   })
 })

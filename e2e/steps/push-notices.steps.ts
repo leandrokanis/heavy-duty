@@ -162,31 +162,26 @@ Then(
 )
 
 Then(
-  'the header buttons {string}, {string} and {string} should be targets of 44 px on one line',
-  async ({ page }, notices: string, map: string, history: string) => {
+  'the header buttons {string} and {string} should be targets of 44 px on one line',
+  async ({ page }, notices: string, history: string) => {
     const header = page.locator('header')
     const boxes = await Promise.all([
       header.getByRole('button', { name: notices, exact: true }).boundingBox(),
-      header.getByRole('link', { name: map, exact: true }).boundingBox(),
       header.getByRole('link', { name: history, exact: true }).boundingBox(),
     ])
-    const [first, second, third] = boxes.map((box) => box ?? { x: 0, y: 0, width: 0, height: 0 })
+    const [first, second] = boxes.map((box) => box ?? { x: 0, y: 0, width: 0, height: 0 })
 
     expect({
       sizes: boxes.map((box) => [box?.width, box?.height]),
-      sameTop: first?.y === second?.y && second?.y === third?.y,
-      gaps: [
-        (second?.x ?? 0) - ((first?.x ?? 0) + (first?.width ?? 0)),
-        (third?.x ?? 0) - ((second?.x ?? 0) + (second?.width ?? 0)),
-      ],
+      sameTop: first?.y === second?.y,
+      gap: (second?.x ?? 0) - ((first?.x ?? 0) + (first?.width ?? 0)),
     }).toEqual({
       sizes: [
         [44, 44],
         [44, 44],
-        [44, 44],
       ],
       sameTop: true,
-      gaps: [8, 8],
+      gap: 8,
     })
   },
 )

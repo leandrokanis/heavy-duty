@@ -100,3 +100,43 @@ describe('Given chest never trained and the levels unknown', () => {
     })
   })
 })
+
+describe('Given chest with 3 of 4 windows used in the period (US-F11-01)', () => {
+  const group = chestWith(null, null)
+
+  describe('When the athlete opens the detail of the chest', () => {
+    it('Then should show the progress in the period as the rate of windows used', () => {
+      render(
+        <GroupSheet
+          group={group}
+          periodProgress={{ windowsUsed: 3, windowsMissed: 1, usedPercent: 75 }}
+          nowMs={NOW_MS}
+          timeZone={SAO_PAULO}
+          onClose={vi.fn()}
+        />,
+      )
+
+      expect(detailsOf(screen.getByRole('dialog', { name: 'Peito' }))).toMatchObject({
+        'Progresso no período': '75 %',
+      })
+    })
+  })
+
+  describe('When no window of the chest ended in the period', () => {
+    it('Then should say no window ended', () => {
+      render(
+        <GroupSheet
+          group={group}
+          periodProgress={{ windowsUsed: 0, windowsMissed: 0, usedPercent: null }}
+          nowMs={NOW_MS}
+          timeZone={SAO_PAULO}
+          onClose={vi.fn()}
+        />,
+      )
+
+      expect(detailsOf(screen.getByRole('dialog', { name: 'Peito' }))).toMatchObject({
+        'Progresso no período': 'Nenhuma janela terminou',
+      })
+    })
+  })
+})

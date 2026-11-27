@@ -1,6 +1,9 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TOAST_EXIT_MS, TOAST_VISIBLE_MS, ToastProvider } from '@/components/ui/toast'
+import { medal } from '@/features/medals/test-medals'
+import { useMedalsAfterSync } from '@/features/medals/use-medals-after-sync'
+import { testPeriod } from '@/features/period/test-period'
 import { clearActiveWorkout, loadActiveWorkout } from '@/sync/active-workout-store'
 import { createMemoryQueueStore } from '@/sync/queue-store'
 import { SYNC_RETRY_INTERVAL_MS } from '@/sync/sync.config'
@@ -18,6 +21,12 @@ import {
   workoutFlowReducer,
 } from './workout-flow'
 import { WorkoutScreen } from './workout-screen'
+
+// The medals have their own tests (features/medals); here the screen reads none.
+vi.mock('@/features/medals/use-medals-after-sync', () => ({
+  useMedalsAfterSync: vi.fn(() => ({ medals: null, awardedNow: [], dismiss: () => {} })),
+}))
+
 import type { SendOutcome } from './workout-set.types'
 
 const WORKOUT_ID = '0193a1b2-0000-7000-8000-000000000601'
@@ -622,6 +631,38 @@ describe('Given a letter with triceps-polia of one set', () => {
   })
 })
 
+describe('Given the API awarded the first record to this workout (US-F19-01)', () => {
+  describe('When the workout finishes', () => {
+    it('Then the workout done should list the medal under Medalhas novas', async () => {
+      const record = medal({ awardedAt: STARTED_AT, workoutId: WORKOUT_ID })
+      vi.mocked(useMedalsAfterSync).mockReturnValue({
+        medals: {
+          now: STARTED_AT,
+          medals: [record, medal({ code: 'first_window', name: 'Primeira janela' })],
+        },
+        awardedNow: [],
+        dismiss: () => {},
+      })
+      vi.useFakeTimers({ now: T0 })
+      stubFetch(created())
+      renderWorkout([TRICEPS_ONE_SET])
+
+      await act(async () => tapNext())
+
+      const section = screen.getByRole('region', { name: 'Medalhas novas' })
+      const items = within(section)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent)
+      vi.mocked(useMedalsAfterSync).mockReturnValue({
+        medals: null,
+        awardedNow: [],
+        dismiss: () => {},
+      })
+      expect(items).toEqual(['Primeiro recorde'])
+    })
+  })
+})
+
 describe('Given the last set of the day with the network failing', () => {
   describe('When the workout finishes and the athlete taps Fechar', () => {
     it('Then Fechar should be enabled with the set in the queue, clear the workout in progress and call onFinish once', async () => {
@@ -704,6 +745,54 @@ describe('Given a workout of triceps-polia finished with the set still in the qu
         asked: fetchMock.mock.calls.length,
         section: screen.queryByRole('region', { name: 'Janelas reabrem' }),
       }).toEqual({ asked: 0, section: null })
+    })
+  })
+})
+
+describe('Given a period with one workout of 1000 points and one of 1, frozen at the start (US-F19-02)', () => {
+  const flow = () => ({
+    ...flowOf([TRICEPS_ONE_SET]),
+    session: { ...flowOf([TRICEPS_ONE_SET]).session, periodPoints: [1000, 1] },
+  })
+
+  describe('When the workout finishes with its set still in the queue', () => {
+    it('Then should show the provisional points of the workout and "2º do período"', async () => {
+      vi.useFakeTimers({ now: T0 })
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => created()),
+      )
+      renderWorkout([TRICEPS_ONE_SET], vi.fn(), async () => ({ status: 'retry' }), flow())
+
+      await act(async () => tapNext())
+
+      expect(screen.getByRole('region', { name: 'Pontos do treino' }).textContent).toMatch(
+        /^\+\d+ pontos?2º do período$/,
+      )
+    })
+  })
+
+  describe('When the queue sends the set and the API ranks the workout first with 40 points', () => {
+    it('Then should show the points and the position of the API', async () => {
+      vi.useFakeTimers({ now: T0 })
+      const period = testPeriod({
+        ranking: [
+          { workoutId: WORKOUT_ID, letter: 'A', startedAt: STARTED_AT, points: 40, position: 1 },
+        ],
+      })
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string) =>
+          url === '/api/periods/current' ? new Response(JSON.stringify(period)) : created(),
+        ),
+      )
+      renderWorkout([TRICEPS_ONE_SET], vi.fn(), sendPendingItem, flow())
+
+      await act(async () => tapNext())
+
+      expect(screen.getByRole('region', { name: 'Pontos do treino' }).textContent).toBe(
+        '+40 pontos1º do período',
+      )
     })
   })
 })
