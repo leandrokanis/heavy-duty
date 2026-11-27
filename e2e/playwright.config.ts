@@ -51,6 +51,7 @@ const PERIODS_SPEC = /periods\.feature\.spec\.js$/
 const WEEK_STREAK_SPEC = /week-streak\.feature\.spec\.js$/
 const PERSONAL_RANKING_SPEC = /personal-ranking\.feature\.spec\.js$/
 const PERIOD_SNAPSHOT_SPEC = /period-snapshot\.feature\.spec\.js$/
+const MEDALS_SPEC = /medals\.feature\.spec\.js$/
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
@@ -117,6 +118,7 @@ export default defineConfig({
         WEEK_STREAK_SPEC,
         PERSONAL_RANKING_SPEC,
         PERIOD_SNAPSHOT_SPEC,
+        MEDALS_SPEC,
       ],
       dependencies: ['catalog-muscles'],
       use: { ...devices['Pixel 7'] },
@@ -458,6 +460,15 @@ export default defineConfig({
       testMatch: PERIOD_SNAPSHOT_SPEC,
       fullyParallel: false,
       dependencies: ['personal-ranking'],
+      use: { ...devices['Pixel 7'] },
+    },
+    // Replaces the periods and the medal awards and records workouts relative to the real clock,
+    // so it runs alone and one scenario at a time, after the period snapshot.
+    {
+      name: 'medals',
+      testMatch: MEDALS_SPEC,
+      fullyParallel: false,
+      dependencies: ['period-snapshot'],
       use: { ...devices['Pixel 7'] },
     },
   ],

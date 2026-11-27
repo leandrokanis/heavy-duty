@@ -289,3 +289,28 @@ describe('gameReplayOf, the points of each set (US-F19-02)', () => {
     })
   })
 })
+
+describe('gameReplayOf, the level of each group after each set (US-F19-01)', () => {
+  function stepsOf(sets: ProgressSet[], groupSlug: string) {
+    const lastMs = Math.max(...sets.map(({ performedAtMs }) => performedAtMs))
+    return gameReplayOf(sets, GAME_PARAMETERS, lastMs).levelSteps.filter(
+      (step) => step.groupSlug === groupSlug,
+    )
+  }
+
+  describe('Given one workout with 3 sets at plan, 20 points each for chest', () => {
+    it('Then chest should step to level 2 at the second set, which fills the 40 of level 1', () => {
+      expect(stepsOf(benchWorkout('workout-1', T0), 'chest')).toEqual([
+        { workoutId: 'workout-1', performedAtMs: T0, groupSlug: 'chest', level: 1 },
+        { workoutId: 'workout-1', performedAtMs: T0 + 60_000, groupSlug: 'chest', level: 2 },
+        { workoutId: 'workout-1', performedAtMs: T0 + 120_000, groupSlug: 'chest', level: 2 },
+      ])
+    })
+
+    it('Then the secondary triceps should have a step at each set too', () => {
+      expect(stepsOf(benchWorkout('workout-1', T0), 'triceps').map(({ level }) => level)).toEqual([
+        1, 1, 1,
+      ])
+    })
+  })
+})

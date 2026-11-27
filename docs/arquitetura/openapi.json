@@ -2579,6 +2579,128 @@
           "usedPercent"
         ]
       },
+      "Medals": {
+        "type": "object",
+        "properties": {
+          "now": {
+            "type": "string",
+            "example": "2026-12-04T10:00:00.000Z"
+          },
+          "medals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Medal"
+            }
+          }
+        },
+        "required": [
+          "now",
+          "medals"
+        ]
+      },
+      "Medal": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "first_record",
+              "first_window",
+              "weekly_goal",
+              "week_streak_4",
+              "level_10",
+              "level_20",
+              "volume_up_20",
+              "full_period",
+              "all_letters_in_week",
+              "window_saved_at_end"
+            ],
+            "example": "level_10"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Nível 10"
+          },
+          "criterion": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Leve um grupo muscular ao nível 10."
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "sparkle",
+              "bolt",
+              "target",
+              "flame",
+              "shield",
+              "medal",
+              "trophy",
+              "star",
+              null
+            ],
+            "example": "shield"
+          },
+          "hidden": {
+            "type": "boolean",
+            "example": false
+          },
+          "awardedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-12-03T21:40:00.000Z"
+          },
+          "subject": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "slug",
+              "name"
+            ],
+            "example": {
+              "slug": "chest",
+              "name": "peito"
+            }
+          },
+          "workoutId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "0193a1b2-0000-7000-8000-000000000010"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "criterion",
+          "icon",
+          "hidden",
+          "awardedAt",
+          "subject",
+          "workoutId"
+        ]
+      },
       "PushKey": {
         "type": "object",
         "properties": {
@@ -5494,6 +5616,46 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid access session cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/medals": {
+      "get": {
+        "tags": [
+          "medals"
+        ],
+        "summary": "Get the catalog of the medals with the award of each one, storing first the medals the history reached since the last read",
+        "responses": {
+          "200": {
+            "description": "The 10 medals in catalog order, each with its award (awardedAt, the instant of the event; subject, the muscle group of a level medal; workoutId) or null fields when not awarded; a hidden medal not yet awarded comes with no name, criterion nor icon",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Medals"
                 }
               }
             }

@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { groupLevel } from '@/features/body-map/test-body-map'
+import { HIDDEN, LEVEL_10_IN_CHEST } from '@/features/medals/test-medals'
 import { loadLevels } from '@/sync/levels-cache'
+import { loadMedals } from '@/sync/medals-cache'
 import { loadPeriod } from '@/sync/period-cache'
 import { loadPeriods } from '@/sync/periods-cache'
 import type { PeriodListItem } from './period.types'
@@ -12,6 +14,7 @@ import { frozenPeriod } from './test-snapshot'
 vi.mock('@/sync/period-cache', () => ({ loadPeriod: vi.fn(), storePeriod: vi.fn() }))
 vi.mock('@/sync/levels-cache', () => ({ loadLevels: vi.fn() }))
 vi.mock('@/sync/periods-cache', () => ({ loadPeriods: vi.fn() }))
+vi.mock('@/sync/medals-cache', () => ({ loadMedals: vi.fn() }))
 vi.mock('@simplewebauthn/browser', () => ({
   browserSupportsWebAuthn: () => true,
   startAuthentication: vi.fn(),
@@ -19,6 +22,7 @@ vi.mock('@simplewebauthn/browser', () => ({
 
 const loadPeriodMock = vi.mocked(loadPeriod)
 const loadLevelsMock = vi.mocked(loadLevels)
+const loadMedalsMock = vi.mocked(loadMedals)
 const SAO_PAULO = 'America/Sao_Paulo'
 // Wednesday of week 2 of the test period.
 const NOW_MS = Date.parse('2026-12-02T15:00:00.000Z')
@@ -33,6 +37,7 @@ function stubCopies(period = testPeriod(), periods: PeriodListItem[] = []) {
     status: 'ok',
     levels: { now: period.now, groups: [groupLevel('chest'), groupLevel('back')] },
   })
+  loadMedalsMock.mockResolvedValue({ status: 'offline' })
 }
 
 beforeEach(() => {
@@ -215,6 +220,28 @@ describe('Given no signal and no copy of the period', () => {
       render(<PeriodScreen timeZone={SAO_PAULO} />)
 
       expect(await screen.findByRole('heading', { name: 'Sem conexão' })).toBeInTheDocument()
+    })
+  })
+})
+
+describe('Given the level 10 medal in chest and a hidden medal (US-F19-01)', () => {
+  describe('When the athlete opens the period', () => {
+    it('Then should show the shelf of medals, the hidden one with no name', async () => {
+      stubCopies()
+      loadMedalsMock.mockResolvedValue({
+        status: 'ok',
+        medals: { now: testPeriod().now, medals: [LEVEL_10_IN_CHEST, HIDDEN] },
+        awardedNow: [],
+      })
+
+      render(<PeriodScreen timeZone={SAO_PAULO} />)
+
+      const shelf = await screen.findByRole('list', { name: 'Medalhas' })
+      expect(
+        within(shelf)
+          .getAllByRole('listitem')
+          .map((item) => item.getAttribute('aria-label')),
+      ).toEqual(['Nível 10 · Peito, conquistada', 'Medalha oculta'])
     })
   })
 })

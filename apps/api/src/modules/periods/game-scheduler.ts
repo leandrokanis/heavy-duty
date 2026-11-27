@@ -1,4 +1,5 @@
 import type { Database } from '../../db/connection.js'
+import { syncMedalAwards } from '../medals/medal.service.js'
 import { GAME_TICK_MS } from './periods.config.js'
 import { freezeEndedPeriods } from './snapshot.service.js'
 
@@ -24,6 +25,12 @@ export async function runGameTick(deps: GameTickDeps): Promise<void> {
     deps.log.error(
       `game: could not ensure the current period and freeze the ended ones: ${messageOf(error)}`,
     )
+  }
+  // A medal reached with no read of the app is stored with the instant of its event (ADR-040).
+  try {
+    syncMedalAwards(deps.db, deps.now(), deps.timeZone)
+  } catch (error) {
+    deps.log.error(`game: could not sync the medals: ${messageOf(error)}`)
   }
 }
 

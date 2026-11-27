@@ -1366,6 +1366,48 @@ Exemplo, na semana 1 do período 2:
 }
 ```
 
+## Medalhas
+
+As medalhas marcam volume, janelas, sequência, nível e recorde, e cada uma é conquistada uma vez (US-F19-01, D103, ADR-040). O catálogo fica no código, em `apps/api/src/modules/medals/medals.catalog.ts`, e as regras de conquista são funções puras em `medals.rules.ts`. A API grava cada conquista em `medal_awards`, com o instante do evento, na leitura das medalhas e no ciclo de 60 s do agendador do jogo; a conquista nunca sai. A rota existe só quando a API abriu o banco e exige sessão de acesso. A ferramenta MCP `list_medals` chama o mesmo service `listMedals` (`mcp.md`), em `apps/api/src/modules/medals/medal.service.ts`.
+
+### GET /api/medals
+
+| Campo | Valor |
+|---|---|
+| Objetivo | Mostrar a estante de medalhas na tela Período e a medalha nova quando a fila de envio esvazia (D104) |
+| Story | US-F19-01 |
+| Autenticação | Sessão de acesso (cookie `hd_session`) |
+| Efeito colateral | Grava os períodos que faltam até o atual, como `GET /api/periods/current`, e as conquistas que o histórico alcançou e ainda não estavam gravadas. Nenhuma conquista muda nem sai |
+| Idempotência | Idempotente: a segunda leitura não grava nada novo para o mesmo histórico |
+
+| Status | Corpo | Quando |
+|---|---|---|
+| 200 | `{ "now", "medals" }` | Sempre, com sessão |
+| 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
+| 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
+
+- `medals` traz as 10 medalhas na ordem do catálogo, cada uma com `code`, `name`, `criterion`, `icon`, `hidden`, `awardedAt`, `subject` e `workoutId`.
+- `code` é um de `first_record`, `first_window`, `weekly_goal`, `week_streak_4`, `level_10`, `level_20`, `volume_up_20`, `full_period`, `all_letters_in_week` e `window_saved_at_end` (D103). As duas últimas são ocultas (`hidden: true`).
+- `name` e `criterion` vêm em português, como o app mostra; `icon` é um de `sparkle`, `bolt`, `target`, `flame`, `shield`, `medal`, `trophy` e `star`. A medalha oculta ainda não conquistada vem com `name`, `criterion` e `icon` nulos.
+- `awardedAt` é o instante UTC do evento que rendeu a medalha, não o da detecção, ou `null` sem conquista. `workoutId` é o treino do evento, ou `null` sem conquista, sem treino ou com o treino removido (`ON DELETE SET NULL`). `subject` traz `slug` e `name` do grupo muscular da medalha de nível, como o "nível 10 em peito", e é `null` nas outras.
+- Só conta evento a partir do início do período 1; o histórico anterior serve de base para o recorde, o nível e as janelas (D97). A semana é a do período (D96): no volume, cada série conta na semana do instante dela, como o O4 de `GET /api/periods/current`; nas outras medalhas, o treino pertence à semana pelo início.
+- O instante de cada conquista: a série recorde (`first_record`); o treino do grupo que caiu na janela (`first_window`; `window_saved_at_end` quando o treino veio nas 12 h antes do fechamento, a antecedência da D79); a janela aproveitada que alcançou a meta da semana (`weekly_goal`; `week_streak_4` quando essa semana leva a sequência a 4); a série que deixa um grupo no nível 10 ou 20 ou acima (`level_10`, `level_20`); a série que leva o volume total da semana a 120% da semana 1 do período (`volume_up_20`); o primeiro treino da última semana que faltava no período (`full_period`) ou da última letra do programa ativo que faltava na semana (`all_letters_in_week`).
+
+Exemplo, com a medalha de nível 10 em peito:
+
+```json
+{
+  "now": "2026-12-04T10:00:00.000Z",
+  "medals": [
+    { "code": "first_record", "name": "Primeiro recorde", "criterion": "Registre a primeira série recorde.", "icon": "sparkle", "hidden": false, "awardedAt": null, "subject": null, "workoutId": null },
+    { "code": "level_10", "name": "Nível 10", "criterion": "Leve um grupo muscular ao nível 10.", "icon": "shield", "hidden": false, "awardedAt": "2026-12-03T21:40:00.000Z", "subject": { "slug": "chest", "name": "peito" }, "workoutId": "019ad6f0-6a80-7c41-9b2e-5d1f3c8a7e10" },
+    { "code": "window_saved_at_end", "name": null, "criterion": null, "icon": null, "hidden": true, "awardedAt": null, "subject": null, "workoutId": null }
+  ]
+}
+```
+
+O exemplo mostra só 3 das 10 medalhas.
+
 ## Avisos no celular
 
 As rotas desta seção vêm da US-F09-01 (ADR-035). Elas existem só quando a API abriu o banco e exigem sessão de acesso. O service fica em `apps/api/src/modules/notifications/push-subscription.service.ts`. A chave pública VAPID vem da variável `VAPID_PUBLIC_KEY`, e a chave privada, do arquivo de `VAPID_PRIVATE_KEY_FILE` (`implantacao.md`); sem as duas, a API sobe com os avisos no celular desligados. A chave privada não sai em resposta nem em log.
@@ -1464,15 +1506,9 @@ O token vem no corpo JSON, `{ "token": "<token>" }`, como a página manda, ou na
 
 O `GET` da mesma URL não desliga nada e responde 401, como toda rota protegida: filtros de e-mail abrem os links sozinhos (D90). O token não vence (ADR-037). O planejador religa os e-mails pelo Claude, com `set_email_notices` (`mcp.md`).
 
-## Período e medalhas (planejado na onda 7b)
+## Período e medalhas na onda 7b
 
-As rotas desta seção estão planejadas para a onda 7b (ADR-039, ADR-040) e ainda não existem no código nem em `openapi.json`. As rotas `GET /api/periods/current` (US-F11-01, US-F11-03 e US-F19-02) e `GET /api/periods` (US-F11-02) já existem, na seção "Períodos". A story de cada rota escreve aqui o contrato completo, no formato das outras seções, e gera `openapi.json` no mesmo commit. Todas exigem sessão de acesso.
-
-| Rota | Story | Objetivo |
-|---|---|---|
-| `GET /api/medals` | US-F19-01 | Listar o catálogo das medalhas, com a conquista de cada uma (`awardedAt`, `subject`, treino). A medalha oculta ainda não conquistada vem sem nome e sem critério (D103, D104) |
-
-O período e as semanas do período usam o fuso `NOTICE_TIME_ZONE`, e as datas vêm em ISO 8601, em UTC (D96). Na US-F17-03, `recentFailures` de `GET /api/system/status` passa a aceitar o `kind` `weekly_digest` (ADR-041).
+As rotas do período e das medalhas da onda 7b estão nas seções "Períodos" (`GET /api/periods/current`, `PUT /api/periods/current/intention` e `GET /api/periods`) e "Medalhas" (`GET /api/medals`). Todas exigem sessão de acesso. O período e as semanas do período usam o fuso `NOTICE_TIME_ZONE`, e as datas vêm em ISO 8601, em UTC (D96). Na US-F17-03, `recentFailures` de `GET /api/system/status` passa a aceitar o `kind` `weekly_digest` (ADR-041).
 
 ## Situação do app
 

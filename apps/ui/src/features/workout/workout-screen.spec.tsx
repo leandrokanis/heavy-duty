@@ -1,6 +1,8 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TOAST_EXIT_MS, TOAST_VISIBLE_MS, ToastProvider } from '@/components/ui/toast'
+import { medal } from '@/features/medals/test-medals'
+import { useMedalsAfterSync } from '@/features/medals/use-medals-after-sync'
 import { testPeriod } from '@/features/period/test-period'
 import { clearActiveWorkout, loadActiveWorkout } from '@/sync/active-workout-store'
 import { createMemoryQueueStore } from '@/sync/queue-store'
@@ -19,6 +21,12 @@ import {
   workoutFlowReducer,
 } from './workout-flow'
 import { WorkoutScreen } from './workout-screen'
+
+// The medals have their own tests (features/medals); here the screen reads none.
+vi.mock('@/features/medals/use-medals-after-sync', () => ({
+  useMedalsAfterSync: vi.fn(() => ({ medals: null, awardedNow: [], dismiss: () => {} })),
+}))
+
 import type { SendOutcome } from './workout-set.types'
 
 const WORKOUT_ID = '0193a1b2-0000-7000-8000-000000000601'
@@ -619,6 +627,38 @@ describe('Given a letter with triceps-polia of one set', () => {
         dialog: null,
         announcement: 'Série 1 de 1 registrada, 10 pontos. Treino concluído',
       })
+    })
+  })
+})
+
+describe('Given the API awarded the first record to this workout (US-F19-01)', () => {
+  describe('When the workout finishes', () => {
+    it('Then the workout done should list the medal under Medalhas novas', async () => {
+      const record = medal({ awardedAt: STARTED_AT, workoutId: WORKOUT_ID })
+      vi.mocked(useMedalsAfterSync).mockReturnValue({
+        medals: {
+          now: STARTED_AT,
+          medals: [record, medal({ code: 'first_window', name: 'Primeira janela' })],
+        },
+        awardedNow: [],
+        dismiss: () => {},
+      })
+      vi.useFakeTimers({ now: T0 })
+      stubFetch(created())
+      renderWorkout([TRICEPS_ONE_SET])
+
+      await act(async () => tapNext())
+
+      const section = screen.getByRole('region', { name: 'Medalhas novas' })
+      const items = within(section)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent)
+      vi.mocked(useMedalsAfterSync).mockReturnValue({
+        medals: null,
+        awardedNow: [],
+        dismiss: () => {},
+      })
+      expect(items).toEqual(['Primeiro recorde'])
     })
   })
 })

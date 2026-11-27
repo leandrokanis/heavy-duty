@@ -122,6 +122,19 @@ export function weeksSinceFirstPeriod(
   }))
 }
 
+// Every week from period 1 to the week of now, with its status in the streak (D101).
+export function weeksUntilNowOf(
+  db: Database,
+  trainingsOfGroups: Map<string, GroupTraining[]>,
+  nowMs: number,
+): (CountedWeek & { status: WeekStatus })[] {
+  const firstStartMs = Date.parse((findPeriod(db, 1) as PeriodRow).startsAt)
+  const weekCount = Math.max(1, Math.floor((nowMs - firstStartMs) / WEEK_MS) + 1)
+  const weeks = weeksSinceFirstPeriod(db, trainingsOfGroups, weekCount, nowMs)
+  const { statuses } = weekStreakOf(weeks)
+  return weeks.map((week, index) => ({ ...week, status: statuses[index] as WeekStatus }))
+}
+
 // The streak replays every week from period 1, so it crosses the periods (D101); the answer
 // lists the weeks of the current period up to the week of now.
 function streakOf(

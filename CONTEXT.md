@@ -92,7 +92,7 @@ Os nomes da coluna "Código" são propostas até o scaffold da onda 1. Quem muda
 | Memória muscular | Pontos em dobro para um grupo que está abaixo do melhor nível, em qualquer estado da janela, até alcançá-lo de novo, sem somar com a janela nem com o bem-vindo de volta. Vale pelo nível antes da série: a série que alcança o melhor nível rende em dobro inteira (D63, D64). Marca ↺ ×2 | `muscleMemory` | — |
 | Aviso de queda | Aviso antes de um grupo esfriando cair de nível | `levelDropNotice` | — |
 | Recorde | Maior carga de um exercício para um número de repetições | `personalRecord` | PR, marca |
-| Medalha | Conquista por um marco; algumas ficam ocultas até a conquista. A API grava a conquista com o instante do evento, e a medalha nunca sai (D103, D104, ADR-040) | `medal` | troféu, badge, conquista |
+| Medalha | Conquista por um marco; algumas ficam ocultas até a conquista. A API grava a conquista com o instante do evento, e a medalha nunca sai (D103, D104, ADR-040) | `Medal`; a conquista gravada é `MedalAward` (tabela `medal_awards`) | troféu, badge, conquista |
 | Ranking pessoal | Ordem dos treinos do período por pontos do treino, só contra o próprio histórico. No empate, os treinos dividem a posição (D105) | `personalRanking` | placar, leaderboard |
 | Sequência de semanas | Semanas seguidas com a meta semanal de janelas cumprida. A semana sem meta é neutra, e a sequência atravessa os períodos (D101) | `weekStreak` | streak, ofensiva |
 | Proteção da sequência | Uma semana perdida por período que não quebra a sequência de semanas. Gasta-se sozinha na primeira semana perdida com a sequência acima de 0, não acumula e volta a cada período (D42, D101) | `streakProtection` | escudo, congelamento |

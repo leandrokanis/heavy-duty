@@ -18,6 +18,10 @@ import { TodayScreen } from './today-screen'
 import { weekStartOf } from './week'
 import { createWorkoutFlow, workoutFlowReducer } from './workout-flow'
 
+// The medals have their own tests (features/medals); here the screen reads none.
+vi.mock('@/features/medals/use-medals-after-sync', () => ({
+  useMedalsAfterSync: () => ({ medals: null, awardedNow: [], dismiss: () => {} }),
+}))
 vi.mock('@simplewebauthn/browser', () => ({
   browserSupportsWebAuthn: () => true,
   startAuthentication: vi.fn(),

@@ -457,3 +457,19 @@ export const oauthGrants = sqliteTable(
     index('oauth_grants_previous_refresh_idx').on(table.previousRefreshTokenHash),
   ],
 )
+
+// One row per medal awarded, kept forever: no correction, removal or change of formula takes it
+// away (ADR-040).
+export const medalAwards = sqliteTable(
+  'medal_awards',
+  {
+    id: text('id').primaryKey(),
+    medalCode: text('medal_code').notNull().unique(),
+    // The muscle group of a level medal, as in "level 10 in chest"; null on the others.
+    subject: text('subject'),
+    workoutId: text('workout_id').references(() => workouts.id, { onDelete: 'set null' }),
+    // The instant of the event, not of its detection.
+    awardedAt: text('awarded_at').notNull(),
+  },
+  (table) => [index('medal_awards_awarded_at_idx').on(table.awardedAt)],
+)

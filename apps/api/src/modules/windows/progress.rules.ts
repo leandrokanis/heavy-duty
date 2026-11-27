@@ -49,7 +49,19 @@ export type GroupLevelState = {
 // The points a set showed on the phone, with the bonuses of its primary groups (ADR-034).
 export type SetPoints = { workoutId: string; performedAtMs: number; points: number }
 
-export type GameReplay = { levels: Map<string, GroupLevelState>; setPoints: SetPoints[] }
+// The level of a group right after a set, cooling and gain counted; the medals of level read it.
+export type LevelStep = {
+  workoutId: string
+  performedAtMs: number
+  groupSlug: string
+  level: number
+}
+
+export type GameReplay = {
+  levels: Map<string, GroupLevelState>
+  setPoints: SetPoints[]
+  levelSteps: LevelStep[]
+}
 
 // Replays the history in time order: each set adds the gain of D54 to each group of its exercise,
 // doubled in the window before (D55), back from cooling (D53) or below the best level (D63);
@@ -74,6 +86,7 @@ export function gameReplayOf(
   // workout is the first one back after the window closed (D53).
   const firstSetMs = new Map<string, number>()
   const setPoints: SetPoints[] = []
+  const levelSteps: LevelStep[] = []
   for (const set of [...sets].sort(orderOf)) {
     const primaryBonuses: SetBonuses[] = []
     const primary = new Set(set.primaryGroupSlugs)
@@ -111,7 +124,14 @@ export function gameReplayOf(
         { role, plannedGroupSets },
         multiplierPercentOf(bonuses),
       )
-      progress.set(slug, addGroupGain(progressOf(slug), gain).progress)
+      const next = addGroupGain(progressOf(slug), gain).progress
+      progress.set(slug, next)
+      levelSteps.push({
+        workoutId: set.workoutId,
+        performedAtMs: set.performedAtMs,
+        groupSlug: slug,
+        level: next.level,
+      })
     }
     const { points } = shownSetPointsOf(set, set.plan, primaryBonuses)
     setPoints.push({ workoutId: set.workoutId, performedAtMs: set.performedAtMs, points })
@@ -133,7 +153,7 @@ export function gameReplayOf(
       nextDropAtMs: nextDropAtMsOf(closesAtMs, loss, cooled),
     })
   }
-  return { levels, setPoints }
+  return { levels, setPoints, levelSteps }
 }
 
 export function groupLevelsOf(

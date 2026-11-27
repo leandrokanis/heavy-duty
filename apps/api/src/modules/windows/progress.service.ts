@@ -6,7 +6,7 @@ import { listMuscleGroups, listProgressSets } from './windows.repository.js'
 import type { MuscleGroupLevels } from './windows.schemas.js'
 
 // The whole history with the plan frozen in each set, for the replay of the game (ADR-033).
-export function loadProgressSets(db: Database): ProgressSet[] {
+export function loadProgressSets(db: Database): (ProgressSet & { exerciseId: string })[] {
   return listProgressSets(db).map(
     ({ performedAt, plannedLoadG, targetReps, targetSeconds, ...set }) => ({
       ...set,

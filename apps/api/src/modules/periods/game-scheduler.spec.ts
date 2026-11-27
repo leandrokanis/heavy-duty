@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Database } from '../../db/connection.js'
 import { createTestDatabase } from '../../test/database.js'
-import { createTestClock } from '../../test/programs.js'
+import { createProgramTestApp, createTestClock } from '../../test/programs.js'
+import { recordWorkout } from '../../test/workouts.js'
+import { listMedalAwards } from '../medals/medal.repository.js'
 import { runGameTick, startGameScheduler } from './game-scheduler.js'
 import { listPeriods } from './period.repository.js'
 
@@ -103,6 +105,43 @@ describe('Given a database that fails', () => {
       expect(log.error).toHaveBeenCalledWith(
         'game: could not ensure the current period and freeze the ended ones: database is locked',
       )
+    })
+  })
+})
+
+describe('Given a first record in period 1 that no read of the app saw (US-F19-01)', () => {
+  describe('When a tick of the game scheduler runs', () => {
+    it('Then should store the medal with the instant of the record', async () => {
+      const { db, clock, app } = createProgramTestApp()
+      const created = await app.request('/api/programs', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: 'Programa 1', goal: 'hypertrophy' }),
+      })
+      const programId = ((await created.json()) as { id: string }).id
+      for (const [startedAt, loadG] of [
+        ['2026-11-17T10:00:00.000Z', 40_000],
+        ['2026-11-19T10:00:00.000Z', 42_000],
+      ] as const) {
+        recordWorkout(
+          db,
+          {
+            programId,
+            letter: 'A',
+            startedAt,
+            sets: [{ exerciseSlug: 'supino-reto', loadG, reps: 10 }],
+          },
+          clock.now(),
+        )
+      }
+
+      await runGameTick({ db, now: clock.now, timeZone: SAO_PAULO, log: quietLog() })
+
+      expect(
+        listMedalAwards(db)
+          .filter(({ medalCode }) => medalCode === 'first_record')
+          .map(({ medalCode, awardedAt }) => [medalCode, awardedAt]),
+      ).toEqual([['first_record', '2026-11-19T10:00:00.000Z']])
     })
   })
 })

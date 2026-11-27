@@ -127,6 +127,13 @@
       "when": 1795756550768,
       "tag": "0017_period_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1795758393742,
+      "tag": "0018_medal_awards",
+      "breakpoints": true
     }
   ]
 }
