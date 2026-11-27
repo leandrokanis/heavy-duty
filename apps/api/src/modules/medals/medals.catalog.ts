@@ -37,6 +37,8 @@ export const MEDAL_THRESHOLDS = {
   levels: { level_10: 10, level_20: 20 },
   volumePercentOverFirstWeek: 120,
   periodWeeks: 12,
+  // With one letter, the first workout of each week would award it.
+  minProgramLetters: 2,
   // D79: the lead of the close notice.
   savedBeforeCloseHours: NOTICE_CONFIG.leadHours.window_close,
 } as const
@@ -101,7 +103,7 @@ export const MEDAL_CATALOG: readonly Medal[] = [
   {
     code: 'all_letters_in_week',
     name: 'Todas as letras na semana',
-    criterion: 'Treine todas as letras do programa na mesma semana.',
+    criterion: 'Treine todas as letras do programa, 2 ou mais, na mesma semana.',
     icon: 'trophy',
     hidden: true,
   },

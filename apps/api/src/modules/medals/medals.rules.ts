@@ -185,7 +185,7 @@ function fullPeriodOf(history: MedalHistory, workouts: MedalWorkout[]) {
 
 function allLettersOf(history: MedalHistory, workouts: MedalWorkout[]) {
   const program = history.activeProgram
-  if (!program || program.letters.length === 0) {
+  if (!program || new Set(program.letters).size < MEDAL_THRESHOLDS.minProgramLetters) {
     return undefined
   }
   return earliest(

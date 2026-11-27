@@ -431,6 +431,18 @@ describe('Given an active program with the letters A, B and C', () => {
   })
 })
 
+describe('Given an active program with the letter A only', () => {
+  describe('When A is trained in week 2', () => {
+    it('Then it should not award all the letters in the week, which asks for 2 letters or more', () => {
+      const awards = awardsOf({
+        activeProgram: { id: 'p1', letters: ['A'] },
+        sets: [set({ workoutId: 'a', performedAtMs: at(7), letter: 'A' })],
+      })
+      expect(award(awards, 'all_letters_in_week')).toBeUndefined()
+    })
+  })
+})
+
 describe('Given a record and a window used in the same history', () => {
   describe('When the medals are awarded', () => {
     it('Then it should list each medal once, in the order of the awards', () => {
