@@ -6,6 +6,7 @@ import { addExercise } from '../catalog/exercise.service.js'
 import { addMuscle } from '../catalog/muscle.service.js'
 import { createProgram } from '../programs/program.service.js'
 import { listMuscleGroupLevels } from '../windows/progress.service.js'
+import { setWeeklyGoal } from '../windows/weekly-goal.service.js'
 import { listPeriods } from './period.repository.js'
 import { ensurePeriods, getCurrentPeriod, setPeriodIntention } from './period.service.js'
 
@@ -168,6 +169,79 @@ describe('Given period 1 has an intention', () => {
         number: 2,
         intention: null,
       })
+    })
+  })
+})
+
+// Back trained on Monday and Thursday of weeks 2 to 4: the Thursday falls in the window of the
+// Monday, which opens 44 h after it, and the next Monday in the window of the Thursday.
+describe('Given the weekly goal of 1 window met in weeks 2 to 4 of period 1 (US-F11-03)', () => {
+  const START = new Date('2026-11-25T13:00:00.000Z')
+  const WEEK_2 = Date.parse('2026-11-30T03:00:00.000Z')
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000
+
+  async function threeWeeks() {
+    const { db, train } = await givenBackHistory(START)
+    ensurePeriods(db, START, SAO_PAULO)
+    setWeeklyGoal(db, { weeklyGoal: 1 }, START)
+    for (let index = 0; index < 3; index += 1) {
+      const mondayMs = WEEK_2 + index * WEEK_MS
+      train(new Date(mondayMs + 10 * 60 * 60 * 1000).toISOString())
+      train(new Date(mondayMs + 3 * 24 * 60 * 60 * 1000).toISOString())
+    }
+    return db
+  }
+
+  describe('When the period is read on Tuesday of week 5', () => {
+    it('Then the streak should be 3 weeks, week 1 missed with no streak to protect and week 5 pending', async () => {
+      const db = await threeWeeks()
+
+      const period = getCurrentPeriod(db, new Date('2026-12-22T15:00:00.000Z'), SAO_PAULO)
+
+      expect({
+        streak: period.weekStreak,
+        weeks: period.weeks.map(({ week, weeklyGoal, windowsUsed, status }) => [
+          week,
+          weeklyGoal,
+          windowsUsed,
+          status,
+        ]),
+      }).toEqual({
+        streak: { weeks: 3, protectionUsed: false },
+        weeks: [
+          [1, 1, 0, 'missed'],
+          [2, 1, 1, 'met'],
+          [3, 1, 2, 'met'],
+          [4, 1, 2, 'met'],
+          [5, 1, 0, 'pending'],
+        ],
+      })
+    })
+  })
+
+  describe('When week 5 ends with no window used', () => {
+    it('Then the streak should stay at 3 and the protection of the period should be used', async () => {
+      const db = await threeWeeks()
+
+      const period = getCurrentPeriod(db, new Date('2026-12-29T15:00:00.000Z'), SAO_PAULO)
+
+      expect([period.weekStreak, period.weeks[4]?.status]).toEqual([
+        { weeks: 3, protectionUsed: true },
+        'protected',
+      ])
+    })
+  })
+
+  describe('When weeks 5 and 6 end with no window used', () => {
+    it('Then the streak should go back to zero', async () => {
+      const db = await threeWeeks()
+
+      const period = getCurrentPeriod(db, new Date('2027-01-05T15:00:00.000Z'), SAO_PAULO)
+
+      expect([period.weekStreak, period.weeks[5]?.status]).toEqual([
+        { weeks: 0, protectionUsed: true },
+        'missed',
+      ])
     })
   })
 })

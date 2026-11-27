@@ -1,8 +1,10 @@
 import { startAuthentication } from '@simplewebauthn/browser'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { testPeriod } from '@/features/period/test-period'
 import { clearActiveWorkout, saveActiveWorkout } from '@/sync/active-workout-store'
 import { clearCachedLevels } from '@/sync/levels-cache'
+import { clearCachedPeriod } from '@/sync/period-cache'
 import { createMemoryQueueStore } from '@/sync/queue-store'
 import { SyncProvider, sendPendingItem } from '@/sync/sync-context'
 import { createSyncQueue, type SendItem, type SyncQueue } from '@/sync/sync-queue'
@@ -27,6 +29,8 @@ let windowsAnswer: () => Response = () => json(500)
 let levelsAnswer: () => Response = () => json(500)
 // GET /api/windows/week likewise, with weekAnswer.
 let weekAnswer: () => Response = () => json(500)
+// GET /api/periods/current likewise, with periodAnswer.
+let periodAnswer: () => Response = () => json(500)
 
 function stubFetch(...responses: (Response | Error)[]) {
   const fetchMock = vi.fn()
@@ -40,6 +44,7 @@ function stubFetch(...responses: (Response | Error)[]) {
     if (input === '/api/windows') return Promise.resolve(windowsAnswer())
     if (input === '/api/levels') return Promise.resolve(levelsAnswer())
     if (String(input).startsWith('/api/windows/week?')) return Promise.resolve(weekAnswer())
+    if (input === '/api/periods/current') return Promise.resolve(periodAnswer())
     return fetchMock(input, init)
   })
   return fetchMock
@@ -64,12 +69,14 @@ afterEach(async () => {
   windowsAnswer = () => json(500)
   levelsAnswer = () => json(500)
   weekAnswer = () => json(500)
+  periodAnswer = () => json(500)
   vi.useRealTimers()
   await clearActiveWorkout()
   await clearCachedToday()
   await clearCachedWindows()
   await clearCachedLevels()
   await clearCachedWeekWindows()
+  await clearCachedPeriod()
 })
 
 // The header holds the button "Avisos", which also starts with A.
@@ -1111,6 +1118,60 @@ describe('Given the weekly goal of 6 windows and 4 used this week (US-F15b-02)',
   describe('When no weekly goal is set and no level is known', () => {
     it('Then the game strip should not show', async () => {
       weekAnswer = () => json(200, weekBody(null, 4))
+      stubFetch(json(200, todayBody()))
+
+      renderToday()
+
+      await screen.findByRole('button', { name: LETTER_A })
+      expect(screen.queryByRole('region', { name: 'Faixa de jogo' })).toBeNull()
+    })
+  })
+})
+
+describe('Given the weekly goal met in the last 3 weeks of the period (US-F11-03)', () => {
+  const streakItem = () => screen.findByRole('img', { name: /seguidas? com a meta cumprida/ })
+
+  describe('When the athlete opens the app', () => {
+    it('Then the game strip should show the streak of 3 weeks with the protection available', async () => {
+      periodAnswer = () =>
+        json(200, testPeriod({ weekStreak: { weeks: 3, protectionUsed: false } }))
+      stubFetch(json(200, todayBody()))
+
+      renderToday()
+
+      const item = await streakItem()
+      expect({
+        name: item.getAttribute('aria-label'),
+        strip: item.closest('section')?.getAttribute('aria-label'),
+        text: item.textContent,
+      }).toEqual({
+        name: '3 semanas seguidas com a meta cumprida, proteção do período disponível',
+        strip: 'Faixa de jogo',
+        text: '3semanas',
+      })
+    })
+  })
+
+  describe('When the protection of the period was used', () => {
+    it('Then the streak should say the protection was used', async () => {
+      periodAnswer = () => json(200, testPeriod({ weekStreak: { weeks: 5, protectionUsed: true } }))
+      stubFetch(json(200, todayBody()))
+
+      renderToday()
+
+      expect((await streakItem()).getAttribute('aria-label')).toBe(
+        '5 semanas seguidas com a meta cumprida, proteção do período usada',
+      )
+    })
+  })
+})
+
+describe('Given the streak at zero and no weekly goal this week (US-F11-03)', () => {
+  describe('When the athlete opens the app', () => {
+    it('Then the game strip should leave the streak out', async () => {
+      const period = testPeriod({ weekStreak: { weeks: 0, protectionUsed: false } })
+      periodAnswer = () =>
+        json(200, { ...period, weeks: period.weeks.map((week) => ({ ...week, weeklyGoal: null })) })
       stubFetch(json(200, todayBody()))
 
       renderToday()

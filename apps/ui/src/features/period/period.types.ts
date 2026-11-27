@@ -6,6 +6,19 @@ export type WindowsTally = {
 
 export type PeriodGroup = WindowsTally & { muscleGroup: { slug: string; name: string } }
 
+export type WeekStatus = 'met' | 'missed' | 'protected' | 'neutral' | 'pending'
+
+export type PeriodWeek = {
+  week: number
+  from: string
+  to: string
+  weeklyGoal: number | null
+  windowsUsed: number
+  status: WeekStatus
+}
+
+export type WeekStreak = { weeks: number; protectionUsed: boolean }
+
 // The answer of GET /api/periods/current (contratos.md).
 export type CurrentPeriod = {
   now: string
@@ -23,4 +36,6 @@ export type CurrentPeriod = {
     targetPercent: number
   }
   groups: PeriodGroup[]
+  weeks: PeriodWeek[]
+  weekStreak: WeekStreak
 }

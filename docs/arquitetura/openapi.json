@@ -2152,6 +2152,15 @@
             "items": {
               "$ref": "#/components/schemas/PeriodGroup"
             }
+          },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PeriodWeek"
+            }
+          },
+          "weekStreak": {
+            "$ref": "#/components/schemas/WeekStreak"
           }
         },
         "required": [
@@ -2164,7 +2173,9 @@
           "intention",
           "windows",
           "volume",
-          "groups"
+          "groups",
+          "weeks",
+          "weekStreak"
         ]
       },
       "PeriodWindows": {
@@ -2274,6 +2285,70 @@
           "windowsUsed",
           "windowsMissed",
           "usedPercent"
+        ]
+      },
+      "PeriodWeek": {
+        "type": "object",
+        "properties": {
+          "week": {
+            "type": "integer",
+            "example": 1
+          },
+          "from": {
+            "type": "string",
+            "example": "2026-11-23T03:00:00.000Z"
+          },
+          "to": {
+            "type": "string",
+            "example": "2026-11-30T03:00:00.000Z"
+          },
+          "weeklyGoal": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 6
+          },
+          "windowsUsed": {
+            "type": "integer",
+            "example": 7
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "met",
+              "missed",
+              "protected",
+              "neutral",
+              "pending"
+            ],
+            "example": "met"
+          }
+        },
+        "required": [
+          "week",
+          "from",
+          "to",
+          "weeklyGoal",
+          "windowsUsed",
+          "status"
+        ]
+      },
+      "WeekStreak": {
+        "type": "object",
+        "properties": {
+          "weeks": {
+            "type": "integer",
+            "example": 3
+          },
+          "protectionUsed": {
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "required": [
+          "weeks",
+          "protectionUsed"
         ]
       },
       "PushKey": {

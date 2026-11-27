@@ -1,9 +1,11 @@
 import type { Database } from '../../db/connection.js'
 import { createId } from '../../db/id.js'
 import { DomainError } from '../../errors/domain-error.js'
-import { groupTrainingsOf } from '../windows/window.rules.js'
+import { findWeeklyGoalBefore } from '../windows/weekly-goal.repository.js'
+import { type GroupTraining, groupTrainingsOf } from '../windows/window.rules.js'
 import { GAME_PARAMETERS } from '../windows/windows.config.js'
 import { listMuscleGroups, listWorkoutSets } from '../windows/windows.repository.js'
+import { windowsUsedByWeek } from '../windows/windows-used.rules.js'
 import {
   findPeriod,
   insertPeriod,
@@ -15,10 +17,12 @@ import { periodVolumeOf, periodWindowsOf, type WindowsTally } from './period-sta
 import {
   MAX_INTENTION_LENGTH,
   PERIOD_WEEKS,
+  WEEK_MS,
   WEEKLY_VOLUME_TARGET_PERCENT,
   WINDOWS_USED_TARGET_PERCENT,
 } from './periods.config.js'
 import type { CurrentPeriod, PeriodIntentionInput } from './periods.schemas.js'
+import { type WeekStatus, weekStreakOf } from './week-streak.rules.js'
 
 const iso = (instantMs: number) => new Date(instantMs).toISOString()
 const NO_WINDOWS: WindowsTally = { windowsUsed: 0, windowsMissed: 0, usedPercent: null }
@@ -52,8 +56,9 @@ export function getCurrentPeriod(db: Database, now: Date, timeZone: string): Cur
     ...set,
     performedAtMs: Date.parse(performedAt),
   }))
+  const trainingsOfGroups = groupTrainingsOf(sets, GAME_PARAMETERS)
   const windows = periodWindowsOf({
-    trainingsOfGroups: groupTrainingsOf(sets, GAME_PARAMETERS),
+    trainingsOfGroups,
     parameters: GAME_PARAMETERS,
     startsAtMs,
     nowMs,
@@ -75,6 +80,53 @@ export function getCurrentPeriod(db: Database, now: Date, timeZone: string): Cur
       muscleGroup,
       ...(windows.byGroup.get(muscleGroup.slug) ?? NO_WINDOWS),
     })),
+    ...streakOf(db, trainingsOfGroups, period, nowMs),
+  }
+}
+
+// The streak replays every week from period 1, so it crosses the periods (D101); the answer
+// lists the weeks of the current period up to the week of now.
+function streakOf(
+  db: Database,
+  trainingsOfGroups: Map<string, GroupTraining[]>,
+  period: PeriodRow,
+  nowMs: number,
+): Pick<CurrentPeriod, 'weeks' | 'weekStreak'> {
+  const firstStartMs = Date.parse((findPeriod(db, 1) as PeriodRow).startsAt)
+  const weekCount = Math.max(1, Math.floor((nowMs - firstStartMs) / WEEK_MS) + 1)
+  const counted = windowsUsedByWeek({
+    trainingsOfGroups: trainingsOfGroups.values(),
+    parameters: GAME_PARAMETERS,
+    fromMs: firstStartMs,
+    weekCount,
+    nowMs,
+  })
+  const weeks = counted.map(({ fromMs, toMs, windowsUsed }) => ({
+    fromMs,
+    toMs,
+    periodNumber: periodAt(firstStartMs, fromMs).number,
+    weeklyGoal: findWeeklyGoalBefore(db, iso(toMs)),
+    windowsUsed,
+    finished: toMs <= nowMs,
+  }))
+  const streak = weekStreakOf(weeks)
+  const periodStartMs = Date.parse(period.startsAt)
+  return {
+    weeks: weeks.flatMap(({ fromMs, toMs, weeklyGoal, windowsUsed, periodNumber }, index) =>
+      periodNumber === period.number
+        ? [
+            {
+              week: Math.floor((fromMs - periodStartMs) / WEEK_MS) + 1,
+              from: iso(fromMs),
+              to: iso(toMs),
+              weeklyGoal,
+              windowsUsed,
+              status: streak.statuses[index] as WeekStatus,
+            },
+          ]
+        : [],
+    ),
+    weekStreak: { weeks: streak.weeks, protectionUsed: streak.protectionUsed },
   }
 }
 

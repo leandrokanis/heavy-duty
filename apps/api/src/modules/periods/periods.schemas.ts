@@ -16,6 +16,19 @@ export const PeriodGroupSchema = z
   })
   .openapi('PeriodGroup')
 
+export const PeriodWeekSchema = z
+  .object({
+    week: z.number().int().openapi({ example: 1 }),
+    from: z.string().openapi({ example: '2026-11-23T03:00:00.000Z' }),
+    to: z.string().openapi({ example: '2026-11-30T03:00:00.000Z' }),
+    weeklyGoal: z.number().int().nullable().openapi({ example: 6 }),
+    windowsUsed: z.number().int().openapi({ example: 7 }),
+    status: z
+      .enum(['met', 'missed', 'protected', 'neutral', 'pending'])
+      .openapi({ example: 'met' }),
+  })
+  .openapi('PeriodWeek')
+
 export const CurrentPeriodSchema = z
   .object({
     now: z.string().openapi({ example: '2026-11-27T12:00:00.000Z' }),
@@ -43,6 +56,13 @@ export const CurrentPeriodSchema = z
       })
       .openapi('PeriodVolume'),
     groups: z.array(PeriodGroupSchema),
+    weeks: z.array(PeriodWeekSchema),
+    weekStreak: z
+      .object({
+        weeks: z.number().int().openapi({ example: 3 }),
+        protectionUsed: z.boolean().openapi({ example: false }),
+      })
+      .openapi('WeekStreak'),
   })
   .openapi('CurrentPeriod')
 

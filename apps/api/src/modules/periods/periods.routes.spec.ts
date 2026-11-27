@@ -82,6 +82,17 @@ describe('Given the first read of the period with no workout', () => {
           targetPercent: 20,
         },
         groups: 11,
+        weeks: [
+          {
+            week: 1,
+            from: '2026-11-16T03:00:00.000Z',
+            to: '2026-11-23T03:00:00.000Z',
+            weeklyGoal: null,
+            windowsUsed: 0,
+            status: 'neutral',
+          },
+        ],
+        weekStreak: { weeks: 0, protectionUsed: false },
       })
     })
   })

@@ -1256,7 +1256,7 @@ O período de 12 semanas organiza o progresso com uma frase de intenção (US-F1
 
 | Status | Corpo | Quando |
 |---|---|---|
-| 200 | `{ "now", "number", "startsAt", "endsAt", "week", "weekCount", "intention", "windows", "volume", "groups" }` | Sempre, com sessão |
+| 200 | `{ "now", "number", "startsAt", "endsAt", "week", "weekCount", "intention", "windows", "volume", "groups", "weeks", "weekStreak" }` | Sempre, com sessão |
 | 401 | `{ "code": "unauthenticated", "message": "Entre com a sua chave de acesso." }` | Sem sessão de acesso válida |
 | 500 | `{ "code": "internal_error", "message": "erro interno do servidor" }` | Erro inesperado |
 
@@ -1265,6 +1265,8 @@ O período de 12 semanas organiza o progresso com uma frase de intenção (US-F1
 - `windows` mede o O1 no período: `windowsUsed` e `windowsMissed` somam as janelas dos 11 grupos nas semanas do período, com a regra de `get_windows_used` (cada janela na semana do desfecho); `usedPercent` arredondado, `null` em 0 de 0; `targetPercent` 70. A janela aberta fica fora da taxa.
 - `volume` mede o O4: `baselineVolumeG` é o volume total da semana 1 e `lastWeekVolumeG` o da última semana completa do período, os dois `null` até a semana 1 terminar; `changePercent` arredondado, `null` sem base ou com base 0; `targetPercent` 20. O volume total soma o volume dos 11 grupos, com o músculo secundário pela metade, e o exercício por tempo fica de fora (D46).
 - `groups` traz os 11 grupos na ordem do catálogo, cada um com `windowsUsed`, `windowsMissed` e `usedPercent` no período: o progresso do grupo no período (D100).
+- `weeks` traz as semanas do período até a de `now` (US-F11-03), cada uma com `week`, `from`, `to`, `weeklyGoal` (a meta da semana, a última definida antes de `to`, D75, ou `null`), `windowsUsed` (as janelas aproveitadas na semana do servidor, D72) e `status`: `met` (aproveitadas iguais ou acima da meta, também na semana de `now`), `missed` (terminou abaixo da meta e quebrou a sequência), `protected` (terminou abaixo da meta e gastou a proteção), `neutral` (sem meta) ou `pending` (semana de `now` ainda abaixo da meta).
+- `weekStreak` traz `weeks`, as semanas seguidas com a meta cumprida, e `protectionUsed`, verdadeiro depois que a proteção do período atual foi gasta. A conta percorre as semanas desde o período 1, atravessa os períodos e ignora as semanas neutras; a proteção se gasta sozinha na primeira semana perdida com a sequência acima de 0, uma vez por período, e mantém a sequência (D101). Os pontos da semana (D102) chegam com a US-F19-02.
 - O nível de cada grupo atravessa os períodos (D24) e continua em `GET /api/levels`.
 
 Exemplo, na quarta da semana 2 do período 1:
@@ -1282,7 +1284,12 @@ Exemplo, na quarta da semana 2 do período 1:
   "volume": { "baselineVolumeG": 10000000, "lastWeekVolumeG": 10000000, "changePercent": 0, "targetPercent": 20 },
   "groups": [
     { "muscleGroup": { "slug": "chest", "name": "peito" }, "windowsUsed": 1, "windowsMissed": 0, "usedPercent": 100 }
-  ]
+  ],
+  "weeks": [
+    { "week": 1, "from": "2026-11-23T03:00:00.000Z", "to": "2026-11-30T03:00:00.000Z", "weeklyGoal": 4, "windowsUsed": 5, "status": "met" },
+    { "week": 2, "from": "2026-11-30T03:00:00.000Z", "to": "2026-12-07T03:00:00.000Z", "weeklyGoal": 4, "windowsUsed": 1, "status": "pending" }
+  ],
+  "weekStreak": { "weeks": 1, "protectionUsed": false }
 }
 ```
 
@@ -1412,7 +1419,7 @@ As rotas desta seção estão planejadas para a onda 7b (ADR-039, ADR-040) e ain
 
 | Rota | Story | Objetivo |
 |---|---|---|
-| `GET /api/periods/current` | US-F11-03, US-F19-02 | A rota existe (seção "Períodos", US-F11-01). A US-F11-03 acrescenta `weeks`, com a meta, as janelas aproveitadas, os pontos e a situação de cada semana do período, e `weekStreak`, com as semanas da sequência e se a proteção já foi usada (D101, D102). A US-F19-02 acrescenta `ranking`, com o treino, a letra, o início, os pontos e a posição de cada treino do período (D105) |
+| `GET /api/periods/current` | US-F19-02 | A rota existe (seção "Períodos", US-F11-01 e US-F11-03). A US-F19-02 acrescenta os pontos de cada semana em `weeks` (D102) e `ranking`, com o treino, a letra, o início, os pontos e a posição de cada treino do período (D105) |
 | `GET /api/periods` | US-F11-02 | Listar os períodos, com o retrato de cada período terminado (D99). A leitura congela o período terminado ainda sem retrato (ADR-039) |
 | `GET /api/medals` | US-F19-01 | Listar o catálogo das medalhas, com a conquista de cada uma (`awardedAt`, `subject`, treino). A medalha oculta ainda não conquistada vem sem nome e sem critério (D103, D104) |
 

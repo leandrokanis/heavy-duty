@@ -284,12 +284,13 @@ A onda 7b acrescenta a barra de abas e as telas do período e das medalhas (D98,
 5. A medalha nova aparece quando a fila de envio esvazia e o app lê as medalhas de novo: a medalha desce do topo da tela e entra no treino concluído (D104). O celular não calcula medalha.
 6. O detalhe do grupo do mapa ganha o progresso no período, a taxa de janelas aproveitadas do grupo no período (D100).
 
-A US-F11-01 entregou a barra de abas, o progresso no período do item 6 e a parte da tela Período que lê `GET /api/periods/current`; os itens 3 a 5, a lista dos períodos e as medalhas seguem planejados:
+A US-F11-01 entregou a barra de abas, o progresso no período do item 6 e a parte da tela Período que lê `GET /api/periods/current`; a US-F11-03 entregou a sequência de semanas do item 3; os pontos da semana, os itens 4 e 5, a lista dos períodos e as medalhas seguem planejados:
 
 1. A barra de abas (`components/tab-bar.tsx`) tem três links: "Treino" (`/`, ícone `Dumbbell`), "Mapa" (`/mapa`, ícone `PersonStanding`) e "Período" (`/periodo`, ícone `CalendarDays`), com `aria-current="page"` na seção atual. Ela flutua no rodapé, com vidro (`.glass`), fora do `main`, e deixa um espaço sob o conteúdo. Não tem `z-index`, para as folhas cobrirem a barra.
 2. A tela Período lê `loadPeriod` (`sync/period-cache.ts`) e `loadLevels` juntos: a resposta da API ou, sem sinal, a cópia do aparelho, com a regra das outras cópias (200 troca, 401 apaga, rede, tempo esgotado e 5xx usam a cópia). Sem período, mostra "Sem conexão". Sem sinal, `/periodo` abre com a cópia do treino do dia, como `/` e `/mapa`, e fica no precache.
 3. A tela mostra "Período N · 12 semanas", o anel e "Semana N de 12", contada pelo relógio do aparelho a partir de `startsAt`, o primeiro e o último dia ("De 23 de nov. a 14 de fev."), a frase entre aspas ou "Sem frase de intenção", as metas O1 e O4 com a meta do período e os níveis dos 11 grupos.
 4. "Escrever a frase" ou "Editar a frase" abre a folha da frase (`intention-sheet.tsx`), com o campo de até 120 caracteres e o contador. "Salvar" chama `PUT /api/periods/current/intention` direto, sem a fila: a frase não é passo do treino. Sem sinal, a folha fica aberta com "Sem conexão. A frase não foi salva."; com sucesso, a tela troca a cópia pelo período devolvido.
+5. A faixa de jogo (`game-strip.tsx`) mostra o item da sequência (`streak-item.tsx`) entre o nível geral e a meta semanal: a chama, o número, "semanas" e o escudo enquanto a proteção do período está disponível, com o nome acessível "3 semanas seguidas com a meta cumprida, proteção do período disponível". O treino do dia lê a cópia do período junto com as janelas, os níveis e a meta (`loadPeriod`). O item fica fora sem a cópia do período e quando a sequência está em 0 sem meta na semana atual (`shownStreakOf`): sem meta, a sequência não anda (D76). A cópia gravada antes da sequência não tem os campos, e o item fica fora.
 
 ## Histórico no celular
 

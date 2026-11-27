@@ -37,6 +37,25 @@ export function testPeriod(overrides: Partial<CurrentPeriod> = {}): CurrentPerio
       windowsMissed: 0,
       usedPercent: null,
     })),
+    weeks: [
+      {
+        week: 1,
+        from: '2026-11-23T03:00:00.000Z',
+        to: '2026-11-30T03:00:00.000Z',
+        weeklyGoal: 2,
+        windowsUsed: 3,
+        status: 'met',
+      },
+      {
+        week: 2,
+        from: '2026-11-30T03:00:00.000Z',
+        to: '2026-12-07T03:00:00.000Z',
+        weeklyGoal: 2,
+        windowsUsed: 1,
+        status: 'pending',
+      },
+    ],
+    weekStreak: { weeks: 1, protectionUsed: false },
     ...overrides,
   }
 }
